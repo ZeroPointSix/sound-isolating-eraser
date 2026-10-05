@@ -1,0 +1,6 @@
+{
+  "message_id": "gravity_crush",
+  "scaling": "never",
+  "exhaustion": 0.1,
+  "effects": "hurt"
+}

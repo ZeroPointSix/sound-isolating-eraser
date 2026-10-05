@@ -1,0 +1,11 @@
+{
+  "mappings": {
+    "com/zeropointsix/eraser/mixin/client/GravityOutlineMixin": {
+      "shouldEntityAppearGlowing": "Lnet/minecraft/client/Minecraft;m_91314_(Lnet/minecraft/world/entity/Entity;)Z"
+    },
+    "com/zeropointsix/eraser/mixin/client/GravityOutlineColorMixin": {
+      "getTeamColor": "Lnet/minecraft/world/entity/Entity;m_5400_()I"
+    }
+  },
+  "data": {}
+}

@@ -2,5 +2,10 @@
   "item.sound_isolating_eraser.sound_isolating_eraser": "隔音橡皮",
   "item.sound_isolating_eraser.sound_isolating_eraser.no_space": "空间不足，画不出墙",
   "block.sound_isolating_eraser.eraser_anchor": "橡皮锚点",
-  "block.sound_isolating_eraser.eraser_barrier": "橡皮屏障"
+  "block.sound_isolating_eraser.eraser_barrier": "橡皮屏障",
+  "item.sound_isolating_eraser.gravity_jade_pendant": "重力玉佩",
+  "key.sound_isolating_eraser.gravity_target": "重力场瞄准",
+  "key.categories.sound_isolating_eraser": "畸海浮城饰物",
+  "death.attack.gravity_crush": "%1$s 被重力压垮了",
+  "death.attack.gravity_crush.player": "%1$s 被 %2$s 的重力场压垮了"
 }

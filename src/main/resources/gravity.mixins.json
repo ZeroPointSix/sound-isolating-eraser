@@ -1,0 +1,9 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.zeropointsix.eraser.mixin.client",
+  "compatibilityLevel": "JAVA_17",
+  "refmap": "gravity.refmap.json",
+  "client": ["GravityOutlineMixin", "GravityOutlineColorMixin"],
+  "injectors": {"defaultRequire": 1}
+}
