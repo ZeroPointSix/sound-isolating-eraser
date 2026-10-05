@@ -130,7 +130,7 @@ public final class GravityTestClient {
             case 15 -> {
                 require(aiming(), "native V key enters preview");
                 require(fields(mc) == 0, "preview is not a public field");
-                capture(mc, "preview");
+                GravityVisualProbe.request("preview", GravityGeometry.bounds(GravityClient.target(mc, 1), 5), true);
             }
             case 20 -> nativeInput("click", "4");
             case 25 -> {
@@ -186,7 +186,7 @@ public final class GravityTestClient {
                 require(field.fieldBounds().equals(previewBounds), "preview and landed center match after look changes");
                 require(field.fieldBounds().equals(serverBounds), "wearer field bounds equal server authority");
                 require(mc.player.getCooldowns().isOnCooldown(ModItems.GRAVITY_JADE_PENDANT.get()), "successful cast synchronizes cooldown");
-                capture(mc, "active");
+                GravityVisualProbe.request("active", field.fieldBounds(), false);
                 mark("wearer-cast.pass");
             }
             case 300 -> nativeInput("keydown", "b");
@@ -227,7 +227,7 @@ public final class GravityTestClient {
                     mc.player.getBoundingBox().inflate(32)).get(0);
             require(field.fieldBounds().equals(serverBounds), "observer field bounds equal server authority");
             sawField = true;
-            capture(mc, "active");
+            GravityVisualProbe.request("active", field.fieldBounds(), false);
         }
         if (sawField && fields(mc) == 0 && Files.exists(RESULTS.resolve("wearer.pass"))) {
             mark("observer.pass");

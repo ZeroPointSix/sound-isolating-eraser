@@ -82,7 +82,8 @@ try:
     wearer = launch("runClient", "wearer", ":91")
     observer = launch("runClient", "observer", ":92")
     deadline = time.monotonic() + 600
-    required = ("wearer", "observer", "server-effects", "wearer-stress")
+    required = ("wearer", "observer", "server-effects", "wearer-stress",
+                "wearer-preview-pixels", "wearer-active-pixels", "observer-active-pixels")
     while not all((RESULTS / f"{role}.pass").exists() for role in required):
         failures = list(RESULTS.glob("*.failed"))
         if failures:
