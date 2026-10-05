@@ -16,6 +16,7 @@ import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+import org.joml.Matrix4f;
 import org.joml.Vector4f;
 
 /** Measures the production render pass, without drawing replacement test geometry. */
@@ -31,6 +32,7 @@ public final class GravityVisualProbe {
     private static NativeImage before;
     private static NativeImage after;
     private static List<double[]> edges;
+    private static Matrix4f cameraView;
 
     public static void request(String name, AABB box, boolean expectsFill) {
         if (pending != null) throw new AssertionError("Unfinished visual probe " + pending);
@@ -41,12 +43,15 @@ public final class GravityVisualProbe {
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void beforeWorldOverlay(RenderLevelStageEvent event) {
-        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_PARTICLES || pending == null || before != null) return;
+        if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_PARTICLES) {
+            cameraView = new Matrix4f(event.getPoseStack().last().pose());
+        }
+        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_LEVEL || pending == null || before != null) return;
         try {
             before = Screenshot.takeScreenshot(Minecraft.getInstance().getMainRenderTarget());
             edges = projectEdges(event, before.getWidth(), before.getHeight());
             System.out.println("GRAVITY_PIXEL_MATRICES " + ROLE + " " + pending
-                    + " pose=" + event.getPoseStack().last().pose()
+                    + " pose=" + cameraView
                     + " modelView=" + RenderSystem.getModelViewMatrix()
                     + " shaderColor=" + java.util.Arrays.toString(RenderSystem.getShaderColor()));
         } catch (Throwable failure) { fail(failure); }
@@ -54,7 +59,7 @@ public final class GravityVisualProbe {
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void afterWorldOverlay(RenderLevelStageEvent event) {
-        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_PARTICLES || before == null || after != null) return;
+        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_LEVEL || before == null || after != null) return;
         try {
             after = Screenshot.takeScreenshot(Minecraft.getInstance().getMainRenderTarget());
         } catch (Throwable failure) { fail(failure); }
@@ -125,7 +130,7 @@ public final class GravityVisualProbe {
             Vector4f point = new Vector4f((float) (((i & 1) == 0 ? bounds.minX : bounds.maxX) - camera.x),
                     (float) (((i & 2) == 0 ? bounds.minY : bounds.maxY) - camera.y),
                     (float) (((i & 4) == 0 ? bounds.minZ : bounds.maxZ) - camera.z), 1);
-            point.mul(event.getPoseStack().last().pose()).mul(event.getProjectionMatrix());
+            point.mul(cameraView).mul(event.getProjectionMatrix());
             if (point.w > 0) points[i] = new double[]{(point.x / point.w + 1) * width / 2,
                     (1 - point.y / point.w) * height / 2};
         }

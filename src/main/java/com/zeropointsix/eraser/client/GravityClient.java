@@ -1,6 +1,7 @@
 package com.zeropointsix.eraser.client;
 
 import com.mojang.blaze3d.platform.InputConstants;
+import com.mojang.blaze3d.vertex.PoseStack;
 import com.zeropointsix.eraser.ModMain;
 import com.zeropointsix.eraser.gravity.GravityConfig;
 import com.zeropointsix.eraser.gravity.GravityEquipment;
@@ -34,6 +35,7 @@ public final class GravityClient {
     private static double distance = 8;
     private static double scrollRemainder;
     private static ClientLevel lastLevel;
+    private static PoseStack worldView;
 
     @SubscribeEvent
     public static void tick(TickEvent.ClientTickEvent event) {
@@ -106,8 +108,16 @@ public final class GravityClient {
 
     @SubscribeEvent
     public static void render(RenderLevelStageEvent event) {
-        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_PARTICLES) return;
-        GravityWorldRenderer.render(event, aiming);
+        if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_PARTICLES) {
+            // Forge 1.20.1 AFTER_LEVEL exposes the projection stack, not the world view.
+            // Preserve this frame's actual camera transform before final composition.
+            worldView = new PoseStack();
+            worldView.last().pose().set(event.getPoseStack().last().pose());
+            worldView.last().normal().set(event.getPoseStack().last().normal());
+        } else if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_LEVEL && worldView != null) {
+            GravityWorldRenderer.render(event, worldView, aiming);
+            worldView = null;
+        }
     }
 
     @Mod.EventBusSubscriber(modid = ModMain.MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
