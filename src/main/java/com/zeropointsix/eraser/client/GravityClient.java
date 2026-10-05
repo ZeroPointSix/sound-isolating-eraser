@@ -30,6 +30,7 @@ public final class GravityClient {
             "key.categories.sound_isolating_eraser");
     private static boolean previousDown;
     private static boolean aiming;
+    private static boolean cancelUse;
     private static double distance = 8;
     private static ClientLevel lastLevel;
 
@@ -37,6 +38,7 @@ public final class GravityClient {
     public static void tick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
         Minecraft mc = Minecraft.getInstance();
+        cancelUse = false;
         if (mc.isPaused()) { aiming = false; return; }
         GravitySense.tick(mc);
         boolean down = TARGET.isDown();
@@ -74,9 +76,19 @@ public final class GravityClient {
     }
 
     @SubscribeEvent
-    public static void use(InputEvent.InteractionKeyMappingTriggered event) {
-        if (aiming && event.isUseItem()) {
+    public static void mouse(InputEvent.MouseButton.Pre event) {
+        if (aiming && event.getButton() == GLFW.GLFW_MOUSE_BUTTON_RIGHT && event.getAction() == GLFW.GLFW_PRESS) {
             aiming = false;
+            event.setCanceled(true);
+        }
+    }
+
+    @SubscribeEvent
+    public static void use(InputEvent.InteractionKeyMappingTriggered event) {
+        if ((aiming || cancelUse) && event.isUseItem()) {
+            aiming = false;
+            // Forge fires one use event per hand; consume both when use is rebound.
+            cancelUse = true;
             event.setSwingHand(false);
             event.setCanceled(true);
         }
