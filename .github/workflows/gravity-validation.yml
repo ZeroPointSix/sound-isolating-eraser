@@ -37,7 +37,7 @@ jobs:
       - name: Verify production outline mappings
         run: |
           grep -E 'm_91314_.*shouldEntityAppearGlowing' build/createSrgToMcp/output.srg
-          grep -E 'm_5400_.*getTeamColor' build/createSrgToMcp/output.srg
+          grep -E 'net/minecraft/world/entity/Entity/m_19876_.*getTeamColor' build/createSrgToMcp/output.srg
       - name: Start real client with software rendering
         env:
           LIBGL_ALWAYS_SOFTWARE: '1'
