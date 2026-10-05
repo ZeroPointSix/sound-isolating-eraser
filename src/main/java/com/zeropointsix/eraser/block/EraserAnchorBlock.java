@@ -1,6 +1,5 @@
 package com.zeropointsix.eraser.block;
 
-import com.zeropointsix.eraser.ModMain;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.Level;
@@ -33,20 +32,8 @@ public class EraserAnchorBlock extends EraserWallBlock {
     public void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState,
             boolean movedByPiston) {
         if (!state.is(newState.getBlock()) && !level.isClientSide) {
-            removeColumn(level, pos);
+            EraserColumn.clearBarriers(level, pos);
         }
         super.onRemove(state, level, pos, newState, movedByPiston);
-    }
-
-    /** Deletes every barrier that belongs to the column anchored at {@code anchorPos}. */
-    static void removeColumn(Level level, BlockPos anchorPos) {
-        for (int i = 1; i < ModMain.MAX_HEIGHT; i++) {
-            BlockPos target = anchorPos.above(i);
-            BlockState above = level.getBlockState(target);
-            if (above.getBlock() instanceof EraserBarrierBlock
-                    && above.getValue(EraserBarrierBlock.LEVEL) == i) {
-                level.removeBlock(target, false);
-            }
-        }
     }
 }

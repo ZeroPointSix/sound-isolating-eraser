@@ -5,8 +5,8 @@
 
 ## 玩法规则（与设计稿一致）
 
-- **点地面（上表面）**：点击位置上方立起 1×5 半透明墙，底格是带白痕的锚点块。
-- **点墙面（侧表面）**：同样 5 格一列，白痕标记在被点击的墙面一侧。
+- **点地面（上表面）**：点击位置上方立起 1×5 半透明墙，底格锚点把白色擦痕作为**平面贴花**贴在脚下那个方块的上表面（非立体凸起）。
+- **点墙面（侧表面）**：同样 5 格一列，白痕同样以平面贴花贴在被点击的那一面上。
 - **点方块下表面**：拒绝，什么都不发生。
 - **原子放置**：5 格任一被实心方块、液体、已有墙体或实体占用 → 整列不生成、不耗耐久，
   ActionBar 提示「空间不足」。
@@ -51,3 +51,10 @@ com.zeropointsix.eraser
 - `sound_isolating_eraser.mixins.json`：dev 运行经 `--mixin.config` 加载，
   生产 jar 经 manifest `MixinConfigs` 加载；`hasLineOfSight → m_142582_` 的 SRG
   映射在 `mixins.sound_isolating_eraser.refmap.json`。
+
+
+## CI
+
+Push to `main` runs [`.github/workflows/build-jar.yml`](.github/workflows/build-jar.yml):
+Java 17 + Gradle build, uploads `sound_isolating_eraser-*.jar` as a workflow
+artifact (same filename), and publishes a GitHub Release with that jar attached.
