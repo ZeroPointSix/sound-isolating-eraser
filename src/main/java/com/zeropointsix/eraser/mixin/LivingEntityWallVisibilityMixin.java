@@ -25,10 +25,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  */
 @Mixin(LivingEntity.class)
 public abstract class LivingEntityWallVisibilityMixin {
-    // Dual targets + remap=false: userdev keeps MCP names; production Forge jar
-    // is SRG-named. A populated handwritten refmap "mappings" remaps MCP→SRG and
-    // breaks GameTests; empty mappings leaves production looking for MCP names.
-    // Matching both names without remapping works in both environments.
+    // Dual MCP+SRG targets with remap=false, and empty handwritten "mappings".
+    // Production Forge reads mappings (not only data.searge): empty mappings +
+    // MCP-only inject crashes dedicated server. Populated mappings remap MCP→SRG
+    // in userdev and break GameTests. Matching both names without remapping
+    // works in both environments.
     @Inject(method = {
                 "hasLineOfSight(Lnet/minecraft/world/entity/Entity;)Z",
                 "m_142582_(Lnet/minecraft/world/entity/Entity;)Z"
