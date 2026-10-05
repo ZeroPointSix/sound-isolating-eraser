@@ -46,6 +46,8 @@ jobs:
         run: xvfb-run -a -s '-screen 0 1280x720x24' bash tools/client-smoke.sh
       - name: Prepare isolated multiplayer test driver
         run: bash ./gradlew --no-daemon -PgravityE2E writeGravityTestClasspath
+      - name: Install native X11 input driver
+        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y xdotool
       - name: Exercise real two-client gameplay
         run: python3 tools/gravity-e2e.py
       - name: Preserve build and test evidence

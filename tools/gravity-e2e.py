@@ -53,9 +53,6 @@ def launch(name, role, display=None):
                  "--width", "960", "--height", "540", "--quickPlayMultiplayer", "127.0.0.1:25565"]
     command = ["java", "-Xmx1G", f"-Dgravity.qa.results={RESULTS}", f"-Dgravity.qa.role={role}"]
     command += shlex.split(expand(config["vmArgs"]))
-    if role != "server":
-        # ForgeGradle may set headless=true; the final JVM property must win for native Robot input.
-        command.append("-Djava.awt.headless=false")
     command += ["-cp", CLASSPATH, config["mainClass"], *args]
     log = (RESULTS / f"{role}.log").open("w")
     logs.append(log)

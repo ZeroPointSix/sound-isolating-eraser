@@ -74,4 +74,4 @@ artifact (same filename), and publishes a GitHub Release with that jar attached.
 
 玉佩的 32×32 像素纹理由 `gradle/gravity-texture.gradle` 在资源处理前自动生成，不需要额外图片工具。
 功能分支的 `Gravity Jade Validation` 工作流构建 jar 并运行原有及新增的 Forge GameTest，不发布 Release。
-客户端的穿墙模型轮廓、按键预览及多人可见性仍需在实际游戏窗口完成验收；服务端 GameTest 不能替代这些视觉检查。
+工作流还会启动两个隔离的实际 Forge 客户端，以 X11 原生按键、滚轮和鼠标输入验证穿墙模型轮廓、预览与取消、可重绑定按键、私有感知隔离及公共重力场同步，并保存截图与日志证据。

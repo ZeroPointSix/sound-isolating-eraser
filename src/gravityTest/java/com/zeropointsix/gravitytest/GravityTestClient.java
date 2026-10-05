@@ -7,8 +7,6 @@ import com.zeropointsix.eraser.gravity.GravityEquipment;
 import com.zeropointsix.eraser.gravity.GravityFieldEntity;
 import com.zeropointsix.eraser.gravity.GravityGeometry;
 import com.zeropointsix.eraser.registry.ModItems;
-import java.awt.Robot;
-import java.awt.event.KeyEvent;
 import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -35,7 +33,6 @@ public final class GravityTestClient {
     private static int selected;
     private static boolean finished;
     private static boolean sawField;
-    private static Robot robot;
 
     @SubscribeEvent
     public static void chat(ClientChatReceivedEvent event) {
@@ -58,7 +55,6 @@ public final class GravityTestClient {
                 mc.setScreen(null);
                 GLFW.glfwFocusWindow(mc.getWindow().getWindow());
                 mc.mouseHandler.grabMouse();
-                robot = new Robot();
                 stage = 1;
                 ticks = 0;
                 return;
@@ -101,39 +97,39 @@ public final class GravityTestClient {
 
     private static void exerciseWearer(Minecraft mc, Entity moving) throws Exception {
         switch (ticks) {
-            case 1 -> robot.keyPress(KeyEvent.VK_V);
+            case 1 -> nativeInput("keydown", "v");
             case 15 -> {
                 require(aiming(), "native V key enters preview");
                 require(fields(mc) == 0, "preview is not a public field");
                 capture(mc, "preview");
             }
-            case 20 -> robot.mouseWheel(-1);
+            case 20 -> nativeInput("click", "4");
             case 25 -> {
                 require(mc.player.getInventory().selected == selected, "preview scroll must not change hotbar");
                 require(GravityClient.target(mc, 1).equals(GravityGeometry.target(mc.player.getEyePosition(),
                         mc.player.getLookAngle(), 9)), "one scroll step adds exactly one block");
             }
-            case 30 -> robot.mousePress(java.awt.event.InputEvent.BUTTON3_DOWN_MASK);
-            case 32 -> robot.mouseRelease(java.awt.event.InputEvent.BUTTON3_DOWN_MASK);
+            case 30 -> nativeInput("mousedown", "3");
+            case 32 -> nativeInput("mouseup", "3");
             case 40 -> {
                 requireCanceled(mc, "native right-click");
-                robot.keyRelease(KeyEvent.VK_V);
+                nativeInput("keyup", "v");
             }
-            case 50 -> robot.keyPress(KeyEvent.VK_V);
-            case 60 -> robot.keyPress(KeyEvent.VK_ESCAPE);
-            case 61 -> robot.keyRelease(KeyEvent.VK_ESCAPE);
+            case 50 -> nativeInput("keydown", "v");
+            case 60 -> nativeInput("keydown", "Escape");
+            case 61 -> nativeInput("keyup", "Escape");
             case 65 -> {
                 requireCanceled(mc, "native Escape");
-                robot.keyRelease(KeyEvent.VK_V);
+                nativeInput("keyup", "v");
                 mc.setScreen(null);
                 mc.mouseHandler.grabMouse();
             }
-            case 75 -> robot.keyPress(KeyEvent.VK_V);
+            case 75 -> nativeInput("keydown", "v");
             case 80 -> command(mc, "unequip");
             case 110 -> {
                 requireCanceled(mc, "server unequip");
                 require(!GravityEquipment.isEquipped(mc.player) && !GravitySense.outlines(moving), "unequip revokes private sense");
-                robot.keyRelease(KeyEvent.VK_V);
+                nativeInput("keyup", "v");
                 command(mc, "equip");
             }
             case 150 -> {
@@ -147,18 +143,18 @@ public final class GravityTestClient {
             case 210 -> {
                 GravityClient.TARGET.setKey(InputConstants.Type.KEYSYM.getOrCreate(GLFW.GLFW_KEY_B));
                 KeyMapping.resetMapping();
-                robot.keyPress(KeyEvent.VK_B);
+                nativeInput("keydown", "b");
             }
             case 225 -> require(aiming(), "rebound B key enters preview");
-            case 235 -> robot.keyRelease(KeyEvent.VK_B);
+            case 235 -> nativeInput("keyup", "b");
             case 285 -> {
                 require(fields(mc) == 1, "release creates one authoritative synchronized field");
                 require(mc.player.getCooldowns().isOnCooldown(ModItems.GRAVITY_JADE_PENDANT.get()), "successful cast synchronizes cooldown");
                 capture(mc, "active");
                 mark("wearer-cast.pass");
             }
-            case 300 -> robot.keyPress(KeyEvent.VK_B);
-            case 305 -> robot.keyRelease(KeyEvent.VK_B);
+            case 300 -> nativeInput("keydown", "b");
+            case 305 -> nativeInput("keyup", "b");
             case 320 -> {
                 require(!aiming() && fields(mc) == 1, "cooldown blocks a repeated native-key cast");
             }
@@ -209,6 +205,15 @@ public final class GravityTestClient {
     private static void require(boolean condition, String message) {
         if (!condition) throw new AssertionError(message);
         System.out.println("GRAVITY_E2E_ASSERT " + ROLE + ": " + message);
+    }
+
+    private static void nativeInput(String... args) throws Exception {
+        String[] command = new String[args.length + 1];
+        command[0] = "xdotool";
+        System.arraycopy(args, 0, command, 1, args.length);
+        Process process = new ProcessBuilder(command).inheritIO().start();
+        int exitCode = process.waitFor();
+        if (exitCode != 0) throw new AssertionError("xdotool exited with " + exitCode);
     }
 
     private static void command(Minecraft mc, String phase) { mc.player.connection.sendCommand("gravityqa phase " + phase); }
