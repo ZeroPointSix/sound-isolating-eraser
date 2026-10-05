@@ -16,7 +16,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: gravity-validation-${{ github.ref }}
+  group: gravity-validation-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
@@ -34,6 +34,14 @@ jobs:
         run: bash ./gradlew --no-daemon build
       - name: Run Forge integration tests
         run: bash ./gradlew --no-daemon runGameTestServer
+      - name: Verify production outline mappings
+        run: |
+          grep -E 'm_91314_.*shouldEntityAppearGlowing' build/createSrgToMcp/output.srg
+          grep -E 'm_5400_.*getTeamColor' build/createSrgToMcp/output.srg
+      - name: Start real client with software rendering
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+        run: xvfb-run -a -s '-screen 0 1280x720x24' bash tools/client-smoke.sh
       - name: Preserve build and test evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -42,5 +50,7 @@ jobs:
           path: |
             build/libs/*.jar
             build/reports/
+            build/client-smoke.*
+            build/createSrgToMcp/output.srg
             run/logs/
           if-no-files-found: warn

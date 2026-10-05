@@ -35,7 +35,10 @@ public final class GravityFieldController {
         return true;
     }
 
-    public static boolean activate(ServerPlayer player, ResourceLocation dimension, BlockPos center) {
+    public static boolean activate(ServerPlayer player, ResourceLocation dimension, double distance) {
+        if (!Double.isFinite(distance) || distance < GravityConfig.minDistance()
+                || distance > GravityConfig.MAX_DISTANCE.get()) return false;
+        BlockPos center = GravityGeometry.target(player.getEyePosition(), player.getLookAngle(), distance);
         if (!canActivate(player, dimension, center)) return false;
         GravityFieldEntity field = GravityFieldEntity.create(player.serverLevel(), player.getUUID(), center);
         if (!player.serverLevel().addFreshEntity(field)) return false;

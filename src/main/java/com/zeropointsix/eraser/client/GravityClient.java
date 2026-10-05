@@ -32,6 +32,7 @@ public final class GravityClient {
     private static boolean aiming;
     private static boolean cancelUse;
     private static double distance = 8;
+    private static double scrollRemainder;
     private static ClientLevel lastLevel;
 
     @SubscribeEvent
@@ -52,6 +53,7 @@ public final class GravityClient {
         }
         if (down && !previousDown && !mc.player.getCooldowns().isOnCooldown(ModItems.GRAVITY_JADE_PENDANT.get())) {
             aiming = true;
+            scrollRemainder = 0;
             distance = Math.max(GravityConfig.minDistance(), Math.min(8, GravityConfig.MAX_DISTANCE.get()));
         }
         if (!down && previousDown && aiming) {
@@ -64,8 +66,11 @@ public final class GravityClient {
     @SubscribeEvent
     public static void scroll(InputEvent.MouseScrollingEvent event) {
         if (aiming) {
+            scrollRemainder += event.getScrollDelta();
+            int steps = (int) scrollRemainder;
+            scrollRemainder -= steps;
             distance = Math.max(GravityConfig.minDistance(),
-                    Math.min(GravityConfig.MAX_DISTANCE.get(), distance + event.getScrollDelta()));
+                    Math.min(GravityConfig.MAX_DISTANCE.get(), distance + steps));
             event.setCanceled(true);
         }
     }

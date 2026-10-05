@@ -2,7 +2,6 @@ package com.zeropointsix.eraser.gravity;
 
 import com.zeropointsix.eraser.ModMain;
 import java.util.Optional;
-import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.network.NetworkDirection;
 import net.minecraftforge.network.NetworkRegistry;
@@ -24,12 +23,8 @@ public final class GravityNetwork {
                     var context = supplier.get();
                     context.enqueueWork(() -> {
                         var sender = context.getSender();
-                        if (sender != null && Double.isFinite(message.distance())
-                                && message.distance() >= GravityConfig.minDistance()
-                                && message.distance() <= GravityConfig.MAX_DISTANCE.get()) {
-                            BlockPos center = GravityGeometry.target(sender.getEyePosition(),
-                                    sender.getLookAngle(), message.distance());
-                            GravityFieldController.activate(sender, message.dimension(), center);
+                        if (sender != null) {
+                            GravityFieldController.activate(sender, message.dimension(), message.distance());
                         }
                     });
                     context.setPacketHandled(true);

@@ -63,6 +63,29 @@ public final class GravityGameTests {
         h.assertTrue(GravityEquipment.isEquipped(player), "real necklace slot grants power");
         handler.getStacks().setStackInSlot(0, ItemStack.EMPTY);
         h.assertTrue(!GravityEquipment.isEquipped(player), "unequipping revokes power immediately");
+        handler.getCosmeticStacks().setStackInSlot(0, jade);
+        h.assertTrue(!GravityEquipment.isEquipped(player), "cosmetic necklace must not grant power");
+        h.succeed();
+    }
+
+    @GameTest(template = "empty")
+    public static void invalidCastsAndRepeatedPacketsDoNotBypassCooldown(GameTestHelper h) {
+        FakePlayer player = player(h);
+        player.setPos(Vec3.atCenterOf(h.absolutePos(new BlockPos(3, 30, 3))));
+        var dimension = h.getLevel().dimension().location();
+        CuriosApi.getCuriosInventory(player).resolve().orElseThrow().getStacksHandler("necklace")
+                .orElseThrow().getStacks().setStackInSlot(0, new ItemStack(ModItems.GRAVITY_JADE_PENDANT.get()));
+        h.assertTrue(!GravityFieldController.activate(player, dimension, Double.NaN), "NaN distance rejected");
+        h.assertTrue(!GravityFieldController.activate(player, dimension, Double.POSITIVE_INFINITY), "infinite distance rejected");
+        h.assertTrue(!GravityFieldController.activate(player, dimension, 2), "too near rejected");
+        h.assertTrue(!GravityFieldController.activate(player, dimension, 21), "too far rejected");
+        h.assertTrue(!GravityFieldController.activate(player, Level.NETHER.location(), 8), "wrong dimension rejected");
+        h.assertTrue(GravityFieldController.remainingCooldown(player) == 0, "invalid casts never start cooldown");
+        h.assertTrue(GravityFieldController.activate(player, dimension, 8), "valid equipped cast succeeds");
+        h.assertTrue(GravityFieldController.remainingCooldown(player) == 600, "successful cast starts 600 tick cooldown");
+        h.assertTrue(!GravityFieldController.activate(player, dimension, 8), "repeated packet cannot bypass cooldown");
+        h.getLevel().getEntitiesOfClass(GravityFieldEntity.class, player.getBoundingBox().inflate(24))
+                .forEach(GravityFieldEntity::discard);
         h.succeed();
     }
 
