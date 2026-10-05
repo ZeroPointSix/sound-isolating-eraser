@@ -41,6 +41,7 @@ def launch(name, role, display=None):
             "renderDistance:4\nsimulationDistance:5\nguiScale:2\nmaxFps:30\n"
             "enableVsync:false\npauseOnLostFocus:false\nonboardAccessibility:false\n"
             "showAutosaveIndicator:false\nrenderClouds:false\nnarrator:0\n"
+            "tutorialStep:none\n"
         )
     env = os.environ.copy()
     env.update({key: expand(value) for key, value in config["env"].items()})

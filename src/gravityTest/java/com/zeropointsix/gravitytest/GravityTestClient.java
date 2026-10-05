@@ -48,12 +48,17 @@ public final class GravityTestClient {
     @SubscribeEvent
     public static void chat(ClientChatReceivedEvent event) {
         String message = event.getMessage().getString();
-        if (message.startsWith("GRAVITY_QA_PHASE:")) phase = message.substring("GRAVITY_QA_PHASE:".length());
+        if (message.startsWith("GRAVITY_QA_PHASE:")) {
+            phase = message.substring("GRAVITY_QA_PHASE:".length());
+            // Harness coordination is not gameplay chat and must not obscure pixel probes.
+            event.setCanceled(true);
+        }
         if (message.startsWith("GRAVITY_QA_BOUNDS:")) {
             String[] coordinates = message.substring("GRAVITY_QA_BOUNDS:".length()).split(",");
             serverBounds = new AABB(Double.parseDouble(coordinates[0]), Double.parseDouble(coordinates[1]),
                     Double.parseDouble(coordinates[2]), Double.parseDouble(coordinates[3]),
                     Double.parseDouble(coordinates[4]), Double.parseDouble(coordinates[5]));
+            event.setCanceled(true);
         }
     }
 
