@@ -10,10 +10,14 @@ import com.zeropointsix.eraser.registry.ModItems;
 import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashSet;
+import java.util.Set;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.phys.AABB;
+import net.minecraftforge.client.event.RenderLevelStageEvent;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.ClientChatReceivedEvent;
 import net.minecraftforge.event.TickEvent;
@@ -33,11 +37,29 @@ public final class GravityTestClient {
     private static int selected;
     private static boolean finished;
     private static boolean sawField;
+    private static final Set<String> sensedKinds = new HashSet<>();
+    private static AABB previewBounds;
+    private static AABB serverBounds;
+    private static long renderedFrames;
+    private static long stressStarted;
+    private static long stressFrames;
+    private static int stressPeak;
 
     @SubscribeEvent
     public static void chat(ClientChatReceivedEvent event) {
         String message = event.getMessage().getString();
         if (message.startsWith("GRAVITY_QA_PHASE:")) phase = message.substring("GRAVITY_QA_PHASE:".length());
+        if (message.startsWith("GRAVITY_QA_BOUNDS:")) {
+            String[] coordinates = message.substring("GRAVITY_QA_BOUNDS:".length()).split(",");
+            serverBounds = new AABB(Double.parseDouble(coordinates[0]), Double.parseDouble(coordinates[1]),
+                    Double.parseDouble(coordinates[2]), Double.parseDouble(coordinates[3]),
+                    Double.parseDouble(coordinates[4]), Double.parseDouble(coordinates[5]));
+        }
+    }
+
+    @SubscribeEvent
+    public static void rendered(RenderLevelStageEvent event) {
+        if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_PARTICLES) renderedFrames++;
     }
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
@@ -60,6 +82,9 @@ public final class GravityTestClient {
                 return;
             }
             ticks++;
+            if (stage == 1 && ROLE.equals("wearer")) {
+                for (Entity target : GravitySense.targets()) sensedKinds.add(target.getName().getString());
+            }
             if (stage == 1 && ticks >= 80) {
                 require(moving != null && still != null, "fixture entities are tracked");
                 require(!moving.isCurrentlyGlowing() && !still.isCurrentlyGlowing(), "no synchronized glowing flags");
@@ -74,6 +99,10 @@ public final class GravityTestClient {
                 } else {
                     // The sinusoidal fixture briefly falls below the real speed threshold at turns.
                     if (!mc.shouldEntityAppearGlowing(moving)) return;
+                    for (String kind : new String[]{"zombie", "item", "arrow", "minecart"}) {
+                        require(sensedKinds.contains("gravityqa_" + kind), "moving " + kind + " sensed through wall");
+                    }
+                    require(!sensedKinds.contains("gravityqa_still_item"), "stationary ItemEntity never outlines");
                     require(mc.shouldEntityAppearGlowing(moving), "moving entity outlines through wall for wearer");
                     require(moving.getTeamColor() == 0xFFFFFF, "sensed model outline is white");
                     if (!Files.exists(RESULTS.resolve("observer-private.pass"))) return;
@@ -146,9 +175,16 @@ public final class GravityTestClient {
                 nativeInput("keydown", "b");
             }
             case 225 -> require(aiming(), "rebound B key enters preview");
+            case 234 -> previewBounds = GravityGeometry.bounds(GravityClient.target(mc, 1), 5);
             case 235 -> nativeInput("keyup", "b");
+            case 240 -> mc.player.setYRot(mc.player.getYRot() + 90);
+            case 250 -> mc.player.setYRot(mc.player.getYRot() - 90);
             case 285 -> {
                 require(fields(mc) == 1, "release creates one authoritative synchronized field");
+                GravityFieldEntity field = mc.level.getEntitiesOfClass(GravityFieldEntity.class,
+                        mc.player.getBoundingBox().inflate(32)).get(0);
+                require(field.fieldBounds().equals(previewBounds), "preview and landed center match after look changes");
+                require(field.fieldBounds().equals(serverBounds), "wearer field bounds equal server authority");
                 require(mc.player.getCooldowns().isOnCooldown(ModItems.GRAVITY_JADE_PENDANT.get()), "successful cast synchronizes cooldown");
                 capture(mc, "active");
                 mark("wearer-cast.pass");
@@ -160,17 +196,36 @@ public final class GravityTestClient {
             }
             case 650 -> {
                 require(fields(mc) == 0, "field expires on wearer client");
+                command(mc, "stress");
+                stressStarted = System.nanoTime();
+                stressFrames = renderedFrames;
+            }
+            case 750 -> {
+                double fps = (renderedFrames - stressFrames) * 1_000_000_000D / (System.nanoTime() - stressStarted);
+                require(stressPeak == 64, "200 moving ItemEntity stress reaches but never exceeds the nearest-64 cap");
+                require(fps >= 5, "200-item software-rendered stress remains responsive (>=5 rendered FPS)");
+                System.out.println("GRAVITY_E2E_STRESS items=200 peak=" + stressPeak + " rendered_fps=" + fps);
+                capture(mc, "stress");
+                mark("wearer-stress.pass");
                 mark("wearer.pass");
                 finished = true;
             }
             default -> { }
+        }
+        if (ticks > 650) {
+            int count = GravitySense.targets().size();
+            require(count <= 64, "highlight cap remains bounded");
+            stressPeak = Math.max(stressPeak, count);
         }
     }
 
     private static void exerciseObserver(Minecraft mc, Entity moving) throws Exception {
         require(GravitySense.targets().isEmpty() && (moving == null || !mc.shouldEntityAppearGlowing(moving)), "private sensing remains wearer-only");
         require(!aiming(), "another player's preview never activates observer controls");
-        if (fields(mc) == 1 && !sawField) {
+        if (fields(mc) == 1 && !sawField && serverBounds != null) {
+            GravityFieldEntity field = mc.level.getEntitiesOfClass(GravityFieldEntity.class,
+                    mc.player.getBoundingBox().inflate(32)).get(0);
+            require(field.fieldBounds().equals(serverBounds), "observer field bounds equal server authority");
             sawField = true;
             capture(mc, "active");
         }

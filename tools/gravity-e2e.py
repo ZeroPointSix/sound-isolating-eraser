@@ -10,6 +10,10 @@ import time
 ROOT = Path(__file__).resolve().parents[1]
 RESULTS = ROOT / "build/gravity-e2e"
 RESULTS.mkdir(parents=True, exist_ok=True)
+# A repeat run must earn fresh evidence, not inherit a previous success marker.
+for pattern in ("*.pass", "*.failed", "*.png"):
+    for stale in RESULTS.glob(pattern):
+        stale.unlink()
 CONFIGS = {c["name"]: c for c in json.loads((ROOT / ".vscode/launch.json").read_text())["configurations"]}
 CLASSPATH = (ROOT / "build/gravity-test-classpath.txt").read_text().strip()
 processes = []
@@ -78,7 +82,8 @@ try:
     wearer = launch("runClient", "wearer", ":91")
     observer = launch("runClient", "observer", ":92")
     deadline = time.monotonic() + 600
-    while not all((RESULTS / f"{role}.pass").exists() for role in ("wearer", "observer")):
+    required = ("wearer", "observer", "server-effects", "wearer-stress")
+    while not all((RESULTS / f"{role}.pass").exists() for role in required):
         failures = list(RESULTS.glob("*.failed"))
         if failures:
             raise AssertionError("; ".join(path.read_text() for path in failures))

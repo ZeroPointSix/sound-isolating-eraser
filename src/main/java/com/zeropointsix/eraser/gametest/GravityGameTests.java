@@ -54,6 +54,9 @@ public final class GravityGameTests {
         ItemStack jade = new ItemStack(ModItems.GRAVITY_JADE_PENDANT.get());
         player.setItemInHand(InteractionHand.MAIN_HAND, jade);
         h.assertTrue(!GravityEquipment.isEquipped(player), "holding the jade must not grant its power");
+        player.setItemInHand(InteractionHand.OFF_HAND, jade.copy());
+        player.getInventory().setItem(10, jade.copy());
+        h.assertTrue(!GravityEquipment.isEquipped(player), "offhand and backpack must not grant power");
         h.assertTrue(ModItems.GRAVITY_JADE_PENDANT.get().canEquip(new SlotContext("necklace", player, 0, false, true), jade), "necklace allowed");
         h.assertTrue(!ModItems.GRAVITY_JADE_PENDANT.get().canEquip(new SlotContext("curio", player, 0, false, true), jade), "generic curio slot rejected");
         h.assertTrue(!ModItems.GRAVITY_JADE_PENDANT.get().canEquip(new SlotContext("ring", player, 0, false, true), jade), "ring rejected");
@@ -139,10 +142,21 @@ public final class GravityGameTests {
         level.setBlockAndUpdate(leaves, Blocks.OAK_LEAVES.defaultBlockState());
         level.setBlockAndUpdate(stone, Blocks.STONE.defaultBlockState());
         level.setBlockAndUpdate(chest, Blocks.CHEST.defaultBlockState());
-        GravityTerrainCrush.crush(level, player(h), new AABB(soil.offset(0, -1, 0), soil.offset(4, 3, 1)), 1);
+        BlockPos flower = soil.offset(0, 0, 1);
+        BlockPos tallGrass = soil.offset(1, 0, 1);
+        level.setBlockAndUpdate(flower.below(), Blocks.DIRT.defaultBlockState());
+        level.setBlockAndUpdate(tallGrass.below(), Blocks.DIRT.defaultBlockState());
+        level.setBlockAndUpdate(flower, Blocks.DANDELION.defaultBlockState());
+        level.setBlockAndUpdate(tallGrass, Blocks.TALL_GRASS.defaultBlockState());
+        level.setBlockAndUpdate(tallGrass.above(), Blocks.TALL_GRASS.defaultBlockState()
+                .setValue(net.minecraft.world.level.block.DoublePlantBlock.HALF,
+                        net.minecraft.world.level.block.state.properties.DoubleBlockHalf.UPPER));
+        GravityTerrainCrush.crush(level, player(h), new AABB(soil.offset(0, -1, 0), soil.offset(4, 3, 2)), 1);
         h.assertTrue(level.isEmptyBlock(soil), "exposed soil must break with probability 1");
         h.assertTrue(level.getBlockState(soil.below()).is(Blocks.DIRT), "lower soil must remain");
         h.assertTrue(level.isEmptyBlock(leaves), "tagged leaves must break");
+        h.assertTrue(level.isEmptyBlock(flower), "tagged flowers must break");
+        h.assertTrue(level.isEmptyBlock(tallGrass) && level.isEmptyBlock(tallGrass.above()), "both tall grass halves must break");
         h.assertTrue(level.getBlockState(stone).is(Blocks.STONE), "stone must remain");
         h.assertTrue(level.getBlockState(chest).is(Blocks.CHEST), "chest must remain");
         level.setBlockAndUpdate(soil, Blocks.DIRT.defaultBlockState());
@@ -162,6 +176,9 @@ public final class GravityGameTests {
         level.addFreshEntity(cow);
         GravityFieldEntity field = GravityFieldEntity.create(level, UUID.randomUUID(), center);
         level.addFreshEntity(field);
+        BlockPos replanted = center.offset(2, 0, 2);
+        level.setBlockAndUpdate(replanted, Blocks.OAK_LEAVES.defaultBlockState()
+                .setValue(net.minecraft.world.level.block.LeavesBlock.PERSISTENT, true));
         float health = cow.getHealth();
         h.runAtTickTime(22, () -> {
             h.assertTrue(cow.hasEffect(MobEffects.MOVEMENT_SLOWDOWN), "field continuously applies slowness");
@@ -170,6 +187,8 @@ public final class GravityGameTests {
             cow.setPos(Vec3.atCenterOf(center.offset(6, 0, 0)));
         });
         h.runAtTickTime(34, () -> h.assertTrue(!cow.hasEffect(MobEffects.MOVEMENT_SLOWDOWN), "slowness expires quickly after leaving"));
+        h.runAtTickTime(42, () -> h.assertTrue(level.getBlockState(replanted).is(Blocks.OAK_LEAVES),
+                "an active field does not repeatedly crush newly placed fragile blocks"));
         h.runAtTickTime(302, () -> {
             h.assertTrue(field.isRemoved(), "field must expire after 300 ticks");
             cow.discard();
