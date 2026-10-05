@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "facing=down":  { "model": "sound_isolating_eraser:block/eraser_anchor_mark_down" },
+    "facing=up":    { "model": "sound_isolating_eraser:block/eraser_anchor_mark_up" },
+    "facing=north": { "model": "sound_isolating_eraser:block/eraser_anchor_mark_side" },
+    "facing=east":  { "model": "sound_isolating_eraser:block/eraser_anchor_mark_side", "y": 90 },
+    "facing=south": { "model": "sound_isolating_eraser:block/eraser_anchor_mark_side", "y": 180 },
+    "facing=west":  { "model": "sound_isolating_eraser:block/eraser_anchor_mark_side", "y": 270 }
+  }
+}

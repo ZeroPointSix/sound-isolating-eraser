@@ -1,0 +1,8 @@
+{
+  "variants": {
+    "level=1": { "model": "sound_isolating_eraser:block/eraser_barrier" },
+    "level=2": { "model": "sound_isolating_eraser:block/eraser_barrier" },
+    "level=3": { "model": "sound_isolating_eraser:block/eraser_barrier" },
+    "level=4": { "model": "sound_isolating_eraser:block/eraser_barrier" }
+  }
+}
