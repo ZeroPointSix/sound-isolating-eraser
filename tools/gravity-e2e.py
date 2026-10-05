@@ -34,7 +34,7 @@ def launch(name, role, display=None):
         )
     else:
         (directory / "options.txt").write_text(
-            "renderDistance:4\nsimulationDistance:4\nguiScale:2\nmaxFps:30\n"
+            "renderDistance:4\nsimulationDistance:5\nguiScale:2\nmaxFps:30\n"
             "enableVsync:false\npauseOnLostFocus:false\nonboardAccessibility:false\n"
             "showAutosaveIndicator:false\nrenderClouds:false\nnarrator:0\n"
         )
