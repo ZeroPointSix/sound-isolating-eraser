@@ -105,8 +105,9 @@ public final class GravityGameTests {
         BlockPos preview = GravityGeometry.target(player.getEyePosition(), perpendicular, 8);
         h.assertTrue(!preview.equals(alongLook), "fixture look must differ from preview axis");
         h.assertTrue(GravityFieldController.activate(player, dimension, preview), "server accepts client preview cell");
-        var fields = h.getLevel().getEntitiesOfClass(GravityFieldEntity.class, player.getBoundingBox().inflate(24));
-        h.assertTrue(fields.size() == 1, "one field spawned");
+        AABB search = GravityGeometry.bounds(preview, 5).inflate(2);
+        var fields = h.getLevel().getEntitiesOfClass(GravityFieldEntity.class, search);
+        h.assertTrue(fields.size() == 1, "one field spawned near preview, found " + fields.size());
         h.assertTrue(fields.get(0).fieldBounds().equals(GravityGeometry.bounds(preview, 5)),
                 "field must match preview BlockPos, not the player's current look");
         fields.forEach(GravityFieldEntity::discard);
