@@ -70,7 +70,7 @@ artifact (same filename), and publishes a GitHub Release with that jar attached.
 - 重力场默认高 5 格、持续 15 秒：范围内所有生物包含施法者受缓慢 II，每秒承受 1 点普通伤害。护甲、无敌帧及创造免疫仍按原版规则处理。成功施放后冷却 30 秒，拒绝施放不消耗冷却。
 - 创建时仅压毁一次标签内的脆弱方块；每列只考虑最高的暴露土层，以 25% 概率破坏，不递归挖掘。方块实体、不可破坏方块与取消 Forge 方块破坏事件的领地保护会保留。
 - 参数位于世界目录 `serverconfig/sound_isolating_eraser-server.toml`；`gravity_fragile` 和 `gravity_surface_fragile` 方块标签可由数据包扩展。
-- 服务端只接收距离与维度，并以服务端视线重新计算目标；校验装备、存活、冷却、距离、边界和区块加载状态，客户端不执行伤害或破坏。
+- 服务端接收客户端预览中心 `BlockPos` 与维度，不再按当前朝向重算选区；校验装备、存活、冷却、距离、边界和区块加载状态，客户端不执行伤害或破坏。
 
 玉佩的 32×32 像素纹理由 `gradle/gravity-texture.gradle` 在资源处理前自动生成，不需要额外图片工具。
 功能分支的 `Gravity Jade Validation` 工作流构建 jar 并运行原有及新增的 Forge GameTest，不发布 Release。

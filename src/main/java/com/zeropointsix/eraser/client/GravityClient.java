@@ -58,7 +58,8 @@ public final class GravityClient {
         }
         if (!down && previousDown && aiming) {
             aiming = false;
-            GravityNetwork.CHANNEL.sendToServer(new GravityNetwork.Activate(distance, mc.level.dimension().location()));
+            GravityNetwork.CHANNEL.sendToServer(new GravityNetwork.Activate(
+                    target(mc, 1F), mc.level.dimension().location()));
         }
         previousDown = down;
     }

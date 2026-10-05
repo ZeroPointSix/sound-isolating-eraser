@@ -75,17 +75,41 @@ public final class GravityGameTests {
         var dimension = h.getLevel().dimension().location();
         CuriosApi.getCuriosInventory(player).resolve().orElseThrow().getStacksHandler("necklace")
                 .orElseThrow().getStacks().setStackInSlot(0, new ItemStack(ModItems.GRAVITY_JADE_PENDANT.get()));
-        h.assertTrue(!GravityFieldController.activate(player, dimension, Double.NaN), "NaN distance rejected");
-        h.assertTrue(!GravityFieldController.activate(player, dimension, Double.POSITIVE_INFINITY), "infinite distance rejected");
-        h.assertTrue(!GravityFieldController.activate(player, dimension, 2), "too near rejected");
-        h.assertTrue(!GravityFieldController.activate(player, dimension, 21), "too far rejected");
-        h.assertTrue(!GravityFieldController.activate(player, Level.NETHER.location(), 8), "wrong dimension rejected");
+        BlockPos tooNear = BlockPos.containing(player.getEyePosition());
+        BlockPos tooFar = BlockPos.containing(player.getEyePosition().add(0, 0, 21));
+        BlockPos valid = GravityGeometry.target(player.getEyePosition(), player.getLookAngle(), 8);
+        h.assertTrue(!GravityFieldController.activate(player, dimension, tooNear), "too near rejected");
+        h.assertTrue(!GravityFieldController.activate(player, dimension, tooFar), "too far rejected");
+        h.assertTrue(!GravityFieldController.activate(player, Level.NETHER.location(), valid), "wrong dimension rejected");
         h.assertTrue(GravityFieldController.remainingCooldown(player) == 0, "invalid casts never start cooldown");
-        h.assertTrue(GravityFieldController.activate(player, dimension, 8), "valid equipped cast succeeds");
+        h.assertTrue(GravityFieldController.activate(player, dimension, valid), "valid equipped cast succeeds");
         h.assertTrue(GravityFieldController.remainingCooldown(player) == 600, "successful cast starts 600 tick cooldown");
-        h.assertTrue(!GravityFieldController.activate(player, dimension, 8), "repeated packet cannot bypass cooldown");
+        h.assertTrue(!GravityFieldController.activate(player, dimension, valid), "repeated packet cannot bypass cooldown");
         h.getLevel().getEntitiesOfClass(GravityFieldEntity.class, player.getBoundingBox().inflate(24))
                 .forEach(GravityFieldEntity::discard);
+        h.succeed();
+    }
+
+    @GameTest(template = "empty")
+    public static void serverUsesClientPreviewCenterNotCurrentLook(GameTestHelper h) {
+        FakePlayer player = player(h);
+        player.setPos(Vec3.atCenterOf(h.absolutePos(new BlockPos(3, 8, 3))));
+        player.setYRot(0);
+        player.setXRot(0);
+        var dimension = h.getLevel().dimension().location();
+        CuriosApi.getCuriosInventory(player).resolve().orElseThrow().getStacksHandler("necklace")
+                .orElseThrow().getStacks().setStackInSlot(0, new ItemStack(ModItems.GRAVITY_JADE_PENDANT.get()));
+        BlockPos alongLook = GravityGeometry.target(player.getEyePosition(), player.getLookAngle(), 8);
+        Vec3 look = player.getLookAngle();
+        Vec3 perpendicular = Math.abs(look.x) > 0.5 ? new Vec3(0, 0, 1) : new Vec3(1, 0, 0);
+        BlockPos preview = GravityGeometry.target(player.getEyePosition(), perpendicular, 8);
+        h.assertTrue(!preview.equals(alongLook), "fixture look must differ from preview axis");
+        h.assertTrue(GravityFieldController.activate(player, dimension, preview), "server accepts client preview cell");
+        var fields = h.getLevel().getEntitiesOfClass(GravityFieldEntity.class, player.getBoundingBox().inflate(24));
+        h.assertTrue(fields.size() == 1, "one field spawned");
+        h.assertTrue(fields.get(0).fieldBounds().equals(GravityGeometry.bounds(preview, 5)),
+                "field must match preview BlockPos, not the player's current look");
+        fields.forEach(GravityFieldEntity::discard);
         h.succeed();
     }
 

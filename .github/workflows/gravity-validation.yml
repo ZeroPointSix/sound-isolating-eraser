@@ -4,7 +4,7 @@ on:
   push:
     branches: [feature/gravity-jade-pendant]
   pull_request:
-    branches: [main, devin/sound-isolating-eraser]
+    branches: [main, devin/sound-isolating-eraser, feature/flat-mark-server-opts-gha]
     paths:
       - src/**
       - gradle/**
