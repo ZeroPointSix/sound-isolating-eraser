@@ -168,7 +168,7 @@ public final class GravityTestClient {
     }
 
     private static void exerciseObserver(Minecraft mc, Entity moving) throws Exception {
-        require(GravitySense.targets().isEmpty() && (moving == null || !mc.shouldEntityAppearGlowing(moving)),\n                "private sensing remains wearer-only");
+        require(GravitySense.targets().isEmpty() && (moving == null || !mc.shouldEntityAppearGlowing(moving)), "private sensing remains wearer-only");
         require(!aiming(), "another player's preview never activates observer controls");
         if (fields(mc) == 1 && !sawField) {
             sawField = true;
