@@ -1,0 +1,13 @@
+{
+  "required": true,
+  "package": "com.zeropointsix.eraser.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "minVersion": "0.8",
+  "refmap": "mixins.sound_isolating_eraser.refmap.json",
+  "mixins": [
+    "LivingEntityWallVisibilityMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
