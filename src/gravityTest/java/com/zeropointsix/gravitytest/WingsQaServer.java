@@ -91,12 +91,8 @@ public final class WingsQaServer {
             return;
         }
         try {
-            if (!hungerChecked && server.getTickCount() - readyAt >= 235) {
-                hungerChecked = true;
-                int food = wearerRef.getFoodData().getFoodLevel();
-                check(food < 20, "deployed wings drain real hunger server-side (food=" + food + ")");
-                Files.writeString(results().resolve("wings-server.pass"), "passed\n");
-            }
+            // Server-side asserts run on phase commands from the clients, not on
+            // tick positions — llvmpipe clients tick slower than the server.
         } catch (Throwable failure) {
             fail(server, failure.toString());
         }
@@ -150,6 +146,18 @@ public final class WingsQaServer {
                     LightningBolt bolt = EntityType.LIGHTNING_BOLT.create(server.overworld());
                     bolt.setPos(wearer.position());
                     server.overworld().addFreshEntity(bolt);
+                }
+            }
+            case "hungerDone" -> {
+                // Wearer observed its own food drop client-side; confirm the same
+                // drain server-side (ServerPlayer FoodData, not a synced copy).
+                if (!hungerChecked && wearerRef != null) {
+                    hungerChecked = true;
+                    int food = wearerRef.getFoodData().getFoodLevel();
+                    check(food < 20, "deployed wings drain real hunger server-side (food=" + food + ")");
+                    try {
+                        Files.writeString(results().resolve("wings-server.pass"), "passed\n");
+                    } catch (Exception ignored) { }
                 }
             }
             case "wearerDone" -> {

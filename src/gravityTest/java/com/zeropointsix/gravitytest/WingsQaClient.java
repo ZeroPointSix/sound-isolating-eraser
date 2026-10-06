@@ -90,7 +90,7 @@ public final class WingsQaClient {
                 require(!p.onGround(), "wearer starts airborne");
                 stowedFrame = Screenshot.takeScreenshot(mc.getMainRenderTarget());
             }
-            case 45 -> {
+            case 70 -> {
                 WingsClientData.WingInfo w = info(p);
                 require(w != null && w.deployed(), "double-space deploys wings (server sync)");
                 require(p.isNoGravity(), "deployed wearer is gravity-free");
@@ -98,11 +98,14 @@ public final class WingsQaClient {
                 capture(mc, "deployed");
                 foodAtDeploy = p.getFoodData().getFoodLevel();
             }
-            case 60 -> require(info(p) != null && info(p).tier() == 1,
+            case 95 -> require(info(p) != null && info(p).tier() == 1,
                     "C cycles tier hover→cruise (synced)");
-            case 200 -> require(p.getFoodData().getFoodLevel() < foodAtDeploy,
-                    "flight drains real hunger (food " + foodAtDeploy + "→"
-                            + p.getFoodData().getFoodLevel() + ")");
+            case 200 -> {
+                require(p.getFoodData().getFoodLevel() < foodAtDeploy,
+                        "flight drains real hunger (food " + foodAtDeploy + "→"
+                                + p.getFoodData().getFoodLevel() + ")");
+                command(mc, "hungerDone");
+            }
             case 205 -> { mark(p); nativeInput("key", "r"); }
             case 225 -> require(moved(p) > 10,
                     "R blinks forward ~24 blocks (real teleport, client-authoritative)"
@@ -131,11 +134,12 @@ public final class WingsQaClient {
             }
             case 340 -> stage = 99;
             default -> {
-                // xdotool 原生输入偶发丢失：每个断言窗口内按结果重发按键，成功即止
-                if (ticks >= 8 && ticks < 45 && ticks % 10 == 8
+                // xdotool 原生输入偶发丢失：重发按键，成功即止。重试间隔 ≥20t，保证
+                // 上一轮 sync 已回——间隔过近的双击会读到过期状态把展开切换成收起。
+                if ((ticks == 8 || ticks == 30 || ticks == 50)
                         && (info(p) == null || !info(p).deployed())) {
                     nativeInput("key", "--delay", "150", "space", "space");
-                } else if (ticks >= 48 && ticks <= 56 && ticks % 4 == 0
+                } else if (ticks >= 75 && ticks <= 85 && ticks % 5 == 0
                         && info(p) != null && info(p).tier() == 0) {
                     nativeInput("key", "c");
                 } else if (ticks > 205 && ticks < 225 && ticks % 6 == 1 && moved(p) < 5) {
