@@ -88,7 +88,7 @@ artifact (same filename), and publishes a GitHub Release with that jar attached.
 - 饥饿消耗：按档每秒 0.4/0.8/2.0/4.0 点 exhaustion（`wings/` 下 `FlightEvents.onPlayerTick` 调 `FoodData.addExhaustion`）；饥饿 <4 禁止展开，<6 限制为悬停/巡航，=0 强制悬停并附加缓降。
 - 被雷劈中：回满饥饿并获得 60 秒「充能」——期间飞行与雷遁不消耗饥饿。
 - HUD：右下角 64×16 铭牌（`textures/gui/wings_hud.png` 图集：四档图标 + 雷遁冷却环 + 充能珠 + 铭牌底），雷闪时有短暂白屏闪光；无灵力条。
-- 数值全部在 `serverconfig/sound_isolating_eraser-server.toml`（wings 段）与客户端 config 中可调。
+- 数值全部在 `serverconfig/sound_isolating_eraser-wings-server.toml`（独立文件名，避免与 gravity SERVER 配置冲突）与客户端 config 中可调。
 - 音效：`wind_loop`（飞行环境声）、`thunder_boom`（破档音爆）、`thunder_blink`（雷瞬）。
 - 合成：下界之星 + 雷鹏骨羽×2 + 鞘翅 + 避雷针×2 + 皮革胸甲（`data/.../recipes/wind_thunder_wings.json`）。
 

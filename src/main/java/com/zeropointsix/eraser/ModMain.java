@@ -36,7 +36,8 @@ public final class ModMain {
         bus.addListener(this::creativeItems);
         ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, CommonConfig.SPEC);
         ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER, GravityConfig.SPEC);
-        ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER, WingsConfig.SERVER_SPEC);
+        ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER, WingsConfig.SERVER_SPEC,
+                MOD_ID + "-wings-server.toml");
         ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT, WingsConfig.CLIENT_SPEC);
     }
 
