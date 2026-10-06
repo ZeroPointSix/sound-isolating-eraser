@@ -38,6 +38,7 @@ public final class WingsQaServer {
     private static int readyAt;
     private static int startedAt = -1;
     private static int stopAt = -1;
+    private static int trackUntil = -1;
     private static boolean hungerChecked;
     private static ServerPlayer wearerRef;
 
@@ -99,6 +100,13 @@ public final class WingsQaServer {
         } catch (Throwable failure) {
             fail(server, failure.toString());
         }
+        // Keep the observer glued to the wearer's flank during the screenshot window;
+        // the wearer is client-authoritative in flight, so its own client may keep drifting.
+        if (server.getTickCount() < trackUntil) {
+            ServerPlayer wearer = server.getPlayerList().getPlayerByName(WEARER);
+            ServerPlayer observer = server.getPlayerList().getPlayerByName(OBSERVER);
+            if (wearer != null && observer != null) faceWearer(wearer, observer);
+        }
     }
 
     private static void initialize(MinecraftServer server, ServerPlayer wearer, ServerPlayer observer) {
@@ -145,19 +153,27 @@ public final class WingsQaServer {
                 }
             }
             case "wearerDone" -> {
-                // Pull the observer next to the wearer so its screenshot frames the synced wings.
                 ServerPlayer wearer = server.getPlayerList().getPlayerByName(WEARER);
                 ServerPlayer observer = server.getPlayerList().getPlayerByName(OBSERVER);
                 if (wearer != null && observer != null) {
-                    observer.teleportTo(server.overworld(),
-                            wearer.getX() + 3, wearer.getY() + 1, wearer.getZ() + 3,
-                            45f, 10f);
+                    faceWearer(wearer, observer);
+                    trackUntil = server.getTickCount() + 30;
                 }
             }
             default -> { }
         }
         announce(server, next);
         return 1;
+    }
+
+    private static void faceWearer(ServerPlayer wearer, ServerPlayer observer) {
+        double ox = wearer.getX() + 4;
+        double oy = wearer.getY() + 1;
+        double oz = wearer.getZ() + 4;
+        double dx = wearer.getX() - ox, dy = wearer.getY() - oy, dz = wearer.getZ() - oz;
+        float yaw = (float) Math.toDegrees(Math.atan2(-dx, dz));
+        float pitch = (float) (-Math.toDegrees(Math.atan2(dy, Math.hypot(dx, dz))));
+        observer.teleportTo(observer.serverLevel(), ox, oy, oz, yaw, pitch);
     }
 
     private static void announce(MinecraftServer server, String next) {

@@ -156,7 +156,7 @@ public final class WingsQaClient {
         if (remote == null) return;
         // Multiplayer wing-state sync: remote deployed/tier arrive via SyncWingsPacket.
         WingsClientData.WingInfo w = WingsClientData.get(remote);
-        if (w != null && w.deployed() && wearerDoneAt > 0 && ticks - wearerDoneAt > 15) {
+        if (w != null && w.deployed() && wearerDoneAt > 0 && ticks - wearerDoneAt > 8) {
             capture(mc, "wearer-wings");
             mark("wings-observer.pass");
             finished = true;
