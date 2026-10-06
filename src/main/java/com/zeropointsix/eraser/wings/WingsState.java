@@ -18,6 +18,7 @@ public final class WingsState {
     private static final String BLINK_TIMES = "blink_times";
     private static final String BLINK_CD = "blink_cd_until";
     private static final String CHARGED = "charged_until";
+    private static final String WALL_HIT = "wall_hit_at";
 
     private WingsState() {}
 
@@ -33,6 +34,7 @@ public final class WingsState {
     public static double hoverY(Player p) { return root(p).getDouble(HOVER_Y); }
     public static long blinkCooldownUntil(Player p) { return root(p).getLong(BLINK_CD); }
     public static long chargedUntil(Player p) { return root(p).getLong(CHARGED); }
+    public static long wallHitAt(Player p) { return root(p).getLong(WALL_HIT); }
     public static long[] blinkTimes(Player p) { return root(p).getLongArray(BLINK_TIMES); }
 
     public static void setDeployed(Player p, boolean v) {
@@ -59,6 +61,7 @@ public final class WingsState {
     public static void setHoverAnchor(Player p, double y) { root(p).putDouble(HOVER_Y, y); }
     public static void setBlinkCooldownUntil(Player p, long t) { root(p).putLong(BLINK_CD, t); }
     public static void setChargedUntil(Player p, long t) { root(p).putLong(CHARGED, t); }
+    public static void setWallHitAt(Player p, long t) { root(p).putLong(WALL_HIT, t); }
     public static void setBlinkTimes(Player p, long[] t) { root(p).putLongArray(BLINK_TIMES, t); }
 
     public static boolean charged(Player p) {

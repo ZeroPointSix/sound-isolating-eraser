@@ -189,4 +189,29 @@ public final class WingsGameTests {
         h.assertTrue(fall.isCanceled(), "wearing wings cancels fall damage");
         h.succeed();
     }
+
+    @GameTest(template = "empty", timeoutTicks = 60)
+    public static void wallDamageAppliedServerSide(GameTestHelper h) {
+        // 墙立在飞行方向 x=5 处、覆盖眼部高度（眼位 y+1.62 ≈ 本地 y3.6–4.6）
+        for (int y = 3; y <= 5; y++) {
+            h.setBlock(new BlockPos(5, y, 2), net.minecraft.world.level.block.Blocks.STONE);
+            h.setBlock(new BlockPos(5, y, 3), net.minecraft.world.level.block.Blocks.STONE);
+        }
+        FakePlayer p = winged(h, h.absoluteVec(new Vec3(1.5, 3.5, 2.5)), 20);
+        p.setGameMode(net.minecraft.world.level.GameType.SURVIVAL);
+        FlightEvents.serverSetDeployed(p, true);
+        h.assertTrue(WingsState.deployed(p), "wings must be deployed");
+        boolean canHurt = p.hurt(p.damageSources().flyIntoWall(), 1.0f);
+        tick(p); // 登记上一 tick 位置
+        // FakePlayer 无物理：直接 setPos 制造 >2b/t（>40m/s 阈值）的水平位移
+        p.setPos(p.getX() + 2.5, p.getY(), p.getZ());
+        tick(p);
+        h.assertTrue(WingsState.wallHitAt(p) > 0,
+                "server must detect wall hit at threshold speed"
+                        + " canHurt=" + canHurt
+                        + " health=" + p.getHealth()
+                        + " invTime=" + p.invulnerableTime
+                        + " pos=" + p.position());
+        h.succeed();
+    }
 }

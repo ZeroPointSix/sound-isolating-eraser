@@ -6,6 +6,9 @@ import com.zeropointsix.eraser.registry.ModItems;
 import com.zeropointsix.eraser.registry.ModParticles;
 import com.zeropointsix.eraser.wings.net.WingsNet;
 import java.util.Arrays;
+import java.util.Map;
+import java.util.UUID;
+import java.util.WeakHashMap;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
@@ -39,6 +42,9 @@ import net.minecraftforge.fml.common.Mod;
 @Mod.EventBusSubscriber(modid = ModMain.MOD_ID)
 public final class FlightEvents {
     private FlightEvents() {}
+
+    /** 上一 tick 位置（服务端权威撞墙探测用；玩家对象弱引用，离线自动回收）。 */
+    private static final Map<UUID, Vec3> lastPositions = new WeakHashMap<>();
 
     // ------------------------------------------------------------ actions
     public static void serverSetDeployed(ServerPlayer p, boolean want) {
@@ -197,6 +203,30 @@ public final class FlightEvents {
                 WingsState.setTier(p, WingsState.CRUISE);
                 p.displayClientMessage(Component.translatable("message.sound_isolating_eraser.hungry"), true);
                 WingsNet.syncToTracking(p);
+            }
+            // 服务端权威撞墙伤害：客户端权威飞行下 horizontalCollision 不可信，
+            // 用每 tick 位置增量做前向探测，伤害由服务端发放（客户端 hurt 是 no-op）
+            if (cfg.wallDamageEnabled.get()) {
+                Vec3 prev = lastPositions.put(p.getUUID(), p.position());
+                if (prev != null) {
+                    double dx = p.getX() - prev.x, dz = p.getZ() - prev.z;
+                    double speedBpt = Math.hypot(dx, dz);
+                    ServerLevel level = p.serverLevel();
+                    long now = level.getGameTime();
+                    if (speedBpt * 20.0 > cfg.wallDamageThresholdSpeed.get()
+                            && now >= WingsState.wallHitAt(p) + 20) {
+                        Vec3 dir = new Vec3(dx / speedBpt, 0, dz / speedBpt);
+                        BlockHitResult hit = level.clip(new ClipContext(p.getEyePosition(),
+                                p.getEyePosition().add(dir.scale(1.4)),
+                                ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, p));
+                        if (hit.getType() != HitResult.Type.MISS) {
+                            WingsState.setWallHitAt(p, now);
+                            p.hurt(level.damageSources().flyIntoWall(),
+                                    Math.min(cfg.wallDamageCap.get().floatValue(),
+                                            (float) (speedBpt * 2.0)));
+                        }
+                    }
+                }
             }
             // periodic state sync for late trackers
             if (p.tickCount % 40 == 0) {

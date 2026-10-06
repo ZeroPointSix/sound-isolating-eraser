@@ -67,14 +67,12 @@ public final class WingsFlight {
         p.setDeltaMovement(next);
         p.resetFallDistance();
 
-        // 高速撞墙扣血（客户端按自身速度判定，与服务端配置一致）
+        // 高速撞墙的视觉爆发仍在客户端表现；伤害判定在服务端（客户端 hurt 无效）
         double speed = next.horizontalDistance();
         if (WingsConfig.SERVER.wallDamageEnabled.get()
-                && p.horizontalCollision && speed > WingsConfig.SERVER.wallDamageThresholdSpeed.get()
+                && p.horizontalCollision
+                && speed * 20.0 > WingsConfig.SERVER.wallDamageThresholdSpeed.get()
                 && p.tickCount % 5 == 0) {
-            p.hurt(p.damageSources().flyIntoWall(),
-                    Math.min((float) WingsConfig.SERVER.wallDamageCap.get().doubleValue(),
-                            (float) (speed / 10.0)));
             speedBurst(p, true);
         }
 
