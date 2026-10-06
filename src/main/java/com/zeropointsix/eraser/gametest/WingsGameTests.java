@@ -137,13 +137,65 @@ public final class WingsGameTests {
         FlightEvents.serverBlink(p);
         h.assertTrue(WingsState.blinkTimes(p).length == 3,
                 "chain window must allow 3 blinks");
-        h.assertTrue(WingsState.blinkCooldownUntil(p) == now + 160,
-                "3rd chained blink → 160t lockout");
+        h.assertTrue(WingsState.blinkLockUntil(p) == now + 160,
+                "3rd chained blink → 160t long lock");
         FlightEvents.serverBlink(p); // 4th must be rejected
         h.assertTrue(WingsState.blinkTimes(p).length == 3,
                 "4th blink inside window must be rejected");
         // 位移本身依赖 teleportToWithTicket 的区块 ticket，FakePlayer 不生效；
         // 真实位移由客户端 E2E 覆盖，此处只验收状态机
+        h.succeed();
+    }
+
+    /** 160t 链满长锁必须独立于窗口内残留记录生效（Review #1 边界绕过修复）。 */
+    @GameTest(template = "empty", timeoutTicks = 60)
+    public static void blinkLongLockSurvivesWindowEdge(GameTestHelper h) {
+        FakePlayer p = winged(h, h.absoluteVec(new Vec3(2.5, 3, 2.5)), 20);
+        p.setYRot(0);
+        FlightEvents.serverSetDeployed(p, true);
+        long now = h.getLevel().getGameTime();
+        // 模拟链满边界：窗内还剩 2 条记录，但长锁未到期 → 必须拒绝
+        WingsState.setBlinkTimes(p, new long[]{now - 4, now - 2});
+        WingsState.setBlinkLockUntil(p, now + 100);
+        FlightEvents.serverBlink(p);
+        h.assertTrue(WingsState.blinkTimes(p).length == 2,
+                "active 160t lock must reject blink despite in-window records");
+        // 锁到期后放行（此时第 3 条记录会再次触发链满 → 新的长锁）
+        WingsState.setBlinkLockUntil(p, now);
+        FlightEvents.serverBlink(p);
+        h.assertTrue(WingsState.blinkTimes(p).length == 3,
+                "expired lock must allow blink again");
+        h.assertTrue(WingsState.blinkLockUntil(p) == now + 160,
+                "3rd in-window blink sets the 160t lock");
+        h.succeed();
+    }
+
+    /** 脱下已展开的翅膀：deployed/noGravity/fallFlying 必须全部回收。 */
+    @GameTest(template = "empty", timeoutTicks = 60)
+    public static void unequipStowsDeployedWings(GameTestHelper h) {
+        FakePlayer p = winged(h, h.absoluteVec(new Vec3(2.5, 3, 2.5)), 20);
+        FlightEvents.serverSetDeployed(p, true);
+        h.assertTrue(WingsState.deployed(p) && p.isNoGravity(),
+                "precondition: deployed with noGravity");
+        p.setItemSlot(EquipmentSlot.CHEST, ItemStack.EMPTY);
+        tick(p); // 服务端巡檢发现 !wearing && deployed → 强制收起
+        h.assertTrue(!WingsState.deployed(p),
+                "unequipping deployed wings must stow them");
+        h.assertTrue(!p.isNoGravity(),
+                "unequip stow must restore gravity");
+        h.succeed();
+    }
+
+    /** 服务端超速治理：位移超过档位上限 +50% 容差 → 标记并拉回。 */
+    @GameTest(template = "empty", timeoutTicks = 60)
+    public static void speedGovernorFlagsOverspeed(GameTestHelper h) {
+        FakePlayer p = winged(h, h.absoluteVec(new Vec3(2.5, 3.5, 2.5)), 20);
+        FlightEvents.serverSetDeployed(p, true); // HOVER：上限 5 m/s，容差后 12.5 m/s
+        tick(p); // 登记上一 tick 位置
+        p.setPos(p.getX() + 2.5, p.getY(), p.getZ()); // 50 m/s > 12.5，且 < 20bpt 传送上限
+        tick(p);
+        h.assertTrue(WingsState.speedFlagAt(p) > 0,
+                "server must flag position-delta overspeed");
         h.succeed();
     }
 
@@ -192,25 +244,27 @@ public final class WingsGameTests {
 
     @GameTest(template = "empty", timeoutTicks = 60)
     public static void wallDamageAppliedServerSide(GameTestHelper h) {
-        // 墙立在飞行方向 x=5 处、覆盖眼部高度（眼位 y+1.62 ≈ 本地 y3.6–4.6）
-        for (int y = 3; y <= 5; y++) {
-            h.setBlock(new BlockPos(5, y, 2), net.minecraft.world.level.block.Blocks.STONE);
-            h.setBlock(new BlockPos(5, y, 3), net.minecraft.world.level.block.Blocks.STONE);
+        // 大墙面：fallFlying 姿态眼高 ~0.4，cover y 1–6 保稳命中
+        for (int y = 1; y <= 6; y++) {
+            for (int z = 1; z <= 4; z++) {
+                h.setBlock(new BlockPos(5, y, z), net.minecraft.world.level.block.Blocks.STONE);
+            }
         }
         FakePlayer p = winged(h, h.absoluteVec(new Vec3(1.5, 3.5, 2.5)), 20);
         p.setGameMode(net.minecraft.world.level.GameType.SURVIVAL);
         FlightEvents.serverSetDeployed(p, true);
         h.assertTrue(WingsState.deployed(p), "wings must be deployed");
-        boolean canHurt = p.hurt(p.damageSources().flyIntoWall(), 1.0f);
+        // STORM 档限速 120 m/s（容差 185），50 m/s 位移不会被超速治理拦截，
+        // 只走撞墙伤害路径（阈值 40 m/s）
+        WingsState.setTier(p, WingsState.STORM);
         tick(p); // 登记上一 tick 位置
-        // FakePlayer 无物理：直接 setPos 制造 >2b/t（>40m/s 阈值）的水平位移
         p.setPos(p.getX() + 2.5, p.getY(), p.getZ());
         tick(p);
+        // FakePlayer 无敌（canHurt=false 实测），只能断言服务端探测+触发；
+        // hurt 本身是原版调用，真实客户端 E2E 覆盖端到端掉血。
         h.assertTrue(WingsState.wallHitAt(p) > 0,
                 "server must detect wall hit at threshold speed"
-                        + " canHurt=" + canHurt
-                        + " health=" + p.getHealth()
-                        + " invTime=" + p.invulnerableTime
+                        + " speedFlag=" + WingsState.speedFlagAt(p)
                         + " pos=" + p.position());
         h.succeed();
     }

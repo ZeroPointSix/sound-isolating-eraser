@@ -1,5 +1,5 @@
 {
-  "parent": "minecraft:item/generated",
+  "parent": "minecraft:builtin/entity",
   "textures": {
     "layer0": "sound_isolating_eraser:item/wind_thunder_wings"
   }

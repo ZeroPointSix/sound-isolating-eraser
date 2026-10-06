@@ -50,19 +50,28 @@ public class WingsLayer extends RenderLayer<AbstractClientPlayer,
         }
 
         Vec3 vel = player.getDeltaMovement();
-        double vmax = Math.max(1, WingsConfig.SERVER.tierSpeed(3));
+        double vmax = Math.max(1, WingsConfig.SERVER.tierSpeed(3) / 20.0); // m/s→bpt
         float sweep = (float) Math.min(1.0, vel.length() / vmax);
         boolean glide = info.tier() == com.zeropointsix.eraser.wings.WingsState.CRUISE
                 || (info.tier() >= com.zeropointsix.eraser.wings.WingsState.BOOST
-                && vel.length() > 8);
+                && vel.length() > 0.4); // 8 m/s = 0.4 bpt
 
-        float flap = 0;
-        if (info.tier() == com.zeropointsix.eraser.wings.WingsState.HOVER
-                && info.deployed()) {
-            flap = Mth.sin(ageInTicks * (float) Math.PI * 0.8f) * 0.6f;
+        // 扇动：悬停大扇、巡航滑翔微振、疾风/神霄高频小扇；相位交给逐羽滞后
+        float flapPhase = ageInTicks * (float) Math.PI * 0.8f;
+        float flapAmp = 0f;
+        if (info.deployed()) {
+            int tier = info.tier();
+            if (tier == com.zeropointsix.eraser.wings.WingsState.HOVER) {
+                flapAmp = 0.6f;
+            } else if (tier >= com.zeropointsix.eraser.wings.WingsState.BOOST) {
+                flapAmp = 0.18f;
+                flapPhase = ageInTicks * (float) Math.PI * 1.6f;
+            } else {
+                flapAmp = 0.08f;
+            }
         }
 
-        model.setupWings(info.deployAnim(), sweep, flap, glide, tickDelta);
+        model.setupWings(info.deployAnim(), sweep, flapPhase, flapAmp, glide);
 
         pose.pushPose();
         this.getParentModel().body.translateAndRotate(pose);

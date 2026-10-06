@@ -110,7 +110,7 @@ public final class WingsClientEvents {
             WingsClientData.WingInfo w = WingsClientData.get(p);
             if (w == null || !w.deployed()) return;
             double speed = p.getDeltaMovement().length();
-            double ratio = Math.min(1.0, speed / Math.max(1, WingsConfig.SERVER.tierSpeed(3)));
+            double ratio = Math.min(1.0, speed / Math.max(1, WingsConfig.SERVER.tierSpeed(3) / 20.0));
             double mult = 1.0 + ratio * WingsConfig.CLIENT.fovBoostMax.get() / 70.0;
             event.setNewFovModifier((float) (event.getFovModifier() * mult));
         }

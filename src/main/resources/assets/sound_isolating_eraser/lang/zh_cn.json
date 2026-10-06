@@ -23,5 +23,6 @@
   "sound_isolating_eraser.tier.0": "悬停",
   "sound_isolating_eraser.tier.1": "巡航",
   "sound_isolating_eraser.tier.2": "疾风",
-  "sound_isolating_eraser.tier.3": "神霄"
+  "sound_isolating_eraser.tier.3": "神霄",
+  "message.sound_isolating_eraser.speed_cap": "速度超过风雷翅当前档位上限，已被拉回"
 }

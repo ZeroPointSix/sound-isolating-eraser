@@ -23,5 +23,6 @@
   "sound_isolating_eraser.tier.0": "Hover",
   "sound_isolating_eraser.tier.1": "Cruise",
   "sound_isolating_eraser.tier.2": "Gale",
-  "sound_isolating_eraser.tier.3": "Tempest"
+  "sound_isolating_eraser.tier.3": "Tempest",
+  "message.sound_isolating_eraser.speed_cap": "Speed exceeds wing limit — throttled"
 }

@@ -33,7 +33,8 @@ public final class WingsFlight {
         }
 
         int tier = info.tier();
-        double maxSpeed = WingsConfig.SERVER.tierSpeed(tier);
+        // 配置值是 m/s；deltaMovement 单位是 blocks/tick → ÷20 换算
+        double maxSpeed = WingsConfig.SERVER.tierSpeed(tier) / 20.0;
         Input input = p.input;
         Vec3 delta = p.getDeltaMovement();
         Vec3 wish;
@@ -52,8 +53,8 @@ public final class WingsFlight {
             next = next.scale(0.985);
         }
 
-        // safety: cap speed near unloaded chunks (Notion §4.6)
-        double cap = WingsConfig.SERVER.unloadedChunkSpeedCap.get();
+        // safety: cap speed near unloaded chunks (Notion §4.6)；配置是 m/s → bpt
+        double cap = WingsConfig.SERVER.unloadedChunkSpeedCap.get() / 20.0;
         Vec3 ahead = p.position().add(next.scale(4));
         if (!p.level().hasChunkAt(BlockPos.containing(ahead)) && next.length() > cap) {
             next = next.normalize().scale(cap);
@@ -81,15 +82,15 @@ public final class WingsFlight {
     }
 
     private static Vec3 hoverWish(LocalPlayer p, Input input, WingsClientData.WingInfo info) {
-        double maxH = Math.min(WingsConfig.SERVER.hoverMaxSpeed.get(), 5.0);
+        double maxH = WingsConfig.SERVER.hoverMaxSpeed.get() / 20.0; // m/s → bpt
         Vec3 flat = inputToWorld(p, input, 0).scale(maxH * 0.5);
         double vy;
-        if (input.jumping) vy = 3.0;
-        else if (input.shiftKeyDown) vy = -3.0;
+        if (input.jumping) vy = 0.3;      // 6 m/s 上升
+        else if (input.shiftKeyDown) vy = -0.25; // 5 m/s 下降
         else {
             // 锚点轻微上下浮动：既有悬停呼吸感，周期性下坠也让原版 floating 踢人计数被重置
             double anchor = info.hoverY() + 0.35 * Mth.sin(p.level().getGameTime() * 0.18f);
-            vy = Mth.clamp((anchor - p.getY()) * 0.4, -1.2, 1.2);
+            vy = Mth.clamp((anchor - p.getY()) * 0.4, -0.15, 0.15);
         }
         return new Vec3(flat.x, vy, flat.z).normalize().scale(Math.min(
                 new Vec3(flat.x, vy, flat.z).length(), maxH));
