@@ -6,6 +6,10 @@ import com.zeropointsix.eraser.gravity.GravityNetwork;
 import com.zeropointsix.eraser.registry.ModEntities;
 import com.zeropointsix.eraser.registry.ModBlocks;
 import com.zeropointsix.eraser.registry.ModItems;
+import com.zeropointsix.eraser.registry.ModParticles;
+import com.zeropointsix.eraser.registry.ModSounds;
+import com.zeropointsix.eraser.wings.WingsConfig;
+import com.zeropointsix.eraser.wings.net.WingsNet;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraftforge.event.BuildCreativeModeTabContentsEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
@@ -25,16 +29,22 @@ public final class ModMain {
         ModBlocks.BLOCKS.register(bus);
         ModItems.ITEMS.register(bus);
         ModEntities.ENTITIES.register(bus);
+        ModParticles.PARTICLES.register(bus);
+        ModSounds.SOUNDS.register(bus);
         GravityNetwork.register();
+        WingsNet.register();
         bus.addListener(this::creativeItems);
         ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, CommonConfig.SPEC);
         ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER, GravityConfig.SPEC);
+        ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER, WingsConfig.SERVER_SPEC);
+        ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT, WingsConfig.CLIENT_SPEC);
     }
 
     private void creativeItems(BuildCreativeModeTabContentsEvent event) {
         if (event.getTabKey() == CreativeModeTabs.TOOLS_AND_UTILITIES) {
             event.accept(ModItems.SOUND_ISOLATING_ERASER.get());
             event.accept(ModItems.GRAVITY_JADE_PENDANT.get());
+            event.accept(ModItems.WIND_THUNDER_WINGS.get());
         }
     }
 }

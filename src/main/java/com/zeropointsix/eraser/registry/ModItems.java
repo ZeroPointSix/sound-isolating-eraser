@@ -3,7 +3,10 @@ package com.zeropointsix.eraser.registry;
 import com.zeropointsix.eraser.ModMain;
 import com.zeropointsix.eraser.item.SoundIsolatingEraserItem;
 import com.zeropointsix.eraser.item.GravityJadePendantItem;
+import com.zeropointsix.eraser.item.WindThunderWingsItem;
+import com.zeropointsix.eraser.item.ThunderFeatherItem;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.Rarity;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
@@ -20,6 +23,20 @@ public final class ModItems {
                     // Any positive durability makes the stack damageable; the real
                     // max is read from config at runtime via getMaxDamage.
                     () -> new SoundIsolatingEraserItem(new Item.Properties().durability(1)));
+
+    public static final RegistryObject<WindThunderWingsItem> WIND_THUNDER_WINGS =
+            ITEMS.register("wind_thunder_wings",
+                    () -> new WindThunderWingsItem(new Item.Properties()
+                            .stacksTo(1)
+                            .rarity(Rarity.EPIC)
+                            .fireResistant()));
+
+    // 雷鹏骨羽 — crafting material, canon: thunder-roc bone feather.
+    public static final RegistryObject<ThunderFeatherItem> THUNDER_FEATHER =
+            ITEMS.register("thunder_feather",
+                    () -> new ThunderFeatherItem(new Item.Properties()
+                            .stacksTo(16)
+                            .rarity(Rarity.RARE)));
 
     private ModItems() {
     }
