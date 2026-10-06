@@ -1,21 +1,22 @@
-name: Build mod jar
+name: Test, build & release mod jar
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 concurrency:
-  group: build-jar-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: release-main
+  cancel-in-progress: false
 
 jobs:
-  build:
-    name: Gradle build (Java 17)
+  release:
+    name: Test + build + GitHub Release (Java 17)
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
+    timeout-minutes: 40
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,50 +26,65 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-          cache: gradle
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
 
       - name: Grant Gradle wrapper execute permission
         run: chmod +x gradlew
 
+      - name: Unit tests
+        run: ./gradlew test --no-daemon --stacktrace
+
+      - name: Forge GameTests
+        run: ./gradlew runGameTestServer --no-daemon --stacktrace
+
       - name: Build
         run: ./gradlew build --no-daemon --stacktrace
-
-      - name: Locate mod jar
-        id: jar
-        run: |
-          set -euo pipefail
-          jar="$(find build/libs -maxdepth 1 -type f -name 'sound_isolating_eraser-*.jar' ! -name '*-sources.jar' ! -name '*-javadoc.jar' | head -n 1)"
-          if [ -z "${jar}" ]; then
-            echo "No sound_isolating_eraser-*.jar found under build/libs" >&2
-            ls -la build/libs || true
-            exit 1
-          fi
-          name="$(basename "${jar}")"
-          echo "path=${jar}" >> "${GITHUB_OUTPUT}"
-          echo "name=${name}" >> "${GITHUB_OUTPUT}"
-          echo "Found ${name}"
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ steps.jar.outputs.name }}
-          path: ${{ steps.jar.outputs.path }}
+          name: sound_isolating_eraser-jar
+          path: build/libs/sound_isolating_eraser-*.jar
           if-no-files-found: error
           retention-days: 90
 
       - name: Publish GitHub Release (main only)
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main'
+        uses: actions/github-script@v7
         with:
-          tag_name: jar-main-${{ github.run_number }}
-          name: sound_isolating_eraser build ${{ github.run_number }}
-          body: |
-            Automatic build from `main` (`${{ github.sha }}`).
-
-            Download **`${{ steps.jar.outputs.name }}`** from the Assets below
-            (or from the workflow artifact of the same name).
-          files: ${{ steps.jar.outputs.path }}
-          fail_on_unmatched_files: true
-          generate_release_notes: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require("fs");
+            const props = fs.readFileSync("gradle.properties", "utf8").split("\n");
+            function prop(k) {
+              const line = props.find(function (l) { return l.startsWith(k + "="); });
+              return line ? line.slice(k.length + 1).trim() : "";
+            }
+            const version = prop("mod_version");
+            const mc = prop("minecraft_version");
+            const jars = fs.readdirSync("build/libs").filter(function (n) {
+              return n.startsWith("sound_isolating_eraser-") && n.endsWith(".jar") && !n.includes("-sources") && !n.includes("-javadoc");
+            });
+            if (jars.length === 0) { core.setFailed("No sound_isolating_eraser-*.jar in build/libs"); return; }
+            const jar = jars[0];
+            const tag = "v" + version + "-build." + context.runNumber;
+            const body = [
+              "自动发布自 main / Automatic release from main: " + context.sha,
+              "",
+              "- Minecraft " + mc + " · Forge 1.20.1 (47.x)",
+              "- 必需依赖 / Required: Curios API 5.14.1+ (重力玉佩饰品槽 / Gravity Jade Pendant slot)",
+              "- 安装 / Install: 将 " + jar + " 放入 mods/ 目录 / drop the jar into mods/"
+            ].join("\n");
+            const rel = await github.rest.repos.createRelease({
+              owner: context.repo.owner, repo: context.repo.repo,
+              tag_name: tag, target_commitish: context.sha,
+              name: "Sound-Isolating Eraser " + version + " (build " + context.runNumber + ")",
+              body: body, make_latest: "true"
+            });
+            await github.rest.repos.uploadReleaseAsset({
+              owner: context.repo.owner, repo: context.repo.repo,
+              release_id: rel.data.id, name: jar,
+              data: fs.readFileSync("build/libs/" + jar)
+            });
+            core.notice("Release: " + rel.data.html_url);
