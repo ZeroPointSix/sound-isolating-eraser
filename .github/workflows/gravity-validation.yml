@@ -50,6 +50,8 @@ jobs:
         run: sudo apt-get update && sudo apt-get install --no-install-recommends -y xdotool
       - name: Exercise real two-client gameplay
         run: python3 tools/gravity-e2e.py
+      - name: Exercise real two-client wings gameplay
+        run: python3 tools/wings-e2e.py
       - name: Preserve build and test evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -64,5 +66,9 @@ jobs:
             build/gravity-e2e/*.png
             build/gravity-e2e/*.pass
             build/gravity-e2e/*.failed
+            build/wings-e2e/*.log
+            build/wings-e2e/*.png
+            build/wings-e2e/*.pass
+            build/wings-e2e/*.failed
             run/logs/
           if-no-files-found: warn

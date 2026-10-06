@@ -27,7 +27,7 @@ public final class WingsKeys {
     @SubscribeEvent
     public static void register(RegisterKeyMappingsEvent event) {
         CYCLE_TIER = new KeyMapping("key.sound_isolating_eraser.cycle_tier",
-                GLFW.GLFW_KEY_G, "key.categories.sound_isolating_eraser");
+                GLFW.GLFW_KEY_C, "key.categories.sound_isolating_eraser");
         HOVER_TOGGLE = new KeyMapping("key.sound_isolating_eraser.hover",
                 GLFW.GLFW_KEY_H, "key.categories.sound_isolating_eraser");
         BLINK = new KeyMapping("key.sound_isolating_eraser.blink",
@@ -56,8 +56,9 @@ public final class WingsKeys {
             // Space×2 收/展（空中双击空格展开）
             if (event.getKey() == GLFW.GLFW_KEY_SPACE
                     && event.getAction() == GLFW.GLFW_PRESS) {
-                WingsClientData.WingInfo w = WingsClientData.get(mc.player);
-                if (w != null && !mc.player.onGround()) {
+                if (!mc.player.onGround()) {
+                    // 同步尚未到达时也允许发手势（localOrFallback 默认未部署 → 展开）
+                    WingsClientData.WingInfo w = WingsClientData.localOrFallback(mc.player);
                     if (now - lastJumpPress < 300) {
                         WingsNet.CHANNEL.sendToServer(
                                 new SetDeployedPacket(!w.deployed()));

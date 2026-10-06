@@ -88,7 +88,11 @@ public final class WingsFlight {
         double vy;
         if (input.jumping) vy = 3.0;
         else if (input.shiftKeyDown) vy = -3.0;
-        else vy = Mth.clamp((info.hoverY() - p.getY()) * 0.4, -1.2, 1.2);
+        else {
+            // 锚点轻微上下浮动：既有悬停呼吸感，周期性下坠也让原版 floating 踢人计数被重置
+            double anchor = info.hoverY() + 0.35 * Mth.sin(p.level().getGameTime() * 0.18f);
+            vy = Mth.clamp((anchor - p.getY()) * 0.4, -1.2, 1.2);
+        }
         return new Vec3(flat.x, vy, flat.z).normalize().scale(Math.min(
                 new Vec3(flat.x, vy, flat.z).length(), maxH));
     }

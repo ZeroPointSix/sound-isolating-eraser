@@ -10,7 +10,7 @@
   "death.attack.gravity_crush.player": "%1$s 被 %2$s 的重力场压垮了",
   "item.sound_isolating_eraser.wind_thunder_wings": "风雷翅",
   "item.sound_isolating_eraser.wind_thunder_wings.desc1": "银白金纹・雷鹏骨羽炼成的飞行法宝",
-  "item.sound_isolating_eraser.wind_thunder_wings.desc2": "空中双击空格展开，G 换档，H 悬停，R 雷闪",
+  "item.sound_isolating_eraser.wind_thunder_wings.desc2": "空中双击空格展开，C 换档，H 悬停，R 雷闪",
   "item.sound_isolating_eraser.wind_thunder_wings.hint": "消耗饥饿值・无灵力条",
   "item.sound_isolating_eraser.thunder_feather": "雷鹏骨羽",
   "item.sound_isolating_eraser.thunder_feather.desc": "幻翼遭雷击陨落后残留的导雷之羽",

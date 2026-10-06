@@ -50,9 +50,13 @@ public final class FlightEvents {
         WingsState.setDeployed(p, want);
         if (want) {
             p.setNoGravity(true);
+            // 标记为鞘翅式飞行：原版服务器 floating 踢人与客户端动画都按 fall-flying 处理
+            p.startFallFlying();
             WingsState.setHoverAnchor(p, p.getY());
             p.level().playSound(null, p.blockPosition(), SoundEvents.ARMOR_EQUIP_ELYTRA,
                     SoundSource.PLAYERS, 1.0f, 1.0f);
+        } else {
+            p.stopFallFlying();
         }
         WingsNet.syncToTracking(p);
     }
@@ -164,8 +168,7 @@ public final class FlightEvents {
 
         if (!WingsState.wearing(p)) {
             if (WingsState.deployed(p)) {
-                WingsState.setDeployed(p, false);
-                WingsNet.syncToTracking(p);
+                serverSetDeployed(p, false);
             }
             return;
         }
@@ -199,6 +202,9 @@ public final class FlightEvents {
             if (p.tickCount % 40 == 0) {
                 WingsNet.syncToTracking(p);
             }
+        } else if (p.tickCount % 40 == 0) {
+            // 未部署也要周期性同步：客户端手势判定依赖 WingInfo（首次展开前没有包会发）
+            WingsNet.syncToTracking(p);
         }
     }
 
@@ -235,6 +241,23 @@ public final class FlightEvents {
         ItemStack drop = new ItemStack(ModItems.THUNDER_FEATHER.get());
         phantom.level().addFreshEntity(new ItemEntity(phantom.level(),
                 phantom.getX(), phantom.getY(), phantom.getZ(), drop));
+    }
+
+    /** 登录即发初始 WingInfo，否则客户端连一次部署手势都无法判定。 */
+    @SubscribeEvent
+    public static void onLogin(PlayerEvent.PlayerLoggedInEvent event) {
+        if (event.getEntity() instanceof ServerPlayer sp) WingsNet.syncToTracking(sp);
+    }
+
+    /** 新观察者开始跟踪某玩家时补发其翼状态（他人翅膀渲染的同步入口）。 */
+    @SubscribeEvent
+    public static void onStartTracking(PlayerEvent.StartTracking event) {
+        if (event.getTarget() instanceof ServerPlayer target
+                && event.getEntity() instanceof ServerPlayer watcher) {
+            WingsNet.CHANNEL.send(
+                    net.minecraftforge.network.PacketDistributor.PLAYER.with(() -> watcher),
+                    com.zeropointsix.eraser.wings.net.SyncWingsPacket.of(target));
+        }
     }
 
     /** Respawn/leave safety: nothing leaks across deaths. */
