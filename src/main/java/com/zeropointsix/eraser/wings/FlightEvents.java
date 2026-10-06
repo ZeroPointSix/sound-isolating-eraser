@@ -85,10 +85,13 @@ public final class FlightEvents {
         ServerLevel level = p.serverLevel();
         long now = level.getGameTime();
         WingsConfig.Server cfg = WingsConfig.SERVER;
-        if (now < WingsState.blinkCooldownUntil(p)) return;
 
         long[] times = Arrays.stream(WingsState.blinkTimes(p))
                 .filter(t -> now - t < cfg.blinkChainWindowTicks.get()).toArray();
+        // 链闪窗口内允许连续雷瞬（不受普通冷却拦截）；窗口外的普通冷却才会挡下雷瞬
+        if (times.length >= cfg.blinkChainMax.get()) return;
+        if (now < WingsState.blinkCooldownUntil(p) && times.length == 0) return;
+
         boolean chainFull = times.length >= cfg.blinkChainMax.get() - 1;
         long cd = chainFull ? cfg.blinkChainCooldownTicks.get() : cfg.blinkCooldownTicks.get();
         WingsState.setBlinkCooldownUntil(p, now + cd);
