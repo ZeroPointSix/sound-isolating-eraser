@@ -5,13 +5,13 @@
 
 ## 玩法规则（与设计稿一致）
 
-- **点地面（上表面）**：点击位置上方立起 1×5 半透明墙，底格是带白痕的锚点块。
-- **点墙面（侧表面）**：同样 5 格一列，白痕标记在被点击的墙面一侧。
+- **点地面（上表面）**：点击位置上方立起 1×5 半透明墙，底格锚点把白色擦痕作为**平面贴花**贴在脚下那个方块的上表面（非立体凸起）。
+- **点墙面（侧表面）**：同样 5 格一列，白痕同样以平面贴花贴在被点击的那一面上。
 - **点方块下表面**：拒绝，什么都不发生。
 - **原子放置**：5 格任一被实心方块、液体、已有墙体或实体占用 → 整列不生成、不耗耐久，
   ActionBar 提示「空间不足」。
 - **联动销毁**：拆任意一格墙或底部白痕 → 整列立即一起消失；TNT/苦力怕爆炸同样整列消失；
-  相邻列互不影响。孤儿屏障（锚点被 /setblock 拆掉）2 tick 后自毁。
+  相邻列互不影响。孤儿屏障（锚点被 /setblock 拆掉）1 tick 后自毁。
 - **墙体性质**：半透明薄膜（Mob 视线可穿透）、完整实体碰撞（挡玩家/怪物/弹射物/寻路/水岩浆）、
   泥土级硬度 0.5 / 爆炸抗性 0.5、无掉落物、非红石导体、活塞不可推动、不可生成怪物。
 - **耐久**：每成功一列耗 1 点（创造不消耗）。配置 `sound_isolating_eraser-common.toml`：
@@ -51,3 +51,10 @@ com.zeropointsix.eraser
 - `sound_isolating_eraser.mixins.json`：dev 运行经 `--mixin.config` 加载，
   生产 jar 经 manifest `MixinConfigs` 加载；`hasLineOfSight → m_142582_` 的 SRG
   映射在 `mixins.sound_isolating_eraser.refmap.json`。
+
+
+## CI
+
+Push to `main` runs [`.github/workflows/build-jar.yml`](.github/workflows/build-jar.yml):
+Java 17 + Gradle build, uploads `sound_isolating_eraser-*.jar` as a workflow
+artifact (same filename), and publishes a GitHub Release with that jar attached.

@@ -25,8 +25,16 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  */
 @Mixin(LivingEntity.class)
 public abstract class LivingEntityWallVisibilityMixin {
-    @Inject(method = "hasLineOfSight(Lnet/minecraft/world/entity/Entity;)Z",
-            at = @At("HEAD"), cancellable = true)
+    // Dual MCP+SRG targets with remap=false, and empty handwritten "mappings".
+    // Production Forge reads mappings (not only data.searge): empty mappings +
+    // MCP-only inject crashes dedicated server. Populated mappings remap MCP→SRG
+    // in userdev and break GameTests. Matching both names without remapping
+    // works in both environments.
+    @Inject(method = {
+                "hasLineOfSight(Lnet/minecraft/world/entity/Entity;)Z",
+                "m_142582_(Lnet/minecraft/world/entity/Entity;)Z"
+            },
+            at = @At("HEAD"), cancellable = true, remap = false)
     private void eraser$seeThroughEraserWalls(Entity target, CallbackInfoReturnable<Boolean> cir) {
         LivingEntity self = (LivingEntity) (Object) this;
         if (target.level() != self.level()) {
@@ -35,7 +43,8 @@ public abstract class LivingEntityWallVisibilityMixin {
         }
         Vec3 from = new Vec3(self.getX(), self.getEyeY(), self.getZ());
         Vec3 to = new Vec3(target.getX(), target.getEyeY(), target.getZ());
-        if (to.distanceTo(from) > 128.0D) {
+        // Cheap reject before allocating a CollisionContext / walking cells.
+        if (from.distanceToSqr(to) > 128.0D * 128.0D) {
             cir.setReturnValue(false);
             return;
         }
@@ -50,7 +59,8 @@ public abstract class LivingEntityWallVisibilityMixin {
     private static BlockHitResult rayClipCell(BlockGetter level, CollisionContext collision,
             Vec3 from, Vec3 to, BlockPos pos) {
         BlockState state = level.getBlockState(pos);
-        VoxelShape shape = EraserWallBlock.isEraserWall(state)
+        // instanceof is cheaper than a registry lookup and is the same contract.
+        VoxelShape shape = state.getBlock() instanceof EraserWallBlock
                 ? Shapes.empty()
                 : state.getCollisionShape(level, pos, collision);
         return level.clipWithInteractionOverride(from, to, pos, shape, state);

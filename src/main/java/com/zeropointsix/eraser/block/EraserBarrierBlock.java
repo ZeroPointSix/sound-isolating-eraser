@@ -43,22 +43,24 @@ public class EraserBarrierBlock extends EraserWallBlock {
     public void onPlace(BlockState state, Level level, BlockPos pos, BlockState oldState,
             boolean movedByPiston) {
         super.onPlace(state, level, pos, oldState, movedByPiston);
-        if (!level.isClientSide && !anchored(level, state, pos)) {
-            level.scheduleTick(pos, this, 2);
+        // Skip during linked column writes; placement validates the whole column first.
+        if (!level.isClientSide && !EraserColumn.isDestroying() && !anchored(level, state, pos)) {
+            level.scheduleTick(pos, this, 1);
         }
     }
 
     @Override
     public void neighborChanged(BlockState state, Level level, BlockPos pos, Block sourceBlock,
             BlockPos sourcePos, boolean notify) {
-        if (!level.isClientSide && !anchored(level, state, pos)) {
-            level.scheduleTick(pos, this, 2);
+        if (!level.isClientSide && !EraserColumn.isDestroying() && !anchored(level, state, pos)) {
+            // One-tick deferral coalesces cascade neighbor noise into a single destroy.
+            level.scheduleTick(pos, this, 1);
         }
     }
 
     @Override
     public void tick(BlockState state, ServerLevel level, BlockPos pos, RandomSource random) {
-        if (!anchored(level, state, pos)) {
+        if (!EraserColumn.isDestroying() && !anchored(level, state, pos)) {
             level.destroyBlock(pos, false);
         }
     }
@@ -66,11 +68,8 @@ public class EraserBarrierBlock extends EraserWallBlock {
     @Override
     public void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState,
             boolean movedByPiston) {
-        if (!state.is(newState.getBlock()) && !level.isClientSide) {
-            BlockPos anchorPos = anchorPosOf(state, pos);
-            if (level.getBlockState(anchorPos).getBlock() instanceof EraserAnchorBlock) {
-                level.removeBlock(anchorPos, false);
-            }
+        if (!state.is(newState.getBlock()) && !level.isClientSide && !EraserColumn.isDestroying()) {
+            EraserColumn.destroyFromBarrier(level, anchorPosOf(state, pos));
         }
         super.onRemove(state, level, pos, newState, movedByPiston);
     }

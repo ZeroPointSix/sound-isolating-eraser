@@ -1,5 +1,6 @@
 {
   "parent": "minecraft:block/block",
+  "ambientocclusion": false,
   "render_type": "minecraft:translucent",
   "textures": {
     "particle": "sound_isolating_eraser:block/eraser_wall",
@@ -20,10 +21,13 @@
       }
     },
     {
-      "from": [0, 15.5, 0],
-      "to": [16, 16, 16],
+      "name": "mark_decal_ceiling",
+      "from": [0, 15.98, 0],
+      "to": [16, 15.99, 16],
+      "shade": false,
       "faces": {
-        "down": { "texture": "#mark" }
+        "up":   { "uv": [0, 0, 16, 16], "texture": "#mark" },
+        "down": { "uv": [0, 0, 16, 16], "texture": "#mark" }
       }
     }
   ]

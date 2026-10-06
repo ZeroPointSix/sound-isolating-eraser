@@ -28,6 +28,9 @@ import net.minecraft.world.phys.AABB;
  * if any cell cannot host the wall nothing is placed and no durability is spent.
  */
 public class SoundIsolatingEraserItem extends Item {
+    /** Client + known-shape only; neighbors notified once after the column is written. */
+    private static final int PLACE_FLAGS = Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE;
+
     public SoundIsolatingEraserItem(Properties properties) {
         super(properties);
     }
@@ -41,21 +44,23 @@ public class SoundIsolatingEraserItem extends Item {
         }
         BlockPos base = context.getClickedPos().relative(face);
         int height = columnHeight();
-        for (int i = 0; i < height; i++) {
-            BlockPos cell = base.above(i);
-            if (level.isOutsideBuildHeight(cell) || !cellFits(level, cell, context)) {
-                return reject(level, context.getPlayer(), context.getClickedPos());
-            }
+        if (!columnFits(level, base, height)) {
+            return reject(level, context.getPlayer(), context.getClickedPos());
         }
         if (level.isClientSide) {
             return InteractionResult.SUCCESS;
         }
         Direction markFace = face.getOpposite();
         level.setBlock(base, ModBlocks.ERASER_ANCHOR.get().defaultBlockState()
-                .setValue(EraserAnchorBlock.FACING, markFace), Block.UPDATE_ALL);
+                .setValue(EraserAnchorBlock.FACING, markFace), PLACE_FLAGS);
         for (int i = 1; i < height; i++) {
             level.setBlock(base.above(i), ModBlocks.ERASER_BARRIER.get().defaultBlockState()
-                    .setValue(EraserBarrierBlock.LEVEL, i), Block.UPDATE_ALL);
+                    .setValue(EraserBarrierBlock.LEVEL, i), PLACE_FLAGS);
+        }
+        // One neighbor pass for the whole column instead of five UPDATE_ALL storms.
+        for (int i = 0; i < height; i++) {
+            BlockPos cell = base.above(i);
+            level.blockUpdated(cell, level.getBlockState(cell).getBlock());
         }
         level.playSound(null, base, SoundEvents.SNOW_PLACE, SoundSource.BLOCKS, 0.7F, 1.2F);
         Player player = context.getPlayer();
@@ -75,7 +80,24 @@ public class SoundIsolatingEraserItem extends Item {
         return Math.max(1, Math.min(ModMain.MAX_HEIGHT, CommonConfig.BARRIER_HEIGHT.get()));
     }
 
-    private static boolean cellFits(Level level, BlockPos cell, UseOnContext context) {
+    /**
+     * Atomic fit check: one entity query for the whole column AABB, plus per-cell
+     * block/fluid/replaceability checks. Avoids five LivingEntity scans per click.
+     */
+    private static boolean columnFits(Level level, BlockPos base, int height) {
+        for (int i = 0; i < height; i++) {
+            BlockPos cell = base.above(i);
+            if (level.isOutsideBuildHeight(cell) || !blockFits(level, cell)) {
+                return false;
+            }
+        }
+        AABB columnBox = new AABB(
+                base.getX(), base.getY(), base.getZ(),
+                base.getX() + 1.0D, base.getY() + height, base.getZ() + 1.0D);
+        return level.getEntitiesOfClass(LivingEntity.class, columnBox).isEmpty();
+    }
+
+    private static boolean blockFits(Level level, BlockPos cell) {
         BlockState existing = level.getBlockState(cell);
         if (!existing.isAir()) {
             if (!existing.getFluidState().isEmpty()
@@ -84,7 +106,7 @@ public class SoundIsolatingEraserItem extends Item {
                 return false;
             }
         }
-        return level.getEntitiesOfClass(LivingEntity.class, new AABB(cell)).isEmpty();
+        return true;
     }
 
     private static InteractionResult reject(Level level, Player player, BlockPos pos) {

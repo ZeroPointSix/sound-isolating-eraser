@@ -1,5 +1,6 @@
 {
   "parent": "minecraft:block/block",
+  "ambientocclusion": false,
   "render_type": "minecraft:translucent",
   "textures": {
     "particle": "sound_isolating_eraser:block/eraser_wall",
@@ -20,10 +21,13 @@
       }
     },
     {
-      "from": [0, 0, 0],
-      "to": [16, 16, 0.5],
+      "name": "mark_decal_wall",
+      "from": [0, 0, 0.01],
+      "to": [16, 16, 0.02],
+      "shade": false,
       "faces": {
-        "south": { "texture": "#mark" }
+        "north": { "uv": [0, 0, 16, 16], "texture": "#mark" },
+        "south": { "uv": [0, 0, 16, 16], "texture": "#mark" }
       }
     }
   ]
