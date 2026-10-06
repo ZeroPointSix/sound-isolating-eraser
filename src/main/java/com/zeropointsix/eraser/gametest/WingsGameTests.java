@@ -258,7 +258,9 @@ public final class WingsGameTests {
         // 只走撞墙伤害路径（阈值 40 m/s）
         WingsState.setTier(p, WingsState.STORM);
         tick(p); // 登记上一 tick 位置
-        p.setPos(p.getX() + 2.5, p.getY(), p.getZ());
+        // 结构可能被旋转放置：墙面在结构局部 +X，换算成世界方向再位移
+        Vec3 relX = h.absoluteVec(new Vec3(1, 0, 0)).subtract(h.absoluteVec(Vec3.ZERO));
+        p.setPos(p.getX() + relX.x * 2.5, p.getY(), p.getZ() + relX.z * 2.5);
         tick(p);
         // FakePlayer 无敌（canHurt=false 实测），只能断言服务端探测+触发；
         // hurt 本身是原版调用，真实客户端 E2E 覆盖端到端掉血。
