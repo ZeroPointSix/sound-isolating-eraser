@@ -1,9 +1,13 @@
 {
-  "mappings": {},
+  "mappings": {
+    "com/zeropointsix/eraser/mixin/LivingEntityWallVisibilityMixin": {
+      "hasLineOfSight(Lnet/minecraft/world/entity/Entity;)Z": "m_142582_(Lnet/minecraft/world/entity/Entity;)Z"
+    }
+  },
   "data": {
     "searge": {
       "com/zeropointsix/eraser/mixin/LivingEntityWallVisibilityMixin": {
-        "hasLineOfSight (Lnet/minecraft/world/entity/Entity;)Z": "m_142582_"
+        "hasLineOfSight(Lnet/minecraft/world/entity/Entity;)Z": "m_142582_(Lnet/minecraft/world/entity/Entity;)Z"
       }
     }
   }

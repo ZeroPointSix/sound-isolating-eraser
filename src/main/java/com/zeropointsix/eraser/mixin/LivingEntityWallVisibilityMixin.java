@@ -25,7 +25,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  */
 @Mixin(LivingEntity.class)
 public abstract class LivingEntityWallVisibilityMixin {
-    @Inject(method = "hasLineOfSight (Lnet/minecraft/world/entity/Entity;)Z",
+    @Inject(method = "hasLineOfSight(Lnet/minecraft/world/entity/Entity;)Z",
             at = @At("HEAD"), cancellable = true)
     private void eraser$seeThroughEraserWalls(Entity target, CallbackInfoReturnable<Boolean> cir) {
         LivingEntity self = (LivingEntity) (Object) this;
