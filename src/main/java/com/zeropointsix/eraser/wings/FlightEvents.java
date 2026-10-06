@@ -244,7 +244,8 @@ public final class FlightEvents {
                             }
                         } else if (cfg.wallDamageEnabled.get()
                                 && speedBpt * 20.0 > cfg.wallDamageThresholdSpeed.get()
-                                && now >= WingsState.wallHitAt(p) + 20) {
+                                && (WingsState.wallHitAt(p) == 0
+                                        || now >= WingsState.wallHitAt(p) + 20)) {
                             Vec3 dir = new Vec3(dx / speedBpt, 0, dz / speedBpt);
                             BlockHitResult hit = level.clip(new ClipContext(p.getEyePosition(),
                                     p.getEyePosition().add(dir.scale(1.4)),
