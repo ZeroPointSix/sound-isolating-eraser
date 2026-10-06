@@ -264,10 +264,19 @@ public final class WingsGameTests {
         tick(p);
         // FakePlayer 无敌（canHurt=false 实测），只能断言服务端探测+触发；
         // hurt 本身是原版调用，真实客户端 E2E 覆盖端到端掉血。
-        h.assertTrue(WingsState.wallHitAt(p) > 0,
-                "server must detect wall hit at threshold speed"
-                        + " speedFlag=" + WingsState.speedFlagAt(p)
-                        + " pos=" + p.position());
+        if (WingsState.wallHitAt(p) <= 0) {
+            net.minecraft.world.phys.BlockHitResult probe = p.serverLevel().clip(
+                    new net.minecraft.world.level.ClipContext(p.getEyePosition(),
+                            p.getEyePosition().add(relX.x * 1.4, 0, relX.z * 1.4),
+                            net.minecraft.world.level.ClipContext.Block.COLLIDER,
+                            net.minecraft.world.level.ClipContext.Fluid.NONE, p));
+            h.fail("server must detect wall hit at threshold speed"
+                    + " speedFlag=" + WingsState.speedFlagAt(p)
+                    + " pos=" + p.position() + " eye=" + p.getEyePosition()
+                    + " relX=" + relX + " probe=" + probe.getType() + "@" + probe.getBlockPos()
+                    + " wall5=" + p.serverLevel().getBlockState(
+                            h.absolutePos(new BlockPos(5, 3, 2))).getBlock());
+        }
         h.succeed();
     }
 }
