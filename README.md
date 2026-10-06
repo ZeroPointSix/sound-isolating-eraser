@@ -58,3 +58,20 @@ com.zeropointsix.eraser
 Push to `main` runs [`.github/workflows/build-jar.yml`](.github/workflows/build-jar.yml):
 Java 17 + Gradle build, uploads `sound_isolating_eraser-*.jar` as a workflow
 artifact (same filename), and publishes a GitHub Release with that jar attached.
+
+
+## Gravity Jade Pendant / 重力玉佩
+
+- 运行依赖：Minecraft 1.20.1、Forge 47.x、Curios API 5.14.1+1.20.1。客户端与服务端均需安装本 mod 和 Curios。
+- 物品：`sound_isolating_eraser:gravity_jade_pendant`，在工具创造物品栏中获取，也可使用 `/give`。设计未定义合成配方，因此不添加配方。
+- 只有 Curios 的实际 `necklace` 槽启用能力；手持、背包和饰品外观槽不会启用。复用 Curios 的项链槽预设，不增加同名槽数量。
+- 被动感知：佩戴者本地每 2 tick 检测附近 16 格 AABB 内实体的位置变化；阈值 0.02 格/tick，停下约 4 tick 消失，最多显示最近 64 个。生物显示白色模型轮廓，其他实体显示白色边框。
+- 按住 `V` 预览 5×5 的范围，滚轮每格调整 1 方块距离（默认 8，范围 3–20），松开施放。`Esc`、右键、打开界面、死亡、摘下玉佩和切换维度取消；按键可在原版设置中修改。
+- 重力场默认高 5 格、持续 15 秒：范围内所有生物包含施法者受缓慢 II，每秒承受 1 点普通伤害。护甲、无敌帧及创造免疫仍按原版规则处理。成功施放后冷却 30 秒，拒绝施放不消耗冷却。
+- 创建时仅压毁一次标签内的脆弱方块；每列只考虑最高的暴露土层，以 25% 概率破坏，不递归挖掘。方块实体、不可破坏方块与取消 Forge 方块破坏事件的领地保护会保留。
+- 参数位于世界目录 `serverconfig/sound_isolating_eraser-server.toml`；`gravity_fragile` 和 `gravity_surface_fragile` 方块标签可由数据包扩展。
+- 服务端接收客户端预览中心 `BlockPos` 与维度，不再按当前朝向重算选区；校验装备、存活、冷却、距离、边界和区块加载状态，客户端不执行伤害或破坏。
+
+玉佩的 32×32 像素纹理由 `gradle/gravity-texture.gradle` 在资源处理前自动生成，不需要额外图片工具。
+功能分支的 `Gravity Jade Validation` 工作流构建 jar 并运行原有及新增的 Forge GameTest，不发布 Release。
+工作流还会启动两个隔离的实际 Forge 客户端，以 X11 原生按键、滚轮和鼠标输入验证穿墙模型轮廓、预览与取消、可重绑定按键、私有感知隔离及公共重力场同步，并保存截图与日志证据。

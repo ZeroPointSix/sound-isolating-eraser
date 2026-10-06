@@ -1,0 +1,31 @@
+// Deterministic 32x32 item sprite, generated without a Python or image-library dependency.
+def jadeTexture = tasks.register('generateGravityTexture') {
+    def root = layout.buildDirectory.dir('generated/gravity-assets')
+    outputs.dir(root)
+    doLast {
+        def image = new java.awt.image.BufferedImage(32, 32, java.awt.image.BufferedImage.TYPE_INT_ARGB)
+        def graphics = image.createGraphics()
+        graphics.setColor(new java.awt.Color(48, 52, 54))
+        graphics.drawLine(8, 2, 15, 11)
+        graphics.drawLine(23, 2, 16, 11)
+        graphics.setColor(new java.awt.Color(112, 137, 132))
+        graphics.fillRect(10, 10, 12, 17)
+        graphics.fillRect(11, 9, 10, 19)
+        graphics.setColor(new java.awt.Color(186, 204, 194))
+        graphics.fillRect(11, 10, 10, 16)
+        graphics.setColor(new java.awt.Color(219, 231, 219))
+        graphics.fillRect(12, 11, 8, 13)
+        graphics.setColor(new java.awt.Color(199, 216, 205))
+        graphics.drawLine(13, 18, 18, 16)
+        graphics.drawLine(14, 20, 18, 21)
+        graphics.setColor(new java.awt.Color(141, 161, 151))
+        graphics.fillRect(15, 11, 2, 2)
+        graphics.setColor(new java.awt.Color(48, 52, 54))
+        graphics.fillRect(15, 11, 1, 2)
+        graphics.dispose()
+        def output = root.get().file('assets/sound_isolating_eraser/textures/item/gravity_jade_pendant.png').asFile
+        output.parentFile.mkdirs()
+        javax.imageio.ImageIO.write(image, 'png', output)
+    }
+}
+sourceSets.main.resources.srcDir(jadeTexture)

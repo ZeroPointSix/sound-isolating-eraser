@@ -1,0 +1,22 @@
+// Opt-in test mod: never included in the distributable jar or normal launches.
+sourceSets {
+    gravityTest {
+        compileClasspath += sourceSets.main.compileClasspath + sourceSets.main.output
+        runtimeClasspath += sourceSets.main.runtimeClasspath + sourceSets.main.output
+    }
+}
+
+minecraft.runs.configureEach {
+    mods {
+        gravity_qa { source sourceSets.gravityTest }
+    }
+}
+
+tasks.register('writeGravityTestClasspath') {
+    dependsOn 'classes', 'gravityTestClasses', 'genVSCodeRuns'
+    def target = layout.buildDirectory.file('gravity-test-classpath.txt')
+    outputs.file(target)
+    doLast {
+        target.get().asFile.text = sourceSets.gravityTest.runtimeClasspath.asPath
+    }
+}

@@ -2,5 +2,10 @@
   "item.sound_isolating_eraser.sound_isolating_eraser": "Sound-Isolating Eraser",
   "item.sound_isolating_eraser.sound_isolating_eraser.no_space": "Not enough space to draw the wall",
   "block.sound_isolating_eraser.eraser_anchor": "Eraser Anchor",
-  "block.sound_isolating_eraser.eraser_barrier": "Eraser Barrier"
+  "block.sound_isolating_eraser.eraser_barrier": "Eraser Barrier",
+  "item.sound_isolating_eraser.gravity_jade_pendant": "Gravity Jade Pendant",
+  "key.sound_isolating_eraser.gravity_target": "Gravity Targeting",
+  "key.categories.sound_isolating_eraser": "Sound-Isolating Eraser",
+  "death.attack.gravity_crush": "%1$s was crushed by gravity",
+  "death.attack.gravity_crush.player": "%1$s was crushed by %2$s's gravity field"
 }

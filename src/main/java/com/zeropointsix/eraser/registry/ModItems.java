@@ -2,6 +2,7 @@ package com.zeropointsix.eraser.registry;
 
 import com.zeropointsix.eraser.ModMain;
 import com.zeropointsix.eraser.item.SoundIsolatingEraserItem;
+import com.zeropointsix.eraser.item.GravityJadePendantItem;
 import net.minecraft.world.item.Item;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -10,6 +11,9 @@ import net.minecraftforge.registries.RegistryObject;
 public final class ModItems {
     public static final DeferredRegister<Item> ITEMS =
             DeferredRegister.create(ForgeRegistries.ITEMS, ModMain.MOD_ID);
+
+    public static final RegistryObject<GravityJadePendantItem> GRAVITY_JADE_PENDANT =
+            ITEMS.register("gravity_jade_pendant", GravityJadePendantItem::new);
 
     public static final RegistryObject<SoundIsolatingEraserItem> SOUND_ISOLATING_ERASER =
             ITEMS.register("sound_isolating_eraser",
