@@ -298,6 +298,8 @@ public final class GravityTestServer {
 
     private static void addSenseFixture(ServerLevel level, Entity entity, String kind) {
         if (entity == null) throw new IllegalStateException("Missing fixture " + kind);
+        // ItemEntity starts with random launch velocity; clear it before the spawn packet.
+        entity.setDeltaMovement(Vec3.ZERO);
         entity.setNoGravity(true);
         entity.noPhysics = true;
         entity.setSilent(true);
