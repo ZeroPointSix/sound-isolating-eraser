@@ -159,16 +159,19 @@ public final class WingsQaClient {
                 nativeInput("key", "Escape");
             }
             case 333 -> command(mc, "wearerDone"); // observer flank-tracking window opens
-            case 335 -> command(mc, "flood"); // 佩戴者基本静止 → 水体将其包住
-            case 343 -> require(p.isInWater()
-                            && info(p) != null && info(p).deployed(),
-                    "entering water while deployed keeps wings open (Notion §4.6)");
+            // Flood used to run at t335 (wearerDone+2). Observer only screenshots at
+            // wearerDone+15, so CI "wearer-wings" evidence was a 3x3 water cube.
+            // Keep storm-flight in air first; submerge after the observer visual window.
             case 345 -> command(mc, "storm");
-            case 346 -> nativeInput("keydown", "w"); // 从水中直接神霄飞出
+            case 346 -> nativeInput("keydown", "w");
             case 352 -> capture(mc, "storm-flight");
             case 356 -> nativeInput("keyup", "w");
-            case 358 -> command(mc, "itemDrop");
-            case 368 -> stage = 99;
+            case 390 -> command(mc, "flood"); // after observer since>35 timeout (~t368)
+            case 398 -> require(p.isInWater()
+                            && info(p) != null && info(p).deployed(),
+                    "entering water while deployed keeps wings open (Notion §4.6)");
+            case 400 -> command(mc, "itemDrop");
+            case 410 -> stage = 99;
             default -> {
                 // xdotool 原生输入偶发丢失：重发按键，成功即止。重试间隔 ≥20t，保证
                 // 上一轮 sync 已回——间隔过近的双击会读到过期状态把展开切换成收起。

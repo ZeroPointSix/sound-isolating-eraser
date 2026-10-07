@@ -46,15 +46,19 @@ public class WingsItemRenderer extends BlockEntityWithoutLevelRenderer {
             }
             case FIRST_PERSON_LEFT_HAND, FIRST_PERSON_RIGHT_HAND -> {
                 boolean left = ctx == ItemDisplayContext.FIRST_PERSON_LEFT_HAND;
-                pose.translate(left ? 0.15f : -0.15f, 0.30f, 0);
-                pose.scale(1.2f, 1.2f, 1.2f);
-                pose.mulPose(Axis.YP.rotationDegrees(left ? -40f : 40f));
+                // builtin/entity sits near the crosshair; push the 0.4 miniature into
+                // the hand and yaw/pitch so the wing face is seen, not the edge.
+                pose.translate(left ? -0.22f : 0.22f, -0.28f, -0.18f);
+                pose.scale(2.2f, 2.2f, 2.2f);
+                pose.mulPose(Axis.XP.rotationDegrees(22f));
+                pose.mulPose(Axis.YP.rotationDegrees(left ? -62f : 62f));
+                pose.mulPose(Axis.ZP.rotationDegrees(left ? 8f : -8f));
             }
-            default -> { // 第一/第三人称手持、头部
-                boolean left = ctx == ItemDisplayContext.FIRST_PERSON_LEFT_HAND
-                        || ctx == ItemDisplayContext.THIRD_PERSON_LEFT_HAND;
-                pose.scale(1.2f, 1.2f, 1.2f);
-                pose.mulPose(Axis.YP.rotationDegrees(left ? -40f : 40f));
+            default -> { // 第三人称手持、头部
+                boolean left = ctx == ItemDisplayContext.THIRD_PERSON_LEFT_HAND;
+                pose.scale(1.6f, 1.6f, 1.6f);
+                pose.mulPose(Axis.XP.rotationDegrees(12f));
+                pose.mulPose(Axis.YP.rotationDegrees(left ? -50f : 50f));
             }
         }
 
