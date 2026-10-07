@@ -10,12 +10,14 @@ import net.minecraft.world.entity.player.Player;
 /** Client-side mirror of server wing states (for render + HUD). */
 public final class WingsClientData {
     public record WingInfo(boolean deployed, int tier, long chargedUntil, long blinkCooldownUntil,
-                           float deployAnim, int lastSeenTier, double hoverY) {
+                           long blinkLockUntil, float deployAnim, int lastSeenTier, double hoverY) {
         public WingInfo withAnim(float a) {
-            return new WingInfo(deployed, tier, chargedUntil, blinkCooldownUntil, a, lastSeenTier, hoverY);
+            return new WingInfo(deployed, tier, chargedUntil, blinkCooldownUntil, blinkLockUntil,
+                    a, lastSeenTier, hoverY);
         }
         public WingInfo withTier(int t) {
-            return new WingInfo(deployed, tier, chargedUntil, blinkCooldownUntil, deployAnim, t, hoverY);
+            return new WingInfo(deployed, tier, chargedUntil, blinkCooldownUntil, blinkLockUntil,
+                    deployAnim, t, hoverY);
         }
     }
 
@@ -29,7 +31,7 @@ public final class WingsClientData {
             float anim = old == null ? (p.deployed() ? 0f : 1f) : old.deployAnim();
             int seen = old == null ? p.tier() : old.tier();
             return new WingInfo(p.deployed(), p.tier(), p.chargedUntil(),
-                    p.blinkCooldownUntil(), anim, seen, p.hoverY());
+                    p.blinkCooldownUntil(), p.blinkLockUntil(), anim, seen, p.hoverY());
         });
         Minecraft mc = Minecraft.getInstance();
         if (mc.player != null && mc.player.getId() == p.entityId()) {
@@ -51,15 +53,20 @@ public final class WingsClientData {
         int prev = w.lastSeenTier();
         STATES.put(p.entityId(), w.withTier(p.tier()));
         Minecraft mc = Minecraft.getInstance();
-        if (mc.player == null || mc.player.getId() != p.entityId() || mc.level == null) return;
+        if (mc.level == null) return;
+        // 远端玩家升快档也要播冲击环+音爆（位置用实体本身的，声音按世界坐标定位）
         if (p.tier() >= 2 && p.tier() > prev) {
-            WingsFlight.sonicBoom(mc.player);
+            Entity e = mc.level.getEntity(p.entityId());
+            if (e instanceof Player player) WingsFlight.sonicBoom(player);
         }
-        mc.player.displayClientMessage(
-                net.minecraft.network.chat.Component.translatable(
-                        "message.sound_isolating_eraser.tier",
-                        net.minecraft.network.chat.Component.translatable(
-                                "sound_isolating_eraser.tier." + p.tier())), true);
+        // 只有本机玩家弹档位提示
+        if (mc.player != null && mc.player.getId() == p.entityId()) {
+            mc.player.displayClientMessage(
+                    net.minecraft.network.chat.Component.translatable(
+                            "message.sound_isolating_eraser.tier",
+                            net.minecraft.network.chat.Component.translatable(
+                                    "sound_isolating_eraser.tier." + p.tier())), true);
+        }
     }
 
     public static WingInfo get(int entityId) {
@@ -83,6 +90,6 @@ public final class WingsClientData {
     public static WingInfo localOrFallback(Player p) {
         WingInfo w = get(p);
         if (w != null) return w;
-        return new WingInfo(false, 0, 0, 0, 1f, 0, 0);
+        return new WingInfo(false, 0, 0, 0, 0, 1f, 0, 0);
     }
 }

@@ -10,6 +10,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.Mth;
 import net.minecraft.client.player.Input;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
 
 /** Client-authoritative wing flight physics, mirroring the server state. */
@@ -24,8 +25,9 @@ public final class WingsFlight {
         }
         p.setNoGravity(true);
 
-        // auto-retract when landed (server does the same; this is immediate UX)
-        if (p.onGround() || p.isInWater()) {
+        // auto-retract when landed (server does the same; this is immediate UX)。
+        // 水下是合法飞行分支（Notion §4.6 水下允许飞），不收翼
+        if (p.onGround()) {
             com.zeropointsix.eraser.wings.net.WingsNet.CHANNEL.sendToServer(
                     new com.zeropointsix.eraser.wings.net.SetDeployedPacket(false));
             p.setNoGravity(false);
@@ -77,8 +79,26 @@ public final class WingsFlight {
             speedBurst(p, true);
         }
 
-        spawnFlightParticles(p, tier, next);
+        spawnTrailFx(p, tier, next);
         ambientSound(p, tier);
+    }
+
+    /**
+     * 远端玩家的持续飞行特效（风带/电弧/尾迹）。观察者客户端按同步状态本地生成，
+     * 频率减半——纯表现，不影响状态。
+     */
+    public static void remoteFx(Player p, WingsClientData.WingInfo info) {
+        if (!info.deployed()) return;
+        Vec3 v = p.getDeltaMovement();
+        if (p.level().getGameTime() % 3 != 0) return;
+        spawnTrailFx(p, info.tier(), v);
+        // 风声：播放位置在远端玩家身上（方向性声音），音量降一档
+        if (p.tickCount % 20 == 0 && v.length() > 0.15) {
+            int tier = info.tier();
+            p.level().playLocalSound(p.getX(), p.getY(), p.getZ(),
+                    ModSounds.WIND_LOOP.get(), p.getSoundSource(),
+                    0.25f + tier * 0.12f, 1.0f + tier * 0.05f, false);
+        }
     }
 
     private static Vec3 hoverWish(LocalPlayer p, Input input, WingsClientData.WingInfo info) {
@@ -121,7 +141,7 @@ public final class WingsFlight {
         return new Vec3(x, 0, z);
     }
 
-    private static void spawnFlightParticles(LocalPlayer p, int tier, Vec3 v) {
+    private static void spawnTrailFx(Player p, int tier, Vec3 v) {
         if (p.level().getGameTime() % 2 != 0) return;
         double speed = v.length();
         if (speed < 1.0) return;
@@ -147,8 +167,8 @@ public final class WingsFlight {
         }
     }
 
-    /** 突破音爆/冲霄一瞬：冲击环 + 雷鸣，由档位提升触发。 */
-    public static void sonicBoom(LocalPlayer p) {
+    /** 突破音爆/冲霄一瞬：冲击环 + 雷鸣，由档位提升触发（本机与远端玩家通用）。 */
+    public static void sonicBoom(Player p) {
         for (int i = 0; i < 8; i++) {
             double a = i * Math.PI / 4;
             p.level().addParticle(ModParticles.IMPACT_RING.get(),

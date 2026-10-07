@@ -88,7 +88,8 @@ public final class WingsClientEvents {
             }
             WingsFlight.tick(p, w != null ? w
                     : WingsClientData.localOrFallback(p));
-            // slow other players' anims too (for render)
+            // slow other players' anims too (for render)；并按同步状态给远端玩家
+            // 本地生成持续飞行特效/风声（服务器不广播普通飞行 FX，客户端各自表现）
             for (Player other : mc.level.players()) {
                 if (other == p) continue;
                 WingsClientData.WingInfo o = WingsClientData.get(other);
@@ -97,6 +98,7 @@ public final class WingsClientEvents {
                     float t = o.deployed() ? 1f : 0f;
                     float na = Math.max(0, Math.min(1, a + (t > a ? 1f / 6f : -1f / 6f)));
                     if (na != a) WingsClientData.setAnim(other.getId(), na);
+                    WingsFlight.remoteFx(other, o);
                 }
             }
         }

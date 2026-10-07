@@ -39,6 +39,8 @@ public final class WingsQaServer {
     private static int startedAt = -1;
     private static int stopAt = -1;
     private static int trackUntil = -1;
+    private static boolean trackWearer = true;
+    private static net.minecraft.world.phys.Vec3 trackTarget;
     private static boolean hungerChecked;
     private static ServerPlayer wearerRef;
 
@@ -96,12 +98,19 @@ public final class WingsQaServer {
         } catch (Throwable failure) {
             fail(server, failure.toString());
         }
-        // Keep the observer glued to the wearer's flank during the screenshot window;
-        // the wearer is client-authoritative in flight, so its own client may keep drifting.
+        // Keep the observer glued to the track target (wearer flank / dropped item)
+        // during the screenshot window; the wearer is client-authoritative in flight,
+        // so its own client may keep drifting.
         if (server.getTickCount() < trackUntil) {
-            ServerPlayer wearer = server.getPlayerList().getPlayerByName(WEARER);
             ServerPlayer observer = server.getPlayerList().getPlayerByName(OBSERVER);
-            if (wearer != null && observer != null) faceWearer(wearer, observer);
+            if (observer != null) {
+                if (trackWearer) {
+                    ServerPlayer wearer = server.getPlayerList().getPlayerByName(WEARER);
+                    if (wearer != null) faceAt(wearer, observer);
+                } else if (trackTarget != null) {
+                    faceAt(trackTarget, observer);
+                }
+            }
         }
     }
 
@@ -164,9 +173,61 @@ public final class WingsQaServer {
                 ServerPlayer wearer = server.getPlayerList().getPlayerByName(WEARER);
                 ServerPlayer observer = server.getPlayerList().getPlayerByName(OBSERVER);
                 if (wearer != null && observer != null) {
-                    faceWearer(wearer, observer);
+                    faceAt(wearer, observer);
+                    trackWearer = true;
                     trackUntil = server.getTickCount() + 30;
                 }
+            }
+            case "storm" -> {
+                // QA override: force wearer into STORM tier for remote-FX / FOV evidence
+                ServerPlayer wearer = server.getPlayerList().getPlayerByName(WEARER);
+                if (wearer != null && com.zeropointsix.eraser.wings.WingsState.deployed(wearer)) {
+                    com.zeropointsix.eraser.wings.WingsState.setTier(wearer,
+                            com.zeropointsix.eraser.wings.WingsState.STORM);
+                    com.zeropointsix.eraser.wings.net.WingsNet.syncToTracking(wearer);
+                    check(true, "wearer forced to STORM for observer FX evidence");
+                }
+            }
+            case "handitem" -> {
+                // Wings in main hand → first-person held-item render evidence
+                ServerPlayer wearer = server.getPlayerList().getPlayerByName(WEARER);
+                if (wearer != null) {
+                    wearer.getInventory().setItem(0,
+                            new ItemStack(ModItems.WIND_THUNDER_WINGS.get()));
+                    wearer.getInventory().selected = 0;
+                }
+            }
+            case "flood" -> {
+                // 水下飞行回归：佩戴者悬停中被水体包住，展开态必须保持
+                ServerPlayer wearer = server.getPlayerList().getPlayerByName(WEARER);
+                if (wearer != null) {
+                    ServerLevel wlevel = wearer.serverLevel();
+                    BlockPos c = wearer.blockPosition();
+                    for (int dx = -1; dx <= 1; dx++) {
+                        for (int dy = -1; dy <= 1; dy++) {
+                            for (int dz = -1; dz <= 1; dz++) {
+                                wlevel.setBlockAndUpdate(c.offset(dx, dy, dz),
+                                        Blocks.WATER.defaultBlockState());
+                            }
+                        }
+                    }
+                    check(true, "wearer submerged in water while deployed");
+                }
+            }
+            case "itemDrop" -> {
+                // 掉落物渲染证据：把一枚风雷翅落到固定点，观察者贴脸看
+                ServerLevel wlevel = server.overworld();
+                net.minecraft.world.entity.item.ItemEntity drop =
+                        new net.minecraft.world.entity.item.ItemEntity(wlevel,
+                                5.5, 65.1, 5.5,
+                                new ItemStack(ModItems.WIND_THUNDER_WINGS.get()));
+                drop.setDeltaMovement(0, 0, 0);
+                wlevel.addFreshEntity(drop);
+                // 尺寸参照物：掉落物旁立一块整石，截图可量出 0.55 格收翼实际大小
+                wlevel.setBlockAndUpdate(new BlockPos(6, 65, 5), Blocks.STONE.defaultBlockState());
+                trackTarget = new net.minecraft.world.phys.Vec3(5.5, 65.1, 5.5);
+                trackWearer = false;
+                trackUntil = server.getTickCount() + 40;
             }
             default -> { }
         }
@@ -174,11 +235,18 @@ public final class WingsQaServer {
         return 1;
     }
 
-    private static void faceWearer(ServerPlayer wearer, ServerPlayer observer) {
-        double ox = wearer.getX() + 4;
-        double oy = wearer.getY() + 1;
-        double oz = wearer.getZ() + 4;
-        double dx = wearer.getX() - ox, dy = wearer.getY() - oy, dz = wearer.getZ() - oz;
+    /** Teleport the observer to a flank vantage facing the given entity. */
+    private static void faceAt(net.minecraft.world.entity.Entity target, ServerPlayer observer) {
+        faceAt(new net.minecraft.world.phys.Vec3(target.getX(),
+                target.getY() + target.getBbHeight() * 0.6, target.getZ()), observer);
+    }
+
+    /** Teleport the observer ~4.5 blocks off the target, looking straight at it. */
+    private static void faceAt(net.minecraft.world.phys.Vec3 target, ServerPlayer observer) {
+        double ox = target.x + 3.2;
+        double oy = target.y + 1.2;
+        double oz = target.z + 3.2;
+        double dx = target.x - ox, dy = target.y - oy, dz = target.z - oz;
         float yaw = (float) Math.toDegrees(Math.atan2(-dx, dz));
         float pitch = (float) (-Math.toDegrees(Math.atan2(dy, Math.hypot(dx, dz))));
         observer.teleportTo(observer.serverLevel(), ox, oy, oz, yaw, pitch);

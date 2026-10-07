@@ -4,15 +4,19 @@ import com.mojang.blaze3d.platform.NativeImage;
 import com.zeropointsix.eraser.client.WingsClientData;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.ClientChatReceivedEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+import org.joml.Quaternionf;
+import org.joml.Vector3f;
 import org.lwjgl.glfw.GLFW;
 
 /**
@@ -29,11 +33,15 @@ public final class WingsQaClient {
     private static int ticks;
     private static int totalTicks;
     private static int wearerDoneAt = -1;
+    private static int itemDropAt = -1;
+    private static boolean wearerVisualOk;
+    private static boolean remoteFxOk;
     private static boolean finished;
     private static int foodAtDeploy = -1;
     private static double markX = Double.NaN;
     private static double markZ = Double.NaN;
     private static NativeImage stowedFrame;
+    private static int deployAnimFrame = -1;
 
     @SubscribeEvent
     public static void chat(ClientChatReceivedEvent event) {
@@ -42,6 +50,7 @@ public final class WingsQaClient {
         if (message.startsWith("WINGS_QA_PHASE:")) {
             phase = message.substring("WINGS_QA_PHASE:".length());
             if (phase.equals("wearerDone")) wearerDoneAt = ticks;
+            if (phase.equals("itemDrop")) itemDropAt = ticks;
             event.setCanceled(true);
         }
     }
@@ -121,6 +130,9 @@ public final class WingsQaClient {
             }
             case 282 -> nativeInput("key", "r");
             case 296 -> require(moved(p) < 2.0, "4th chained blink is locked out");
+            case 297 -> require(info(p) != null
+                            && info(p).blinkLockUntil() > mc.level.getGameTime(),
+                    "160t chain lock is synced to HUD data (blinkLockUntil)");
             case 298 -> command(mc, "zap");
             case 320 -> {
                 require(p.getFoodData().getFoodLevel() == 20,
@@ -128,11 +140,27 @@ public final class WingsQaClient {
                 require(info(p) != null && info(p).chargedUntil() > mc.level.getGameTime(),
                         "strike grants charged window (synced to HUD orb)");
             }
-            case 330 -> {
-                capture(mc, "charged-hud");
-                command(mc, "wearerDone");
+            case 322 -> command(mc, "handitem");
+            case 326 -> {
+                capture(mc, "handheld");
+                require(handItemDrawn(mc), "held wings render as 3D item in first person");
             }
-            case 340 -> stage = 99;
+            case 328 -> nativeInput("key", "e");
+            case 332 -> {
+                capture(mc, "inventory");
+                nativeInput("key", "Escape");
+            }
+            case 333 -> command(mc, "wearerDone"); // observer flank-tracking window opens
+            case 335 -> command(mc, "flood"); // 佩戴者基本静止 → 水体将其包住
+            case 343 -> require(p.isInWater()
+                            && info(p) != null && info(p).deployed(),
+                    "entering water while deployed keeps wings open (Notion §4.6)");
+            case 345 -> command(mc, "storm");
+            case 346 -> nativeInput("keydown", "w"); // 从水中直接神霄飞出
+            case 352 -> capture(mc, "storm-flight");
+            case 356 -> nativeInput("keyup", "w");
+            case 358 -> command(mc, "itemDrop");
+            case 368 -> stage = 99;
             default -> {
                 // xdotool 原生输入偶发丢失：重发按键，成功即止。重试间隔 ≥20t，保证
                 // 上一轮 sync 已回——间隔过近的双击会读到过期状态把展开切换成收起。
@@ -148,6 +176,13 @@ public final class WingsQaClient {
                     // 整串重发：上一串若部分丢失，链窗已过期可重新开始
                     nativeInput("key", "--delay", "80", "r", "r", "r", "r");
                 }
+                // 收展连续帧：展开动画过渡中逐 tick 截图（deployAnim 0→1 ≈ 6 tick）
+                WingsClientData.WingInfo w = info(p);
+                if (w != null && w.deployed() && w.deployAnim() > 0.01f
+                        && w.deployAnim() < 0.99f && deployAnimFrame < 3) {
+                    deployAnimFrame++;
+                    capture(mc, "deploy-frame-" + deployAnimFrame);
+                }
             }
         }
     }
@@ -157,13 +192,97 @@ public final class WingsQaClient {
         for (Player other : mc.level.players()) {
             if (other.getName().getString().equals(WingsQaServer.WEARER)) remote = other;
         }
-        if (remote == null) return;
         // Multiplayer wing-state sync: remote deployed/tier arrive via SyncWingsPacket.
-        WingsClientData.WingInfo w = WingsClientData.get(remote);
-        if (w != null && w.deployed() && wearerDoneAt > 0 && ticks - wearerDoneAt > 8) {
-            capture(mc, "wearer-wings");
+        if (remote != null && wearerDoneAt > 0) {
+            WingsClientData.WingInfo w = WingsClientData.get(remote);
+            long since = ticks - wearerDoneAt;
+            if (since >= 15 && !wearerVisualOk) {
+                // 状态同步和画面证据分开：投影进视锥 → ROI 非天空像素 → 才记为视觉证据。
+                // 客户端插值/跟拍可能要几 tick 才到位，窗口内重试；超时才判失败
+                double[] proj = projectToScreen(mc, remote);
+                if (proj != null) {
+                    int contrast = roiContrast(mc, proj[0], proj[1], 14);
+                    if (contrast > 30) {
+                        capture(mc, "wearer-wings");
+                        System.out.println("WINGS_E2E_ASSERT wingsobserver: "
+                                + "wearer silhouette verified in frustum at "
+                                + (int) proj[0] + "," + (int) proj[1]
+                                + " contrast=" + contrast);
+                        wearerVisualOk = true;
+                    }
+                }
+                if (since > 35 && !wearerVisualOk) {
+                    capture(mc, "wearer-wings-failed");
+                    throw new AssertionError("wearer not verifiably visible on observer screen"
+                            + " proj=" + java.util.Arrays.toString(proj)
+                            + " cam=" + mc.gameRenderer.getMainCamera().getPosition()
+                            + " wearer=" + remote.position());
+                }
+            }
+            if (since > 15 && since <= 30 && !remoteFxOk) {
+                // 远端飞行特效：STORM 飞行中观察者客户端应能看到持续粒子生成
+                String counts = mc.particleEngine.countParticles();
+                System.out.println("WINGS_OBSERVER_PARTICLES " + counts);
+                if (w != null && w.tier() == 3 && counts.matches(".*[1-9].*")) {
+                    remoteFxOk = true;
+                    capture(mc, "wearer-storm-fx");
+                    System.out.println("WINGS_E2E_ASSERT wingsobserver: "
+                            + "remote wearer storm flight emits visible particles");
+                }
+            }
+        }
+        if (itemDropAt > 0 && ticks - itemDropAt == 20) {
+            // 掉落物：服务端把观察者传送到正对掉落翅膀的位置，断言画面中心 ROI
+            // 出现非天空对比度（0.55 格收翼掉落物），才记录截图证据
+            double fbW = mc.getMainRenderTarget().width;
+            double fbH = mc.getMainRenderTarget().height;
+            capture(mc, "ground-item");
+            require(roiContrast(mc, fbW / 2, fbH / 2, 40) > 25,
+                    "dropped wings item renders at screen center (ROI contrast)");
             mark("wings-observer.pass");
             finished = true;
+        }
+    }
+
+    /** Project a world position to framebuffer pixels; null when behind/outside view. */
+    private static double[] projectToScreen(Minecraft mc, net.minecraft.world.entity.Entity e) {
+        Camera cam = mc.gameRenderer.getMainCamera();
+        Vec3 rel = e.position().add(0, e.getBbHeight() * 0.6, 0).subtract(cam.getPosition());
+        // camera.rotation() 是 billboard 的 view→world 朝向；world→view 取其共轭
+        // （conjugate 原地修改，必须复制一份——不要污染相机自身朝向）
+        Vector3f v = new Vector3f((float) rel.x, (float) rel.y, (float) rel.z);
+        new Quaternionf(cam.rotation()).conjugate().transform(v);
+        // 注意：MC 的 view 空间前向是 +Z（rotation() 把 view +Z 映到世界前向），
+        // 不是 GL 惯例的 -Z——可见 ⇔ v.z > 0
+        if (v.z <= 0.05f) return null;
+        int fbW = mc.getMainRenderTarget().width;
+        int fbH = mc.getMainRenderTarget().height;
+        double fovV = Math.toRadians(mc.options.fov().get());
+        double tanV = Math.tan(fovV / 2);
+        double tanH = tanV * ((double) fbW / fbH);
+        double ndcX = (v.x / v.z) / tanH;
+        double ndcY = (v.y / v.z) / tanV;
+        if (Math.abs(ndcX) > 1 || Math.abs(ndcY) > 1) return null;
+        return new double[]{(ndcX + 1) / 2 * fbW, (1 - ndcY) / 2 * fbH, -v.z};
+    }
+
+    /** Max channel delta inside a small box — nonzero means non-sky pixels present. */
+    private static int roiContrast(Minecraft mc, double cx, double cy, int r) throws Exception {
+        try (NativeImage img = Screenshot.takeScreenshot(mc.getMainRenderTarget())) {
+            int lo = Integer.MAX_VALUE, hi = Integer.MIN_VALUE;
+            for (int dy = -r; dy <= r; dy += 2) {
+                for (int dx = -r; dx <= r; dx += 2) {
+                    int x = (int) cx + dx, y = (int) cy + dy;
+                    if (x < 0 || y < 0 || x >= img.getWidth() || y >= img.getHeight()) continue;
+                    int argb = img.getPixelRGBA(x, y);
+                    int lum = ((argb >> 16) & 255) + ((argb >> 8) & 255) + (argb & 255);
+                    lo = Math.min(lo, lum);
+                    hi = Math.max(hi, lum);
+                }
+            }
+            int contrast = lo == Integer.MAX_VALUE ? 0 : hi - lo;
+            System.out.println("WINGS_ROI_CONTRAST @" + (int) cx + "," + (int) cy + "=" + contrast);
+            return contrast;
         }
     }
 
@@ -174,6 +293,25 @@ public final class WingsQaClient {
 
     private static double moved(Player p) {
         return Math.hypot(p.getX() - markX, p.getZ() - markZ);
+    }
+
+    private static boolean handItemDrawn(Minecraft mc) {
+        // 手持判定：第一人称下手持物品画在右下象限；对比截图该区域是否非空
+        try (NativeImage img = Screenshot.takeScreenshot(mc.getMainRenderTarget())) {
+            int w = img.getWidth(), h = img.getHeight();
+            int lo = Integer.MAX_VALUE, hi = Integer.MIN_VALUE;
+            for (int dy = 0; dy < h / 4; dy += 3) {
+                for (int dx = 0; dx < w / 4; dx += 3) {
+                    int argb = img.getPixelRGBA(w * 3 / 4 + dx, h * 3 / 4 + dy);
+                    int lum = ((argb >> 16) & 255) + ((argb >> 8) & 255) + (argb & 255);
+                    lo = Math.min(lo, lum);
+                    hi = Math.max(hi, lum);
+                }
+            }
+            int contrast = hi - lo;
+            System.out.println("WINGS_HAND_ROI contrast=" + contrast);
+            return contrast > 20;
+        }
     }
 
     private static boolean hudDrawn(Minecraft mc) {

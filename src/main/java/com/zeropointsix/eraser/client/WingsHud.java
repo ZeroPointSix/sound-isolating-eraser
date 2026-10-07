@@ -3,6 +3,7 @@ package com.zeropointsix.eraser.client;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.zeropointsix.eraser.ModMain;
 import com.zeropointsix.eraser.client.WingsClientData;
+import com.zeropointsix.eraser.wings.WingsConfig;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.resources.ResourceLocation;
@@ -36,12 +37,17 @@ public final class WingsHud {
         g.blit(ATLAS, x, y, tier * 16, 0, 16, 16, 64, 64);
         // slot1: wing emblem
         g.blit(ATLAS, x + 16, y, 0, 16, 16, 16, 64, 64);
-        // slot2: blink cooldown — ready ring (16,16); cooldown = dim disc reveal (32,16)
+        // slot2: blink cooldown — ready ring (16,16); cooldown = dim disc reveal (32,16)。
+        // 有效截止 = max(普通冷却, 链满长锁)：连闪打满后长锁也持续显示，不能 2s 就假就绪
         long game = mc.level.getGameTime();
-        long until = info.blinkCooldownUntil();
+        long until = Math.max(info.blinkCooldownUntil(), info.blinkLockUntil());
         g.blit(ATLAS, x + 32, y, 16, 16, 16, 16, 64, 64);
         if (until > game) {
-            float ratio = Math.min(1f, (until - game) / 160f);
+            // 分母按当前生效的冷却类型取配置值，不写死 160
+            long span = Math.max(1, info.blinkLockUntil() > info.blinkCooldownUntil()
+                    ? WingsConfig.SERVER.blinkChainCooldownTicks.get()
+                    : WingsConfig.SERVER.blinkCooldownTicks.get());
+            float ratio = Math.min(1f, (until - game) / (float) span);
             int px = Math.max(1, (int) (ratio * 14));
             g.blit(ATLAS, x + 32, y + 16 - px, 32, 16 + (14 - px), 16, px, 64, 64);
         }

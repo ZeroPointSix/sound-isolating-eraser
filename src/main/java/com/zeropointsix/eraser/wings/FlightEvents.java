@@ -32,6 +32,7 @@ import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.EntityStruckByLightningEvent;
+import net.minecraftforge.event.entity.EntityTeleportEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.event.entity.living.LivingFallEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
@@ -62,6 +63,9 @@ public final class FlightEvents {
         WingsState.setDeployed(p, want);
         if (want) {
             p.setNoGravity(true);
+            // 部署瞬间可能带着落体惯性——把超速治理基准锚在部署点，
+            // 否则下一 tick 的合法速度余量会被误判拉回
+            markTeleported(p);
             // 标记为鞘翅式飞行：原版服务器 floating 踢人与客户端动画都按 fall-flying 处理
             p.startFallFlying();
             WingsState.setHoverAnchor(p, p.getY());
@@ -104,21 +108,27 @@ public final class FlightEvents {
 
         // 链满长锁独立于窗口内剩余记录强制生效（此前可借窗口边缘残留记录绕过）
         if (now < WingsState.blinkLockUntil(p)) return;
-        long[] times = Arrays.stream(WingsState.blinkTimes(p))
-                .filter(t -> now - t < cfg.blinkChainWindowTicks.get()).toArray();
-        // 链闪窗口内允许连续雷瞬（不受普通冷却拦截）；窗口外的普通冷却才会挡下雷瞬
-        if (times.length >= cfg.blinkChainMax.get()) return;
-        if (now < WingsState.blinkCooldownUntil(p) && times.length == 0) return;
-
-        boolean chainFull = times.length >= cfg.blinkChainMax.get() - 1;
-        if (chainFull) {
-            WingsState.setBlinkLockUntil(p, now + cfg.blinkChainCooldownTicks.get());
-        } else {
-            WingsState.setBlinkCooldownUntil(p, now + cfg.blinkCooldownTicks.get());
+        // 固定链窗：锚定链内首闪，而不是滚动截取最近 N tick——否则以小于窗口的间隔
+        // 匀速续闪会让记录数永远凑不满上限，160t 长锁永远不会触发
+        long[] times = WingsState.blinkTimes(p);
+        if (times.length == 0 || now - times[0] >= cfg.blinkChainWindowTicks.get()) {
+            times = new long[0]; // 链窗已结束（或无链），整条作废
         }
-        long[] merged = Arrays.copyOf(times, times.length + 1);
-        merged[times.length] = now;
-        WingsState.setBlinkTimes(p, merged);
+        if (times.length == 0) {
+            // 新链第一闪：走普通冷却，成功后锚定链窗
+            if (now < WingsState.blinkCooldownUntil(p)) return;
+            WingsState.setBlinkTimes(p, new long[]{now});
+        } else if (times.length >= cfg.blinkChainMax.get() - 1) {
+            // 链内第 N 闪补满：本次放行，随后进入长锁（窗口随之作废）
+            WingsState.setBlinkLockUntil(p, now + cfg.blinkChainCooldownTicks.get());
+            WingsState.setBlinkTimes(p, new long[0]);
+        } else {
+            long[] merged = Arrays.copyOf(times, times.length + 1);
+            merged[times.length] = now;
+            WingsState.setBlinkTimes(p, merged);
+        }
+        // 每次成功雷遁都刷新普通冷却：链内连闪不读它，但窗口结束后下一闪要等它
+        WingsState.setBlinkCooldownUntil(p, now + cfg.blinkCooldownTicks.get());
 
         Vec3 eye = p.getEyePosition();
         Vec3 dir = p.getLookAngle().normalize();
@@ -137,8 +147,8 @@ public final class FlightEvents {
         spawnBlinkFx(level, eye, target);
         Vec3 from = p.position();
         p.teleportToWithTicket(target.x, target.y, target.z);
-        // 雷瞬是服务端位移：重置速度基准，避免被超速治理/撞墙探测误判
-        lastPositions.put(p.getUUID(), p.position());
+        // 雷瞬是服务端位移：标记授权传送，避免被超速治理/撞墙探测误判
+        markTeleported(p);
         p.resetFallDistance();
         p.setDeltaMovement(dir.scale(0.6));
 
@@ -219,6 +229,7 @@ public final class FlightEvents {
             }
             // 服务端速度/位移校验（Notion 要求服务端权威）+ 撞墙伤害。
             // 客户端权威飞行下 horizontalCollision 不可信，统一用每 tick 位置增量。
+            // 大位移不再有豁免档：合法传送/重生/跨维度在事件里显式 markTeleported 重置基准。
             {
                 Vec3 prev = lastPositions.put(p.getUUID(), p.position());
                 if (prev != null) {
@@ -227,35 +238,41 @@ public final class FlightEvents {
                     double dx = p.getX() - prev.x, dy = p.getY() - prev.y, dz = p.getZ() - prev.z;
                     double speedBpt3d = Math.sqrt(dx * dx + dy * dy + dz * dz);
                     double speedBpt = Math.hypot(dx, dz);
-                    // >20 格/t 一律视为传送/重生/跨维度位移，不做速度与撞墙判定
-                    if (speedBpt3d <= 20.0) {
-                        // 超速治理：超出档位上限 +50% 余量的位移拉回上一认可位置
-                        double allowedMs = cfg.tierSpeed(WingsState.tier(p)) * 1.5 + 5.0;
-                        if (speedBpt3d * 20.0 > allowedMs) {
-                            WingsState.setSpeedFlagAt(p, now);
-                            p.teleportToWithTicket(prev.x, prev.y, prev.z);
-                            p.setDeltaMovement(Vec3.ZERO);
-                            lastPositions.put(p.getUUID(), p.position());
-                            Long lastWarn = lastSpeedWarnAt.get(p.getUUID());
-                            if (lastWarn == null || now - lastWarn > 100) {
-                                lastSpeedWarnAt.put(p.getUUID(), now);
-                                p.displayClientMessage(Component.translatable(
-                                        "message.sound_isolating_eraser.speed_cap"), true);
-                            }
-                        } else if (cfg.wallDamageEnabled.get()
-                                && speedBpt * 20.0 > cfg.wallDamageThresholdSpeed.get()
-                                && (WingsState.wallHitAt(p) == 0
-                                        || now >= WingsState.wallHitAt(p) + 20)) {
-                            Vec3 dir = new Vec3(dx / speedBpt, 0, dz / speedBpt);
-                            BlockHitResult hit = level.clip(new ClipContext(p.getEyePosition(),
-                                    p.getEyePosition().add(dir.scale(1.4)),
-                                    ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, p));
-                            if (hit.getType() != HitResult.Type.MISS) {
-                                WingsState.setWallHitAt(p, now);
-                                p.hurt(level.damageSources().flyIntoWall(),
-                                        Math.min(cfg.wallDamageCap.get().floatValue(),
-                                                (float) (speedBpt * 2.0)));
-                            }
+                    // 超速治理：超出档位上限 +50% 余量的位移拉回上一认可位置
+                    double allowedMs = cfg.tierSpeed(WingsState.tier(p)) * 1.5 + 5.0;
+                    if (speedBpt3d * 20.0 > allowedMs) {
+                        WingsState.setSpeedFlagAt(p, now);
+                        p.teleportToWithTicket(prev.x, prev.y, prev.z);
+                        // FakePlayer 的 connection.teleport 是空实现：补一次直接落位，
+                        // 保证服务端视图坐标也回到上一认可位置（真实玩家已由包处理落位）
+                        p.setPos(prev.x, prev.y, prev.z);
+                        p.setDeltaMovement(Vec3.ZERO);
+                        lastPositions.put(p.getUUID(), p.position());
+                        Long lastWarn = lastSpeedWarnAt.get(p.getUUID());
+                        if (lastWarn == null || now - lastWarn > 100) {
+                            lastSpeedWarnAt.put(p.getUUID(), now);
+                            p.displayClientMessage(Component.translatable(
+                                    "message.sound_isolating_eraser.speed_cap"), true);
+                        }
+                    } else if (cfg.wallDamageEnabled.get()
+                            && speedBpt * 20.0 > cfg.wallDamageThresholdSpeed.get()
+                            && (WingsState.wallHitAt(p) == 0
+                                    || now >= WingsState.wallHitAt(p) + 20)) {
+                        // 扫掠碰撞：沿本 tick 实际水平位移向前扫（含 0.35 贴脸余量），
+                        // 且命中面法线必须迎向运动方向——靠近墙面刹停/贴墙滑行都不算撞墙
+                        Vec3 dir = new Vec3(dx / speedBpt, 0, dz / speedBpt);
+                        Vec3 eyeFrom = prev.add(0, p.getEyeHeight(), 0);
+                        BlockHitResult hit = level.clip(new ClipContext(eyeFrom,
+                                eyeFrom.add(dir.scale(speedBpt + 0.35)),
+                                ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, p));
+                        if (hit.getType() != HitResult.Type.MISS
+                                && dir.dot(Vec3.atLowerCornerOf(
+                                        hit.getDirection().getNormal())) < -0.3) {
+                            WingsState.setWallHitAt(p, now);
+                            double speedMs = speedBpt * 20.0;
+                            p.hurt(level.damageSources().flyIntoWall(),
+                                    (float) Math.min(cfg.wallDamageCap.get(),
+                                            (speedMs - cfg.wallDamageThresholdSpeed.get()) / 10.0));
                         }
                     }
                 }
@@ -305,9 +322,31 @@ public final class FlightEvents {
                 phantom.getX(), phantom.getY(), phantom.getZ(), drop));
     }
 
+    /** 服务端发起的位移（雷瞬/拉回等）调用：重置速度基准，下一 tick 不判超速。 */
+    public static void markTeleported(Player p) {
+        lastPositions.put(p.getUUID(), p.position());
+    }
+
+    /** 原版/指令传送（/tp、末影珍珠、紫颂果等）同样属于授权位移。 */
+    @SubscribeEvent
+    public static void onTeleport(EntityTeleportEvent event) {
+        lastPositions.remove(event.getEntity().getUUID());
+    }
+
+    @SubscribeEvent
+    public static void onRespawn(PlayerEvent.PlayerRespawnEvent event) {
+        lastPositions.remove(event.getEntity().getUUID());
+    }
+
+    @SubscribeEvent
+    public static void onDimensionChange(PlayerEvent.PlayerChangedDimensionEvent event) {
+        lastPositions.remove(event.getEntity().getUUID());
+    }
+
     /** 登录即发初始 WingInfo，否则客户端连一次部署手势都无法判定。 */
     @SubscribeEvent
     public static void onLogin(PlayerEvent.PlayerLoggedInEvent event) {
+        lastPositions.remove(event.getEntity().getUUID());
         if (event.getEntity() instanceof ServerPlayer sp) WingsNet.syncToTracking(sp);
     }
 

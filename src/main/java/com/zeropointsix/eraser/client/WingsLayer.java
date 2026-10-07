@@ -39,14 +39,16 @@ public class WingsLayer extends RenderLayer<AbstractClientPlayer,
     public void render(PoseStack pose, MultiBufferSource buffers, int light,
                        AbstractClientPlayer player, float limbSwing, float limbSwingAmount,
                        float tickDelta, float ageInTicks, float netHeadYaw, float headPitch) {
+        // 所有渲染路径都先验真实装备：未穿戴/已脱下绝不渲染（含收起翼）——
+        // 只靠同步状态会残留：没穿翅的玩家也可能有 WingInfo（同步包不区分穿戴）
+        if (!(player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST)
+                .getItem() instanceof com.zeropointsix.eraser.item.WindThunderWingsItem)) {
+            return;
+        }
         WingsClientData.WingInfo info = WingsClientData.get(player);
         if (info == null) {
-            // fallback: assume folded wings if item is worn (before first sync)
-            if (!(player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST)
-                    .getItem() instanceof com.zeropointsix.eraser.item.WindThunderWingsItem)) {
-                return;
-            }
-            info = new WingsClientData.WingInfo(false, 0, 0, 0, 0f, 0, 0);
+            // fallback: folded wings before first sync packet arrives
+            info = new WingsClientData.WingInfo(false, 0, 0, 0, 0, 0f, 0, 0);
         }
 
         Vec3 vel = player.getDeltaMovement();
@@ -56,17 +58,24 @@ public class WingsLayer extends RenderLayer<AbstractClientPlayer,
                 || (info.tier() >= com.zeropointsix.eraser.wings.WingsState.BOOST
                 && vel.length() > 0.4); // 8 m/s = 0.4 bpt
 
-        // 扇动：悬停大扇、巡航滑翔微振、疾风/神霄高频小扇；相位交给逐羽滞后
-        float flapPhase = ageInTicks * (float) Math.PI * 0.8f;
+        // 扇动：频率按秒换算（Notion §5.2 悬停约 0.8Hz 慢扇）；逐羽相位滞后由模型负责。
+        // 悬停大扇、御风滑翔微振、疾风快扇、神霄近乎硬翼滑翔（极速几乎不扇）
+        float seconds = ageInTicks / 20f;
+        float flapPhase = 0f;
         float flapAmp = 0f;
         if (info.deployed()) {
             int tier = info.tier();
             if (tier == com.zeropointsix.eraser.wings.WingsState.HOVER) {
+                flapPhase = seconds * (float) (Math.PI * 2) * 0.8f;
                 flapAmp = 0.6f;
-            } else if (tier >= com.zeropointsix.eraser.wings.WingsState.BOOST) {
+            } else if (tier == com.zeropointsix.eraser.wings.WingsState.BOOST) {
+                flapPhase = seconds * (float) (Math.PI * 2) * 4f;
                 flapAmp = 0.18f;
-                flapPhase = ageInTicks * (float) Math.PI * 1.6f;
+            } else if (tier == com.zeropointsix.eraser.wings.WingsState.STORM) {
+                flapPhase = seconds * (float) (Math.PI * 2) * 1.2f;
+                flapAmp = 0.05f;
             } else {
+                flapPhase = seconds * (float) (Math.PI * 2) * 0.8f;
                 flapAmp = 0.08f;
             }
         }

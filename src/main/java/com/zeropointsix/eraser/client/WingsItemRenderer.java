@@ -35,36 +35,39 @@ public class WingsItemRenderer extends BlockEntityWithoutLevelRenderer {
             this.model = new WingsModel(Minecraft.getInstance().getEntityModels()
                     .bakeLayer(WingsLayer.LOCATION));
         }
-        // 半展开英雄姿态：能看到覆羽带+飞羽层次
-        this.model.setupWings(0.8f, 0.15f, 0f, 0f, false);
+        // ModelPart 顶点已在 Cube.compile 内 /16 归一化为方块单位，这里只做展示尺度换算。
+        // 姿态取舍：收翼体 ~0.7 方块粗实（适合物品展示），半开翼是 2px 薄羽片
+        // （近 2 格翼展、任何角度都是一条线）——除展示框外一律用收起姿态
+        boolean hero = ctx == ItemDisplayContext.FIXED;
+        this.model.setupWings(hero ? 0.8f : 0f, hero ? 0.15f : 0f, 0f, 0f, false);
 
         pose.pushPose();
         pose.translate(0.5f, 0.5f, 0.5f); // item space: 0..1 盒中心
         switch (ctx) {
             case GUI -> {
-                pose.scale(0.055f, 0.055f, 0.055f);
-                pose.mulPose(Axis.XP.rotationDegrees(22f));
+                pose.scale(0.9f, 0.9f, 0.9f);
+                pose.mulPose(Axis.XP.rotationDegrees(24f));
                 pose.mulPose(Axis.YP.rotationDegrees(38f));
-                pose.translate(0f, -1.5f, 0f);
+                pose.translate(0f, -0.1f, 0f);
             }
             case GROUND -> {
                 float spin = (Minecraft.getInstance().level != null
                         ? Minecraft.getInstance().level.getGameTime() % 360 : 0) * 4f;
-                pose.scale(0.045f, 0.045f, 0.045f);
+                pose.scale(0.8f, 0.8f, 0.8f);
                 pose.mulPose(Axis.YP.rotationDegrees(spin));
-                pose.translate(0f, -1.0f, 0f);
+                pose.translate(0f, -0.15f, 0f);
             }
-            case FIXED -> { // 展示框
-                pose.scale(0.05f, 0.05f, 0.05f);
+            case FIXED -> { // 展示框：半开展翼英雄视角
+                pose.scale(0.42f, 0.42f, 0.42f);
                 pose.mulPose(Axis.YP.rotationDegrees(180f));
-                pose.translate(0f, -2.5f, 0f);
+                pose.translate(0f, -0.15f, 0f);
             }
             default -> { // 第一/第三人称手持、头部
                 boolean left = ctx == ItemDisplayContext.FIRST_PERSON_LEFT_HAND
                         || ctx == ItemDisplayContext.THIRD_PERSON_LEFT_HAND;
-                pose.scale(0.06f, 0.06f, 0.06f);
+                pose.scale(0.85f, 0.85f, 0.85f);
                 pose.mulPose(Axis.YP.rotationDegrees(left ? -40f : 40f));
-                pose.translate(0f, -2.0f, 0f);
+                pose.translate(0f, -0.15f, 0f);
             }
         }
 
