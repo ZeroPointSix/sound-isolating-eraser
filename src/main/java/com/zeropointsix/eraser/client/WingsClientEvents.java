@@ -15,6 +15,7 @@ import net.minecraftforge.client.event.EntityRenderersEvent;
 import net.minecraftforge.client.event.ComputeFovModifierEvent;
 import net.minecraftforge.client.event.RegisterGuiOverlaysEvent;
 import net.minecraftforge.client.event.RegisterParticleProvidersEvent;
+import net.minecraftforge.client.event.RegisterClientReloadListenersEvent;
 import net.minecraftforge.client.gui.overlay.VanillaGuiOverlay;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -38,10 +39,8 @@ public final class WingsClientEvents {
         }
 
         @SubscribeEvent
-        public static void layerDefs(EntityRenderersEvent.RegisterLayerDefinitions event) {
-            event.registerLayerDefinition(
-                    com.zeropointsix.eraser.client.WingsLayer.LOCATION,
-                    com.zeropointsix.eraser.client.WingsModel::createLayer);
+        public static void reloadModels(RegisterClientReloadListenersEvent event) {
+            event.registerReloadListener(WingsMesh.INSTANCE);
         }
 
         @SubscribeEvent
@@ -78,13 +77,7 @@ public final class WingsClientEvents {
             if (p == null) return;
             WingsClientData.WingInfo w = WingsClientData.get(p);
             if (w != null) {
-                // deploy animation: 0.3s ease (6 ticks)
-                float anim = w.deployAnim();
-                float target = w.deployed() ? 1f : 0f;
-                float step = 1f / 6f;
-                anim += (target > anim ? step : -step);
-                anim = Math.max(0, Math.min(1, anim));
-                if (anim != w.deployAnim()) WingsClientData.setAnim(p.getId(), anim);
+                WingsClientData.tickAnimation(p, w);
             }
             WingsFlight.tick(p, w != null ? w
                     : WingsClientData.localOrFallback(p));
@@ -94,10 +87,7 @@ public final class WingsClientEvents {
                 if (other == p) continue;
                 WingsClientData.WingInfo o = WingsClientData.get(other);
                 if (o != null) {
-                    float a = o.deployAnim();
-                    float t = o.deployed() ? 1f : 0f;
-                    float na = Math.max(0, Math.min(1, a + (t > a ? 1f / 6f : -1f / 6f)));
-                    if (na != a) WingsClientData.setAnim(other.getId(), na);
+                    WingsClientData.tickAnimation(other, o);
                     WingsFlight.remoteFx(other, o);
                 }
             }
