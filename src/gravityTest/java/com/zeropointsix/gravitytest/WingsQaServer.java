@@ -44,6 +44,7 @@ public final class WingsQaServer {
     private static net.minecraft.world.phys.Vec3 trackTarget;
     private static boolean hungerChecked;
     private static ServerPlayer wearerRef;
+    private static String reviewView = "reviewBack";
 
     @SubscribeEvent
     public static void registerCommands(RegisterCommandsEvent event) {
@@ -217,6 +218,9 @@ public final class WingsQaServer {
                     } catch (Exception ignored) { }
                 }
             }
+            case "reviewBack", "reviewSide", "reviewTop" -> {
+                if (SHOWCASE) reviewView = next;
+            }
             case "feed" -> {
                 // 录屏用：定时喂饱，避免饥饿耗尽中途强制收翼迫降破坏镜头
                 if (wearerRef != null) {
@@ -311,7 +315,13 @@ public final class WingsQaServer {
         double ox = target.x + 3.2;
         double oy = target.y + 1.2;
         double oz = target.z + 3.2;
-        double dx = target.x - ox, dy = target.y - oy, dz = target.z - oz;
+        if (SHOWCASE && trackWearer) {
+            // Wearer faces +X. Keep the complete 6.4-block span inside the frame.
+            ox = target.x + (reviewView.equals("reviewBack") ? -8 : 0);
+            oy = target.y + (reviewView.equals("reviewTop") ? 8 : 0.5);
+            oz = target.z + (reviewView.equals("reviewSide") ? 8 : 0.01);
+        }
+        double dx = target.x - ox, dy = target.y - (oy + observer.getEyeHeight()), dz = target.z - oz;
         float yaw = (float) Math.toDegrees(Math.atan2(-dx, dz));
         float pitch = (float) (-Math.toDegrees(Math.atan2(dy, Math.hypot(dx, dz))));
         observer.teleportTo(observer.serverLevel(), ox, oy, oz, yaw, pitch);

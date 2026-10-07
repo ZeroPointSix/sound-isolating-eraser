@@ -22,13 +22,14 @@ public final class WingsClientData {
     }
 
     private static final Map<Integer, WingInfo> STATES = new ConcurrentHashMap<>();
+    private static final Map<Integer, WingsMotion> MOTION = new ConcurrentHashMap<>();
     private static int flashTicks = 0;
 
     private WingsClientData() {}
 
     public static void apply(SyncWingsPacket p) {
         STATES.compute(p.entityId(), (id, old) -> {
-            float anim = old == null ? (p.deployed() ? 0f : 1f) : old.deployAnim();
+            float anim = old == null ? 0f : old.deployAnim();
             int seen = old == null ? p.tier() : old.tier();
             return new WingInfo(p.deployed(), p.tier(), p.chargedUntil(),
                     p.blinkCooldownUntil(), p.blinkLockUntil(), anim, seen, p.hoverY());
@@ -85,11 +86,28 @@ public final class WingsClientData {
     public static int flashTicks() { return flashTicks; }
     public static void tickFlash() { if (flashTicks > 0) flashTicks--; }
 
-    public static void clear() { STATES.clear(); }
+    public static void clear() { STATES.clear(); MOTION.clear(); flashTicks = 0; }
+
+    public static void remove(int entityId) { STATES.remove(entityId); MOTION.remove(entityId); }
+
+    public static void tickAnimation(Player player, WingInfo info) {
+        WingsMotion motion = MOTION.computeIfAbsent(player.getId(), id -> new WingsMotion(info.deployAnim()));
+        double maximum = Math.max(1, com.zeropointsix.eraser.wings.WingsConfig.SERVER.tierSpeed(3) / 20.0);
+        // Remote player movement is interpolated from position packets, not local flight velocity.
+        double speed = player == Minecraft.getInstance().player ? player.getDeltaMovement().length()
+                : player.position().subtract(player.xo, player.yo, player.zo).length();
+        motion.tick(info.deployed(), info.tier(), (float) (speed / maximum));
+        setAnim(player.getId(), motion.deployment());
+    }
+
+    public static WingsMotion.Pose renderPose(Player player, float partialTick) {
+        WingsMotion motion = MOTION.get(player.getId());
+        return motion == null ? new WingsMotion.Pose(0, 0, 0, 0) : motion.sample(partialTick);
+    }
 
     public static WingInfo localOrFallback(Player p) {
         WingInfo w = get(p);
         if (w != null) return w;
-        return new WingInfo(false, 0, 0, 0, 0, 1f, 0, 0);
+        return new WingInfo(false, 0, 0, 0, 0, 0f, 0, 0);
     }
 }

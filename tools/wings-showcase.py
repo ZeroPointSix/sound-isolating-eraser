@@ -91,7 +91,7 @@ def record(display, name):
     out = RESULTS / f"showcase-{name}.mp4"
     cmd = ["ffmpeg", "-y", "-f", "x11grab", "-draw_mouse", "0",
            "-video_size", "1280x720", "-framerate", "20", "-i", display,
-           "-c:v", "libx264", "-preset", "veryfast", "-crf", "22",
+           "-c:v", "libx264", "-threads", "2", "-preset", "veryfast", "-crf", "22",
            "-pix_fmt", "yuv420p", str(out)]
     proc = subprocess.Popen(cmd, env=env,
                             stdin=subprocess.PIPE,
@@ -116,13 +116,18 @@ try:
                 break
         except OSError:
             time.sleep(1)
-    recorders.append(record(":93", "wearer"))
-    recorders.append(record(":94", "observer"))
     wearer = launch("runClient", "wearer", ":93")
     observer = launch("runClient", "observer", ":94")
-    deadline = time.monotonic() + 480
+    deadline = time.monotonic() + 600
     required = ("wings-wearer", "wings-observer")
     while not all((RESULTS / f"{role}.pass").exists() for role in required):
+        if not recorders and "WINGS_QA_FIXTURE_READY" in (RESULTS / "server.log").read_text(errors="replace"):
+            recorders.append(record(":93", "wearer"))
+            recorders.append(record(":94", "observer"))
+            # Clients wait here so loading screens are never the recorded showcase.
+            (RESULTS / "recording.ready").write_text("ready\n")
+        if any(rec.poll() is not None for rec in recorders):
+            raise RuntimeError("A video recorder exited before the showcase completed")
         failures = list(RESULTS.glob("wings-*.failed"))
         if failures:
             raise AssertionError("; ".join(path.read_text() for path in failures))
@@ -157,9 +162,20 @@ finally:
 
 # concat wearer view + observer view into one file
 parts = [RESULTS / "showcase-wearer.mp4", RESULTS / "showcase-observer.mp4"]
-if all(p.exists() and p.stat().st_size > 10000 for p in parts):
-    listfile = RESULTS / "concat.txt"
-    listfile.write_text("".join(f"file '{p}'\n" for p in parts))
-    subprocess.run(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(listfile),
-                    "-c", "copy", str(RESULTS / "wings-showcase.mp4")], check=True)
-    print("WINGS_SHOWCASE_VIDEO", RESULTS / "wings-showcase.mp4", flush=True)
+for part in parts:
+    if not part.exists() or part.stat().st_size <= 10000:
+        raise RuntimeError(f"Missing or empty recording: {part.name}")
+    probe = json.loads(subprocess.check_output([
+        "ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "json", str(part)
+    ]))
+    if float(probe["format"]["duration"]) < 30:
+        raise RuntimeError(f"Incomplete showcase recording: {part.name}")
+for view in ("reviewBack", "reviewSide", "reviewTop"):
+    proof = RESULTS / f"wingsobserver-{view}.png"
+    if not proof.exists() or proof.stat().st_size < 10000:
+        raise RuntimeError(f"Missing in-game reference view: {view}")
+listfile = RESULTS / "concat.txt"
+listfile.write_text("".join(f"file '{p}'\n" for p in parts))
+subprocess.run(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(listfile),
+                "-c", "copy", str(RESULTS / "wings-showcase.mp4")], check=True)
+print("WINGS_SHOWCASE_VIDEO", RESULTS / "wings-showcase.mp4", flush=True)
