@@ -10,6 +10,7 @@ import com.zeropointsix.eraser.registry.ModItems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.HashSet;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
@@ -17,6 +18,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.ClientChatReceivedEvent;
+import net.minecraftforge.client.event.RenderLevelStageEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -33,6 +35,13 @@ public final class RoundTwoTestClient {
     private static int observerDelay;
     private static int observedModes;
     private static List<BlockPos> footprint;
+    private static long renderedFrames;
+    private static long inputReadyFrame;
+
+    @SubscribeEvent
+    public static void rendered(RenderLevelStageEvent event) {
+        if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_PARTICLES) renderedFrames++;
+    }
 
     @SubscribeEvent
     public static void chat(ClientChatReceivedEvent event) {
@@ -63,7 +72,12 @@ public final class RoundTwoTestClient {
                 }
                 return;
             }
+            if (renderedFrames < inputReadyFrame) return;
             ticks++;
+            if (mode == 5) {
+                verifyAtomic(mc);
+                return;
+            }
             if (ticks == 1) {
                 mc.setScreen(null);
                 GLFW.glfwFocusWindow(mc.getWindow().getWindow());
@@ -102,8 +116,8 @@ public final class RoundTwoTestClient {
                 else {
                     check(EraserMode.read(mc.player.getMainHandItem()) == EraserMode.POINT, "rebound Y cycles ring back to point");
                     mc.player.connection.sendCommand("round2qa verify 5");
-                    Files.writeString(RESULTS.resolve("wearer-eraser.pass"), "R/Y native key cycling, five previews and native placements passed\n");
-                    ready = false;
+                    mc.player.connection.sendCommand("round2qa obstruct");
+                    ticks = 0;
                 }
             }
         } catch (Throwable failure) {
@@ -114,11 +128,33 @@ public final class RoundTwoTestClient {
         }
     }
 
+    private static void verifyAtomic(Minecraft mc) throws Exception {
+        if (ticks == 10) {
+            boolean blocked = footprint.stream().anyMatch(base -> mc.level.getBlockState(base.above(4)).is(net.minecraft.world.level.block.Blocks.STONE));
+            if (!blocked || EraserMode.read(mc.player.getMainHandItem()) != EraserMode.RING) { ticks--; return; }
+            var hit = (BlockHitResult) mc.hitResult;
+            var selected = EraserMode.RING.bases(hit.getBlockPos().relative(hit.getDirection()), mc.player.getDirection());
+            check(new HashSet<>(selected).equals(new HashSet<>(footprint)), "invalid native click still targets the obstructed ring");
+            check(!EraserPlacement.fits(mc.level, mc.player, mc.player.getMainHandItem(), footprint, hit.getDirection()), "one obstructed ring cell makes preview invalid");
+            capture(mc, "invalid-preview");
+        }
+        if (ticks == 20) input("click", "3");
+        if (ticks == 50) {
+            for (var base : footprint) for (int y = 0; y < 5; y++)
+                check(!EraserWallBlock.isEraserWall(mc.level.getBlockState(base.above(y))), "native invalid drawing leaves no partial wall");
+            capture(mc, "invalid-result");
+            mc.player.connection.sendCommand("round2qa atomic");
+            Files.writeString(RESULTS.resolve("wearer-eraser.pass"), "R/Y native keys, five previews/placements, invalid whole-ring rejection passed\n");
+            ready = false;
+        }
+    }
+
     private static void input(String... args) throws Exception {
         String[] command = new String[args.length + 1];
         command[0] = "xdotool";
         System.arraycopy(args, 0, command, 1, args.length);
         check(new ProcessBuilder(command).inheritIO().start().waitFor() == 0, "native input accepted");
+        inputReadyFrame = renderedFrames + 2;
     }
     private static void capture(Minecraft mc, String name) throws Exception {
         try (var image = Screenshot.takeScreenshot(mc.getMainRenderTarget())) {

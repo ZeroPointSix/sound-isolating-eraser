@@ -4,6 +4,7 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.zeropointsix.eraser.block.EraserAnchorBlock;
 import com.zeropointsix.eraser.block.EraserWallBlock;
 import com.zeropointsix.eraser.eraser.EraserMode;
+import com.zeropointsix.eraser.eraser.EraserAggro;
 import com.zeropointsix.eraser.gravity.GravityFieldEntity;
 import com.zeropointsix.eraser.registry.ModItems;
 import java.nio.file.Files;
@@ -11,6 +12,7 @@ import java.nio.file.Path;
 import java.util.List;
 import net.minecraft.commands.Commands;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -21,9 +23,11 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.BlockHitResult;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -39,6 +43,14 @@ public final class RoundTwoTestServer {
     private static List<Vec3> positions;
     private static int started;
     private static boolean pressureDone;
+    private static BlockPos ringCenter;
+    private static BlockPos obstruction;
+    private static Mob isolatedMob;
+    private static Mob advancedMob;
+    private static Mob boss;
+    private static int isolationStage;
+    private static int isolationSince;
+    private static final BlockPos ISOLATION_WALL = new BlockPos(83,65,0);
 
     @SubscribeEvent
     public static void commands(RegisterCommandsEvent event) {
@@ -49,6 +61,29 @@ public final class RoundTwoTestServer {
                     clear(c.getSource().getServer());
                     return 1;
                 }))
+                .then(Commands.literal("obstruct").executes(c -> {
+                    try {
+                        var player = c.getSource().getPlayerOrException();
+                        clear(c.getSource().getServer());
+                        EraserMode.RING.write(player.getMainHandItem());
+                        player.inventoryMenu.broadcastChanges();
+                        var bases = EraserMode.RING.bases(ringCenter, player.getDirection());
+                        obstruction = bases.get(bases.size() - 1).above(4);
+                        player.level().setBlockAndUpdate(obstruction, Blocks.STONE.defaultBlockState());
+                        return 1;
+                    } catch (Throwable failure) { fail(failure); return 0; }
+                }))
+                .then(Commands.literal("atomic").executes(c -> {
+                    try {
+                        var player = c.getSource().getPlayerOrException();
+                        for (BlockPos pos : BlockPos.betweenClosed(38,65,-6,50,69,8))
+                            check(!EraserWallBlock.isEraserWall(player.level().getBlockState(pos)), "invalid native drawing leaves no partial wall");
+                        check(player.level().getBlockState(obstruction).is(Blocks.STONE), "obstruction preserved");
+                        check(player.getMainHandItem().getDamageValue() == 0, "rejected drawing costs no durability");
+                        mark("server-atomic.pass", "native ring placement with one obstructed cell rejected entirely\n");
+                        return 1;
+                    } catch (Throwable failure) { fail(failure); return 0; }
+                }))
                 .then(Commands.literal("verify").then(Commands.argument("mode", IntegerArgumentType.integer(0, 5))
                         .executes(c -> {
                             try {
@@ -58,13 +93,19 @@ public final class RoundTwoTestServer {
                                         "server accepted mode " + index);
                                 int anchors = 0;
                                 int walls = 0;
+                                int sumX = 0, sumZ = 0;
                                 for (BlockPos pos : BlockPos.betweenClosed(38, 65, -6, 50, 69, 8)) {
                                     var state = player.level().getBlockState(pos);
-                                    if (state.getBlock() instanceof EraserAnchorBlock) anchors++;
+                                    if (state.getBlock() instanceof EraserAnchorBlock) {
+                                        anchors++;
+                                        sumX += pos.getX();
+                                        sumZ += pos.getZ();
+                                    }
                                     if (EraserWallBlock.isEraserWall(state)) walls++;
                                 }
                                 int expected = index == 5 ? 0 : index == 0 ? 1 : index == 4 ? 12 : 5;
                                 check(anchors == expected && walls == expected * 5, "server complete drawing " + index);
+                                if (index == 4) ringCenter = new BlockPos(sumX / anchors,65,sumZ / anchors);
                                 if (index == 5) mark("server-eraser.pass", "all five native placements and server mode cycle verified\n");
                                 else c.getSource().getServer().getPlayerList().broadcastSystemMessage(
                                         Component.literal("ROUND2_ERASER_CHECK:" + index), false);
@@ -75,8 +116,12 @@ public final class RoundTwoTestServer {
 
     @SubscribeEvent
     public static void tick(TickEvent.ServerTickEvent event) {
-        if (event.phase != TickEvent.Phase.END || pressureDone) return;
+        if (event.phase != TickEvent.Phase.END) return;
         MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+        if (server != null && server.isDedicatedServer() && pressureDone) {
+            try { verifyIsolation(server); } catch (Throwable failure) { isolationStage = -1; fail(failure); }
+            return;
+        }
         if (server == null || !server.isDedicatedServer()
                 || !Files.exists(RESULTS.resolve("wearer.pass")) || !Files.exists(RESULTS.resolve("observer.pass"))) return;
         var wearer = server.getPlayerList().getPlayerByName(GravityTestServer.WEARER);
@@ -146,6 +191,77 @@ public final class RoundTwoTestServer {
     private static void clear(MinecraftServer server) {
         for (BlockPos pos : BlockPos.betweenClosed(38, 64, -6, 50, 69, 8))
             server.overworld().setBlockAndUpdate(pos, pos.getY() == 64 ? Blocks.STONE.defaultBlockState() : Blocks.AIR.defaultBlockState());
+    }
+
+    private static void verifyIsolation(MinecraftServer server) throws Exception {
+        if (isolationStage < 0 || !Files.exists(RESULTS.resolve("server-atomic.pass"))) return;
+        var level = server.overworld();
+        var player = server.getPlayerList().getPlayerByName(GravityTestServer.WEARER);
+        if (player == null) return;
+        int now = server.getTickCount();
+        if (isolationStage == 0) {
+            for (var pos : BlockPos.betweenClosed(77,64,-5,92,64,11)) level.setBlockAndUpdate(pos, Blocks.STONE.defaultBlockState());
+            player.setGameMode(GameType.SURVIVAL);
+            player.teleportTo(level,86.5,65,0.5,90,0);
+            isolatedMob = EntityType.ZOMBIE.create(level);
+            isolatedMob.setPersistenceRequired();
+            // Keep natural target AI active while holding the sensing geometry stable.
+            isolatedMob.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(0);
+            isolatedMob.setPos(80.5,65,0.5);
+            level.addFreshEntity(isolatedMob);
+            isolationStage = 1;
+            isolationSince = now;
+        }
+        if (now - isolationSince >= 160)
+            throw new AssertionError("real AI isolation phase " + isolationStage + " timed out");
+        if (isolationStage == 1 && isolatedMob.getTarget() == player) {
+            check(true, "real zombie AI acquired connected survival player");
+            player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(ModItems.SOUND_ISOLATING_ERASER.get()));
+            EraserMode.ACROSS.write(player.getMainHandItem());
+            check(player.getMainHandItem().useOn(new UseOnContext(player, InteractionHand.MAIN_HAND,
+                    new BlockHitResult(Vec3.atBottomCenterOf(ISOLATION_WALL), Direction.UP, ISOLATION_WALL.below(), false))).consumesAction(),
+                    "real eraser use raises wall between AI zombie and real player");
+            advancedMob = EntityType.VINDICATOR.create(level);
+            boss = EntityType.WITHER.create(level);
+            for (var entity : List.of(advancedMob, boss)) {
+                entity.setNoAi(true);
+                entity.setNoGravity(true);
+                entity.setInvulnerable(true);
+                entity.setPos(80.5,68,0.5);
+                level.addFreshEntity(entity);
+                entity.setTarget(player);
+                check(!entity.getType().is(EraserAggro.ISOLATED), "advanced/boss excluded from tag");
+            }
+            isolationStage = 2;
+            isolationSince = now;
+        } else if (isolationStage == 2 && now - isolationSince >= 8) {
+            check(EraserAggro.blocked(isolatedMob, player), "wall actually crosses sensing ray");
+            check(isolatedMob.getTarget() == null, "wall clears existing AI target");
+            isolatedMob.setTarget(player);
+            check(isolatedMob.getTarget() == null, "wall rejects explicit reacquisition too");
+            for (var entity : List.of(advancedMob, boss)) {
+                check(entity.getTarget() == player, "advanced/boss retains target through wall");
+                entity.discard();
+            }
+            player.teleportTo(level,86.5,65,9.5,90,0);
+            isolationStage = 3;
+            isolationSince = now;
+        } else if (isolationStage == 3 && isolatedMob.getTarget() == player) {
+            check(!EraserAggro.blocked(isolatedMob, player), "bypassing wall lets real AI rediscover player");
+            player.teleportTo(level,86.5,65,0.5,90,0);
+            isolationStage = 4;
+            isolationSince = now;
+        } else if (isolationStage == 4 && now - isolationSince >= 8) {
+            check(isolatedMob.getTarget() == null, "returning behind wall isolates player again");
+            level.destroyBlock(ISOLATION_WALL.above(2), false);
+            isolationStage = 5;
+            isolationSince = now;
+        } else if (isolationStage == 5 && isolatedMob.getTarget() == player) {
+            check(!EraserAggro.blocked(isolatedMob, player), "breaking column lets real AI rediscover player");
+            isolatedMob.discard();
+            mark("server-isolation.pass", "real Zombie AI: acquire, wall loss, bypass reacquire, wall loss, break reacquire; Vindicator/Wither retain target\n");
+            isolationStage = -1;
+        }
     }
 
     private static void check(boolean ok, String message) {

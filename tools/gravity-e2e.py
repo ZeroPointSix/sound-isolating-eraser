@@ -37,6 +37,9 @@ def launch(name, role, display=None):
             "generate-structures=false\nspawn-monsters=false\ngamemode=creative\n"
         )
     else:
+        # Xvfb exercises the real game window without Forge's optional splash.
+        (directory / "config").mkdir(exist_ok=True)
+        (directory / "config/fml.toml").write_text("earlyWindowControl = false\n")
         (directory / "options.txt").write_text(
             "renderDistance:4\nsimulationDistance:5\nguiScale:2\nmaxFps:30\n"
             "enableVsync:false\npauseOnLostFocus:false\nonboardAccessibility:false\n"
@@ -85,7 +88,8 @@ try:
     deadline = time.monotonic() + int(os.environ.get("GRAVITY_QA_TEST_SECONDS", "600"))
     required = ("wearer", "observer", "server-effects", "wearer-stress",
                 "wearer-preview-pixels", "wearer-active-pixels", "observer-active-pixels",
-                "server-pressure", "server-eraser", "wearer-eraser", "observer-eraser")
+                "server-pressure", "server-eraser", "wearer-eraser", "observer-eraser",
+                "server-atomic", "server-isolation")
     while not all((RESULTS / f"{role}.pass").exists() for role in required):
         failures = list(RESULTS.glob("*.failed"))
         if failures:
