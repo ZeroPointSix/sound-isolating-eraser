@@ -137,43 +137,73 @@ def feather_icon(size):
 
 # ------------------------------------------------------------- entity tex
 def entity_wings():
-    """64x64 texture. Regions:
-      (0,0,32,16)   covert plate: stacked small feather bands
-      (32,0,64,16)  primary feathers: long vanes + gold shafts
-      (0,16,16,16)  harness: gold plate + cyan core gem
-      (32,16,64,32) mini folded wings (retracted state on the back)
+    """64x64 texture matching WingsModel v2 UV layout:
+      (0,0,32,24)   covert arm: 3 stacked covert rows (8px each) + feather seams
+      (32,0,64,24)  primary vane sheet: horizontal vane w/ barbs + gold shaft + cyan rim
+      (0,24,24,32)  secondary vane sheet (4 columns sampled horizontally)
+      (24,24,32,32) alula / small feather
+      (26,24,32,32) + (32,24,64,32) leading-edge strip (gold rivets)
+      (0,32,16,48)  harness plate + cyan gem
+      (16,32,32,48) straps / bindings
+      (32,32,64,56) folded wing bundle (retracted back state)
+      (48,48,64,64) spare white flash cell (blink frame)
     """
     img = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
-    # --- covert band
+
+    # --- covert band: 3 rows, progressively darker (top bright)
     for row in range(3):
-        y0 = row * 5
+        y0 = row * 8
         col = (SILVER_HI, SILVER, SILVER_SH)[row]
-        d.rectangle([0, y0, 31, y0 + 5], fill=col)
-        for x in range(0, 32, 4):               # feather separations
-            d.line([(x, y0), (x + 1, y0 + 5)], fill=INK)
-        d.line([(0, y0 + 5), (31, y0 + 5)], fill=INK)
-        d.line([(0, y0), (31, y0)], fill=GOLD_HI)  # thin gold hairline on band top
-    # --- primary feathers (vertical vanes)
-    for i in range(4):
-        x0 = 32 + i * 8
-        d.rectangle([x0, 0, x0 + 7, 15], fill=SILVER if i % 2 else SILVER_HI)
-        d.line([(x0, 0), (x0, 15)], fill=INK)
-        d.line([(x0 + 4, 1), (x0 + 4, 14)], fill=GOLD)      # shaft
-        d.line([(x0 + 7, 2), (x0 + 7, 13)], fill=CYAN)      # trailing edge glint
-    d.line([(32, 15), (63, 15)], fill=INK)
-    # --- harness plate with cyan gem
-    d.rectangle([0, 16, 15, 31], fill=GOLD_DK)
-    d.rectangle([1, 17, 14, 30], fill=GOLD)
-    d.polygon([(8, 19), (12, 23), (8, 27), (4, 23)], fill=CYAN_HI, outline=CYAN_DK)
-    d.point([(7, 22)], fill=WHITE)
-    # --- folded mini wings (the 0.4-block back icon), on transparent
+        d.rectangle([0, y0, 31, y0 + 7], fill=col)
+        for x in range(0, 32, 3):               # small feather separations
+            d.line([(x, y0 + 1), (x + 2, y0 + 7)], fill=INK)
+        d.line([(0, y0 + 7), (31, y0 + 7)], fill=INK)
+        d.line([(0, y0), (31, y0)], fill=GOLD_HI)  # gold hairline on band top
+    # --- primary vane sheet: horizontal vane; barbs run across length
+    for x in range(32, 64):
+        for y in range(0, 24):
+            img.putpixel((x, y), SILVER if (x + y) % 9 < 5 else SILVER_HI)
+    for y in range(0, 24, 3):                   # barb separations across length
+        d.line([(32, y), (63, y + 1)], fill=SILVER_DEEP)
+    d.rectangle([32, 0, 63, 1], fill=CYAN_HI)   # cyan rim along leading edge
+    d.line([(32, 11), (63, 11)], fill=GOLD)     # gold shaft along vane center
+    d.line([(32, 12), (63, 12)], fill=GOLD_DK)
+    for x in range(34, 64, 6):                  # shaft nodes
+        px(img, x, 10, GOLD_HI)
+    # --- secondary vane sheet (0,24)-(24,32): lighter short vanes
+    for y in range(24, 32):
+        for x in range(0, 24):
+            img.putpixel((x, y), SILVER_SH if (x + y) % 7 < 4 else SILVER)
+    for y in range(24, 32, 2):
+        d.line([(0, y), (23, y + 1)], fill=SILVER_DEEP)
+    d.line([(0, 30), (23, 30)], fill=GOLD)
+    # --- alula (24,24)-(32,32): small dark vane with cyan tip
+    d.rectangle([24, 24, 31, 31], fill=SILVER_DEEP)
+    d.rectangle([28, 24, 31, 26], fill=CYAN)
+    # --- leading edge strip (32,24)-(64,32): gold band with rivets
+    d.rectangle([32, 24, 63, 31], fill=GOLD)
+    d.rectangle([32, 24, 63, 25], fill=GOLD_HI)
+    d.rectangle([32, 30, 63, 31], fill=GOLD_DK)
+    for x in range(35, 64, 7):
+        px(img, x, 27, GOLD_DK)
+    # --- harness plate + straps
+    d.rectangle([0, 32, 15, 47], fill=GOLD_DK)
+    d.rectangle([1, 33, 14, 46], fill=GOLD)
+    d.polygon([(8, 35), (12, 39), (8, 43), (4, 39)], fill=CYAN_HI, outline=CYAN_DK)
+    d.point([(7, 38)], fill=WHITE)
+    d.rectangle([16, 32, 31, 47], fill=(58, 44, 30, 255))        # leather strap
+    for y in (35, 41):                                          # stitching
+        d.line([(16, y), (31, y)], fill=GOLD_DK)
+    d.rectangle([24, 36, 27, 43], fill=GOLD)                    # buckle
+    # --- folded wing bundle (32,32)-(64,56)
     for side in (-1, 1):
-        feather_poly(img, 48, 29, 48 + side * 12, 18, 4, SILVER_HI, vein=GOLD_HI)
-        feather_poly(img, 48, 29, 48 + side * 7, 17, 3, SILVER, vein=GOLD)
-    d.polygon([(48, 28), (50, 30), (48, 32), (46, 30)], fill=GOLD, outline=GOLD_DK)
-    # --- spare white flash cell (48,32)-(64,48): used by blink frame
-    d.ellipse([50, 34, 62, 46], fill=WHITE)
+        feather_poly(img, 48, 52, 48 + side * 13, 35, 4.5, SILVER_HI, vein=GOLD_HI)
+        feather_poly(img, 48, 52, 48 + side * 9, 34, 3.5, SILVER, vein=GOLD)
+        feather_poly(img, 48, 52, 48 + side * 5, 33, 2.5, SILVER_SH, vein=GOLD_DK)
+    d.polygon([(48, 50), (51, 53), (48, 56), (45, 53)], fill=GOLD, outline=GOLD_DK)
+    # --- spare white flash cell (48,48)-(64,64)
+    d.ellipse([50, 50, 62, 62], fill=WHITE)
     return img
 
 

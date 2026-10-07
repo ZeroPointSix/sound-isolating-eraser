@@ -26,6 +26,7 @@ import org.lwjgl.glfw.GLFW;
 @Mod.EventBusSubscriber(modid = "gravity_qa", value = Dist.CLIENT)
 public final class WingsQaClient {
     private static final String ROLE = System.getProperty("wings.qa.role");
+    private static final boolean SHOWCASE = "showcase".equals(System.getProperty("wings.qa.mode"));
     private static final Path RESULTS = ROLE == null ? null
             : Path.of(System.getProperty("wings.qa.results", "build/wings-e2e"));
     private static String phase = "";
@@ -72,8 +73,12 @@ public final class WingsQaClient {
                 return;
             }
             ticks++;
-            if (stage == 1) exerciseWearer(mc);
-            if (stage == 50) exerciseObserver(mc);
+            if (stage == 1) {
+                if (SHOWCASE) showcaseWearer(mc); else exerciseWearer(mc);
+            }
+            if (stage == 50) {
+                if (SHOWCASE) showcaseObserver(mc); else exerciseObserver(mc);
+            }
             if (stage == 99 && Files.exists(RESULTS.resolve("wings-observer.pass"))) {
                 mc.player.connection.sendCommand("wingsqa finish");
                 mark("wings-wearer.pass");
@@ -184,6 +189,74 @@ public final class WingsQaClient {
                     capture(mc, "deploy-frame-" + deployAnimFrame);
                 }
             }
+        }
+    }
+
+    /**
+     * 录屏编排（showcase 模式）：一场约 110s 的脚本化飞行表演，覆盖
+     * F5 背视展开→悬停大扇→御风滑翔→疾风→神霄→雷击充能→三连雷遁→
+     * 收翼落地→正面视角→手持→物品栏→看掉落物。与 exerciseWearer 同构，
+     * 但目标是把镜头画面拍好看而不是断言。
+     */
+    private static void showcaseWearer(Minecraft mc) throws Exception {
+        Player p = mc.player;
+        switch (ticks) {
+            case 1 -> {
+                require(p.getItemBySlot(EquipmentSlot.CHEST)
+                                .is(com.zeropointsix.eraser.registry.ModItems.WIND_THUNDER_WINGS.get()),
+                        "showcase: wings equipped");
+                nativeInput("key", "F5"); // 第三人称背视：翼模型正对镜头
+            }
+            case 30 -> nativeInput("key", "--delay", "150", "space", "space");
+            case 240 -> nativeInput("key", "c");            // → 御风
+            case 245 -> nativeInput("keydown", "w");
+            case 505 -> nativeInput("keyup", "w");          // 13s 滑翔
+            case 540 -> nativeInput("key", "c");            // → 疾风
+            case 545 -> nativeInput("keydown", "w");
+            case 620 -> command(mc, "feed");               // 喂饱防中途迫降
+            case 705 -> nativeInput("keyup", "w");          // 8s 冲刺
+            case 740 -> nativeInput("key", "c");            // → 神霄（音爆 + FOV）
+            case 745 -> nativeInput("keydown", "w");
+            case 865 -> nativeInput("keyup", "w");          // 6s 极速
+            case 900 -> command(mc, "zap");                // 雷击充能：特效 + 回饥饿
+            case 940 -> nativeInput("key", "--delay", "80", "r", "r", "r"); // 三连雷遁
+            case 1020 -> command(mc, "above");             // 传送到掉落点上空俯视
+            case 1040 -> nativeInput("key", "--delay", "150", "space", "space"); // 收翼→坠落落地
+            case 1300 -> command(mc, "feed");
+            case 1100 -> nativeInput("key", "F5");         // 正面视角
+            case 1160 -> {
+                nativeInput("key", "F5");                  // 第一人称
+                command(mc, "handitem");                   // 手持风雷翅
+            }
+            case 1220 -> nativeInput("key", "e");          // 物品栏：背甲槽 + 模型
+            case 1340 -> nativeInput("key", "Escape");
+            case 1380 -> command(mc, "itemDrop");          // 掉落物落在面前 9 格
+            case 1460 -> command(mc, "wearerDone");        // 观察者贴脸看背甲收翼
+            case 1500 -> command(mc, "feed");
+            case 1560 -> {
+                mc.player.connection.sendCommand("wingsqa finish");
+                mark("wings-wearer.pass");
+                finished = true;
+            }
+            default -> {
+                // 展开重试：双击空格偶发丢键
+                if ((ticks == 60 || ticks == 90)
+                        && (info(p) == null || !info(p).deployed())) {
+                    nativeInput("key", "--delay", "150", "space", "space");
+                }
+                // 收翼重试
+                if (ticks == 1060 && info(p) != null && info(p).deployed()) {
+                    nativeInput("key", "--delay", "150", "space", "space");
+                }
+            }
+        }
+    }
+
+    /** showcase 观察者：纯镜头架（服务端每 tick 传送跟拍），等佩戴者演完。 */
+    private static void showcaseObserver(Minecraft mc) throws Exception {
+        if (Files.exists(RESULTS.resolve("wings-wearer.pass"))) {
+            mark("wings-observer.pass");
+            finished = true;
         }
     }
 

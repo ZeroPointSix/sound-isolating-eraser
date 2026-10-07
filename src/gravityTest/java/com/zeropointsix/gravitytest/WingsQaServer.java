@@ -34,6 +34,7 @@ public final class WingsQaServer {
     private static final String PREFIX = "WINGS_QA_PHASE:";
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final int MAX_RUN_TICKS = 12000;
+    private static final boolean SHOWCASE = "showcase".equals(System.getProperty("wings.qa.mode"));
     private static boolean ready;
     private static int readyAt;
     private static int startedAt = -1;
@@ -139,7 +140,43 @@ public final class WingsQaServer {
         observer.setGameMode(GameType.CREATIVE);
         observer.teleportTo(level, 15.5, 90, 12.5, -120f, -15f);
         observer.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
+        if (SHOWCASE) {
+            // 录屏用：出生落下时已装备翅膀之前可能吃到摔落伤害——开场即回满
+            wearer.setHealth(wearer.getMaxHealth());
+            wearer.getFoodData().setFoodLevel(20);
+            wearer.getFoodData().setSaturation(5f);
+        }
+        if (SHOWCASE) {
+            decorate(level);
+            // 录屏用：火焰不伤（雷击充能镜头里不能烧起来）；
+            // 观察者全程粘附佩戴者侧翼跟拍（每 tick 传送=平滑跟踪镜头）
+            level.getGameRules().getRule(GameRules.RULE_FIRE_DAMAGE).set(false, server);
+            trackWearer = true;
+            trackUntil = server.getTickCount() + 9000;
+        }
         LOGGER.info("WINGS_QA_FIXTURE_READY");
+    }
+
+    /** 录屏舞台：沿 +X 飞行线立石柱群（顶部金块），让速度有参照物。 */
+    private static void decorate(ServerLevel level) {
+        for (int i = 1; i <= 6; i++) {
+            int x = i * 16;
+            int h = 66 + (i % 3) * 10;
+            for (int y = 64; y <= h; y++) {
+                level.setBlockAndUpdate(new BlockPos(x, y, -6), Blocks.STONE.defaultBlockState());
+                level.setBlockAndUpdate(new BlockPos(x, y, 7), Blocks.STONE.defaultBlockState());
+            }
+            level.setBlockAndUpdate(new BlockPos(x, h + 1, -6), Blocks.GOLD_BLOCK.defaultBlockState());
+            level.setBlockAndUpdate(new BlockPos(x, h + 1, 7), Blocks.GOLD_BLOCK.defaultBlockState());
+        }
+        // 门形环：x=60 穿越框
+        for (int y = 95; y <= 103; y++) {
+            for (int z = -2; z <= 2; z++) {
+                if (y == 95 || y == 103 || Math.abs(z) == 2) {
+                    level.setBlockAndUpdate(new BlockPos(60, y, z), Blocks.GOLD_BLOCK.defaultBlockState());
+                }
+            }
+        }
     }
 
     private static int changePhase(CommandSourceStack source, String next) {
@@ -155,6 +192,17 @@ public final class WingsQaServer {
                     LightningBolt bolt = EntityType.LIGHTNING_BOLT.create(server.overworld());
                     bolt.setPos(wearer.position());
                     server.overworld().addFreshEntity(bolt);
+                    // 雷击点燃地面火块会让佩戴者持续着火——录屏里清掉 4 格内火焰
+                    if (SHOWCASE) {
+                        var pos = wearer.blockPosition();
+                        for (var p2 : BlockPos.betweenClosed(
+                                pos.offset(-4, -4, -4), pos.offset(4, 4, 4))) {
+                            if (wearer.level().getBlockState(p2).is(Blocks.FIRE)) {
+                                wearer.level().removeBlock(p2, false);
+                            }
+                        }
+                        wearer.clearFire();
+                    }
                 }
             }
             case "hungerDone" -> {
@@ -167,6 +215,13 @@ public final class WingsQaServer {
                     try {
                         Files.writeString(results().resolve("wings-server.pass"), "passed\n");
                     } catch (Exception ignored) { }
+                }
+            }
+            case "feed" -> {
+                // 录屏用：定时喂饱，避免饥饿耗尽中途强制收翼迫降破坏镜头
+                if (wearerRef != null) {
+                    wearerRef.getFoodData().setFoodLevel(20);
+                    wearerRef.getFoodData().setSaturation(5f);
                 }
             }
             case "wearerDone" -> {
@@ -212,6 +267,16 @@ public final class WingsQaServer {
                         }
                     }
                     check(true, "wearer submerged in water while deployed");
+                }
+            }
+            case "above" -> {
+                // 录屏用：把佩戴者传送到掉落点上空俯视（带授权的合法传送）
+                ServerPlayer wearer = server.getPlayerList().getPlayerByName(WEARER);
+                if (wearer != null) {
+                    // z=0.5 保持在石板平台内（z∈-8..8），避免收翼落在草地上被雷点火
+                    wearer.teleportTo(wearer.serverLevel(), 5.5, 71.5, 0.5, 178f, 50f);
+                    wearer.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
+                    com.zeropointsix.eraser.wings.FlightEvents.markTeleported(wearer);
                 }
             }
             case "itemDrop" -> {
