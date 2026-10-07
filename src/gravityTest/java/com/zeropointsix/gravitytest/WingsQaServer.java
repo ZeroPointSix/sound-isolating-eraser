@@ -15,6 +15,8 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LightningBolt;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameRules;
 import net.minecraft.world.level.GameType;
@@ -149,6 +151,9 @@ public final class WingsQaServer {
         }
         if (SHOWCASE) {
             decorate(level);
+            // QA-only studio lighting. Production materials and lighting stay unchanged.
+            wearer.addEffect(new MobEffectInstance(MobEffects.NIGHT_VISION, 12000, 0, false, false, false));
+            observer.addEffect(new MobEffectInstance(MobEffects.NIGHT_VISION, 12000, 0, false, false, false));
             // 录屏用：火焰不伤（雷击充能镜头里不能烧起来）；
             // 观察者全程粘附佩戴者侧翼跟拍（每 tick 传送=平滑跟踪镜头）
             level.getGameRules().getRule(GameRules.RULE_FIRE_DAMAGE).set(false, server);
@@ -187,6 +192,27 @@ public final class WingsQaServer {
             return 0;
         }
         switch (next) {
+            case "showcaseDeploy", "showcaseStow", "showcaseCruise", "showcaseBoost", "showcaseStorm" -> {
+                if (!SHOWCASE || wearerRef == null) return 0;
+                wearerRef.getFoodData().setFoodLevel(20);
+                wearerRef.getFoodData().setSaturation(5f);
+                if (next.equals("showcaseDeploy")) {
+                    // Startup/recorder latency must not leave the model grounded before filming.
+                    wearerRef.teleportTo(server.overworld(), 0.5, 100, 0.5, -90f, 0f);
+                    wearerRef.setOnGround(false);
+                    wearerRef.resetFallDistance();
+                    wearerRef.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
+                    com.zeropointsix.eraser.wings.FlightEvents.serverSetDeployed(wearerRef, true);
+                } else if (next.equals("showcaseStow")) {
+                    com.zeropointsix.eraser.wings.FlightEvents.serverSetDeployed(wearerRef, false);
+                } else {
+                    check(com.zeropointsix.eraser.wings.WingsState.deployed(wearerRef),
+                            "showcase tier change requires deployed wings");
+                    int tier = next.equals("showcaseCruise") ? 1 : next.equals("showcaseBoost") ? 2 : 3;
+                    com.zeropointsix.eraser.wings.WingsState.setTier(wearerRef, tier);
+                    com.zeropointsix.eraser.wings.net.WingsNet.syncToTracking(wearerRef);
+                }
+            }
             case "zap" -> {
                 ServerPlayer wearer = server.getPlayerList().getPlayerByName(WEARER);
                 if (wearer != null) {

@@ -210,25 +210,33 @@ public final class WingsQaClient {
                         "showcase: wings equipped");
                 nativeInput("key", "F5"); // 第三人称背视：翼模型正对镜头
             }
-            case 30 -> nativeInput("key", "--delay", "150", "space", "space");
-            case 100 -> command(mc, "reviewBack");
+            // Showcase staging uses the real server action; native keybinds remain tested by E2E.
+            case 30 -> command(mc, "showcaseDeploy");
+            case 100 -> {
+                require(info(p) != null && info(p).deployed(), "showcase wings actually deployed");
+                command(mc, "reviewBack");
+            }
             case 140 -> command(mc, "reviewSide");
             case 180 -> command(mc, "reviewTop");
             case 220 -> command(mc, "reviewBack");
-            case 240 -> nativeInput("key", "c");            // → 御风
+            case 240 -> command(mc, "showcaseCruise");
+            case 265 -> require(info(p) != null && info(p).tier() == 1, "showcase cruise synced");
             case 245 -> nativeInput("keydown", "w");
             case 505 -> nativeInput("keyup", "w");          // 13s 滑翔
-            case 540 -> nativeInput("key", "c");            // → 疾风
+            case 540 -> command(mc, "showcaseBoost");
+            case 565 -> require(info(p) != null && info(p).tier() == 2, "showcase boost synced");
             case 545 -> nativeInput("keydown", "w");
             case 620 -> command(mc, "feed");               // 喂饱防中途迫降
             case 705 -> nativeInput("keyup", "w");          // 8s 冲刺
-            case 740 -> nativeInput("key", "c");            // → 神霄（音爆 + FOV）
+            case 740 -> command(mc, "showcaseStorm");
+            case 765 -> require(info(p) != null && info(p).tier() == 3, "showcase storm synced");
             case 745 -> nativeInput("keydown", "w");
             case 865 -> nativeInput("keyup", "w");          // 6s 极速
             case 900 -> command(mc, "zap");                // 雷击充能：特效 + 回饥饿
             case 940 -> nativeInput("key", "--delay", "80", "r", "r", "r"); // 三连雷遁
             case 1020 -> command(mc, "above");             // 传送到掉落点上空俯视
-            case 1040 -> nativeInput("key", "--delay", "150", "space", "space"); // 收翼→坠落落地
+            case 1040 -> command(mc, "showcaseStow");
+            case 1070 -> require(info(p) != null && !info(p).deployed(), "showcase wings actually stowed");
             case 1300 -> command(mc, "feed");
             case 1100 -> nativeInput("key", "F5");         // 正面视角
             case 1130 -> capture(mc, "showcase-folded");
@@ -248,17 +256,7 @@ public final class WingsQaClient {
                 mark("wings-wearer.pass");
                 finished = true;
             }
-            default -> {
-                // 展开重试：双击空格偶发丢键
-                if ((ticks == 60 || ticks == 90)
-                        && (info(p) == null || !info(p).deployed())) {
-                    nativeInput("key", "--delay", "150", "space", "space");
-                }
-                // 收翼重试
-                if (ticks == 1060 && info(p) != null && info(p).deployed()) {
-                    nativeInput("key", "--delay", "150", "space", "space");
-                }
-            }
+            default -> { }
         }
     }
 
@@ -268,7 +266,15 @@ public final class WingsQaClient {
             reviewPhase = phase;
             reviewPhaseTicks = 0;
         }
-        if (++reviewPhaseTicks == 20 && phase.startsWith("review")) capture(mc, phase);
+        if (++reviewPhaseTicks == 20 && phase.startsWith("review")) {
+            Player remote = mc.level.players().stream()
+                    .filter(p -> p.getName().getString().equals(WingsQaServer.WEARER))
+                    .findFirst().orElse(null);
+            WingsClientData.WingInfo w = remote == null ? null : info(remote);
+            require(w != null && w.deployed() && w.deployAnim() >= 0.99f,
+                    "reference capture requires visible deployed remote state: " + phase);
+            capture(mc, phase);
+        }
         if (phase.equals("itemDrop") && reviewPhaseTicks == 20) capture(mc, "showcase-ground-item");
         if (Files.exists(RESULTS.resolve("wings-wearer.pass"))) {
             mark("wings-observer.pass");
