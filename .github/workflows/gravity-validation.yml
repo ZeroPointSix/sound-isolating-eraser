@@ -2,9 +2,9 @@ name: Gravity Jade Validation
 
 on:
   push:
-    branches: [feature/gravity-jade-pendant]
+    branches: [feature/gravity-jade-pendant, feature/wind-thunder-wings]
   pull_request:
-    branches: [main, devin/sound-isolating-eraser, feature/flat-mark-server-opts-gha]
+    branches: [main, devin/sound-isolating-eraser, feature/flat-mark-server-opts-gha, feature/wind-thunder-wings]
     paths:
       - src/**
       - gradle/**

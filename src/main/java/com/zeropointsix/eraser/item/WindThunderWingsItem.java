@@ -34,6 +34,18 @@ public class WindThunderWingsItem extends Item implements Equipable {
                 }
                 return this.renderer;
             }
+
+            @Override
+            public boolean applyForgeHandTransform(
+                    com.mojang.blaze3d.vertex.PoseStack pose,
+                    net.minecraft.client.player.LocalPlayer player,
+                    net.minecraft.world.entity.HumanoidArm arm,
+                    ItemStack stack, float partialTick, float equipProcess, float swingProcess) {
+                // builtin/entity skips vanilla arm offset, so the mesh sat on the crosshair.
+                boolean left = arm == net.minecraft.world.entity.HumanoidArm.LEFT;
+                pose.translate(left ? -0.56f : 0.56f, -0.52f, -0.72f);
+                return true;
+            }
         });
     }
 

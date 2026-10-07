@@ -27,8 +27,9 @@ public class WingsLayer extends RenderLayer<AbstractClientPlayer,
                 || !(stack.getItem() instanceof com.zeropointsix.eraser.item.WindThunderWingsItem)) return;
         WingsMotion.Pose motion = WingsClientData.renderPose(player, tickDelta);
         if (WingsClientEvents.isInventoryPreview() && player == Minecraft.getInstance().player) {
-            // Only the UI portrait is folded; the background world keeps its live pose.
-            model.setupWings(0, 0, 0, 0);
+            // Paper-doll: half-open so the 6.4-span mesh fits the portrait without
+            // collapsing to the 0.4 miniature (which vanishes in the 1.8-tall doll).
+            model.setupWings(0.55f, 0.12f, 0f, 0.25f);
         } else {
             model.setupWings(motion.deployment(), motion.sweep(), motion.phase(), motion.amplitude());
         }
