@@ -159,13 +159,12 @@ public final class WingsQaClient {
                 nativeInput("key", "Escape");
             }
             case 333 -> command(mc, "wearerDone"); // observer flank-tracking window opens
-            // Flood used to run at t335 (wearerDone+2). Observer only screenshots at
-            // wearerDone+15, so CI "wearer-wings" evidence was a 3x3 water cube.
-            // Keep storm-flight in air first; submerge after the observer visual window.
-            case 345 -> command(mc, "storm");
-            case 346 -> nativeInput("keydown", "w");
-            case 352 -> capture(mc, "storm-flight");
-            case 356 -> nativeInput("keyup", "w");
+            // Capture at wearerDone+15 (~t348) must stay in clear air. Storm FX and
+            // flood both paint a cyan blob that used to be the whole screenshot.
+            case 360 -> command(mc, "storm");
+            case 361 -> nativeInput("keydown", "w");
+            case 367 -> capture(mc, "storm-flight");
+            case 371 -> nativeInput("keyup", "w");
             case 390 -> command(mc, "flood"); // after observer since>35 timeout (~t368)
             case 398 -> require(p.isInWater()
                             && info(p) != null && info(p).deployed(),
@@ -311,7 +310,7 @@ public final class WingsQaClient {
                             + " wearer=" + remote.position());
                 }
             }
-            if (since > 15 && since <= 30 && !remoteFxOk) {
+            if (since > 25 && since <= 50 && !remoteFxOk) {
                 // 远端飞行特效：STORM 飞行中观察者客户端应能看到持续粒子生成
                 String counts = mc.particleEngine.countParticles();
                 System.out.println("WINGS_OBSERVER_PARTICLES " + counts);

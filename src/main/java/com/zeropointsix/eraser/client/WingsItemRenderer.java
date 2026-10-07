@@ -27,13 +27,17 @@ public class WingsItemRenderer extends BlockEntityWithoutLevelRenderer {
     public void renderByItem(ItemStack stack, ItemDisplayContext ctx, PoseStack pose,
                              MultiBufferSource buffers, int light, int overlay) {
         // Same 6.4-block reference mesh; the closed magical miniature spans 0.4 blocks.
-        boolean hero = ctx == ItemDisplayContext.FIXED;
+        float open = switch (ctx) {
+            case FIXED -> 1f;
+            case FIRST_PERSON_LEFT_HAND, FIRST_PERSON_RIGHT_HAND, GUI -> 0.5f;
+            default -> 0f;
+        };
 
         pose.pushPose();
         pose.translate(0.5f, 0.5f, 0.5f); // item space: 0..1 盒中心
         switch (ctx) {
             case GUI -> {
-                pose.scale(2.6f, 2.6f, 2.6f);
+                pose.scale(2.4f, 2.4f, 2.4f);
                 pose.mulPose(Axis.XP.rotationDegrees(24f));
                 pose.mulPose(Axis.YP.rotationDegrees(38f));
             }
@@ -46,13 +50,9 @@ public class WingsItemRenderer extends BlockEntityWithoutLevelRenderer {
             }
             case FIRST_PERSON_LEFT_HAND, FIRST_PERSON_RIGHT_HAND -> {
                 boolean left = ctx == ItemDisplayContext.FIRST_PERSON_LEFT_HAND;
-                // builtin/entity sits near the crosshair; push the 0.4 miniature into
-                // the hand and yaw/pitch so the wing face is seen, not the edge.
-                pose.translate(left ? -0.22f : 0.22f, -0.28f, -0.18f);
-                pose.scale(2.2f, 2.2f, 2.2f);
-                pose.mulPose(Axis.XP.rotationDegrees(22f));
-                pose.mulPose(Axis.YP.rotationDegrees(left ? -62f : 62f));
-                pose.mulPose(Axis.ZP.rotationDegrees(left ? 8f : -8f));
+                pose.scale(0.85f, 0.85f, 0.85f);
+                pose.mulPose(Axis.XP.rotationDegrees(70f));
+                pose.mulPose(Axis.YP.rotationDegrees(left ? -40f : 40f));
             }
             default -> { // 第三人称手持、头部
                 boolean left = ctx == ItemDisplayContext.THIRD_PERSON_LEFT_HAND;
@@ -68,7 +68,7 @@ public class WingsItemRenderer extends BlockEntityWithoutLevelRenderer {
 
         VertexConsumer vc = ItemRenderer.getFoilBufferDirect(buffers,
                 RenderType.entityTranslucent(TEXTURE), true, stack.hasFoil());
-        WingsMesh.INSTANCE.render(pose, vc, light, overlay, hero ? 1f : 0f, 0f, 0f, 0f, 1f);
+        WingsMesh.INSTANCE.render(pose, vc, light, overlay, open, 0f, 0f, 0f, 1f);
         pose.popPose();
     }
 }

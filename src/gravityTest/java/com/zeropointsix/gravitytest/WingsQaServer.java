@@ -236,7 +236,7 @@ public final class WingsQaServer {
                     trackWearer = true;
                     // Observer captures at +15 and retries until +35; keep the camera
                     // glued through that window, but stop before the delayed flood.
-                    trackUntil = server.getTickCount() + 50;
+                    trackUntil = server.getTickCount() + 55;
                 }
             }
             case "storm" -> {
@@ -296,7 +296,7 @@ public final class WingsQaServer {
                 wlevel.addFreshEntity(drop);
                 // 尺寸参照物：掉落物旁立一块整石，截图可量出 0.55 格收翼实际大小
                 wlevel.setBlockAndUpdate(new BlockPos(6, 65, 5), Blocks.STONE.defaultBlockState());
-                trackTarget = new net.minecraft.world.phys.Vec3(5.5, 65.1, 5.5);
+                trackTarget = new net.minecraft.world.phys.Vec3(5.5, 65.45, 5.5);
                 trackWearer = false;
                 trackUntil = server.getTickCount() + 40;
             }
@@ -318,11 +318,10 @@ public final class WingsQaServer {
         double oy = target.y + 1.2;
         double oz = target.z + 3.2;
         if (!trackWearer && trackTarget != null) {
-            // Closed miniature is 0.4 blocks. Stand ~1.4 SW so the 1-block stone
-            // scale reference sits behind the drop instead of swallowing it.
-            ox = target.x - 0.95;
-            oy = target.y + 0.35;
-            oz = target.z - 0.95;
+            // 3/4 view ~2.3 blocks away, aimed at the hovering mesh (not the shadow).
+            ox = target.x - 2.0;
+            oy = target.y + 0.85;
+            oz = target.z - 1.1;
         } else if (SHOWCASE && trackWearer) {
             // Wearer faces +X. Keep the complete 6.4-block span inside the frame.
             ox = target.x + (reviewView.equals("reviewBack") ? -8 : 0);
