@@ -2,6 +2,7 @@ package com.zeropointsix.eraser.client;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
@@ -25,7 +26,12 @@ public class WingsLayer extends RenderLayer<AbstractClientPlayer,
         if (player.isInvisible() || player.isSpectator()
                 || !(stack.getItem() instanceof com.zeropointsix.eraser.item.WindThunderWingsItem)) return;
         WingsMotion.Pose motion = WingsClientData.renderPose(player, tickDelta);
-        model.setupWings(motion.deployment(), motion.sweep(), motion.phase(), motion.amplitude());
+        if (WingsClientEvents.isInventoryPreview() && player == Minecraft.getInstance().player) {
+            // Only the UI portrait is folded; the background world keeps its live pose.
+            model.setupWings(0, 0, 0, 0);
+        } else {
+            model.setupWings(motion.deployment(), motion.sweep(), motion.phase(), motion.amplitude());
+        }
         pose.pushPose();
         getParentModel().body.translateAndRotate(pose);
         VertexConsumer consumer = ItemRenderer.getArmorFoilBuffer(buffers,

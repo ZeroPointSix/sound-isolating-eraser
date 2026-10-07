@@ -33,7 +33,7 @@ public class WingsItemRenderer extends BlockEntityWithoutLevelRenderer {
         pose.translate(0.5f, 0.5f, 0.5f); // item space: 0..1 盒中心
         switch (ctx) {
             case GUI -> {
-                pose.scale(1.8f, 1.8f, 1.8f);
+                pose.scale(2.6f, 2.6f, 2.6f);
                 pose.mulPose(Axis.XP.rotationDegrees(24f));
                 pose.mulPose(Axis.YP.rotationDegrees(38f));
             }
@@ -43,6 +43,12 @@ public class WingsItemRenderer extends BlockEntityWithoutLevelRenderer {
             case FIXED -> { // 展示框：完整翼形
                 pose.scale(0.12f, 0.12f, 0.12f);
                 pose.mulPose(Axis.YP.rotationDegrees(180f));
+            }
+            case FIRST_PERSON_LEFT_HAND, FIRST_PERSON_RIGHT_HAND -> {
+                boolean left = ctx == ItemDisplayContext.FIRST_PERSON_LEFT_HAND;
+                pose.translate(left ? 0.15f : -0.15f, 0.30f, 0);
+                pose.scale(1.2f, 1.2f, 1.2f);
+                pose.mulPose(Axis.YP.rotationDegrees(left ? -40f : 40f));
             }
             default -> { // 第一/第三人称手持、头部
                 boolean left = ctx == ItemDisplayContext.FIRST_PERSON_LEFT_HAND

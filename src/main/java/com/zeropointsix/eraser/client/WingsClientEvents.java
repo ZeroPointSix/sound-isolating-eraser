@@ -6,6 +6,7 @@ import com.zeropointsix.eraser.client.WingsLayer;
 import com.zeropointsix.eraser.wings.WingsConfig;
 import com.zeropointsix.eraser.registry.ModParticles;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.entity.LivingEntityRenderer;
 import net.minecraft.client.renderer.entity.player.PlayerRenderer;
@@ -17,6 +18,7 @@ import net.minecraftforge.client.event.RegisterGuiOverlaysEvent;
 import net.minecraftforge.client.event.RegisterParticleProvidersEvent;
 import net.minecraftforge.client.event.RegisterClientReloadListenersEvent;
 import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
+import net.minecraftforge.client.event.ScreenEvent;
 import net.minecraftforge.client.gui.overlay.VanillaGuiOverlay;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.EntityLeaveLevelEvent;
@@ -26,6 +28,10 @@ import net.minecraftforge.fml.common.Mod;
 
 /** Client wiring: layer, HUD, FOV, particles, per-tick flight physics. */
 public final class WingsClientEvents {
+    private static boolean inventoryPreview;
+
+    public static boolean isInventoryPreview() { return inventoryPreview; }
+
     private WingsClientEvents() {}
 
     @Mod.EventBusSubscriber(modid = ModMain.MOD_ID, value = Dist.CLIENT,
@@ -71,6 +77,21 @@ public final class WingsClientEvents {
 
     @Mod.EventBusSubscriber(modid = ModMain.MOD_ID, value = Dist.CLIENT)
     public static final class ForgeBus {
+        @SubscribeEvent
+        public static void onRenderTick(TickEvent.RenderTickEvent event) {
+            if (event.phase == TickEvent.Phase.START) inventoryPreview = false;
+        }
+
+        @SubscribeEvent
+        public static void onScreenPre(ScreenEvent.Render.Pre event) {
+            inventoryPreview = event.getScreen() instanceof InventoryScreen;
+        }
+
+        @SubscribeEvent
+        public static void onScreenPost(ScreenEvent.Render.Post event) {
+            inventoryPreview = false;
+        }
+
         @SubscribeEvent
         public static void onLogout(ClientPlayerNetworkEvent.LoggingOut event) {
             WingsClientData.clear();

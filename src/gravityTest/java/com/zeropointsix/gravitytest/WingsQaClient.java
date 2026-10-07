@@ -43,6 +43,8 @@ public final class WingsQaClient {
     private static double markZ = Double.NaN;
     private static NativeImage stowedFrame;
     private static int deployAnimFrame = -1;
+    private static String reviewPhase = "";
+    private static int reviewPhaseTicks;
 
     @SubscribeEvent
     public static void chat(ClientChatReceivedEvent event) {
@@ -65,6 +67,7 @@ public final class WingsQaClient {
             if (mc.player == null || mc.level == null) return;
             if (stage == 0) {
                 if (!phase.equals("ready")) return;
+                if (SHOWCASE && !Files.exists(RESULTS.resolve("recording.ready"))) return;
                 mc.setScreen(null);
                 GLFW.glfwFocusWindow(mc.getWindow().getWindow());
                 mc.mouseHandler.grabMouse();
@@ -208,6 +211,10 @@ public final class WingsQaClient {
                 nativeInput("key", "F5"); // 第三人称背视：翼模型正对镜头
             }
             case 30 -> nativeInput("key", "--delay", "150", "space", "space");
+            case 100 -> command(mc, "reviewBack");
+            case 140 -> command(mc, "reviewSide");
+            case 180 -> command(mc, "reviewTop");
+            case 220 -> command(mc, "reviewBack");
             case 240 -> nativeInput("key", "c");            // → 御风
             case 245 -> nativeInput("keydown", "w");
             case 505 -> nativeInput("keyup", "w");          // 13s 滑翔
@@ -224,11 +231,14 @@ public final class WingsQaClient {
             case 1040 -> nativeInput("key", "--delay", "150", "space", "space"); // 收翼→坠落落地
             case 1300 -> command(mc, "feed");
             case 1100 -> nativeInput("key", "F5");         // 正面视角
+            case 1130 -> capture(mc, "showcase-folded");
             case 1160 -> {
                 nativeInput("key", "F5");                  // 第一人称
                 command(mc, "handitem");                   // 手持风雷翅
             }
             case 1220 -> nativeInput("key", "e");          // 物品栏：背甲槽 + 模型
+            case 1200 -> capture(mc, "showcase-handheld");
+            case 1280 -> capture(mc, "showcase-inventory");
             case 1340 -> nativeInput("key", "Escape");
             case 1380 -> command(mc, "itemDrop");          // 掉落物落在面前 9 格
             case 1460 -> command(mc, "wearerDone");        // 观察者贴脸看背甲收翼
@@ -254,6 +264,12 @@ public final class WingsQaClient {
 
     /** showcase 观察者：纯镜头架（服务端每 tick 传送跟拍），等佩戴者演完。 */
     private static void showcaseObserver(Minecraft mc) throws Exception {
+        if (!phase.equals(reviewPhase)) {
+            reviewPhase = phase;
+            reviewPhaseTicks = 0;
+        }
+        if (++reviewPhaseTicks == 20 && phase.startsWith("review")) capture(mc, phase);
+        if (phase.equals("itemDrop") && reviewPhaseTicks == 20) capture(mc, "showcase-ground-item");
         if (Files.exists(RESULTS.resolve("wings-wearer.pass"))) {
             mark("wings-observer.pass");
             finished = true;
