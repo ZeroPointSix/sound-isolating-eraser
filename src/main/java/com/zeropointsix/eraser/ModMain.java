@@ -3,6 +3,7 @@ package com.zeropointsix.eraser;
 import com.zeropointsix.eraser.config.CommonConfig;
 import com.zeropointsix.eraser.gravity.GravityConfig;
 import com.zeropointsix.eraser.gravity.GravityNetwork;
+import com.zeropointsix.eraser.eraser.EraserNetwork;
 import com.zeropointsix.eraser.registry.ModEntities;
 import com.zeropointsix.eraser.registry.ModBlocks;
 import com.zeropointsix.eraser.registry.ModItems;
@@ -26,8 +27,10 @@ public final class ModMain {
         ModItems.ITEMS.register(bus);
         ModEntities.ENTITIES.register(bus);
         GravityNetwork.register();
+        EraserNetwork.register();
         bus.addListener(this::creativeItems);
-        ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, CommonConfig.SPEC);
+        ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER, CommonConfig.SPEC,
+                MOD_ID + "-eraser-server.toml");
         ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER, GravityConfig.SPEC);
     }
 

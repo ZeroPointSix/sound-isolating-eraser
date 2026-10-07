@@ -1,6 +1,7 @@
 package com.zeropointsix.eraser.mixin;
 
 import com.zeropointsix.eraser.block.EraserWallBlock;
+import com.zeropointsix.eraser.eraser.EraserAggro;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
@@ -17,7 +18,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * The design spec requires mobs to see and target players through the wall,
+ * Untagged mobs and non-player targets remain visible through the wall,
  * while entities still collide with it. Vanilla {@code hasLineOfSight} clips
  * against the COLLISION shape, so a full-collision wall would be as opaque as
  * stone to every mob. This injects the identical ray walk but treats eraser
@@ -37,6 +38,10 @@ public abstract class LivingEntityWallVisibilityMixin {
             at = @At("HEAD"), cancellable = true, remap = false)
     private void eraser$seeThroughEraserWalls(Entity target, CallbackInfoReturnable<Boolean> cir) {
         LivingEntity self = (LivingEntity) (Object) this;
+        if (EraserAggro.blocked(self, target)) {
+            cir.setReturnValue(false);
+            return;
+        }
         if (target.level() != self.level()) {
             cir.setReturnValue(false);
             return;

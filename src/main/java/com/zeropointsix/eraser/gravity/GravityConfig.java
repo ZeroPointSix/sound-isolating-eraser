@@ -19,7 +19,7 @@ public final class GravityConfig {
         HEIGHT = b.defineInRange("gravityFieldHeight", 5, 1, 31);
         DURATION = b.defineInRange("gravityFieldDurationTicks", 300, 20, 1200);
         DAMAGE = b.defineInRange("gravityDamagePerSecond", 1.0, 0.0, 100.0);
-        SLOWNESS = b.defineInRange("gravitySlownessAmplifier", 1, 0, 4);
+        SLOWNESS = b.defineInRange("gravitySlownessAmplifier", 2, 2, 4);
         COOLDOWN = b.defineInRange("gravityFieldCooldownTicks", 600, 20, 72000);
         MIN_DISTANCE = b.defineInRange("targetMinDistance", 3, 1, 64);
         MAX_DISTANCE = b.defineInRange("targetMaxDistance", 20, 1, 64);

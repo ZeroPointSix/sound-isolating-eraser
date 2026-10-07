@@ -353,8 +353,8 @@ public final class GravityTestServer {
         if (elapsed == 96) {
             for (LivingEntity entity : List.of(effectCow, effectZombie, wearer, observer)) {
                 check(entity.hasEffect(MobEffects.MOVEMENT_SLOWDOWN)
-                        && entity.getEffect(MobEffects.MOVEMENT_SLOWDOWN).getAmplifier() == 1,
-                        "Slowness II for " + entity.getType());
+                        && entity.getEffect(MobEffects.MOVEMENT_SLOWDOWN).getAmplifier() == 2,
+                        "Slowness III for " + entity.getType());
             }
             check(effectCow.getHealth() == cowHealth - 2, "Cow receives two 1-damage pulses");
             check(effectZombie.getHealth() < zombieHealth && effectZombie.getHealth() > zombieHealth - 2,
@@ -367,7 +367,7 @@ public final class GravityTestServer {
             observer.teleportTo(level, 5.5, 65, 0.5, 30, 0);
             wearer.setGameMode(GameType.CREATIVE);
         }
-        if (elapsed == 108) {
+        if (elapsed == 106) {
             for (LivingEntity entity : List.of(effectCow, effectZombie, wearer, observer)) {
                 check(!entity.hasEffect(MobEffects.MOVEMENT_SLOWDOWN), "Slowness expires after leaving: " + entity.getType());
             }

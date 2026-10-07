@@ -3,6 +3,7 @@ package com.zeropointsix.eraser.config;
 import com.zeropointsix.eraser.ModMain;
 import net.minecraftforge.common.ForgeConfigSpec;
 
+/** Server-owned eraser rules are synchronized before a client enters the world. */
 public final class CommonConfig {
     public static final ForgeConfigSpec SPEC;
 
@@ -30,5 +31,13 @@ public final class CommonConfig {
     }
 
     private CommonConfig() {
+    }
+
+    public static int barrierHeight() {
+        return SPEC.isLoaded() ? BARRIER_HEIGHT.get() : ModMain.MAX_HEIGHT;
+    }
+
+    public static int durability() {
+        return SPEC.isLoaded() ? ERASER_DURABILITY.get() : 64;
     }
 }

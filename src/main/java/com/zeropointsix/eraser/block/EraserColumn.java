@@ -33,7 +33,7 @@ final class EraserColumn {
      * flag so adjacent fluids / redstone still react after the column vanishes.
      */
     static void clearBarriers(Level level, BlockPos anchorPos) {
-        if (level.isClientSide || isDestroying()) {
+        if (level.isClientSide || level.restoringBlockSnapshots || isDestroying()) {
             return;
         }
         DESTROYING.set(true);
@@ -56,7 +56,7 @@ final class EraserColumn {
      * a linked destroy is already in progress or the anchor is already gone.
      */
     static void destroyFromBarrier(Level level, BlockPos anchorPos) {
-        if (level.isClientSide || isDestroying()) {
+        if (level.isClientSide || level.restoringBlockSnapshots || isDestroying()) {
             return;
         }
         if (level.getBlockState(anchorPos).getBlock() instanceof EraserAnchorBlock) {

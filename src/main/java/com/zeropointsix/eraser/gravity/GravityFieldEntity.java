@@ -87,7 +87,7 @@ public final class GravityFieldEntity extends Entity {
                 e -> e.isAlive() && !e.isSpectator())) {
             entity.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN,
                     10, slowness, false, false, true));
-            if (age % 20 == 0 && damage > 0) entity.hurt(source, damage);
+            if (age % 20 == 0 && damage > 0) GravityDamage.hurt(entity, source, damage);
         }
         if (level.getGameTime() >= expiresAt) discard();
     }
@@ -111,7 +111,7 @@ public final class GravityFieldEntity extends Entity {
         expiresAt = tag.getLong("ExpiresAt");
         age = tag.getInt("Age");
         damage = Math.max(0, Math.min(100, tag.getFloat("Damage")));
-        slowness = Math.max(0, Math.min(4, tag.getInt("Slowness")));
+        slowness = Math.max(2, Math.min(4, tag.getInt("Slowness")));
     }
 
     @Override
