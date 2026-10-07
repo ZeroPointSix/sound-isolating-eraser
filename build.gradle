@@ -220,3 +220,17 @@ tasks.withType(JavaCompile).configureEach {
 if (project.hasProperty('gravityE2E')) {
     apply from: 'gradle/gravity-e2e.gradle'
 }
+
+// The pose clock is pure Java, so its regressions can run without starting Minecraft.
+def compileWingsMotionCheck = tasks.register('compileWingsMotionCheck', JavaCompile) {
+    source = files('src/main/java/com/zeropointsix/eraser/client/WingsMotion.java',
+            'tools/WingsMotionCheck.java')
+    classpath = files()
+    destinationDirectory = layout.buildDirectory.dir('wings-motion-check')
+}
+def checkWingsMotion = tasks.register('checkWingsMotion', JavaExec) {
+    dependsOn compileWingsMotionCheck
+    classpath = files(compileWingsMotionCheck.flatMap { it.destinationDirectory })
+    mainClass = 'WingsMotionCheck'
+}
+tasks.named('check').configure { dependsOn checkWingsMotion }

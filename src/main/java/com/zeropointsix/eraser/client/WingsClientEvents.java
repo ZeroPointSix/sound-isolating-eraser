@@ -16,8 +16,11 @@ import net.minecraftforge.client.event.ComputeFovModifierEvent;
 import net.minecraftforge.client.event.RegisterGuiOverlaysEvent;
 import net.minecraftforge.client.event.RegisterParticleProvidersEvent;
 import net.minecraftforge.client.event.RegisterClientReloadListenersEvent;
+import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
 import net.minecraftforge.client.gui.overlay.VanillaGuiOverlay;
 import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.event.entity.EntityLeaveLevelEvent;
+import net.minecraftforge.event.level.LevelEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
@@ -69,6 +72,23 @@ public final class WingsClientEvents {
     @Mod.EventBusSubscriber(modid = ModMain.MOD_ID, value = Dist.CLIENT)
     public static final class ForgeBus {
         @SubscribeEvent
+        public static void onLogout(ClientPlayerNetworkEvent.LoggingOut event) {
+            WingsClientData.clear();
+        }
+
+        @SubscribeEvent
+        public static void onLevelUnload(LevelEvent.Unload event) {
+            if (event.getLevel().isClientSide()) WingsClientData.clear();
+        }
+
+        @SubscribeEvent
+        public static void onPlayerRemoved(EntityLeaveLevelEvent event) {
+            if (event.getLevel().isClientSide() && event.getEntity() instanceof Player player) {
+                WingsClientData.remove(player.getId());
+            }
+        }
+
+        @SubscribeEvent
         public static void onClientTick(TickEvent.ClientTickEvent event) {
             if (event.phase != TickEvent.Phase.END) return;
             WingsClientData.tickFlash();
@@ -76,7 +96,7 @@ public final class WingsClientEvents {
             LocalPlayer p = mc.player;
             if (p == null) return;
             WingsClientData.WingInfo w = WingsClientData.get(p);
-            if (w != null) {
+            if (w != null && !mc.isPaused()) {
                 WingsClientData.tickAnimation(p, w);
             }
             WingsFlight.tick(p, w != null ? w
@@ -87,7 +107,7 @@ public final class WingsClientEvents {
                 if (other == p) continue;
                 WingsClientData.WingInfo o = WingsClientData.get(other);
                 if (o != null) {
-                    WingsClientData.tickAnimation(other, o);
+                    if (!mc.isPaused()) WingsClientData.tickAnimation(other, o);
                     WingsFlight.remoteFx(other, o);
                 }
             }

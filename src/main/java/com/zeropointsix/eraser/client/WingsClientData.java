@@ -86,12 +86,17 @@ public final class WingsClientData {
     public static int flashTicks() { return flashTicks; }
     public static void tickFlash() { if (flashTicks > 0) flashTicks--; }
 
-    public static void clear() { STATES.clear(); MOTION.clear(); }
+    public static void clear() { STATES.clear(); MOTION.clear(); flashTicks = 0; }
+
+    public static void remove(int entityId) { STATES.remove(entityId); MOTION.remove(entityId); }
 
     public static void tickAnimation(Player player, WingInfo info) {
         WingsMotion motion = MOTION.computeIfAbsent(player.getId(), id -> new WingsMotion(info.deployAnim()));
         double maximum = Math.max(1, com.zeropointsix.eraser.wings.WingsConfig.SERVER.tierSpeed(3) / 20.0);
-        motion.tick(info.deployed(), info.tier(), (float) (player.getDeltaMovement().length() / maximum));
+        // Remote player movement is interpolated from position packets, not local flight velocity.
+        double speed = player == Minecraft.getInstance().player ? player.getDeltaMovement().length()
+                : player.position().subtract(player.xo, player.yo, player.zo).length();
+        motion.tick(info.deployed(), info.tier(), (float) (speed / maximum));
         setAnim(player.getId(), motion.deployment());
     }
 
