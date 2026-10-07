@@ -1,11 +1,9 @@
 package com.zeropointsix.eraser.gametest;
 
-import com.mojang.authlib.GameProfile;
 import com.zeropointsix.eraser.ModMain;
 import com.zeropointsix.eraser.gravity.GravityDamage;
 import com.zeropointsix.eraser.gravity.GravityFieldEntity;
 import java.util.List;
-import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTest;
@@ -18,7 +16,6 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.common.util.FakePlayerFactory;
 import net.minecraftforge.gametest.GameTestHolder;
 import net.minecraftforge.gametest.PrefixGameTestTemplate;
 
@@ -81,7 +78,8 @@ public final class GravityRoundTwoTests {
     @GameTest(template = "empty")
     public static void damagePreservesExistingVelocityAndNormalKnockback(GameTestHelper h) {
         var level = h.getLevel();
-        var player = FakePlayerFactory.get(level, new GameProfile(UUID.randomUUID(), "PressureQA"));
+        // Forge FakePlayer intentionally ignores every damage source.
+        var player = h.makeMockSurvivalPlayer();
         var owner = EntityType.ZOMBIE.create(level);
         owner.setPos(Vec3.atCenterOf(h.absolutePos(new BlockPos(2, 4, 2))));
         player.setPos(owner.position().add(3,0,0));
