@@ -3,6 +3,28 @@
 《畸海浮城》× Minecraft 1.20.1 Forge 一次性小道具 mod。手持隔音橡皮点击方块表面，
 用可切换形状画出多列 5 格高的透明虚拟墙；底部连续白痕是墙的锚点。
 
+## 第三个小物品：强化药片（0.4.0）
+
+- 物品 ID：`sound_isolating_eraser:enhancement_pill_pack`；空板为 `sound_isolating_eraser:empty_pill_pack`。工具创造物品栏或 `/give` 获取，不添加合成和掉落。
+- 默认一板 12 粒，满饥饿也可长按右键 32 tick 吞服。中途松开不消耗，最后一粒替换为空板。不可修复、附魔或通过铁砧合并补药；创造模式默认不消耗。
+- 默认药效 48000 tick：力量 II、速度 II、急迫 II、抗性 I；通过 `pill_suppressed` mob_effect 标签拦截十种负面效果。不会免疫伤害，也不会阻止未加入标签的其他模组效果。
+- 药效归零同 tick 进入 12000 tick 戒断：缓慢 II、挖掘疲劳 II、虚弱 II、黑暗。牛奶只清除表现，40 tick 内重新施加；戒断期间再吃一粒会立刻恢复完整药效。重复吃药只刷新，不累加时长或倍率。
+- 真正计时在可序列化的玩家 Capability 内，死亡、跨维度、保存重进及服务器重启都保留。仅在线且存活时递减，离线和死亡界面不计时。原有外部药水及其隐藏效果链单独保留，切相不会误删其他来源的增益。
+- 参数统一位于既有世界配置 `serverconfig/sound_isolating_eraser-eraser-server.toml` 的 `enhancement_pill` 节：`pillPackUses=12`、`pillDurationTicks=48000`、`withdrawalDurationTicks=12000`、`useDurationTicks=32`，以及各增益/反噬等级、`withdrawalDarknessEnabled=true`、`withdrawalNauseaEnabled=false`、`allowMilkCureWithdrawal=false`、`consumeInCreative=false`、`showHudTimer=true`。药片不新增前置依赖，原仓库重力玉佩的 Curios 依赖仍保留。
+- 左上角显示仅本人可见的药效/反噬计时、48 像素进度条和药板图标；吞服时准星下方显示细进度条。网络仅服务端向本人发送状态，不新增服药 C2S 消息。
+- 原始美术来自设计稿 8.4 的 `D:\mc\preview\pixelart.js`，保留在 `tools/pill/pixelart.js`。12→1 粒及空板按原版 damage 谓词切换，末粒在右下角；专用粒子贴图只产生淡蓝药屑。`python3 tools/pill/export-assets.py` 可无第三方图片依赖重导出相同 RGBA 像素。
+- [原始需求](https://app.notion.com/p/3f3463aed7e681be8d51e866a8623dd1)。本功能接续 PR #9，不包含其他待合并的风雷翅分支。
+
+药片验证（JDK 17；真实客户端测试额外需要 Xvfb、xdotool 和软件 OpenGL）：
+
+```bash
+bash ./gradlew --no-daemon build runGameTestServer
+bash ./gradlew --no-daemon -PpillE2E writePillTestClasspath
+python3 tools/pill-e2e.py
+```
+
+GameTest 同时回归隔音橡皮、重力玉佩和药片。独立的 `pillE2E` 测试模组不会打入正式 jar；两位真实 Forge 客户端通过原生右键验证取消、吞服、免疫、反噬、喝奶、再次服用与空板同步，再实际关闭和重启测试服核验持久化。证据位于 `build/pill-e2e/`，测试服仅绑定 `127.0.0.1:25576`。CI 的 `Enhancement Pill Validation` 只上传构建与验证工件，不发布 Release。
+
 ## 玩法规则（与设计稿一致）
 
 - **点地面（上表面）**：点击位置上方立起 1×5 半透明墙，底格锚点把白色擦痕作为**平面贴花**贴在脚下那个方块的上表面（非立体凸起）。

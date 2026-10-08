@@ -220,3 +220,7 @@ tasks.withType(JavaCompile).configureEach {
 if (project.hasProperty('gravityE2E')) {
     apply from: 'gradle/gravity-e2e.gradle'
 }
+
+if (project.hasProperty('pillE2E')) {
+    apply from: 'gradle/pill-e2e.gradle'
+}

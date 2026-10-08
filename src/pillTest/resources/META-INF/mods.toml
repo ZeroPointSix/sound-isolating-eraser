@@ -1,0 +1,13 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="MIT"
+[[mods]]
+modId="pill_qa"
+version="1.0.0"
+displayName="Enhancement Pill Integration Driver"
+[[dependencies.pill_qa]]
+modId="sound_isolating_eraser"
+mandatory=true
+versionRange="[0.4.0,)"
+ordering="AFTER"
+side="BOTH"
