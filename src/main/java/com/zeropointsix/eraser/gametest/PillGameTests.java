@@ -346,7 +346,8 @@ public final class PillGameTests {
         PillEffects.refresh(original, state(original));
         PillEffects.tick(original, state(original));
         restored.load(original.saveWithoutId(new CompoundTag()));
-        MinecraftForge.EVENT_BUS.post(new PlayerEvent.PlayerLoggedInEvent(restored));
+        // FakePlayer has no real network channel for unrelated mod login handlers.
+        PillEvents.login(new PlayerEvent.PlayerLoggedInEvent(restored));
         PillEffects.tick(restored, state(restored));
         MobEffectInstance external = restored.getEffect(MobEffects.DAMAGE_BOOST);
         h.assertTrue(external != null && external.getAmplifier() == 0 && external.getDuration() == 1998,

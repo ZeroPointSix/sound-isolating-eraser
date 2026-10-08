@@ -70,9 +70,25 @@ public final class PillTestClient {
                     require(mc.player.getInventory().getItem(0).is(ModItems.EMPTY_PILL_PACK.get()), "empty model item synchronized");
                     require(PillNetwork.clientStatus.packDamage() == 12, "HUD changes to empty pack");
                 }
+                if (phase.equals("restarted") && ticks == 20) {
+                    require(PillNetwork.clientStatus.activeTicks() > 0 && PillNetwork.clientStatus.withdrawalTicks() == 0,
+                            "restart synchronizes the owner's persisted active HUD");
+                    require(mc.player.getInventory().getItem(0).is(ModItems.EMPTY_PILL_PACK.get())
+                            && PillNetwork.clientStatus.packDamage() == 12, "restart retains empty inventory and HUD models");
+                }
             }
             if (ticks == 20 && (phase.equals("active") || phase.equals("milk_wait") || phase.equals("saved") || phase.equals("restarted"))) {
                 try (var screenshot = Screenshot.takeScreenshot(mc.getMainRenderTarget())) {
+                    int scale = (int) mc.getWindow().getGuiScale();
+                    int hudPixels = 0;
+                    for (int x = 28 * scale; x < 76 * scale; x++) {
+                        for (int y = 21 * scale; y < 23 * scale; y++) {
+                            int rgb = screenshot.getPixelRGBA(x, y) & 0xFFFFFF;
+                            if (rgb == 0xE4D09F || rgb == 0x8F8FB8) hudPixels++;
+                        }
+                    }
+                    require(ROLE.equals("user") ? hudPixels > 0 : hudPixels == 0,
+                            "rendered HUD bar appears only for its owner");
                     screenshot.writeToFile(RESULTS.resolve(ROLE + "-" + phase + ".png"));
                 }
                 if (phase.equals("saved") || phase.equals("restarted")) {
