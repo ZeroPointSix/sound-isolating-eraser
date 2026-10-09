@@ -216,8 +216,9 @@ public final class FertilizerGameTests {
         h.getLevel().setBlock(low,Blocks.TALL_GRASS.defaultBlockState().setValue(DoublePlantBlock.HALF,DoubleBlockHalf.LOWER),3);
         h.getLevel().setBlock(high,Blocks.TALL_GRASS.defaultBlockState().setValue(DoublePlantBlock.HALF,DoubleBlockHalf.UPPER),3);
         class TallPlantGuard {
+            int denied;
             @SubscribeEvent public void denyTallPlant(BlockEvent.EntityPlaceEvent event) {
-                if (event.getEntity()==p) event.setCanceled(true);
+                if (event.getEntity()==p) { denied++; event.setCanceled(true); }
             }
         }
         TallPlantGuard guard=new TallPlantGuard(); MinecraftForge.EVENT_BUS.register(guard);
@@ -225,6 +226,7 @@ public final class FertilizerGameTests {
             GrowthPlan plan=new GrowthPlan(h.getLevel());
             plan.put(low,FertilizerContent.LOG.get().defaultBlockState());
             h.assertTrue(!plan.commit(p),"cancelled placement fails");
+            h.assertTrue(guard.denied==1,"real placement reached the protection guard");
             h.assertTrue(h.getLevel().getBlockState(low).is(Blocks.TALL_GRASS)
                     && h.getLevel().getBlockState(low).getValue(DoublePlantBlock.HALF)==DoubleBlockHalf.LOWER,
                     "lower half of the double plant survives");
@@ -249,8 +251,9 @@ public final class FertilizerGameTests {
         FertilizerData.Plant tree=data.at(h.getLevel(),root);
         h.assertTrue(tree!=null,"tree identity is stored");
         class RootSwapGuard {
+            int denied;
             @SubscribeEvent public void denyRootSwap(BlockEvent.EntityPlaceEvent event) {
-                if (event.getEntity()==p) event.setCanceled(true);
+                if (event.getEntity()==p) { denied++; event.setCanceled(true); }
             }
         }
         RootSwapGuard guard=new RootSwapGuard(); MinecraftForge.EVENT_BUS.register(guard);
@@ -259,9 +262,62 @@ public final class FertilizerGameTests {
             plan.allowLogs(tree.trunk);
             plan.put(root,Blocks.STONE.defaultBlockState());
             h.assertTrue(!plan.commit(p),"cancelled root replacement fails");
+            h.assertTrue(guard.denied==1,"real root replacement reached the protection guard");
             h.assertTrue(h.getLevel().getBlockState(root).is(FertilizerContent.LOG.get()),"fertile root log is restored");
             h.assertTrue(data.at(h.getLevel(),root)!=null,"plant identity survives the cancelled onRemove");
         } finally { MinecraftForge.EVENT_BUS.unregister(guard); }
+        h.succeed();
+    }
+
+    @GameTest(template = "empty")
+    public static void successfulGrowthUpdatesAdjacentFence(GameTestHelper h) {
+        FakePlayer p=player(h); BlockPos root=h.absolutePos(new BlockPos(5,2,5));
+        h.getLevel().setBlock(root.below(),Blocks.ROOTED_DIRT.defaultBlockState(),Block.UPDATE_ALL);
+        h.getLevel().setBlock(root,Blocks.OAK_SAPLING.defaultBlockState(),Block.UPDATE_ALL);
+        // Add the observer after tree planning so the building-protection preflight is unchanged.
+        class SuccessfulGrowthObserver {
+            int placements;
+            @SubscribeEvent public void observeFertilizerPlacement(BlockEvent.EntityPlaceEvent event) {
+                if(event.getEntity()==p && event.getPos().equals(root)) {
+                    placements++;
+                    h.getLevel().setBlock(root.east(),Blocks.OAK_FENCE.defaultBlockState(),Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE);
+                    h.assertTrue(!h.getLevel().getBlockState(root.east()).getValue(FenceBlock.WEST),"observer starts disconnected before approval");
+                }
+            }
+        }
+        SuccessfulGrowthObserver observer=new SuccessfulGrowthObserver(); MinecraftForge.EVENT_BUS.register(observer);
+        try {
+            h.assertTrue(FertilizerGrowth.use(h.getLevel(),root,p),"fertilizer grows the real tree");
+            h.assertTrue(observer.placements>0,"real fertilizer placement hook installed the observer");
+            h.assertTrue(h.getLevel().getBlockState(root).is(FertilizerContent.LOG.get()),"root becomes a fertile log");
+            h.assertTrue(h.getLevel().getBlockState(root.east()).getValue(FenceBlock.WEST),"successful commit updates the adjacent fence shape");
+        } finally { MinecraftForge.EVENT_BUS.unregister(observer); }
+        h.succeed();
+    }
+
+    @GameTest(template = "empty")
+    public static void successfulBonemealUpdatesAdjacentFence(GameTestHelper h) {
+        FakePlayer p=player(h); BlockPos root=h.absolutePos(new BlockPos(5,2,5));
+        h.getLevel().setBlock(root.below(),Blocks.ROOTED_DIRT.defaultBlockState(),Block.UPDATE_ALL);
+        h.getLevel().setBlock(root,FertilizerContent.SAPLING.get().defaultBlockState().setValue(SaplingBlock.STAGE,1),Block.UPDATE_ALL);
+        p.setItemInHand(InteractionHand.MAIN_HAND,new ItemStack(Items.BONE_MEAL,64));
+        class SuccessfulBonemealObserver {
+            int placements;
+            @SubscribeEvent public void observeBonemealPlacement(BlockEvent.EntityMultiPlaceEvent event) {
+                if(event.getEntity()==p) {
+                    placements++;
+                    h.getLevel().setBlock(root.east(),Blocks.OAK_FENCE.defaultBlockState(),Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE);
+                    h.assertTrue(!h.getLevel().getBlockState(root.east()).getValue(FenceBlock.WEST),"outer observer starts disconnected before approval");
+                }
+            }
+        }
+        SuccessfulBonemealObserver observer=new SuccessfulBonemealObserver(); MinecraftForge.EVENT_BUS.register(observer);
+        try {
+            for(int n=0;n<64 && h.getLevel().getBlockState(root).is(FertilizerContent.SAPLING.get());n++) use(p,root);
+            h.assertTrue(observer.placements==1,"real outer protection hook installed the observer");
+            h.assertTrue(h.getLevel().getBlockState(root).is(FertilizerContent.LOG.get()),"real ItemStack bonemeal grows the fertile tree");
+            h.assertTrue(h.getLevel().getBlockState(root.east()).getValue(FenceBlock.WEST),"outer transaction replays adjacent fence shape updates");
+        } finally { MinecraftForge.EVENT_BUS.unregister(observer); }
         h.succeed();
     }
 
@@ -302,10 +358,21 @@ public final class FertilizerGameTests {
         // run/ persists SavedData between launches; a killed run can leave another
         // player's partial doses on this record, so start from a clean plant.
         FertilizerData.Plant stale=data.at(level,ground); if(stale!=null) data.remove(stale.root.asLong());
+        // An old trunk index can mask a separate meadow record at the same coordinate.
+        data.remove(ground.asLong());
+        h.assertTrue(data.at(level,ground)==null,"meadow fixture starts without a saved identity");
         int old=FertilizerConfig.THRESHOLD.get(); FertilizerConfig.THRESHOLD.set(10);
         try {
-            for(int n=1;n<=10;n++) h.assertTrue(FertilizerGrowth.use(level,ground.above(),p),"valid existing grass accepts dose "+n);
-            h.assertTrue(FertilizerData.get(level).at(level,ground).doses.isEmpty(),"ten-dose threshold completes and resets meadow counter");
+            for(int n=1;n<=10;n++) {
+                h.assertTrue(FertilizerConfig.THRESHOLD.get()==10,"configured threshold remains ten before dose "+n);
+                h.assertTrue(FertilizerGrowth.use(level,ground.above(),p),"valid existing grass accepts dose "+n);
+                var record=data.at(level,ground);
+                h.assertTrue(record!=null && record.doses.getOrDefault(p.getUUID(),0)==n%10,
+                        "meadow dose "+n+" has counters "+(record==null?"missing":record.doses)
+                                +", configured threshold "+FertilizerConfig.THRESHOLD.get());
+                h.assertTrue(FertilizerConfig.THRESHOLD.get()==10,"configured threshold remains ten after dose "+n);
+            }
+            h.assertTrue(data.at(level,ground).doses.isEmpty(),"ten-dose threshold completes and resets meadow counter: "+data.at(level,ground).doses);
             int plants=0;
             for(int x=-12;x<=12;x++) for(int z=-12;z<=12;z++)
                 if(level.getBlockState(ground.offset(x,1,z)).getBlock() instanceof net.minecraft.world.level.block.BushBlock) plants++;

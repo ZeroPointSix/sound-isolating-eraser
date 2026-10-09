@@ -199,8 +199,8 @@ public final class GrowthPlan {
         level.captureBlockSnapshots = externalTransaction;
         // Provisional writes stay silent: flag 16 skips the neighbour shape updates that
         // would pop attachments (e.g. the upper half of a double plant) and their drops
-        // before the protection events get a chance to cancel. Those updates only run
-        // through blockUpdated below once the batch is committed.
+        // before the protection events get a chance to cancel. Replay them after approval;
+        // external transactions defer them through Forge's captured snapshots instead.
         FertilizerData savedData = null;
         Map<Long, FertilizerData.Plant> endangered = new HashMap<>();
         for (var entry : original.entrySet()) {
@@ -216,14 +216,16 @@ public final class GrowthPlan {
             for (BlockPos pos : original.keySet()) {
                 BlockSnapshot snapshot = BlockSnapshot.create(level.dimension(), level, pos);
                 snapshots.add(snapshot);
-                if (!level.setBlock(pos, blocks.get(pos), Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE)) throw new UnsafePlacement();
+                int flags = externalTransaction ? Block.UPDATE_ALL : Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE;
+                if (!level.setBlock(pos, blocks.get(pos), flags)) throw new UnsafePlacement();
                 applied.add(pos);
                 if (player != null && ForgeEventFactory.onBlockPlace(player, snapshot, Direction.UP)) throw new UnsafePlacement();
             }
             if (player != null && snapshots.size() > 1
                     && ForgeEventFactory.onMultiBlockPlace(player, snapshots, Direction.UP)) throw new UnsafePlacement();
             if (!externalTransaction)
-                for (BlockPos pos : original.keySet()) level.blockUpdated(pos, blocks.get(pos).getBlock());
+                for (BlockPos pos : original.keySet()) level.markAndNotifyBlock(pos, level.getChunkAt(pos),
+                        original.get(pos), blocks.get(pos), Block.UPDATE_ALL, 512);
             success = true;
         } catch (UnsafePlacement ignored) {
             return false;
