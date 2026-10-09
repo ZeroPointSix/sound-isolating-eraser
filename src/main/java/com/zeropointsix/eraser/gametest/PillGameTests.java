@@ -195,37 +195,39 @@ public final class PillGameTests {
 
     @GameTest(template = "empty")
     public static void pillCreativeMilkAndOptionalEffectsConfiguration(GameTestHelper h) {
-        boolean oldConsume = CommonConfig.CONSUME_IN_CREATIVE.get();
-        boolean oldMilk = CommonConfig.ALLOW_MILK_CURE.get();
-        boolean oldNausea = CommonConfig.WITHDRAWAL_NAUSEA.get();
-        boolean oldDarkness = CommonConfig.WITHDRAWAL_DARKNESS.get();
-        try {
-            FakePlayer player = player(h);
-            player.setGameMode(GameType.CREATIVE);
-            ItemStack pack = new ItemStack(ModItems.ENHANCEMENT_PILL_PACK.get());
-            CommonConfig.CONSUME_IN_CREATIVE.set(false);
-            take(player, pack);
-            h.assertTrue(pack.getDamageValue() == 0 && state(player).active(), "creative default does not consume");
-            CommonConfig.CONSUME_IN_CREATIVE.set(true);
-            take(player, pack);
-            h.assertTrue(pack.getDamageValue() == 1, "creative consumption can be enabled");
-            CommonConfig.WITHDRAWAL_NAUSEA.set(true);
-            CommonConfig.WITHDRAWAL_DARKNESS.set(false);
-            expire(player);
-            h.assertTrue(player.hasEffect(MobEffects.CONFUSION) && !player.hasEffect(MobEffects.DARKNESS), "optional withdrawal effects follow config");
-            CommonConfig.ALLOW_MILK_CURE.set(true);
-            ItemStack milk = new ItemStack(Items.MILK_BUCKET);
-            ItemStack beforeUse = milk.copy();
-            ItemStack result = milk.finishUsingItem(h.getLevel(), player);
-            MinecraftForge.EVENT_BUS.post(new LivingEntityUseItemEvent.Finish(player, beforeUse, 0, result));
-            h.assertTrue(!state(player).withdrawing(), "debug option cures authoritative withdrawal");
-            PillEffects.tick(player, state(player));
-            h.assertTrue(!player.hasEffect(MobEffects.CONFUSION), "cured withdrawal stays gone");
-        } finally {
-            CommonConfig.CONSUME_IN_CREATIVE.set(oldConsume);
-            CommonConfig.ALLOW_MILK_CURE.set(oldMilk);
-            CommonConfig.WITHDRAWAL_NAUSEA.set(oldNausea);
-            CommonConfig.WITHDRAWAL_DARKNESS.set(oldDarkness);
+        try (GameTestConfigs.LiveConfig ignored = GameTestConfigs.sandbox(CommonConfig.SPEC)) {
+            boolean oldConsume = CommonConfig.CONSUME_IN_CREATIVE.get();
+            boolean oldMilk = CommonConfig.ALLOW_MILK_CURE.get();
+            boolean oldNausea = CommonConfig.WITHDRAWAL_NAUSEA.get();
+            boolean oldDarkness = CommonConfig.WITHDRAWAL_DARKNESS.get();
+            try {
+                FakePlayer player = player(h);
+                player.setGameMode(GameType.CREATIVE);
+                ItemStack pack = new ItemStack(ModItems.ENHANCEMENT_PILL_PACK.get());
+                CommonConfig.CONSUME_IN_CREATIVE.set(false);
+                take(player, pack);
+                h.assertTrue(pack.getDamageValue() == 0 && state(player).active(), "creative default does not consume");
+                CommonConfig.CONSUME_IN_CREATIVE.set(true);
+                take(player, pack);
+                h.assertTrue(pack.getDamageValue() == 1, "creative consumption can be enabled");
+                CommonConfig.WITHDRAWAL_NAUSEA.set(true);
+                CommonConfig.WITHDRAWAL_DARKNESS.set(false);
+                expire(player);
+                h.assertTrue(player.hasEffect(MobEffects.CONFUSION) && !player.hasEffect(MobEffects.DARKNESS), "optional withdrawal effects follow config");
+                CommonConfig.ALLOW_MILK_CURE.set(true);
+                ItemStack milk = new ItemStack(Items.MILK_BUCKET);
+                ItemStack beforeUse = milk.copy();
+                ItemStack result = milk.finishUsingItem(h.getLevel(), player);
+                MinecraftForge.EVENT_BUS.post(new LivingEntityUseItemEvent.Finish(player, beforeUse, 0, result));
+                h.assertTrue(!state(player).withdrawing(), "debug option cures authoritative withdrawal");
+                PillEffects.tick(player, state(player));
+                h.assertTrue(!player.hasEffect(MobEffects.CONFUSION), "cured withdrawal stays gone");
+            } finally {
+                CommonConfig.CONSUME_IN_CREATIVE.set(oldConsume);
+                CommonConfig.ALLOW_MILK_CURE.set(oldMilk);
+                CommonConfig.WITHDRAWAL_NAUSEA.set(oldNausea);
+                CommonConfig.WITHDRAWAL_DARKNESS.set(oldDarkness);
+            }
         }
         h.succeed();
     }

@@ -137,10 +137,12 @@ public final class EraserRoundTwoTests {
 
     @GameTest(template = "empty")
     public static void realItemStackPathRollsBackDoublePlantExactlyOnce(GameTestHelper h) {
-        int height = CommonConfig.BARRIER_HEIGHT.get();
-        CommonConfig.BARRIER_HEIGHT.set(2);
-        try { assertWrappedPlantRollback(h); }
-        finally { CommonConfig.BARRIER_HEIGHT.set(height); }
+        try (GameTestConfigs.LiveConfig ignored = GameTestConfigs.sandbox(CommonConfig.SPEC)) {
+            int height = CommonConfig.BARRIER_HEIGHT.get();
+            CommonConfig.BARRIER_HEIGHT.set(2);
+            try { assertWrappedPlantRollback(h); }
+            finally { CommonConfig.BARRIER_HEIGHT.set(height); }
+        }
     }
 
     private static void assertWrappedPlantRollback(GameTestHelper h) {
