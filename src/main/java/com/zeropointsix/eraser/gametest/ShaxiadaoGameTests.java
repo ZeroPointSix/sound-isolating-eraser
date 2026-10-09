@@ -23,6 +23,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.monster.Creeper;
 import net.minecraft.world.entity.monster.EnderMan;
+import net.minecraft.world.inventory.AnvilMenu;
 import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.inventory.GrindstoneMenu;
 import net.minecraft.world.item.ItemStack;
@@ -356,6 +357,76 @@ public final class ShaxiadaoGameTests {
             ShaxiaConfig.INCLUDE.set(List.of());
             ShaxiaConfig.EXCLUDE.set(List.of());
         }
+        h.succeed();
+    }
+
+    @GameTest(template = "empty")
+    public static void shaxiaProtectionStillReducesBothSegments(GameTestHelper h) {
+        Creeper bare = creeper(h);
+        attack(player(h, knife()), bare);
+        close(h, 20 - bare.getHealth(), 8.5F, "unarmored creeper takes both segments at full charge");
+        Creeper armored = creeper(h);
+        for (EquipmentSlot slot : List.of(EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET)) {
+            ItemStack piece = new ItemStack(switch (slot) {
+                case HEAD -> Items.DIAMOND_HELMET;
+                case CHEST -> Items.DIAMOND_CHESTPLATE;
+                case LEGS -> Items.DIAMOND_LEGGINGS;
+                default -> Items.DIAMOND_BOOTS;
+            });
+            piece.enchant(Enchantments.ALL_DAMAGE_PROTECTION, 4);
+            armored.setItemSlot(slot, piece);
+        }
+        attack(player(h, knife()), armored);
+        h.assertTrue(20 - armored.getHealth() < 8.5F * 0.5F,
+                "protection enchantments still cut both segments of the strike");
+        h.succeed();
+    }
+
+    @GameTest(template = "empty")
+    public static void shaxiaRaisedShieldBlocksSpecialAttack(GameTestHelper h) {
+        Mob blocker = h.spawn(EntityType.ZOMBIE, new BlockPos(2, 2, 2));
+        blocker.setNoAi(true);
+        blocker.setItemSlot(EquipmentSlot.OFFHAND, new ItemStack(Items.SHIELD));
+        blocker.setYHeadRot(135);
+        blocker.setYBodyRot(135);
+        blocker.setYRot(135);
+        blocker.startUsingItem(InteractionHand.OFF_HAND);
+        h.runAtTickTime(10, () -> {
+            blocker.setYHeadRot(135);
+            blocker.setYBodyRot(135);
+            blocker.setYRot(135);
+            h.assertTrue(blocker.isBlocking(), "shield must actually be raised before the strike");
+            attack(player(h, knife()), blocker);
+            h.assertTrue(blocker.getHealth() == 20, "a raised shield blocks the ordinary hit and the true damage");
+            Mob relaxed = h.spawn(EntityType.ZOMBIE, new BlockPos(2, 2, 2));
+            relaxed.setNoAi(true);
+            relaxed.setItemSlot(EquipmentSlot.OFFHAND, new ItemStack(Items.SHIELD));
+            relaxed.setYHeadRot(135);
+            attack(player(h, knife()), relaxed);
+            h.assertTrue(relaxed.getHealth() < 20, "a shield that is never raised cannot absorb the strike");
+            h.succeed();
+        });
+    }
+
+    @GameTest(template = "empty")
+    public static void shaxiaAnvilKeepsInnateAcrossRepairAndRename(GameTestHelper h) {
+        Player p = player(h, knife());
+        AnvilMenu menu = new AnvilMenu(0, p.getInventory(),
+                ContainerLevelAccess.create(h.getLevel(), h.absolutePos(BlockPos.ZERO)));
+        ItemStack a = knife(), b = knife();
+        a.setDamageValue(1400);
+        b.setDamageValue(1300);
+        menu.getSlot(0).set(a);
+        menu.getSlot(1).set(b);
+        ItemStack repaired = menu.getSlot(2).getItem();
+        h.assertTrue(!repaired.isEmpty() && ShaxiaStacks.active(repaired) && repaired.getDamageValue() < 1300,
+                "anvil repair keeps the innate enchantment and restores durability");
+        menu.getSlot(0).set(knife());
+        menu.getSlot(1).set(ItemStack.EMPTY);
+        menu.setItemName("bent");
+        ItemStack renamed = menu.getSlot(2).getItem();
+        h.assertTrue(!renamed.isEmpty() && ShaxiaStacks.active(renamed) && renamed.getHoverName().getString().equals("bent"),
+                "anvil rename keeps the innate enchantment");
         h.succeed();
     }
 
