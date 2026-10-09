@@ -15,8 +15,11 @@ import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.item.*;
 import net.minecraft.world.item.context.UseOnContext;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.*;
+import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.common.MinecraftForge;
@@ -207,6 +210,62 @@ public final class FertilizerGameTests {
     }
 
     @GameTest(template = "empty")
+    public static void cancelledCommitKeepsDoublePlantAndSpawnsNoDrops(GameTestHelper h) {
+        FakePlayer p=player(h); BlockPos low=h.absolutePos(new BlockPos(5,2,5)); BlockPos high=low.above();
+        h.getLevel().setBlock(low.below(),Blocks.ROOTED_DIRT.defaultBlockState(),3);
+        h.getLevel().setBlock(low,Blocks.TALL_GRASS.defaultBlockState().setValue(DoublePlantBlock.HALF,DoubleBlockHalf.LOWER),3);
+        h.getLevel().setBlock(high,Blocks.TALL_GRASS.defaultBlockState().setValue(DoublePlantBlock.HALF,DoubleBlockHalf.UPPER),3);
+        class TallPlantGuard {
+            @SubscribeEvent public void denyTallPlant(BlockEvent.EntityPlaceEvent event) {
+                if (event.getEntity()==p) event.setCanceled(true);
+            }
+        }
+        TallPlantGuard guard=new TallPlantGuard(); MinecraftForge.EVENT_BUS.register(guard);
+        try {
+            GrowthPlan plan=new GrowthPlan(h.getLevel());
+            plan.put(low,FertilizerContent.LOG.get().defaultBlockState());
+            h.assertTrue(!plan.commit(p),"cancelled placement fails");
+            h.assertTrue(h.getLevel().getBlockState(low).is(Blocks.TALL_GRASS)
+                    && h.getLevel().getBlockState(low).getValue(DoublePlantBlock.HALF)==DoubleBlockHalf.LOWER,
+                    "lower half of the double plant survives");
+            h.assertTrue(h.getLevel().getBlockState(high).is(Blocks.TALL_GRASS)
+                    && h.getLevel().getBlockState(high).getValue(DoublePlantBlock.HALF)==DoubleBlockHalf.UPPER,
+                    "upper half is not popped by neighbour updates during the cancelled batch");
+            h.assertTrue(h.getLevel().getEntities((net.minecraft.world.entity.Entity) null,new AABB(low).inflate(4),e -> e instanceof ItemEntity).isEmpty(),
+                    "no drop entities were spawned");
+        } finally { MinecraftForge.EVENT_BUS.unregister(guard); }
+        h.succeed();
+    }
+
+    @GameTest(template = "empty")
+    public static void cancelledCommitKeepsTreeIdentityRecord(GameTestHelper h) {
+        FakePlayer p=player(h); BlockPos root=h.absolutePos(new BlockPos(5,2,5));
+        h.getLevel().setBlock(root.below(),Blocks.GRASS_BLOCK.defaultBlockState(),3);
+        h.getLevel().setBlock(root,Blocks.OAK_SAPLING.defaultBlockState(),3);
+        FertilizerData data=FertilizerData.get(h.getLevel());
+        // run/ persists the world between launches; drop any record a killed run left here.
+        FertilizerData.Plant stale=data.at(h.getLevel(),root); if(stale!=null) data.remove(stale.root.asLong());
+        h.assertTrue(FertilizerGrowth.use(h.getLevel(),root,p),"first dose plants a fertile tree");
+        FertilizerData.Plant tree=data.at(h.getLevel(),root);
+        h.assertTrue(tree!=null,"tree identity is stored");
+        class RootSwapGuard {
+            @SubscribeEvent public void denyRootSwap(BlockEvent.EntityPlaceEvent event) {
+                if (event.getEntity()==p) event.setCanceled(true);
+            }
+        }
+        RootSwapGuard guard=new RootSwapGuard(); MinecraftForge.EVENT_BUS.register(guard);
+        try {
+            GrowthPlan plan=new GrowthPlan(h.getLevel());
+            plan.allowLogs(tree.trunk);
+            plan.put(root,Blocks.STONE.defaultBlockState());
+            h.assertTrue(!plan.commit(p),"cancelled root replacement fails");
+            h.assertTrue(h.getLevel().getBlockState(root).is(FertilizerContent.LOG.get()),"fertile root log is restored");
+            h.assertTrue(data.at(h.getLevel(),root)!=null,"plant identity survives the cancelled onRemove");
+        } finally { MinecraftForge.EVENT_BUS.unregister(guard); }
+        h.succeed();
+    }
+
+    @GameTest(template = "empty")
     public static void itemStackCancellationKeepsLastGrainAndNoIdentity(GameTestHelper h) {
         FakePlayer p=player(h); BlockPos root=h.absolutePos(new BlockPos(5,2,5));
         h.getLevel().setBlock(root.below(),Blocks.GRASS_BLOCK.defaultBlockState(),3);
@@ -239,6 +298,10 @@ public final class FertilizerGameTests {
             level.setBlock(ground.offset(x,0,z),Blocks.GRASS_BLOCK.defaultBlockState(),2);
         }
         level.setBlock(ground.above(),Blocks.GRASS.defaultBlockState(),2);
+        FertilizerData data=FertilizerData.get(level);
+        // run/ persists SavedData between launches; a killed run can leave another
+        // player's partial doses on this record, so start from a clean plant.
+        FertilizerData.Plant stale=data.at(level,ground); if(stale!=null) data.remove(stale.root.asLong());
         int old=FertilizerConfig.THRESHOLD.get(); FertilizerConfig.THRESHOLD.set(10);
         try {
             for(int n=1;n<=10;n++) h.assertTrue(FertilizerGrowth.use(level,ground.above(),p),"valid existing grass accepts dose "+n);

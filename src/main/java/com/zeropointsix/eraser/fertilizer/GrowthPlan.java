@@ -197,11 +197,26 @@ public final class GrowthPlan {
         boolean externalTransaction = player == null && capture;
         int captureStart = level.capturedBlockSnapshots.size();
         level.captureBlockSnapshots = externalTransaction;
+        // Provisional writes stay silent: flag 16 skips the neighbour shape updates that
+        // would pop attachments (e.g. the upper half of a double plant) and their drops
+        // before the protection events get a chance to cancel. Those updates only run
+        // through blockUpdated below once the batch is committed.
+        FertilizerData savedData = null;
+        Map<Long, FertilizerData.Plant> endangered = new HashMap<>();
+        for (var entry : original.entrySet()) {
+            // onRemove still fires on replaced fertile logs: remember plant records whose
+            // roots sit in this batch so a cancelled commit can put them back.
+            if (entry.getValue().is(FertilizerContent.LOG.get())) {
+                if (savedData == null) savedData = FertilizerData.get(level);
+                FertilizerData.Plant plant = savedData.at(level, entry.getKey());
+                if (plant != null) endangered.put(plant.root.asLong(), plant);
+            }
+        }
         try {
             for (BlockPos pos : original.keySet()) {
                 BlockSnapshot snapshot = BlockSnapshot.create(level.dimension(), level, pos);
                 snapshots.add(snapshot);
-                if (!level.setBlock(pos, blocks.get(pos), 2)) throw new UnsafePlacement();
+                if (!level.setBlock(pos, blocks.get(pos), Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE)) throw new UnsafePlacement();
                 applied.add(pos);
                 if (player != null && ForgeEventFactory.onBlockPlace(player, snapshot, Direction.UP)) throw new UnsafePlacement();
             }
@@ -217,7 +232,8 @@ public final class GrowthPlan {
                 if (!success) {
                     level.captureBlockSnapshots = false;
                     level.capturedBlockSnapshots.subList(captureStart, level.capturedBlockSnapshots.size()).clear();
-                    for (int i = applied.size() - 1; i >= 0; i--) level.setBlock(applied.get(i), original.get(applied.get(i)), 2);
+                    for (int i = applied.size() - 1; i >= 0; i--) level.setBlock(applied.get(i), original.get(applied.get(i)), Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE);
+                    if (!endangered.isEmpty()) endangered.values().forEach(savedData::put);
                 }
             } finally { level.captureBlockSnapshots = capture; }
         }
