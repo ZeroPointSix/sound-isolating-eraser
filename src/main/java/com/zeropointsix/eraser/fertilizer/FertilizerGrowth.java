@@ -2,11 +2,13 @@ package com.zeropointsix.eraser.fertilizer;
 
 import java.util.*;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.block.*;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 
 public final class FertilizerGrowth {
     private FertilizerGrowth() {}
@@ -49,47 +51,75 @@ public final class FertilizerGrowth {
     private static boolean feedTree(ServerLevel level, FertilizerData.Plant tree, Player player) {
         FertilizerData data = FertilizerData.get(level);
         if (tree.grove) {
+            // 已成林：继续施肥让整棵榕树升一级（更粗、更大，外圈再落气根），3 级封顶
             if (tree.level >= 3) return false;
-            GrowthPlan plan = new GrowthPlan(level); plan.allowLogs(tree.trunk);
-            try {
-                Set<Long> logs = plan.tree(tree.root, tree.level + 1);
-                if (!plan.commit(player)) return false;
-                tree.trunk.addAll(logs); tree.level++; tree.touched = level.getGameTime(); data.put(tree);
-                return true;
-            } catch (GrowthPlan.UnsafePlacement ignored) { return false; }
+            return growBanyan(level, data, tree, tree.level + 1, tree.seed, player);
         }
         if (!tree.doses.containsKey(player.getUUID()) && tree.doses.size() >= 256) return false;
         int dose = tree.doses.getOrDefault(player.getUUID(), 0) + 1;
         if (dose < FertilizerConfig.THRESHOLD.get()) {
             tree.doses.put(player.getUUID(), dose); tree.touched = level.getGameTime(); data.setDirty(); return true;
         }
-        int count = FertilizerConfig.TREE_COUNT.get() - 1;
-        if (!data.room(count)) return false;
+        // 达到阈值：独木成林——原树长成榕树，主干加气根共 TREE_COUNT 根落地树干
+        return growBanyan(level, data, tree, 1, level.random.nextLong(), player);
+    }
+
+    /** 在缓冲里按等级生长榕树，整批提交；任何必需部分被挡住都整体放弃，不扣量、不留残块。 */
+    private static boolean growBanyan(ServerLevel level, FertilizerData data, FertilizerData.Plant tree, int tier, long seed, Player player) {
         GrowthPlan plan = new GrowthPlan(level);
-        List<FertilizerData.Plant> additions = new ArrayList<>();
-        List<BlockPos> roots = new ArrayList<>(); roots.add(tree.root);
-        // Stratified disk sampling gives a bounded, reproducible search for the complete grove.
-        int radius = FertilizerConfig.GROVE_RADIUS.get();
-        List<BlockPos> candidates = new ArrayList<>();
-        for (int x = -radius; x <= radius; x += 5) for (int z = -radius; z <= radius; z += 5)
-            if (x * x + z * z <= radius * radius && x * x + z * z >= 25) candidates.add(tree.root.offset(x, 0, z));
-        Collections.shuffle(candidates, new Random(level.random.nextLong()));
+        plan.allowLogs(tree.trunk);
+        Set<Long> logs = new HashSet<>();
+        boolean forming = !tree.grove;
+        List<BanyanShape.Pillar> existing = null;
+        if (!forming) {
+            existing = new ArrayList<>();
+            for (BlockPos p : tree.pillars) existing.add(new BanyanShape.Pillar(p.getX() - tree.root.getX(), p.getY() - tree.root.getY(), p.getZ() - tree.root.getZ()));
+        }
         try {
-            for (BlockPos candidate : candidates) {
-                if (additions.size() == count) break;
-                BlockPos root = surface(level, candidate, 3);
-                if (root == null || roots.stream().anyMatch(p -> p.distSqr(root) < 25)) continue;
-                // A rejected tree may have partially filled its private buffer; use a fresh full batch on retry.
-                FertilizerData.Plant p = new FertilizerData.Plant(root, true, level.getGameTime());
-                p.trunk.addAll(plan.tree(root, 1)); p.grove = true;
-                additions.add(p); roots.add(root);
-            }
-            if (additions.size() != count) return false;
-            if (count > 0 && !plan.commit(player)) return false;
-            tree.grove = true; tree.doses.clear(); tree.touched = level.getGameTime(); data.setDirty();
-            additions.forEach(data::put);
+            int wanted = FertilizerConfig.TREE_COUNT.get() - 1;
+            List<BanyanShape.Pillar> pillars = BanyanShape.grow(banyanWorld(level, plan, tree.root, logs), tier, seed,
+                    FertilizerConfig.GROVE_RADIUS.get(), existing, wanted);
+            if (forming && pillars.size() != wanted) return false;
+            if (!plan.commit(player)) return false;
+            tree.grove = true; tree.level = tier; tree.seed = seed; tree.doses.clear();
+            tree.pillars.clear();
+            for (BanyanShape.Pillar p : pillars) tree.pillars.add(tree.root.offset(p.x(), p.y(), p.z()));
+            tree.trunk.addAll(logs); tree.touched = level.getGameTime();
+            data.put(tree);
             return true;
         } catch (GrowthPlan.UnsafePlacement ignored) { return false; }
+    }
+
+    private static BanyanShape.World banyanWorld(ServerLevel level, GrowthPlan plan, BlockPos root, Set<Long> logs) {
+        return new BanyanShape.World() {
+            @Override
+            public int probe(int x, int y, int z) {
+                BlockPos p = root.offset(x, y, z);
+                if (!plan.writable(p)) return BanyanShape.BLOCKED;
+                BlockState s = plan.get(p);
+                if (s.is(FertilizerContent.LOG.get())) return plan.ownsLog(p) ? BanyanShape.LOG : BanyanShape.BLOCKED;
+                if (s.is(Blocks.GRASS_BLOCK) || s.is(Blocks.DIRT) || s.is(Blocks.ROOTED_DIRT)) return BanyanShape.SOIL;
+                if (!s.getFluidState().isEmpty() || level.getBlockEntity(p) != null) return BanyanShape.BLOCKED;
+                if (s.isAir() || s.canBeReplaced() || s.is(BlockTags.LEAVES) || s.is(BlockTags.SAPLINGS)) return BanyanShape.PASS;
+                return BanyanShape.BLOCKED;
+            }
+
+            @Override
+            public void put(int x, int y, int z, BanyanShape.Kind kind) {
+                BlockPos p = root.offset(x, y, z);
+                BlockState log = FertilizerContent.LOG.get().defaultBlockState();
+                BlockState state = switch (kind) {
+                    case LOG_X -> log.setValue(BlockStateProperties.AXIS, Direction.Axis.X);
+                    case LOG_Y -> log;
+                    case LOG_Z -> log.setValue(BlockStateProperties.AXIS, Direction.Axis.Z);
+                    case LEAVES -> FertilizerContent.LEAVES.get().defaultBlockState();
+                    case ROOTED_DIRT -> Blocks.ROOTED_DIRT.defaultBlockState();
+                    case HANGING_ROOTS -> Blocks.HANGING_ROOTS.defaultBlockState();
+                };
+                plan.put(p, state);
+                if (state.is(FertilizerContent.LOG.get())) logs.add(p.asLong());
+            }
+        };
     }
 
     private static BlockPos surface(ServerLevel level, BlockPos center, int delta) {

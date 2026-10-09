@@ -179,101 +179,96 @@ ext.paintFertilizerArt = { File texRoot ->
     save(fruit, 'item/fertile_fruit.png')
 
     // ---------- 肥沃方块：16×16，与原版方块像素密度一致 ----------
-    // 色相偏移：暗部偏冷偏饱和，亮部偏暖；统一左上受光；结构化图案为主、少量随机
-    def BARK = ['#21180f', '#33261a', '#45331f', '#584227', '#6a512f', '#7c6137'].collect { argb(it) }
-    def MOSS = ['#33462a', '#43592e', '#566f35', '#6b863d'].collect { argb(it) }
-    def LIVE = argb('#7d8b3f') // 形成层：活着的嫩绿，肥沃方块的识别色
-    def WOOD = ['#5e3f1d', '#7a5628', '#916a32', '#a67e3d', '#b88f47'].collect { argb(it) }
-    def PLANK = ['#4b3319', '#73562a', '#836531', '#93743a', '#a28243'].collect { argb(it) }
-    def LEAF = ['#12301b', '#1c4524', '#28602c', '#397c33', '#539a3c', '#7cb84c'].collect { argb(it) }
+    // 画法同原版：每个像素都有细微变化，纹理顺着木纹方向拉长（原木竖、木板横、树叶斜），
+    // 低对比、6 个相近色阶，Bayer 抖动避免色带；全部无缝平铺。
+    // 配色：蜂蜜偏橄榄的木色 + 饱和的深绿叶，与原版各木种都能区分开。
+    def BARK = ['#231a10', '#30241a', '#3e2f1f', '#4d3b25', '#5c482c', '#6c5533'].collect { argb(it) }
+    def MOSSY = ['#24221a', '#30301d', '#3e4022', '#4c5027', '#5a602d', '#697033'].collect { argb(it) }
+    def LIVE = ['#6d7a33', '#87953e'].collect { argb(it) }
+    def WOOD = ['#5d4520', '#75592a', '#8b6c33', '#9f7f3c', '#b19046', '#c0a050'].collect { argb(it) }
+    def PLANK = ['#5a4521', '#725a2b', '#887034', '#9c823d', '#ad9347', '#bca351'].collect { argb(it) }
+    def LEAF = ['#163b17', '#1e4d1d', '#2a6225', '#37782c', '#4a8f33', '#64a83d'].collect { argb(it) }
+    def BAYER = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]]
+    def quant = { List<Integer> pal, double v, int x, int y ->
+        double d = (BAYER[y & 3][x & 3] - 7.5) / 16.0 / pal.size()
+        pick(pal, Math.max(0, Math.min(0.999, v + d)))
+    }
+    // 各向异性周期噪声（周期 16）：cx、cy 分别是 x、y 方向的格子大小
+    def anoise = { double x, double y, int cx, int cy, int seed ->
+        int nx = 16.intdiv(cx), ny = 16.intdiv(cy)
+        double gx = x / cx, gy = y / cy
+        int ix = (int) Math.floor(gx), iy = (int) Math.floor(gy)
+        double fx = gx - ix, fy = gy - iy
+        fx = fx * fx * (3 - 2 * fx); fy = fy * fy * (3 - 2 * fy)
+        def at = { int i, int j -> hash(Math.floorMod(i, nx), Math.floorMod(j, ny), seed) }
+        double top = at(ix, iy) + (at(ix + 1, iy) - at(ix, iy)) * fx
+        double bot = at(ix, iy + 1) + (at(ix + 1, iy + 1) - at(ix, iy + 1)) * fx
+        top + (bot - top) * fy
+    }
 
-    // 树皮：裂纹列间距不等（3/4/3/3/3），裂纹有长短不一的断口；裂纹右侧一列受光、左侧一列压暗。
-    // 青苔只长在裂纹边上，成竖向的小片，像从缝里长出来。
-    def CRACKS = [0, 3, 7, 10, 13]
+    // 原木侧面：每列独立的竖向长纹 + 中等尺度的明暗起伏 + 像素级细节；部分竖纹带青苔绿
     def barkAt = { int x, int y ->
-        int k = CRACKS.indexOf(x)
-        double moss = pnoise(x, y, 4, 95, 16) * 0.7 + pnoise(x, y, 8, 96, 16) * 0.3
-        if (k >= 0) {
-            boolean gap = pnoise(k * 4, y, 4, 91 + k, 16) > 0.6
-            if (!gap && moss > 0.7) return MOSS[0]
-            return gap ? BARK[2] : (hash(x, y, 92) > 0.75 ? BARK[0] : BARK[1])
-        }
-        boolean litEdge = CRACKS.contains(Math.floorMod(x - 1, 16))
-        boolean shadeEdge = CRACKS.contains(Math.floorMod(x + 1, 16))
-        if ((litEdge || shadeEdge) && moss > 0.7) return MOSS[(int) Math.min(3, (moss - 0.7) / 0.3 * 3 + (litEdge ? 1 : 0))]
-        double n = hash(x, y, 93)
-        int idx = litEdge ? (n > 0.7 ? 5 : 4) : shadeEdge ? 2 : (n > 0.78 ? 4 : 3)
-        if (!litEdge && hash(x, y.intdiv(3), 94) > 0.93) idx = 1 // 横向小裂口
-        return BARK[idx]
+        double v = anoise(x, y, 1, 8, 201) * 0.5 + anoise(x, y, 2, 4, 202) * 0.3 + hash(x, y, 203) * 0.2
+        v = (v - 0.2) / 0.65
+        double moss = anoise(x, y, 4, 8, 204) * 0.7 + anoise(x, y, 1, 4, 205) * 0.3
+        quant(moss > 0.7 ? MOSSY : BARK, v, x, y)
     }
     def log = image(16, 16)
     for (int y = 0; y < 16; y++) for (int x = 0; x < 16; x++) put(log, x, y, barkAt(x, y))
     save(log, 'block/fertile_log.png')
 
-    // 原木顶：1 像素树皮边 + 断续的嫩绿形成层 + 方中带圆、略不规则的年轮，越往中心越亮
+    // 原木顶面：1 像素树皮边、一圈嫩绿形成层、1 像素一圈的方形年轮（外暗内亮），髓心 2×2
     def logTop = image(16, 16)
     for (int y = 0; y < 16; y++) for (int x = 0; x < 16; x++) {
-        double dx = Math.abs(x - 7.5), dy = Math.abs(y - 7.5)
-        double box = Math.max(dx, dy)
-        if (box > 6.5) { put(logTop, x, y, BARK[hash(x, y, 97) > 0.5 ? 2 : 1]); continue }
-        if (box > 5.5) { put(logTop, x, y, hash(x, y, 97) > 0.45 ? LIVE : WOOD[1]); continue }
-        double d = box * 0.7 + Math.sqrt(dx * dx + dy * dy) * 0.3 + (hash(x, y, 98) - 0.5) * 0.6
-        int c = d > 4.4 ? 2 : d > 3.5 ? 1 : d > 2.3 ? 3 : d > 1.4 ? 2 : 4
-        if (dx < 0.6 && dy < 0.6) c = 0 // 髓心
-        put(logTop, x, y, WOOD[c])
+        int ring = Math.min(Math.min(x, 15 - x), Math.min(y, 15 - y)) // 0 = 最外圈
+        double n = hash(x, y, 211)
+        int c
+        if (ring == 0) { put(logTop, x, y, quant(BARK, 0.3 + n * 0.45, x, y)); continue }
+        if (ring == 1) { put(logTop, x, y, n > 0.25 ? LIVE[n > 0.7 ? 1 : 0] : WOOD[2]); continue }
+        // 暗亮交替的方形年轮（2/4/6 圈为暗线），越往中心越亮；髓心 2×2 偏暗
+        if (ring == 7) c = 2
+        else if (ring % 2 == 0) c = ring == 2 ? 1 : 2
+        else c = ring == 3 ? 3 : ring == 5 ? 4 : 5
+        if (n > 0.88) c++
+        else if (n < 0.08) c--
+        put(logTop, x, y, WOOD[Math.max(0, Math.min(5, c))])
     }
     save(logTop, 'block/fertile_log_top.png')
 
-    // 木板：4 条板各 4 像素高，底行暗缝，端缝错开；板内只放几段短纹，低对比
-    def JOINTS = [5, 12, 2, 9]
+    // 木板：4 条板各 4 像素；上沿亮、下沿是稍暗的接缝；板面横向细纹；端缝错开
+    def JOINTS = [3, 11, 7, 14]
     def planks = image(16, 16)
     for (int y = 0; y < 16; y++) for (int x = 0; x < 16; x++) {
         int board = y.intdiv(4), row = y % 4
-        int c
-        if (row == 3 || x == JOINTS[board]) c = 0
-        else {
-            c = row == 0 ? 3 : 2
-            if (x == Math.floorMod(JOINTS[board] + 1, 16)) c = 4
-            if (x == Math.floorMod(JOINTS[board] - 1, 16) && row > 0) c = 1
-            int seg = (int) (hash(board, row, 99) * 16)
-            int len = 2 + (int) (hash(board, row, 100) * 2)
-            if ((row == 1 || row == 2) && Math.floorMod(x - seg, 16) < len && hash(board, row, 101) > 0.35) c = 1
-        }
-        put(planks, x, y, PLANK[c])
+        double v = [0.66, 0.58, 0.52, 0.2][row]
+        v += (anoise(x, y, 8, 1, 221 + board) - 0.5) * 0.32 + (hash(x, y, 225) - 0.5) * 0.12
+        int j = JOINTS[board]
+        if (x == j) v -= 0.3
+        else if (x == Math.floorMod(j + 1, 16)) v += 0.08
+        put(planks, x, y, quant(PLANK, v, x, y))
     }
     save(planks, 'block/fertile_planks.png')
 
-    // 树叶：几种叶片形状按抖动网格散布（左上亮、右下暗），底色是中暗绿；
-    // 镂空成片出现，镂空的右下侧压一圈最深色做出纵深；一颗未熟的小果
-    def LEAF_SHAPES = [
-        ['.45', '443', '32.'],
-        ['.44', '433', '32.'],
-        ['4.', '43', '32', '2.'],
-        ['.4', '43', '3.'],
-        ['54', '32']
-    ]
-    def stampLeaf = { BufferedImage img, List<String> shape, int ox, int oy ->
-        shape.eachWithIndex { String row, int j ->
-            for (int i = 0; i < row.length(); i++) {
-                if (row[i] == '.') continue
-                put(img, Math.floorMod(ox + i, 16), Math.floorMod(oy + j, 16), LEAF[Integer.parseInt(row[i])])
-            }
-        }
+    // 树叶：斜向叶纹（沿 x+y 方向拉长），零星单像素镂空，最暗的一档几乎像孔洞以做出纵深
+    def leafV = { int x, int y ->
+        double u = Math.floorMod(x + y, 16), w = Math.floorMod(x - y, 16)
+        anoise(u, w, 4, 1, 231) * 0.55 + anoise(x, y, 4, 4, 232) * 0.25 + hash(x, y, 233) * 0.2
     }
     def leaves = image(16, 16)
-    def hole = { int x, int y -> pnoise(x, y, 4, 102, 16) < 0.25 }
     for (int y = 0; y < 16; y++) for (int x = 0; x < 16; x++) {
-        if (hole(x, y)) continue
-        boolean rim = hole(Math.floorMod(x - 1, 16), y) || hole(x, Math.floorMod(y - 1, 16))
-        put(leaves, x, y, rim ? LEAF[0] : (hash(x, y, 110) > 0.6 ? LEAF[2] : LEAF[1]))
-    }
-    for (int gy = 0; gy < 4; gy++) for (int gx = 0; gx < 4; gx++) for (int n = 0; n < 2; n++) {
-        int ox = gx * 4 + (int) (hash(gx, gy, 103 + n) * 4)
-        int oy = gy * 4 + (int) (hash(gx, gy, 105 + n) * 4)
-        if (hole(ox, oy)) continue
-        stampLeaf(leaves, LEAF_SHAPES[(int) (hash(gx, gy, 107 + n) * LEAF_SHAPES.size())], ox, oy)
+        double v = leafV(x, y)
+        if (v < 0.24 && hash(x, y, 234) > 0.35) continue
+        put(leaves, x, y, quant(LEAF, (v - 0.26) / 0.48, x, y))
     }
     save(leaves, 'block/fertile_leaves.png')
+
+    // 蓬松叶边：交叉面片用，同一套叶纹，按成团的噪声镂空约六成
+    def fringe = image(16, 16)
+    for (int y = 0; y < 16; y++) for (int x = 0; x < 16; x++) {
+        if (anoise(x, y, 4, 4, 241) < 0.55) continue
+        put(fringe, x, y, quant(LEAF, (leafV(x, y) - 0.15) / 0.65, x, y))
+    }
+    save(fringe, 'block/fertile_leaves_fringe.png')
 
     // 挂果用的小贴图：[0,0)-(4,4) 果面（左上高光），[4,0)-(6,2) 果柄，[6,0)-(8,2) 果顶
     def fruitTex = image(16, 16)
@@ -281,21 +276,6 @@ ext.paintFertilizerArt = { File texRoot ->
     stamp(fruitTex, ['st', 'ts'], 4, 0, [s: argb('#6b4a22'), t: argb('#4a3216')])
     stamp(fruitTex, ['qr', 'rq'], 6, 0, [r: argb('#c43a2c'), q: argb('#8f2326')])
     save(fruitTex, 'block/fertile_leaves_fruit.png')
-
-    // 蓬松叶边：交叉面片用。几根斜伸出去的枝叶，七成镂空
-    def SPRIGS = [
-        ['...45', '.443.', '432..', '32...'],
-        ['45...', '.344.', '..233', '...2.'],
-        ['.4.', '443', '.32', '.2.']
-    ]
-    def fringe = image(16, 16)
-    [[1, 1, 0], [9, 0, 1], [5, 6, 2], [11, 7, 0], [0, 10, 1], [7, 12, 2], [13, 13, 0]].each { s ->
-        def shape = SPRIGS[s[2]]
-        shape.eachWithIndex { String row, int j ->
-            for (int i = 0; i < row.length(); i++) if (row[i] != '.') put(fringe, s[0] + i, s[1] + j, LEAF[Integer.parseInt(row[i])])
-        }
-    }
-    save(fringe, 'block/fertile_leaves_fringe.png')
 
     // 树苗：与袋子印花同一株——顶端卷芽、互生宽叶、茎下粗上细
     def sapling = image(16, 16)

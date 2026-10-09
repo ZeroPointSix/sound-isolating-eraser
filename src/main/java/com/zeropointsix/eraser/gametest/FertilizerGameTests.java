@@ -48,7 +48,7 @@ public final class FertilizerGameTests {
 
     @GameTest(template = "empty")
     public static void finalizedNumbersAndRecipe(GameTestHelper h) {
-        h.assertTrue(FertilizerConfig.TREE_COUNT.get() == 15, "final table specifies 15 trees");
+        h.assertTrue(FertilizerConfig.TREE_COUNT.get() == 15, "final table specifies 15 grounded trunks");
         h.assertTrue(FertilizerConfig.HEAL.get() == 6.0, "functional paragraph specifies 6 HP");
         h.assertTrue(FertilizerConfig.BONE_MEAL.get() == 10, "ten real bonemeal attempts");
         var recipe = h.getLevel().getRecipeManager().byKey(FertilizerContent.id("fertile_planks")).orElseThrow();
@@ -150,6 +150,13 @@ public final class FertilizerGameTests {
         h.succeed();
     }
 
+    private static int groundedPillars(ServerLevel level, FertilizerData.Plant tree) {
+        int grounded = 0;
+        for (BlockPos p : tree.pillars)
+            if (level.getBlockState(p).is(Blocks.ROOTED_DIRT) && level.getBlockState(p.above()).is(FertilizerContent.LOG.get())) grounded++;
+        return grounded;
+    }
+
     @GameTest(template = "fertilizer_arena", timeoutTicks = 300, batch = "fertilizer_growth")
     public static void fifteenTreeGroveIndependentDosesPersistenceAndThreeTiers(GameTestHelper h) {
         ServerLevel level=h.getLevel(); FakePlayer a=player(h), b=player(h);
@@ -171,16 +178,22 @@ public final class FertilizerGameTests {
         h.assertTrue(restored.at(level,root).doses.get(a.getUUID())==2 && restored.at(level,root).doses.get(b.getUUID())==2,"NBT round trip preserves independent counters");
         h.assertTrue(FertilizerGrowth.use(level,root,a),"A dose three");
         h.assertTrue(FertilizerGrowth.use(level,root,a),"A dose four");
-        h.assertTrue(FertilizerGrowth.use(level,root,a),"fifth A dose generates the complete grove");
-        h.assertTrue(data.size()-before==15 && tree.grove,"grove contains exactly fifteen total trees");
+        h.assertTrue(FertilizerGrowth.use(level,root,a),"fifth A dose grows the banyan grove");
+        h.assertTrue(data.size()-before==1 && tree.grove && tree.level==1,"one banyan is one plant record");
+        h.assertTrue(groundedPillars(level,tree)==14,"banyan stands on fifteen grounded trunks: main trunk plus fourteen aerial roots");
+        h.assertTrue(level.getBlockState(root.below()).is(Blocks.ROOTED_DIRT),"main trunk roots into the soil");
+        var reloaded=FertilizerData.load(data.save(new CompoundTag())).at(level,root);
+        h.assertTrue(reloaded!=null && reloaded.seed==tree.seed && reloaded.pillars.equals(tree.pillars),"NBT round trip keeps banyan seed and aerial roots");
         level.setBlock(root.above(2), Blocks.STONE.defaultBlockState(), 2);
         h.assertTrue(!FertilizerGrowth.use(level,root,a),"old trunk identity cannot authorize overwriting a building");
         h.assertTrue(level.getBlockState(root.above(2)).is(Blocks.STONE),"player replacement remains intact");
         level.setBlock(root.above(2), FertilizerContent.LOG.get().defaultBlockState(), 2);
         h.assertTrue(FertilizerGrowth.use(level,root,a) && tree.level==2,"mature tree grows to tier two");
         h.assertTrue(level.getBlockState(root.below(4)).is(Blocks.ROOTED_DIRT),"tier two roots extend four blocks into soil");
+        h.assertTrue(groundedPillars(level,tree)==20,"tier two drops six more aerial roots under the wider canopy");
         h.assertTrue(FertilizerGrowth.use(level,root,a) && tree.level==3,"tier three expands the trunk and canopy");
-        h.assertTrue(level.getBlockState(root.offset(2,1,2)).is(FertilizerContent.LOG.get()),"tier three has a five by five trunk");
+        h.assertTrue(level.getBlockState(root.offset(2,1,2)).is(FertilizerContent.LOG.get()),"tier three has a five by five trunk base");
+        h.assertTrue(groundedPillars(level,tree)==30,"tier three drops ten more aerial roots: one tree becomes a forest");
         h.assertTrue(!FertilizerGrowth.use(level,root,a),"tier three is a hard cap");
         level.setBlock(root,Blocks.AIR.defaultBlockState(),3);
         h.assertTrue(data.at(level,root)==null,"destroying the root removes its saved identity");

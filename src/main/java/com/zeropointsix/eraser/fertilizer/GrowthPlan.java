@@ -39,6 +39,15 @@ public final class GrowthPlan {
             throw new UnsafePlacement();
     }
     public BlockState get(BlockPos pos) { check(pos); return blocks.getOrDefault(pos, level.getBlockState(pos)); }
+    /** 位置在世界内、边界内且区块已加载；形状算法据此把越界处当作障碍而不是抛异常。 */
+    public boolean writable(BlockPos pos) {
+        return level.isInWorldBounds(pos) && level.getWorldBorder().isWithinBounds(pos) && level.hasChunkAt(pos);
+    }
+    /** 该位置的肥沃原木属于本次生长（已写入缓冲）或本树旧有的树干。 */
+    public boolean ownsLog(BlockPos pos) {
+        BlockState buffered = blocks.get(pos);
+        return buffered != null ? buffered.is(FertilizerContent.LOG.get()) : ownedLogs.contains(pos.asLong());
+    }
     private BlockState featureState(BlockPos pos) {
         BlockState state = get(pos);
         // Vanilla's clearance pass must see the old owned trunk as replaceable during upgrades.

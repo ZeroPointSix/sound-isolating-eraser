@@ -14,7 +14,7 @@ public final class FertilizerConfig {
         BONE_MEAL = b.defineInRange("boneMealAttempts", 10, 1, 64);
         THRESHOLD = b.comment("Trial values: 5 or 10 successful uses on the same plant.")
                 .defineInRange("groveThreshold", 5, 2, 100);
-        TREE_COUNT = b.comment("Total trees including the original tree; finalized Notion table: 15.")
+        TREE_COUNT = b.comment("Grounded trunks when the banyan forms (main trunk + aerial roots); finalized Notion table: 15.")
                 .defineInRange("groveTreeCount", 15, 1, 32);
         GROVE_RADIUS = b.defineInRange("groveRadius", 24, 8, 32);
         MEADOW_RADIUS = b.defineInRange("meadowRadius", 12, 1, 24);
