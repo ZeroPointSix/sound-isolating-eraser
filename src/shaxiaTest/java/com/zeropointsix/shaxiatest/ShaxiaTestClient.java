@@ -29,7 +29,8 @@ public final class ShaxiaTestClient {
     private static int ticks;
     private static boolean failed;
     private static boolean moved;
-    private static boolean tooltipTextObserved, tooltipRendered;
+    private static boolean tooltipTextObserved;
+    private static int tooltipRenderedAt = -100;
 
     @SubscribeEvent public static void message(ClientChatReceivedEvent event) {
         String text = event.getMessage().getString();
@@ -38,7 +39,7 @@ public final class ShaxiaTestClient {
             ticks = 0;
             moved = false;
             tooltipTextObserved = false;
-            tooltipRendered = false;
+            tooltipRenderedAt = -100;
             event.setCanceled(true);
         }
     }
@@ -51,7 +52,7 @@ public final class ShaxiaTestClient {
     }
 
     @SubscribeEvent public static void tooltipDraw(RenderTooltipEvent.Color event) {
-        if (tooltipTextObserved && ShaxiaStacks.active(event.getItemStack())) tooltipRendered = true;
+        if (tooltipTextObserved && ShaxiaStacks.active(event.getItemStack())) tooltipRenderedAt = ticks;
     }
 
     private static void input(String... args) throws Exception {
@@ -109,7 +110,8 @@ public final class ShaxiaTestClient {
                 Slot hovered = hoveredSlot((AbstractContainerScreen<?>) mc.screen);
                 require(hovered != null && hovered.getItem() == mc.player.getMainHandItem(),
                         "cursor actually hovers the knife so its tooltip rendered");
-                require(tooltipTextObserved && tooltipRendered, "Chinese tooltip reached the uncancelled rendering path");
+                require(tooltipTextObserved && ticks - tooltipRenderedAt <= 2,
+                        "Chinese tooltip reached the uncancelled rendering path within the last two ticks");
                 try (var screenshot = Screenshot.takeScreenshot(mc.getMainRenderTarget())) {
                     var colors = new HashSet<Integer>();
                     for (int x = 0; x < screenshot.getWidth(); x += 8) {

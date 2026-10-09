@@ -28,6 +28,7 @@ import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.item.trading.MerchantOffer;
 import net.minecraft.world.item.trading.MerchantOffers;
 import net.minecraft.world.level.GameRules;
+import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
 import net.minecraft.world.level.storage.loot.LootContext;
@@ -85,20 +86,28 @@ public final class ShaxiaAcceptanceGameTests {
     @GameTest(template = "empty")
     public static void shaxiaDeathDropCanBePickedUpByAnotherPlayer(GameTestHelper h) {
         h.assertTrue(!h.getLevel().getGameRules().getBoolean(GameRules.RULE_KEEPINVENTORY), "death test requires normal inventory drops");
-        Player owner = player(h), recipient = player(h);
+        // The lightweight Player mock does not spawn dropped entities; exercise ServerPlayer's real death path.
+        var owner = h.makeMockServerPlayerInLevel();
+        Player recipient = player(h);
+        owner.setGameMode(GameType.SURVIVAL);
+        owner.moveTo(h.absolutePos(new BlockPos(1, 2, 1)), 0, 0);
         ItemStack stack = specimen(), expected = stack.copy();
-        owner.getInventory().setItem(0, stack);
-        owner.hurt(h.getLevel().damageSources().genericKill(), Float.MAX_VALUE);
-        h.assertTrue(!owner.isAlive() && owner.getInventory().getItem(0).isEmpty(), "death clears the original inventory");
-        List<ItemEntity> drops = h.getLevel().getEntitiesOfClass(ItemEntity.class, owner.getBoundingBox().inflate(3),
-                item -> ItemStack.isSameItemSameTags(item.getItem(), expected));
-        h.assertTrue(drops.size() == 1, "death produces exactly one matching knife, with no soulbound retention");
-        ItemEntity drop = drops.get(0);
-        preserved(h, drop.getItem(), expected, "death drop");
-        drop.setNoPickUpDelay();
-        drop.playerTouch(recipient);
-        h.assertTrue(drop.isRemoved(), "a different player can pick up the unbound knife");
-        preserved(h, recipient.getInventory().getItem(0), expected, "other-player pickup");
+        try {
+            owner.getInventory().setItem(0, stack);
+            owner.hurt(h.getLevel().damageSources().genericKill(), Float.MAX_VALUE);
+            h.assertTrue(!owner.isAlive() && owner.getInventory().getItem(0).isEmpty(), "death clears the original inventory");
+            List<ItemEntity> drops = h.getLevel().getEntitiesOfClass(ItemEntity.class, owner.getBoundingBox().inflate(3),
+                    item -> ItemStack.isSameItemSameTags(item.getItem(), expected));
+            h.assertTrue(drops.size() == 1, "death produces exactly one matching knife, with no soulbound retention");
+            ItemEntity drop = drops.get(0);
+            preserved(h, drop.getItem(), expected, "death drop");
+            drop.setNoPickUpDelay();
+            drop.playerTouch(recipient);
+            h.assertTrue(drop.isRemoved(), "a different player can pick up the unbound knife");
+            preserved(h, recipient.getInventory().getItem(0), expected, "other-player pickup");
+        } finally {
+            h.getLevel().getServer().getPlayerList().remove(owner);
+        }
         h.succeed();
     }
 
