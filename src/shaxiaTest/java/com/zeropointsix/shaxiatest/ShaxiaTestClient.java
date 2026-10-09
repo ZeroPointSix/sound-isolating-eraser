@@ -78,8 +78,8 @@ public final class ShaxiaTestClient {
                 Slot slot = screen.getMenu().slots.stream().filter(candidate -> candidate.getItem() == held).findFirst()
                         .orElseThrow(() -> new AssertionError("knife stack is not shown in the inventory menu"));
                 int scale = (int) mc.getWindow().getGuiScale();
-                input("mousemove", Integer.toString((screen.getGuiLeft() + slot.x + 8) * scale),
-                        Integer.toString((screen.getGuiTop() + slot.y + 8) * scale));
+                input("mousemove", Integer.toString(mc.getWindow().getX() + (screen.getGuiLeft() + slot.x + 8) * scale),
+                        Integer.toString(mc.getWindow().getY() + (screen.getGuiTop() + slot.y + 8) * scale));
                 moved = true;
             }
             if (saved && ticks == 45) {
