@@ -1,5 +1,6 @@
 package com.zeropointsix.eraser.gametest;
 
+import com.electronwill.nightconfig.core.CommentedConfig;
 import com.mojang.authlib.GameProfile;
 import com.zeropointsix.eraser.ModMain;
 import com.zeropointsix.eraser.config.CommonConfig;
@@ -26,10 +27,30 @@ import net.minecraftforge.event.entity.living.LivingEntityUseItemEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.gametest.GameTestHolder;
 import net.minecraftforge.gametest.PrefixGameTestTemplate;
+import net.minecraftforge.fml.config.ConfigTracker;
+import net.minecraftforge.fml.config.ModConfig;
 
 @GameTestHolder(ModMain.MOD_ID)
 @PrefixGameTestTemplate(false)
 public final class PillGameTests {
+    private static TestConfigScope isolatedCommonConfig() {
+        ModConfig runtimeConfig = ConfigTracker.INSTANCE.configSets().get(ModConfig.Type.SERVER).stream()
+                .filter(config -> config.getSpec() == CommonConfig.SPEC)
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("Common config is not registered"));
+        CommentedConfig original = runtimeConfig.getConfigData();
+        CommentedConfig isolated = CommentedConfig.inMemory();
+        CommonConfig.SPEC.correct(isolated);
+        CommonConfig.SPEC.setConfig(isolated);
+        return () -> CommonConfig.SPEC.setConfig(original);
+    }
+
+    @FunctionalInterface
+    private interface TestConfigScope extends AutoCloseable {
+        @Override
+        void close();
+    }
+
     private static FakePlayer player(GameTestHelper h) {
         FakePlayer player = FakePlayerFactory.get(h.getLevel(), new GameProfile(UUID.randomUUID(), "PillQA"));
         player.setGameMode(GameType.SURVIVAL);
@@ -195,11 +216,7 @@ public final class PillGameTests {
 
     @GameTest(template = "empty")
     public static void pillCreativeMilkAndOptionalEffectsConfiguration(GameTestHelper h) {
-        boolean oldConsume = CommonConfig.CONSUME_IN_CREATIVE.get();
-        boolean oldMilk = CommonConfig.ALLOW_MILK_CURE.get();
-        boolean oldNausea = CommonConfig.WITHDRAWAL_NAUSEA.get();
-        boolean oldDarkness = CommonConfig.WITHDRAWAL_DARKNESS.get();
-        try {
+        try (TestConfigScope ignored = isolatedCommonConfig()) {
             FakePlayer player = player(h);
             player.setGameMode(GameType.CREATIVE);
             ItemStack pack = new ItemStack(ModItems.ENHANCEMENT_PILL_PACK.get());
@@ -221,11 +238,6 @@ public final class PillGameTests {
             h.assertTrue(!state(player).withdrawing(), "debug option cures authoritative withdrawal");
             PillEffects.tick(player, state(player));
             h.assertTrue(!player.hasEffect(MobEffects.CONFUSION), "cured withdrawal stays gone");
-        } finally {
-            CommonConfig.CONSUME_IN_CREATIVE.set(oldConsume);
-            CommonConfig.ALLOW_MILK_CURE.set(oldMilk);
-            CommonConfig.WITHDRAWAL_NAUSEA.set(oldNausea);
-            CommonConfig.WITHDRAWAL_DARKNESS.set(oldDarkness);
         }
         h.succeed();
     }
