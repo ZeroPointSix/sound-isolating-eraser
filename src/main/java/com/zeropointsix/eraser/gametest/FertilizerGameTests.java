@@ -187,13 +187,14 @@ public final class FertilizerGameTests {
     @GameTest(template = "empty")
     public static void protectionCancellationRollsBackWholeBatch(GameTestHelper h) {
         FakePlayer player=player(h); BlockPos pos=h.absolutePos(new BlockPos(5,2,5));
-        class Guard {
+        // Distinct fixture names avoid collisions in Forge's generated event-handler wrappers.
+        class SecondPlacementGuard {
             int placements;
-            @SubscribeEvent public void deny(BlockEvent.EntityPlaceEvent event) {
+            @SubscribeEvent public void denySecondPlacement(BlockEvent.EntityPlaceEvent event) {
                 if (event.getEntity()==player && ++placements==2) event.setCanceled(true);
             }
         }
-        Guard guard=new Guard(); MinecraftForge.EVENT_BUS.register(guard);
+        SecondPlacementGuard guard=new SecondPlacementGuard(); MinecraftForge.EVENT_BUS.register(guard);
         try {
             GrowthPlan plan=new GrowthPlan(h.getLevel());
             plan.put(pos,FertilizerContent.LOG.get().defaultBlockState());
@@ -213,13 +214,13 @@ public final class FertilizerGameTests {
         ItemStack bag=new ItemStack(FertilizerContent.BAG.get());
         bag.getOrCreateTag().putInt("FertilizerCapacity",1);
         p.setItemInHand(InteractionHand.MAIN_HAND,bag);
-        class Guard {
+        class BagPlacementGuard {
             int denied;
-            @SubscribeEvent public void deny(BlockEvent.EntityMultiPlaceEvent event) {
+            @SubscribeEvent public void denyBagPlacement(BlockEvent.EntityMultiPlaceEvent event) {
                 if(event.getEntity()==p) { denied++; event.setCanceled(true); }
             }
         }
-        Guard guard=new Guard(); MinecraftForge.EVENT_BUS.register(guard);
+        BagPlacementGuard guard=new BagPlacementGuard(); MinecraftForge.EVENT_BUS.register(guard);
         try {
             use(p,root);
             h.assertTrue(guard.denied>0,"full item use reached and was rejected by the multi-place protection hook");
@@ -256,13 +257,13 @@ public final class FertilizerGameTests {
         h.getLevel().setBlock(root.below(),Blocks.GRASS_BLOCK.defaultBlockState(),3);
         h.getLevel().setBlock(root,FertilizerContent.SAPLING.get().defaultBlockState().setValue(SaplingBlock.STAGE,1),3);
         p.setItemInHand(InteractionHand.MAIN_HAND,new ItemStack(Items.BONE_MEAL,64));
-        class Guard {
+        class SaplingPlacementGuard {
             int denied;
-            @SubscribeEvent public void deny(BlockEvent.EntityMultiPlaceEvent event) {
+            @SubscribeEvent public void denySaplingPlacement(BlockEvent.EntityMultiPlaceEvent event) {
                 if(event.getEntity()==p) { denied++; event.setCanceled(true); }
             }
         }
-        Guard guard=new Guard(); MinecraftForge.EVENT_BUS.register(guard);
+        SaplingPlacementGuard guard=new SaplingPlacementGuard(); MinecraftForge.EVENT_BUS.register(guard);
         try {
             for(int i=0;i<40 && guard.denied==0;i++) use(p,root);
             h.assertTrue(guard.denied>0,"normal bonemeal reaches the outer protection hook");
