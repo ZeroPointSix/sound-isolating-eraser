@@ -132,6 +132,8 @@ public final class GrowthPlan {
                 BlockStateProvider.simple(FertilizerContent.LEAVES.get()),
                 new BlobFoliagePlacer(ConstantInt.of(radius), ConstantInt.of(0), crown),
                 new TwoLayersFeatureSize(1, 0, 1)).ignoreVines().build();
+        // AbstractTreeGrower removes the sapling before invoking a tree feature; do so only in our buffer.
+        if (get(root).is(BlockTags.SAPLINGS)) put(root, Blocks.AIR.defaultBlockState());
         currentTrunk = new HashSet<>();
         if (!Feature.TREE.place(config, bufferedWorld(), level.getChunkSource().getGenerator(), level.random, root)) throw new UnsafePlacement();
         int low = tier == 3 ? -2 : 0;
