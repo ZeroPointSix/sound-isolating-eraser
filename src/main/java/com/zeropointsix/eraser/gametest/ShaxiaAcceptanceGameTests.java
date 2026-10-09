@@ -1,5 +1,6 @@
 package com.zeropointsix.eraser.gametest;
 
+import com.mojang.authlib.GameProfile;
 import com.zeropointsix.eraser.ModMain;
 import com.zeropointsix.eraser.registry.ModItems;
 import com.zeropointsix.eraser.shaxia.ShaxiaConfig;
@@ -12,6 +13,7 @@ import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -37,6 +39,7 @@ import net.minecraft.world.level.storage.loot.functions.EnchantRandomlyFunction;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import net.minecraftforge.fml.config.ConfigTracker;
 import net.minecraftforge.fml.config.ModConfig;
+import net.minecraftforge.common.util.FakePlayer;
 import net.minecraftforge.gametest.GameTestHolder;
 import net.minecraftforge.gametest.PrefixGameTestTemplate;
 
@@ -86,8 +89,10 @@ public final class ShaxiaAcceptanceGameTests {
     @GameTest(template = "empty")
     public static void shaxiaDeathDropCanBePickedUpByAnotherPlayer(GameTestHelper h) {
         h.assertTrue(!h.getLevel().getGameRules().getBoolean(GameRules.RULE_KEEPINVENTORY), "death test requires normal inventory drops");
-        // The lightweight Player mock does not spawn dropped entities; exercise ServerPlayer's real death path.
-        var owner = h.makeMockServerPlayerInLevel();
+        // Keep real ServerPlayer death/drop behavior; only packets use Forge's no-op test sink.
+        var profile = new GameProfile(UUID.randomUUID(), "ShaxiaDropOwner");
+        var owner = new ServerPlayer(h.getLevel().getServer(), h.getLevel(), profile);
+        owner.connection = new FakePlayer(h.getLevel(), profile).connection;
         Player recipient = player(h);
         owner.setGameMode(GameType.SURVIVAL);
         owner.moveTo(h.absolutePos(new BlockPos(1, 2, 1)), 0, 0);
@@ -106,7 +111,7 @@ public final class ShaxiaAcceptanceGameTests {
             h.assertTrue(drop.isRemoved(), "a different player can pick up the unbound knife");
             preserved(h, recipient.getInventory().getItem(0), expected, "other-player pickup");
         } finally {
-            h.getLevel().getServer().getPlayerList().remove(owner);
+            owner.discard();
         }
         h.succeed();
     }
