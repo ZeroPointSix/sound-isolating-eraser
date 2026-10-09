@@ -64,7 +64,7 @@ public final class ShaxiaTestClient {
                 require(tooltip.contains("针对畸界怪物具有特殊攻击效果"), "exact Chinese tooltip loaded");
                 require(ShaxiaEnchantments.JIJIE_SPECIAL_ATTACK.get().getFullname(1).getString().equals("畸界特攻"),
                         "innate name has no level suffix");
-                String sprite = mc.getItemRenderer().getModel(stack, mc.level, mc.player, 0).getParticleIcon().getName().toString();
+                String sprite = mc.getItemRenderer().getModel(stack, mc.level, mc.player, 0).getParticleIcon().contents().name().toString();
                 require(!sprite.contains("missing"), "temporary item model resolves a real texture");
                 input("key", "e");
             }
