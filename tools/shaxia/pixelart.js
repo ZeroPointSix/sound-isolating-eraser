@@ -1,4 +1,4 @@
-/* Unapproved generated concept only; not user-supplied production art or an accepted visual deliverable.
+/* 2026-10-09 由用户（hushaokang）要求采用为杀夏刀物品贴图，替换铁剑占位。
    杀夏刀 32×32 物品贴图源。浏览器和 node vm 都能跑，导出见 export-assets.mjs。
    外观依据原著第 43/44 章：细长、通体暗银、扁平金属条；一侧略厚，另一侧急剧收窄到纸一样薄；
    表面细密纹路泛浅蓝（矿结统一质感）。Notion 2.5：无 glint、不发光、贴图 32×32。

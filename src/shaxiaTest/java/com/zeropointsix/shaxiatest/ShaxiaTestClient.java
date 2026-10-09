@@ -93,7 +93,7 @@ public final class ShaxiaTestClient {
                 require(ShaxiaEnchantments.JIJIE_SPECIAL_ATTACK.get().getFullname(1).getString().equals("畸界特攻"),
                         "innate name has no level suffix");
                 String sprite = mc.getItemRenderer().getModel(stack, mc.level, mc.player, 0).getParticleIcon().contents().name().toString();
-                require(!sprite.contains("missing"), "temporary item model resolves a real texture");
+                require(sprite.equals("sound_isolating_eraser:item/shaxiadao"), "item model resolves the Shaxiadao texture");
                 input("key", "e");
             }
             if (saved && ticks >= 28 && ticks < 45 && !moved && mc.screen instanceof AbstractContainerScreen<?> screen) {
@@ -121,7 +121,7 @@ public final class ShaxiaTestClient {
                     screenshot.writeToFile(RESULTS.resolve(ROLE + "-" + phase + ".png"));
                 }
                 Files.writeString(RESULTS.resolve(ROLE + "-" + phase + ".pass"),
-                        "Real Forge client creative tab, inventory, rendered hovered Chinese tooltip, no-glint, placeholder model and framebuffer checks passed.\n");
+                        "Real Forge client creative tab, inventory, rendered hovered Chinese tooltip, no-glint, Shaxiadao texture and framebuffer checks passed.\n");
             }
         } catch (Throwable failure) {
             failure.printStackTrace();
