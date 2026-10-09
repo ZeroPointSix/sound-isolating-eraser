@@ -4,6 +4,7 @@ import com.mojang.authlib.GameProfile;
 import com.zeropointsix.eraser.ModMain;
 import com.zeropointsix.eraser.registry.ModItems;
 import com.zeropointsix.eraser.shaxia.*;
+import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
 import net.minecraft.core.BlockPos;
@@ -334,6 +335,27 @@ public final class ShaxiadaoGameTests {
         ItemStack repaired = ShaxiaWorkstations.grindOutput(a, b);
         h.assertTrue(!repaired.isEmpty() && repaired.getDamageValue() == 1061 && ShaxiaStacks.active(repaired),
                 "two damaged knives retain the innate enchantment and vanilla repair bonus");
+        h.succeed();
+    }
+
+    @GameTest(template = "empty")
+    public static void shaxiaConfigIdsNormalizeNamespace(GameTestHelper h) {
+        try (GameTestConfigs.LiveConfig ignored = GameTestConfigs.sandbox(ShaxiaConfig.SPEC)) {
+            Mob zombie = h.spawn(EntityType.ZOMBIE, new BlockPos(2, 2, 2));
+            zombie.setNoAi(true);
+            h.assertTrue(ShaxiaTargets.eligible(zombie), "baseline hostile zombie is eligible");
+            Mob bat = h.spawn(EntityType.BAT, new BlockPos(2, 2, 2));
+            bat.setNoAi(true);
+            h.assertTrue(!ShaxiaTargets.eligible(bat), "baseline ambient bat is not a target");
+            ShaxiaConfig.INCLUDE.set(List.of("bat"));
+            h.assertTrue(ShaxiaTargets.eligible(bat), "bare 'bat' include entry must match minecraft:bat");
+            ShaxiaConfig.EXCLUDE.set(List.of("zombie"));
+            h.assertTrue(!ShaxiaTargets.eligible(zombie), "bare 'zombie' exclude entry must match minecraft:zombie");
+            ShaxiaConfig.EXCLUDE.set(List.of("minecraft:bat"));
+            h.assertTrue(!ShaxiaTargets.eligible(bat), "namespaced exclude overrides the bare include");
+            ShaxiaConfig.INCLUDE.set(List.of());
+            ShaxiaConfig.EXCLUDE.set(List.of());
+        }
         h.succeed();
     }
 

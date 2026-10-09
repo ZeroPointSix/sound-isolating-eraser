@@ -1,6 +1,8 @@
 package com.zeropointsix.eraser.shaxia;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.common.ForgeConfigSpec;
 
@@ -44,6 +46,16 @@ public final class ShaxiaConfig {
 
     public static boolean flag(ForgeConfigSpec.BooleanValue value, boolean fallback) {
         return SPEC.isLoaded() ? value.get() : fallback;
+    }
+
+    public static Set<String> ids(ForgeConfigSpec.ConfigValue<List<? extends String>> list) {
+        if (!SPEC.isLoaded()) return Set.of();
+        Set<String> ids = new HashSet<>();
+        for (String entry : list.get()) {
+            ResourceLocation location = ResourceLocation.tryParse(entry);
+            if (location != null) ids.add(location.toString());
+        }
+        return ids;
     }
 
     private ShaxiaConfig() {}

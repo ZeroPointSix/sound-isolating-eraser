@@ -7,6 +7,9 @@ import java.nio.file.Path;
 import java.util.HashSet;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.ClientChatReceivedEvent;
@@ -22,12 +25,14 @@ public final class ShaxiaTestClient {
     private static String phase = "";
     private static int ticks;
     private static boolean failed;
+    private static boolean moved;
 
     @SubscribeEvent public static void message(ClientChatReceivedEvent event) {
         String text = event.getMessage().getString();
         if (text.startsWith("SHAXIA_QA:")) {
             phase = text.substring(10);
             ticks = 0;
+            moved = false;
             event.setCanceled(true);
         }
     }
@@ -68,14 +73,20 @@ public final class ShaxiaTestClient {
                 require(!sprite.contains("missing"), "temporary item model resolves a real texture");
                 input("key", "e");
             }
-            if (saved && ticks == 28) {
+            if (saved && ticks >= 28 && ticks < 45 && !moved && mc.screen instanceof AbstractContainerScreen<?> screen) {
+                ItemStack held = mc.player.getMainHandItem();
+                Slot slot = screen.getMenu().slots.stream().filter(candidate -> candidate.getItem() == held).findFirst()
+                        .orElseThrow(() -> new AssertionError("knife stack is not shown in the inventory menu"));
                 int scale = (int) mc.getWindow().getGuiScale();
-                int left = (mc.getWindow().getGuiScaledWidth() - 176) / 2;
-                int top = (mc.getWindow().getGuiScaledHeight() - 166) / 2;
-                input("mousemove", Integer.toString((left + 16) * scale), Integer.toString((top + 150) * scale));
+                input("mousemove", Integer.toString((screen.getGuiLeft() + slot.x + 8) * scale),
+                        Integer.toString((screen.getGuiTop() + slot.y + 8) * scale));
+                moved = true;
             }
             if (saved && ticks == 45) {
-                require(mc.screen != null, "native inventory screen opened");
+                require(mc.screen instanceof AbstractContainerScreen, "native inventory screen opened");
+                Slot hovered = hoveredSlot((AbstractContainerScreen<?>) mc.screen);
+                require(hovered != null && hovered.getItem() == mc.player.getMainHandItem(),
+                        "cursor actually hovers the knife so its tooltip rendered");
                 try (var screenshot = Screenshot.takeScreenshot(mc.getMainRenderTarget())) {
                     var colors = new HashSet<Integer>();
                     for (int x = 0; x < screenshot.getWidth(); x += 8) {
@@ -85,12 +96,18 @@ public final class ShaxiaTestClient {
                     screenshot.writeToFile(RESULTS.resolve(ROLE + "-" + phase + ".png"));
                 }
                 Files.writeString(RESULTS.resolve(ROLE + "-" + phase + ".pass"),
-                        "Real Forge client inventory, Chinese tooltip, no-glint, model and framebuffer checks passed.\n");
+                        "Real Forge client inventory, hovered Chinese tooltip, no-glint, model and framebuffer checks passed.\n");
             }
         } catch (Throwable failure) {
             failure.printStackTrace();
             try { Files.writeString(RESULTS.resolve(ROLE + ".failed"), failure.toString()); } catch (Exception ignored) { }
             failed = true;
         }
+    }
+
+    private static Slot hoveredSlot(AbstractContainerScreen<?> screen) throws Exception {
+        var field = AbstractContainerScreen.class.getDeclaredField("hoveredSlot");
+        field.setAccessible(true);
+        return (Slot) field.get(screen);
     }
 }

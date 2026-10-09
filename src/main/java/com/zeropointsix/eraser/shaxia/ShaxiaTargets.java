@@ -32,11 +32,11 @@ public final class ShaxiaTargets {
                 || target instanceof AbstractVillager || !target.isAlive()) return false;
         EntityType<?> type = target.getType();
         String id = String.valueOf(ForgeRegistries.ENTITY_TYPES.getKey(type));
-        if (type.is(EXCLUDED) || (ShaxiaConfig.SPEC.isLoaded() && ShaxiaConfig.EXCLUDE.get().contains(id))) return false;
+        if (type.is(EXCLUDED) || ShaxiaConfig.ids(ShaxiaConfig.EXCLUDE).contains(id)) return false;
         if (type.is(CONDITIONAL) || target instanceof NeutralMob) {
             return !ShaxiaConfig.flag(ShaxiaConfig.REQUIRE_PLAYER_INTENT, true) || playerIntent(mob);
         }
-        return type.is(HOSTILE) || (ShaxiaConfig.SPEC.isLoaded() && ShaxiaConfig.INCLUDE.get().contains(id))
+        return type.is(HOSTILE) || ShaxiaConfig.ids(ShaxiaConfig.INCLUDE).contains(id)
                 || (ShaxiaConfig.flag(ShaxiaConfig.ENEMY_FALLBACK, true) && target instanceof Enemy);
     }
 
