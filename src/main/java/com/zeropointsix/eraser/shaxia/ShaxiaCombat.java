@@ -69,6 +69,7 @@ public final class ShaxiaCombat {
         ATTACKS.remove(player.getUUID());
         ShaxiaStacks.normalize(stack, ShaxiaConfig.flag(ShaxiaConfig.RESTORE_MISSING, true));
         Entity parent = original instanceof PartEntity<?> part ? part.getParent() : original;
+        // A protection-window difference hit remains ordinary; it cannot start another special strike.
         if (!(parent instanceof LivingEntity target) || !player.isAlive() || player.getMainHandItem() != stack
                 || !ShaxiaStacks.active(stack) || !ShaxiaTargets.eligible(target) || target.invulnerableTime > 10
                 || (player instanceof FakePlayer && !ShaxiaConfig.flag(ShaxiaConfig.ALLOW_FAKE_PLAYERS, false))) return;

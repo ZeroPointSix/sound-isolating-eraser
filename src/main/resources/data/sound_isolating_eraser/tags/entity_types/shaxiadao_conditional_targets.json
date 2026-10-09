@@ -1,4 +1,4 @@
 {
   "replace": false,
-  "values": ["minecraft:enderman", "minecraft:zombified_piglin", "minecraft:piglin"]
+  "values": ["minecraft:enderman", "minecraft:zombified_piglin", "minecraft:piglin", "minecraft:spider", "minecraft:cave_spider"]
 }

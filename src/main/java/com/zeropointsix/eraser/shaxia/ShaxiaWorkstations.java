@@ -47,7 +47,7 @@ public final class ShaxiaWorkstations {
         if (pair) damage = Math.max(0, top.getDamageValue() + bottom.getDamageValue()
                 - input.getMaxDamage() - input.getMaxDamage() * 5 / 100);
         boolean repair = pair && damage < Math.min(top.getDamageValue(), bottom.getDamageValue());
-        if (!repair && removableCost(top) + removableCost(bottom) == 0) return ItemStack.EMPTY;
+        if (!repair && !hasRemovableEnchantment(top) && !hasRemovableEnchantment(bottom)) return ItemStack.EMPTY;
         ItemStack output = input.copy();
         output.setCount(1);
         output.setDamageValue(damage);
@@ -67,6 +67,11 @@ public final class ShaxiaWorkstations {
         }
         output.setRepairCost(repairCost);
         return output;
+    }
+
+    private static boolean hasRemovableEnchantment(ItemStack stack) {
+        return EnchantmentHelper.getEnchantments(stack).keySet().stream().anyMatch(enchantment ->
+                !enchantment.isCurse() && enchantment != ShaxiaEnchantments.JIJIE_SPECIAL_ATTACK.get());
     }
 
     private static int removableCost(ItemStack stack) {

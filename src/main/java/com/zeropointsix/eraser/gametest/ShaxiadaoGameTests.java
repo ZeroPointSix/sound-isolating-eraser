@@ -33,6 +33,7 @@ import net.minecraftforge.common.ToolActions;
 import net.minecraftforge.common.util.FakePlayer;
 import net.minecraftforge.common.util.FakePlayerFactory;
 import net.minecraftforge.event.entity.living.LivingDamageEvent;
+import net.minecraftforge.event.entity.living.LivingAttackEvent;
 import net.minecraftforge.event.entity.living.LivingHurtEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.fml.util.ObfuscationReflectionHelper;
@@ -103,7 +104,12 @@ public final class ShaxiadaoGameTests {
         h.assertTrue(stack.getDamageValue() == 1, "two damage segments spend one durability");
         h.assertTrue(target.invulnerableTime == 20, "first hit protection remains");
         float last = ObfuscationReflectionHelper.getPrivateValue(LivingEntity.class, target, "f_20898_");
-        close(h, last, 6.5F, "second segment preserves first segment's damage bookkeeping");
+        close(h, last, 4, "second segment preserves vanilla's pre-event damage bookkeeping");
+        charge(p, 100);
+        attack(p, target);
+        close(h, 20 - target.getHealth(), 8.5F, "same-strength attack during protection cannot hit again");
+        attack(player(h, knife()), target);
+        close(h, 20 - target.getHealth(), 8.5F, "a second player cannot bypass that protection in the same tick");
         h.succeed();
     }
 
@@ -163,17 +169,22 @@ public final class ShaxiadaoGameTests {
 
     @GameTest(template = "empty")
     public static void shaxiaCancellationAtHurtAndDamage(GameTestHelper h) {
-        Creeper hurtTarget = creeper(h), damageTarget = creeper(h);
+        Creeper attackTarget = creeper(h), hurtTarget = creeper(h), damageTarget = creeper(h);
+        Consumer<LivingAttackEvent> cancelAttack = e -> { if (e.getEntity() == attackTarget) e.setCanceled(true); };
         Consumer<LivingHurtEvent> cancelHurt = e -> { if (e.getEntity() == hurtTarget) e.setCanceled(true); };
         Consumer<LivingDamageEvent> cancelDamage = e -> { if (e.getEntity() == damageTarget) e.setCanceled(true); };
+        MinecraftForge.EVENT_BUS.addListener(EventPriority.HIGHEST, false, LivingAttackEvent.class, cancelAttack);
         MinecraftForge.EVENT_BUS.addListener(EventPriority.HIGHEST, false, LivingHurtEvent.class, cancelHurt);
         MinecraftForge.EVENT_BUS.addListener(EventPriority.HIGHEST, false, LivingDamageEvent.class, cancelDamage);
         try {
+            attack(player(h, knife()), attackTarget);
             attack(player(h, knife()), hurtTarget);
             attack(player(h, knife()), damageTarget);
+            close(h, attackTarget.getHealth(), 20, "cancelled Attack cannot leak true damage");
             close(h, hurtTarget.getHealth(), 20, "cancelled Hurt cannot leak true damage");
             close(h, damageTarget.getHealth(), 20, "cancelled Damage cannot leak true damage");
         } finally {
+            MinecraftForge.EVENT_BUS.unregister(cancelAttack);
             MinecraftForge.EVENT_BUS.unregister(cancelHurt);
             MinecraftForge.EVENT_BUS.unregister(cancelDamage);
         }
@@ -188,6 +199,12 @@ public final class ShaxiadaoGameTests {
         attack(player(h, knife()), rescued);
         close(h, rescued.getHealth(), 1, "primary totem resurrection is not followed by extra damage");
         h.assertTrue(rescued.isAlive() && rescued.getOffhandItem().isEmpty(), "one totem consumed");
+        Creeper rescuedByExtra = creeper(h);
+        rescuedByExtra.setHealth(8);
+        rescuedByExtra.setItemSlot(EquipmentSlot.OFFHAND, new ItemStack(Items.TOTEM_OF_UNDYING));
+        attack(player(h, knife()), rescuedByExtra);
+        close(h, rescuedByExtra.getHealth(), 1, "armor-bypassing segment respects its own totem resurrection");
+        h.assertTrue(rescuedByExtra.isAlive() && rescuedByExtra.getOffhandItem().isEmpty(), "extra segment consumes one totem");
         Creeper killed = creeper(h);
         killed.setHealth(8);
         FakePlayer p = player(h, knife());
@@ -198,14 +215,63 @@ public final class ShaxiadaoGameTests {
     }
 
     @GameTest(template = "empty")
-    public static void shaxiaCooldownAndNoSweep(GameTestHelper h) {
+    public static void shaxiaCooldownAndCritical(GameTestHelper h) {
         FakePlayer p = player(h, knife());
-        Creeper target = creeper(h), neighbor = creeper(h);
+        Creeper target = creeper(h);
         charge(p, 0);
         float c = p.getAttackStrengthScale(0.5F);
         attack(p, target);
         close(h, 20 - target.getHealth(), 4 * (0.2F + 0.8F * c * c) + 4.5F * c, "both bonuses scale with cooldown");
-        close(h, neighbor.getHealth(), 20, "no secondary sweeping target");
+        FakePlayer critical = player(h, knife());
+        critical.setOnGround(false);
+        critical.fallDistance = 1;
+        Creeper criticalTarget = creeper(h);
+        attack(critical, criticalTarget);
+        close(h, 20 - criticalTarget.getHealth(), 10.5F, "only the base damage receives the critical multiplier");
+        h.succeed();
+    }
+
+    @GameTest(template = "empty")
+    public static void shaxiaFullChargeNoSweep(GameTestHelper h) {
+        Creeper target = creeper(h), neighbor = creeper(h);
+        attack(player(h, knife()), target);
+        close(h, neighbor.getHealth(), 20, "fully charged grounded knife attack cannot sweep");
+        FakePlayer control = player(h, new ItemStack(Items.IRON_SWORD));
+        target.invulnerableTime = 0;
+        control.attack(target);
+        h.assertTrue(neighbor.getHealth() < 20, "same setup with an ordinary sword must actually sweep");
+        h.succeed();
+    }
+
+    @GameTest(template = "empty")
+    public static void shaxiaConditionalSpiderAndHostileHoglin(GameTestHelper h) {
+        Mob calm = h.spawn(EntityType.SPIDER, new BlockPos(2, 2, 2));
+        calm.setNoAi(true);
+        float before = calm.getHealth();
+        attack(player(h, knife()), calm);
+        close(h, before - calm.getHealth(), 4, "unengaged conditional spider is ordinary");
+        Mob angry = h.spawn(EntityType.CAVE_SPIDER, new BlockPos(2, 2, 2));
+        angry.setNoAi(true);
+        angry.setTarget(player(h, knife()));
+        before = angry.getHealth();
+        attack(player(h, knife()), angry);
+        close(h, before - angry.getHealth(), 8.5F, "spider targeting a player qualifies before the hit");
+        Mob hoglin = h.spawn(EntityType.HOGLIN, new BlockPos(2, 2, 2));
+        hoglin.setNoAi(true);
+        h.assertTrue(ShaxiaTargets.eligible(hoglin), "hostile hoglin is not mistaken for an ordinary passive animal");
+        h.succeed();
+    }
+
+    @GameTest(template = "empty")
+    public static void shaxiaIndirectAndProtectionDifference(GameTestHelper h) {
+        FakePlayer p = player(h, knife());
+        Creeper indirect = creeper(h);
+        indirect.hurt(h.getLevel().damageSources().thorns(p), 4);
+        close(h, 20 - indirect.getHealth(), 4, "holding the knife does not enhance indirect damage");
+        Creeper protectedTarget = creeper(h);
+        protectedTarget.hurt(h.getLevel().damageSources().generic(), 1);
+        attack(p, protectedTarget);
+        close(h, 20 - protectedTarget.getHealth(), 4, "protection-window difference hits cannot start extra damage");
         h.succeed();
     }
 

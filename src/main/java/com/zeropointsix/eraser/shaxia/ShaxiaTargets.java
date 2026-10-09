@@ -28,7 +28,8 @@ public final class ShaxiaTargets {
 
     public static boolean eligible(LivingEntity target) {
         if (!(target instanceof Mob mob) || target instanceof Player || target instanceof ArmorStand
-                || target instanceof Animal || target instanceof AbstractVillager || !target.isAlive()) return false;
+                || (target instanceof Animal && !(target instanceof Enemy))
+                || target instanceof AbstractVillager || !target.isAlive()) return false;
         EntityType<?> type = target.getType();
         String id = String.valueOf(ForgeRegistries.ENTITY_TYPES.getKey(type));
         if (type.is(EXCLUDED) || (ShaxiaConfig.SPEC.isLoaded() && ShaxiaConfig.EXCLUDE.get().contains(id))) return false;
