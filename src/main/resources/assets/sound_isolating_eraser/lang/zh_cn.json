@@ -1,4 +1,10 @@
 {
+  "item.sound_isolating_eraser.shaxiadao": "杀夏刀",
+  "enchantment.sound_isolating_eraser.jijie_special_attack": "畸界特攻",
+  "tooltip.sound_isolating_eraser.shaxiadao": "针对畸界怪物具有特殊攻击效果",
+  "death.attack.shaxiadao_true": "%1$s 被 %2$s 的杀夏刀击败了",
+  "death.attack.shaxiadao_true.player": "%1$s 被 %2$s 的杀夏刀击败了",
+  "death.attack.shaxiadao_true.item": "%1$s 被 %2$s 使用 %3$s 击败了",
   "item.sound_isolating_eraser.enhancement_pill_pack": "强化药片",
   "item.sound_isolating_eraser.empty_pill_pack": "空药板",
   "tooltip.sound_isolating_eraser.pill_count": "剩余 %s / %s 粒",

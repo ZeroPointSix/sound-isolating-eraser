@@ -8,6 +8,8 @@ import com.zeropointsix.eraser.registry.ModEntities;
 import com.zeropointsix.eraser.registry.ModBlocks;
 import com.zeropointsix.eraser.registry.ModItems;
 import com.zeropointsix.eraser.pill.PillNetwork;
+import com.zeropointsix.eraser.shaxia.ShaxiaConfig;
+import com.zeropointsix.eraser.shaxia.ShaxiaEnchantments;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraftforge.event.BuildCreativeModeTabContentsEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
@@ -26,6 +28,7 @@ public final class ModMain {
         IEventBus bus = FMLJavaModLoadingContext.get().getModEventBus();
         ModBlocks.BLOCKS.register(bus);
         ModItems.ITEMS.register(bus);
+        ShaxiaEnchantments.REGISTRY.register(bus);
         ModEntities.ENTITIES.register(bus);
         GravityNetwork.register();
         EraserNetwork.register();
@@ -34,6 +37,8 @@ public final class ModMain {
         ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER, CommonConfig.SPEC,
                 MOD_ID + "-eraser-server.toml");
         ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER, GravityConfig.SPEC);
+        ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER, ShaxiaConfig.SPEC,
+                MOD_ID + "-shaxiadao-server.toml");
     }
 
     private void creativeItems(BuildCreativeModeTabContentsEvent event) {
@@ -42,6 +47,7 @@ public final class ModMain {
             event.accept(ModItems.GRAVITY_JADE_PENDANT.get());
             event.accept(ModItems.ENHANCEMENT_PILL_PACK.get());
             event.accept(ModItems.EMPTY_PILL_PACK.get());
+            event.accept(ModItems.SHAXIADAO.get().getDefaultInstance());
         }
     }
 }
