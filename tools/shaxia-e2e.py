@@ -54,6 +54,12 @@ def launch(role, restart=False):
     command = ["java", "-Xmx768M", f"-Dshaxia.qa.results={RESULTS}", f"-Dshaxia.qa.role={role}",
                f"-Dshaxia.qa.restart={str(restart).lower()}"]
     command += shlex.split(expand(config["vmArgs"]))
+    if role != "server":
+        # Concurrent JVMs must not probe, extract or clean up the same native-library files.
+        natives = directory / ("lwjgl-natives-restart" if restart else "lwjgl-natives")
+        natives.mkdir(exist_ok=True)
+        command += [f"-Dorg.lwjgl.system.SharedLibraryExtractPath={natives}",
+                    "-Dorg.lwjgl.util.DebugLoader=true"]
     command += ["-cp", CLASSPATH, config["mainClass"], *args]
     log = (RESULTS / f"{role}{'-restart' if restart else ''}.log").open("w")
     logs.append(log)
