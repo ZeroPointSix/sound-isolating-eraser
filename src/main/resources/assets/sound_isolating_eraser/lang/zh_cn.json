@@ -1,4 +1,11 @@
 {
+  "item.sound_isolating_eraser.super_fertilizer_bag": "\u8d85\u7ea7\u80a5\u6599",
+  "item.sound_isolating_eraser.empty_fertilizer_bag": "\u7a7a\u80a5\u6599\u888b",
+  "item.sound_isolating_eraser.fertile_fruit": "\u80a5\u6c83\u679c\u5b9e",
+  "block.sound_isolating_eraser.fertile_log": "\u80a5\u6c83\u539f\u6728",
+  "block.sound_isolating_eraser.fertile_leaves": "\u80a5\u6c83\u6811\u53f6",
+  "block.sound_isolating_eraser.fertile_planks": "\u80a5\u6c83\u6728\u677f",
+  "block.sound_isolating_eraser.fertile_sapling": "\u80a5\u6c83\u6811\u82d7",
   "item.sound_isolating_eraser.sound_isolating_eraser": "隔音橡皮",
   "item.sound_isolating_eraser.sound_isolating_eraser.no_space": "空间不足，画不出墙",
   "block.sound_isolating_eraser.eraser_anchor": "橡皮锚点",

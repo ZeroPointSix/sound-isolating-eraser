@@ -22,6 +22,9 @@ public final class ModMain {
 
     public ModMain() {
         IEventBus bus = FMLJavaModLoadingContext.get().getModEventBus();
+        com.zeropointsix.eraser.fertilizer.FertilizerContent.register(bus);
+        ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER,
+                com.zeropointsix.eraser.fertilizer.FertilizerConfig.SPEC, "super-fertilizer-server.toml");
         ModBlocks.BLOCKS.register(bus);
         ModItems.ITEMS.register(bus);
         ModEntities.ENTITIES.register(bus);
@@ -35,6 +38,8 @@ public final class ModMain {
         if (event.getTabKey() == CreativeModeTabs.TOOLS_AND_UTILITIES) {
             event.accept(ModItems.SOUND_ISOLATING_ERASER.get());
             event.accept(ModItems.GRAVITY_JADE_PENDANT.get());
+            com.zeropointsix.eraser.fertilizer.FertilizerContent.ITEMS.getEntries()
+                    .forEach(item -> event.accept(item.get()));
         }
     }
 }

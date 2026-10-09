@@ -1,0 +1,111 @@
+import groovy.json.JsonOutput
+import java.awt.Color
+import java.awt.image.BufferedImage
+import javax.imageio.ImageIO
+
+def fertileOutput = layout.buildDirectory.dir('generated/fertilizer-resources')
+sourceSets.main.resources.srcDir(fertileOutput)
+
+tasks.register('generateFertilizerResources') {
+    outputs.dir(fertileOutput)
+    doLast {
+        def root = fertileOutput.get().asFile
+        def ns = 'sound_isolating_eraser'
+        def json = { String path, Object value ->
+            def target = new File(root, path)
+            target.parentFile.mkdirs()
+            target.text = JsonOutput.prettyPrint(JsonOutput.toJson(value)) + '\n'
+        }
+        def asset = "assets/${ns}"
+        def data = "data/${ns}"
+        def arena = new File(root, "${data}/structures/fertilizer_arena.nbt")
+        arena.parentFile.mkdirs()
+        def nbt = new DataOutputStream(new java.util.zip.GZIPOutputStream(new FileOutputStream(arena)))
+        nbt.writeByte(10); nbt.writeUTF('')
+        nbt.writeByte(3); nbt.writeUTF('DataVersion'); nbt.writeInt(3465)
+        nbt.writeByte(9); nbt.writeUTF('size'); nbt.writeByte(3); nbt.writeInt(3)
+        [80,48,80].each { nbt.writeInt(it) }
+        nbt.writeByte(9); nbt.writeUTF('palette'); nbt.writeByte(10); nbt.writeInt(1)
+        nbt.writeByte(8); nbt.writeUTF('Name'); nbt.writeUTF('minecraft:air'); nbt.writeByte(0)
+        ['blocks','entities'].each { nbt.writeByte(9); nbt.writeUTF(it); nbt.writeByte(10); nbt.writeInt(0) }
+        nbt.writeByte(0); nbt.close()
+        ['fertile_log', 'fertile_leaves', 'fertile_planks', 'fertile_sapling'].each { name ->
+            def model = name == 'fertile_sapling' ? 'cross' : name == 'fertile_log' ? 'cube_column' : 'cube_all'
+            def textures = model == 'cross' ? [cross:"${ns}:block/${name}"] : model == 'cube_column'
+                    ? [side:"${ns}:block/${name}", end:"${ns}:block/fertile_log_top"] : [all:"${ns}:block/${name}"]
+            def content = [parent:"minecraft:block/${model}", textures:textures]
+            if (name in ['fertile_leaves', 'fertile_sapling']) content.render_type = 'minecraft:cutout'
+            json("${asset}/models/block/${name}.json", content)
+            json("${asset}/models/item/${name}.json", [parent:"${ns}:block/${name}"])
+            def variants = name == 'fertile_log' ? ['axis=y':[model:"${ns}:block/${name}"], 'axis=x':[model:"${ns}:block/${name}",x:90,y:90], 'axis=z':[model:"${ns}:block/${name}",x:90]] : ['':[model:"${ns}:block/${name}"]]
+            json("${asset}/blockstates/${name}.json", [variants:variants])
+            if (name != 'fertile_leaves') json("${data}/loot_tables/blocks/${name}.json", [type:'minecraft:block',pools:[[rolls:1,entries:[[type:'minecraft:item',name:"${ns}:${name}"]],conditions:[[condition:'minecraft:survives_explosion']]]]])
+        }
+        def toolCondition = [condition:'minecraft:any_of',terms:[
+                [condition:'minecraft:match_tool',predicate:[items:['minecraft:shears']]],
+                [condition:'minecraft:match_tool',predicate:[enchantments:[[enchantment:'minecraft:silk_touch',levels:[min:1]]]]]]]
+        def naturalDrop = { String name, List chances ->
+            [type:'minecraft:item',name:"${ns}:${name}",conditions:[
+                [condition:'minecraft:survives_explosion'],
+                [condition:'minecraft:table_bonus',enchantment:'minecraft:fortune',chances:chances]]]
+        }
+        def leafAlternatives = [type:'minecraft:alternatives',children:[
+            [type:'minecraft:item',name:"${ns}:fertile_leaves",conditions:[toolCondition]],
+            naturalDrop('fertile_sapling',[0.05,0.0625,0.083333336,0.1])]]
+        def fruitPool = [rolls:1,conditions:[[condition:'minecraft:inverted',term:toolCondition]],
+                entries:[naturalDrop('fertile_fruit',[0.02,0.025,0.033333335,0.1])]]
+        json("${data}/loot_tables/blocks/fertile_leaves.json", [type:'minecraft:block',pools:[[rolls:1,entries:[leafAlternatives]],fruitPool]])
+        json("${data}/recipes/fertile_planks.json", [type:'minecraft:crafting_shapeless',ingredients:[[item:"${ns}:fertile_log"]],result:[item:"${ns}:fertile_planks",count:4]])
+        json("${data}/tags/blocks/fertile_blocks.json", [replace:false,values:['fertile_log','fertile_leaves','fertile_planks'].collect { "${ns}:${it}" }])
+        [logs:['fertile_log'],logs_that_burn:['fertile_log'],leaves:['fertile_leaves'],planks:['fertile_planks'],saplings:['fertile_sapling'], 'mineable/axe':['fertile_log','fertile_planks'], 'mineable/hoe':['fertile_leaves']].each { tag, names ->
+            json("data/minecraft/tags/blocks/${tag}.json", [replace:false,values:names.collect { "${ns}:${it}" }])
+            if (!tag.contains('/')) json("data/minecraft/tags/items/${tag}.json", [replace:false,values:names.collect { "${ns}:${it}" }])
+        }
+        ['super_fertilizer_bag','empty_fertilizer_bag','fertile_fruit'].each { name ->
+            json("${asset}/models/item/${name}.json", [parent:'minecraft:item/generated',textures:[layer0:"${ns}:item/${name}"]])
+        }
+        def sprite = { String name, boolean block, Closure paint ->
+            BufferedImage image = new BufferedImage(32,32,BufferedImage.TYPE_INT_ARGB)
+            def g = image.createGraphics()
+            paint(g)
+            g.dispose()
+            def file = new File(root,"${asset}/textures/${block ? 'block' : 'item'}/${name}.png")
+            file.parentFile.mkdirs()
+            ImageIO.write(image,'png',file)
+        }
+        ['super_fertilizer_bag','empty_fertilizer_bag'].each { name -> sprite(name,false) { g ->
+            g.color=new Color(72,86,94); g.fillRect(5,4,22,26)
+            g.color=new Color(190,204,208); g.fillRect(6,5,20,24)
+            g.color=new Color(231,238,238); g.fillRect(8,6,3,22); g.fillRect(6,6,20,2)
+            g.color=new Color(139,155,164); g.fillRect(6,26,20,2)
+            g.color=new Color(30,110,49); g.fillRect(15,11,2,12); g.fillRect(10,11,5,5); g.fillRect(17,14,6,4)
+            if (name=='super_fertilizer_bag') { g.color=new Color(255,255,255,195); g.fillRect(9,22,3,3); g.fillRect(21,21,3,3) }
+            else { g.color=new Color(72,86,94); g.fillRect(9,5,14,3) }
+        } }
+        sprite('fertile_fruit',false) { g ->
+            g.color=new Color(53,99,39); g.fillRect(16,3,3,8); g.fillRect(19,5,6,3)
+            g.color=new Color(180,37,44); g.fillRect(7,10,19,15); g.fillRect(10,8,13,20)
+            g.color=new Color(234,84,70); g.fillRect(9,12,5,8)
+            g.color=new Color(255,206,116); g.fillRect(10,12,3,4)
+        }
+        ['fertile_log','fertile_log_top','fertile_planks','fertile_leaves'].each { name -> sprite(name,true) { g ->
+            for (int y=0;y<32;y++) for(int x=0;x<32;x++) {
+                int n=(x*19+y*31+x*y*7)%23
+                if(name=='fertile_leaves') g.color=((x+y*3)%11==0)?new Color(0,0,0,0):new Color(40+n,116+n*2,45+n)
+                else if(name=='fertile_planks') g.color=new Color(125+n,158+n,68+n)
+                else g.color=new Color(77+n,113+n,45+n)
+                g.fillRect(x,y,1,1)
+            }
+            g.color=new Color(46,72,32)
+            if(name=='fertile_log') for(int x=3;x<32;x+=7) g.fillRect(x,0,2,32)
+            if(name=='fertile_log_top') for(int r=2;r<16;r+=4) g.drawRect(r,r,31-2*r,31-2*r)
+            if(name=='fertile_planks') for(int y=7;y<32;y+=8) { g.fillRect(0,y,32,1); g.fillRect((y*3)%25,y-7,1,7) }
+        } }
+        sprite('fertile_sapling',true) { g ->
+            g.color=new Color(77,103,44); g.fillRect(14,13,4,18)
+            g.color=new Color(42,137,52); g.fillRect(6,6,20,9); g.fillRect(10,3,13,15)
+            g.color=new Color(105,181,68); g.fillRect(9,6,7,4)
+        }
+    }
+}
+tasks.named('processResources').configure { dependsOn('generateFertilizerResources') }
