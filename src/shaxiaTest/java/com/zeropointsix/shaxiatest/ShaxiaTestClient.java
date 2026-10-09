@@ -8,11 +8,14 @@ import java.util.HashSet;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.ClientChatReceivedEvent;
+import net.minecraftforge.client.event.RenderTooltipEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -26,6 +29,7 @@ public final class ShaxiaTestClient {
     private static int ticks;
     private static boolean failed;
     private static boolean moved;
+    private static boolean tooltipTextObserved, tooltipRendered;
 
     @SubscribeEvent public static void message(ClientChatReceivedEvent event) {
         String text = event.getMessage().getString();
@@ -33,8 +37,21 @@ public final class ShaxiaTestClient {
             phase = text.substring(10);
             ticks = 0;
             moved = false;
+            tooltipTextObserved = false;
+            tooltipRendered = false;
             event.setCanceled(true);
         }
+    }
+
+    @SubscribeEvent public static void tooltipText(RenderTooltipEvent.GatherComponents event) {
+        if (!ShaxiaStacks.active(event.getItemStack())) return;
+        var lines = event.getTooltipElements().stream().flatMap(element -> element.left().stream())
+                .map(text -> text.getString()).toList();
+        tooltipTextObserved = lines.contains("针对畸界怪物具有特殊攻击效果") && lines.contains("畸界特攻");
+    }
+
+    @SubscribeEvent public static void tooltipDraw(RenderTooltipEvent.Color event) {
+        if (tooltipTextObserved && ShaxiaStacks.active(event.getItemStack())) tooltipRendered = true;
     }
 
     private static void input(String... args) throws Exception {
@@ -62,6 +79,11 @@ public final class ShaxiaTestClient {
             boolean saved = phase.equals("saved") || phase.equals("restarted");
             if (!saved && ROLE.equals("user") && ticks == 40) input("click", "1");
             if (saved && ticks == 20) {
+                CreativeModeTabs.tryRebuildTabContents(mc.level.enabledFeatures(), false, mc.level.registryAccess());
+                var creativeKnives = BuiltInRegistries.CREATIVE_MODE_TAB.get(CreativeModeTabs.TOOLS_AND_UTILITIES)
+                        .getDisplayItems().stream().filter(ShaxiaStacks::isKnife).toList();
+                require(creativeKnives.size() == 1 && ShaxiaStacks.active(creativeKnives.get(0)),
+                        "real creative tab contains exactly one factory-enchanted knife");
                 var stack = mc.player.getMainHandItem();
                 require(ShaxiaStacks.active(stack) && !stack.hasFoil(), "innate enchantment and glint synchronized");
                 require(stack.getDamageValue() == (ROLE.equals("user") ? 5 : 0), "independent durability synchronized");
@@ -87,6 +109,7 @@ public final class ShaxiaTestClient {
                 Slot hovered = hoveredSlot((AbstractContainerScreen<?>) mc.screen);
                 require(hovered != null && hovered.getItem() == mc.player.getMainHandItem(),
                         "cursor actually hovers the knife so its tooltip rendered");
+                require(tooltipTextObserved && tooltipRendered, "Chinese tooltip reached the uncancelled rendering path");
                 try (var screenshot = Screenshot.takeScreenshot(mc.getMainRenderTarget())) {
                     var colors = new HashSet<Integer>();
                     for (int x = 0; x < screenshot.getWidth(); x += 8) {
@@ -96,7 +119,7 @@ public final class ShaxiaTestClient {
                     screenshot.writeToFile(RESULTS.resolve(ROLE + "-" + phase + ".png"));
                 }
                 Files.writeString(RESULTS.resolve(ROLE + "-" + phase + ".pass"),
-                        "Real Forge client inventory, hovered Chinese tooltip, no-glint, model and framebuffer checks passed.\n");
+                        "Real Forge client creative tab, inventory, rendered hovered Chinese tooltip, no-glint, placeholder model and framebuffer checks passed.\n");
             }
         } catch (Throwable failure) {
             failure.printStackTrace();

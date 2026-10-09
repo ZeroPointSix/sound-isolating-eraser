@@ -1,6 +1,9 @@
 package com.zeropointsix.eraser.gametest;
 
 import com.electronwill.nightconfig.core.CommentedConfig;
+import com.electronwill.nightconfig.core.UnmodifiableConfig;
+import java.util.ArrayList;
+import java.util.List;
 import net.minecraftforge.common.ForgeConfigSpec;
 import net.minecraftforge.fml.config.ConfigTracker;
 import net.minecraftforge.fml.config.ModConfig;
@@ -24,8 +27,25 @@ public final class GameTestConfigs {
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("server config not registered for spec"));
         CommentedConfig live = config.getConfigData();
-        spec.setConfig(CommentedConfig.copy(live));
+        spec.setConfig(detached(live));
         return () -> spec.setConfig(live);
+    }
+
+    private static CommentedConfig detached(UnmodifiableConfig source) {
+        CommentedConfig copy = CommentedConfig.inMemory();
+        source.valueMap().forEach((key, value) -> copy.valueMap().put(key, detachedValue(value)));
+        return copy;
+    }
+
+    private static Object detachedValue(Object value) {
+        // NightConfig.copy is shallow: nested sections and mutable lists must not alias the live file.
+        if (value instanceof UnmodifiableConfig section) return detached(section);
+        if (value instanceof List<?> list) {
+            List<Object> copy = new ArrayList<>();
+            list.forEach(element -> copy.add(detachedValue(element)));
+            return copy;
+        }
+        return value;
     }
 
     private GameTestConfigs() {}

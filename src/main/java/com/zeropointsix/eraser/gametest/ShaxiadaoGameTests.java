@@ -92,6 +92,7 @@ public final class ShaxiadaoGameTests {
         h.assertTrue(!e.canEnchant(new ItemStack(Items.IRON_SWORD)), "only the knife can receive the enchantment");
         h.assertTrue(!stack.canPerformAction(ToolActions.SWORD_SWEEP), "no sweeping action");
         close(h, (float) player(h, stack).getAttributeValue(Attributes.ATTACK_DAMAGE), 4, "ordinary panel");
+        close(h, (float) player(h, knife()).getAttributeValue(Attributes.ATTACK_SPEED), 2.4F, "attack speed");
         h.succeed();
     }
 
@@ -376,9 +377,22 @@ public final class ShaxiadaoGameTests {
             piece.enchant(Enchantments.ALL_DAMAGE_PROTECTION, 4);
             armored.setItemSlot(slot, piece);
         }
-        attack(player(h, knife()), armored);
-        h.assertTrue(20 - armored.getHealth() < 8.5F * 0.5F,
-                "protection enchantments still cut both segments of the strike");
+        float[] segments = {-1, -1};
+        Consumer<LivingDamageEvent> observe = event -> {
+            if (event.getEntity() == armored) segments[event.getSource().is(ShaxiaCombat.TRUE_DAMAGE) ? 1 : 0] = event.getAmount();
+        };
+        MinecraftForge.EVENT_BUS.addListener(EventPriority.LOWEST, false, LivingDamageEvent.class, observe);
+        try {
+            attack(player(h, knife()), armored);
+            // Equipment attribute updates happen on ticks; use the actual armor seen by this synchronous strike.
+            float ordinary = net.minecraft.world.damagesource.CombatRules.getDamageAfterAbsorb(6.5F,
+                    armored.getArmorValue(), (float) armored.getAttributeValue(Attributes.ARMOR_TOUGHNESS)) * 0.36F;
+            close(h, segments[0], ordinary, "EPF 16 reduces the ordinary segment by 64 percent");
+            close(h, segments[1], 0.72F, "EPF 16 reduces the two-point armor-bypassing segment too");
+            close(h, 20 - armored.getHealth(), ordinary + 0.72F, "both measured segments reach health exactly once");
+        } finally {
+            MinecraftForge.EVENT_BUS.unregister(observe);
+        }
         h.succeed();
     }
 
@@ -411,6 +425,7 @@ public final class ShaxiadaoGameTests {
     @GameTest(template = "empty")
     public static void shaxiaAnvilKeepsInnateAcrossRepairAndRename(GameTestHelper h) {
         Player p = player(h, knife());
+        p.experienceLevel = 100;
         AnvilMenu menu = new AnvilMenu(0, p.getInventory(),
                 ContainerLevelAccess.create(h.getLevel(), h.absolutePos(BlockPos.ZERO)));
         ItemStack a = knife(), b = knife();
@@ -421,12 +436,24 @@ public final class ShaxiadaoGameTests {
         ItemStack repaired = menu.getSlot(2).getItem();
         h.assertTrue(!repaired.isEmpty() && ShaxiaStacks.active(repaired) && repaired.getDamageValue() < 1300,
                 "anvil repair keeps the innate enchantment and restores durability");
+        h.assertTrue(menu.getSlot(2).mayPickup(p), "survival player can afford the repair");
+        ItemStack taken = menu.getSlot(2).remove(1);
+        menu.getSlot(2).onTake(p, taken);
+        h.assertTrue(ShaxiaStacks.active(taken) && menu.getSlot(0).getItem().isEmpty()
+                && menu.getSlot(1).getItem().isEmpty() && p.experienceLevel < 100,
+                "real repair take consumes inputs and experience while keeping the innate enchantment");
         menu.getSlot(0).set(knife());
         menu.getSlot(1).set(ItemStack.EMPTY);
         menu.setItemName("bent");
         ItemStack renamed = menu.getSlot(2).getItem();
         h.assertTrue(!renamed.isEmpty() && ShaxiaStacks.active(renamed) && renamed.getHoverName().getString().equals("bent"),
                 "anvil rename keeps the innate enchantment");
+        int beforeXp = p.experienceLevel;
+        ItemStack named = menu.getSlot(2).remove(1);
+        menu.getSlot(2).onTake(p, named);
+        h.assertTrue(ShaxiaStacks.active(named) && named.getHoverName().getString().equals("bent")
+                && menu.getSlot(0).getItem().isEmpty() && p.experienceLevel < beforeXp,
+                "real rename take preserves the name and innate enchantment and charges experience");
         h.succeed();
     }
 
