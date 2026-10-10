@@ -82,12 +82,18 @@ def wait_ready(server):
     raise RuntimeError("Neon dedicated server did not become ready")
 
 
+def assert_no_failures():
+    failures = list(RESULTS.glob("*.failed"))
+    if failures:
+        raise AssertionError("; ".join(path.read_text() for path in failures))
+
+
 def wait_evidence(required, running):
     deadline = time.monotonic() + int(os.environ.get("NEON_QA_TIMEOUT_SECONDS", "600"))
-    while not all((RESULTS / (name + ".pass")).exists() for name in required):
-        failures = list(RESULTS.glob("*.failed"))
-        if failures:
-            raise AssertionError("; ".join(path.read_text() for path in failures))
+    while True:
+        assert_no_failures()
+        if all((RESULTS / (name + ".pass")).exists() for name in required):
+            return
         if any(p.poll() is not None for p in running):
             raise RuntimeError("Minecraft exited before neon evidence completed")
         if time.monotonic() >= deadline:
@@ -123,9 +129,12 @@ try:
     stop(client)
     rejoining = launch("client-rejoin")
     wait_evidence(["server-rejoin", "client-rejoined", "server-dimension", "client-dimension"], [server, rejoining])
+    stop(rejoining)
     server.stdin.write("stop\n")
     server.stdin.flush()
-    server.wait(timeout=180)
+    if server.wait(timeout=180) != 0:
+        raise RuntimeError("Neon dedicated server did not shut down cleanly")
+    assert_no_failures()
     print("NEON_REAL_CLIENT_AND_DEDICATED_SERVER_E2E_PASSED", flush=True)
 finally:
     for process in reversed(processes):

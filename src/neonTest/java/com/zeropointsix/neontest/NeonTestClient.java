@@ -94,6 +94,7 @@ public final class NeonTestClient {
                 if (mc.level.dimension().equals(net.minecraft.world.level.Level.NETHER)) {
                     require(!mc.player.isPassenger(), "real client dimension transfer releases captor");
                     Files.writeString(RESULTS.resolve("client-dimension.pass"), "Real client reached Nether without mount.\n");
+                    phase = "";
                 }
             } else if (phase.equals("logout")) {
                 require(ticks < 60, "logout phase must synchronize a real captor before disconnect");
