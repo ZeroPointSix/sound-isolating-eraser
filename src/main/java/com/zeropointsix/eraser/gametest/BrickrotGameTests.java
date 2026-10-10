@@ -2,6 +2,7 @@ package com.zeropointsix.eraser.gametest;
 
 import com.zeropointsix.eraser.ModMain;
 import com.zeropointsix.eraser.brickrot.BrickrotContent;
+import com.zeropointsix.eraser.brickrot.BrickrotEmergence;
 import com.zeropointsix.eraser.brickrot.BrickrotPart;
 import com.zeropointsix.eraser.brickrot.BrickrotTrail;
 import com.zeropointsix.eraser.brickrot.BrickrotWallEntity;
@@ -10,6 +11,7 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.protocol.game.ServerboundInteractPacket;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageType;
@@ -72,7 +74,12 @@ public final class BrickrotGameTests {
                 "egg creates the boss");
         h.runAfterDelay(2, () -> {
             for (BrickrotPart part : wall.getParts())
-                h.assertTrue(h.getLevel().getEntity(part.getId()) == part, "parts are registered in the live world lookup");
+                h.assertTrue(h.getLevel().getEntityOrPart(part.getId()) == part
+                        && ServerboundInteractPacket.createAttackPacket(part, false).getTarget(h.getLevel()) == part,
+                        "multipart lookup resolves the same part used by attack packets");
+            wall.discard();
+            for (BrickrotPart part : wall.getParts())
+                h.assertTrue(h.getLevel().getEntityOrPart(part.getId()) == null, "discarding head removes every part lookup");
             h.succeed();
         });
     }
@@ -251,6 +258,7 @@ public final class BrickrotGameTests {
         var target = h.spawn(EntityType.VILLAGER, new BlockPos(32, 35, 50));
         target.setNoAi(true);
         h.assertTrue(wall.beginBurrow(target), "safe emergence destination is accepted");
+        near(h, hit(wall, 0, damage(h, DamageTypes.DROWN), 20), 0, "diving does not introduce drowning damage");
         wall.setNoAi(false);
         for (int i = 0; i < 65; i++) wall.tick();
         h.assertTrue(wall.underground(), "head and body enter underground stage");
@@ -264,6 +272,14 @@ public final class BrickrotGameTests {
         loaded.load(saved);
         near(h, loaded.position().distanceTo(surface), 0, "save during burrow reloads at safe surface");
         h.assertTrue(!loaded.noPhysics && !loaded.isNoGravity(), "reload restores ordinary collision and gravity");
+        for (int i = 0; i < 120 && wall.action() != BrickrotWallEntity.Action.EMERGE; i++) wall.tick();
+        h.assertTrue(wall.action() == BrickrotWallEntity.Action.EMERGE, "underground travel reaches the locked emergence point");
+        for (int i = 0; i < 10; i++) wall.tick();
+        near(h, target.getHealth(), 6, "eruption hits for fourteen damage");
+        for (int i = 0; i < 50; i++) wall.tick();
+        h.assertTrue(wall.action() == BrickrotWallEntity.Action.SCAN, "fully surfaced body resumes scanning");
+        for (BrickrotPart part : wall.getParts())
+            near(h, part.getY(), wall.getY(), "body is surfaced before scanning, without another body-length walk");
         h.succeed();
     }
 
@@ -283,8 +299,9 @@ public final class BrickrotGameTests {
     @GameTest(template = "brickrot_empty", timeoutTicks = 100)
     public static void brickrotSweepHitsOnlyOnce(GameTestHelper h) {
         BrickrotWallEntity wall = wall(h);
-        var target = h.spawn(EntityType.VILLAGER, new BlockPos(35, 4, 15));
+        var target = h.spawn(EntityType.VILLAGER, new BlockPos(35, 4, 20));
         target.setNoAi(true);
+        target.setNoGravity(true);
         wall.setNoAi(false);
         h.runAfterDelay(60, () -> near(h, target.getHealth(), 20, "sweep telegraph precedes damage"));
         h.runAfterDelay(70, () -> {
@@ -330,6 +347,21 @@ public final class BrickrotGameTests {
         loaded.load(saved);
         h.assertTrue(loaded.action() == BrickrotWallEntity.Action.STAGGER, "reload cannot cancel stagger vulnerability");
         near(h, hit(loaded, 0, damage(h, DamageTypes.GENERIC), 10), 15, "stagger multiplier survives reload");
+        h.succeed();
+    }
+
+    @GameTest(template = "brickrot_empty")
+    public static void brickrotEmergenceCurve(GameTestHelper h) {
+        Vec3 underground = new Vec3(0, -20, 0);
+        Vec3 surface = new Vec3(5, 4, 20);
+        for (int i = 1; i <= 9; i++) {
+            near(h, BrickrotEmergence.settle(underground, surface, new Vec3(0, 1, 1), i * 2, i, 20)
+                    .distanceTo(underground), 0, "emergence keeps the initial dive path");
+            Vec3 settled = BrickrotEmergence.settle(underground, surface, new Vec3(0, 1, 1), i * 2, i, 60);
+            near(h, settled.distanceTo(surface.add(0, 0, -i * 2)), 0, "all parts reach the surface by sixty ticks");
+        }
+        near(h, BrickrotEmergence.settle(underground, surface, Vec3.ZERO, 20, 9, 60).distanceTo(surface), 0,
+                "zero direction remains finite");
         h.succeed();
     }
 }

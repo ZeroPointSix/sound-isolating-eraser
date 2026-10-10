@@ -15,6 +15,7 @@ import net.minecraftforge.client.event.EntityRenderersEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import software.bernie.geckolib.animatable.GeoEntity;
+import software.bernie.geckolib.core.animation.AnimationState;
 import software.bernie.geckolib.model.GeoModel;
 import software.bernie.geckolib.renderer.GeoEntityRenderer;
 import software.bernie.geckolib.renderer.layer.AutoGlowingGeoLayer;
@@ -35,6 +36,15 @@ public final class BrickrotClient {
         }
         @Override public ResourceLocation getTextureResource(T entity) { return resource("textures/entity/brickrot.png"); }
         @Override public ResourceLocation getAnimationResource(T entity) { return resource("animations/brickrot.animation.json"); }
+        @Override public void setCustomAnimations(T entity, long instance, AnimationState<T> state) {
+            super.setCustomAnimations(entity, instance, state);
+            if (entity instanceof BrickrotPart part && (part.index() == 2 || part.index() == 3)) {
+                var lamp = getAnimationProcessor().getBone("debris_lamp");
+                var bench = getAnimationProcessor().getBone("debris_bench");
+                if (lamp != null) lamp.setHidden(part.index() == 3);
+                if (bench != null) bench.setHidden(part.index() == 2);
+            }
+        }
     }
 
     private static final class HeadRenderer extends GeoEntityRenderer<BrickrotWallEntity> {

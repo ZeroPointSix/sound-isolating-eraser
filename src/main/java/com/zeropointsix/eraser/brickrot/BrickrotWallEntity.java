@@ -53,6 +53,7 @@ import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache
 import software.bernie.geckolib.core.animation.AnimatableManager;
 import software.bernie.geckolib.core.animation.AnimationController;
 import software.bernie.geckolib.core.animation.RawAnimation;
+import software.bernie.geckolib.core.object.PlayState;
 import software.bernie.geckolib.util.GeckoLibUtil;
 
 public final class BrickrotWallEntity extends Monster implements GeoEntity {
@@ -89,6 +90,7 @@ public final class BrickrotWallEntity extends Monster implements GeoEntity {
     private double chargeDistance;
     private boolean movedThisTick;
     private int deathHold;
+    private Action previousAction = Action.SCAN;
 
     public BrickrotWallEntity(EntityType<? extends Monster> type, Level level) {
         super(type, level);
@@ -138,13 +140,18 @@ public final class BrickrotWallEntity extends Monster implements GeoEntity {
             boss.setName(getDisplayName());
             boss.setVisible(isAlive());
         }
+        if (level().isClientSide && action() == Action.SCAN
+                && (previousAction == Action.EMERGE || previousAction == Action.DIVE
+                    || previousAction == Action.UNDERGROUND || previousAction == Action.WARNING))
+            trail.reset(position(), forward());
+        previousAction = action();
         trail.record(position(), forward());
         double offset = 0;
         for (int i = 0; i < parts.length; i++) {
             offset += (LENGTHS[i] + LENGTHS[i + 1]) * 0.45;
             BrickrotPart part = parts[i];
-            Vec3 point = trail.sample(offset);
-            Vec3 direction = trail.sample(Math.max(0, offset - 0.5)).subtract(point);
+            Vec3 point = partPosition(offset, i + 1);
+            Vec3 direction = partPosition(Math.max(0, offset - 0.5), i + 1).subtract(point);
             part.xo = part.getX(); part.yo = part.getY(); part.zo = part.getZ();
             part.yRotO = part.getYRot(); part.xRotO = part.getXRot();
             part.setPos(point);
@@ -240,10 +247,13 @@ public final class BrickrotWallEntity extends Monster implements GeoEntity {
             }
             case EMERGE -> {
                 double t = Math.min(1, actionTicks / 20.0);
-                setPos(emergeAt.add(0, -4 + 4 * t + Math.sin(Math.PI * t) * 2, 0));
+                Vec3 next = emergeAt.add(0, -4 + 4 * t + Math.sin(Math.PI * t) * 2, 0);
+                if (!canTraverse(next)) { abortBurrow(); break; }
+                setPos(next);
                 if (actionTicks == 10) radial(emergeAt, 4, 14, 1.2, new HashSet<>());
-                if (actionTicks >= 20) {
+                if (actionTicks >= 60) {
                     setPos(emergeAt);
+                    trail.reset(position(), forward());
                     transition(Action.SCAN);
                 }
             }
@@ -418,6 +428,11 @@ public final class BrickrotWallEntity extends Monster implements GeoEntity {
     }
 
     private Vec3 forward() { return Vec3.directionFromRotation(0, getYRot()); }
+    private Vec3 partPosition(double offset, int index) {
+        Vec3 recorded = trail.sample(offset);
+        return action() == Action.EMERGE
+                ? BrickrotEmergence.settle(recorded, position(), forward(), offset, index, actionElapsed()) : recorded;
+    }
     private static float yaw(Vec3 direction) {
         return (float) Math.toDegrees(Math.atan2(-direction.x, direction.z));
     }
@@ -523,16 +538,21 @@ public final class BrickrotWallEntity extends Monster implements GeoEntity {
         controllers.add(new AnimationController<>(this, "head", 2, state -> {
             String name = !isAlive() ? "head_death" : switch (action()) {
                 case STAGGER -> "head_stagger";
-                case EMERGE -> "head_emerge";
+                case EMERGE -> actionElapsed() < 20 ? "head_emerge" : "head_scan";
                 case SCAN -> "head_scan";
                 case CHARGE, WINDUP, DIVE, UNDERGROUND, WARNING -> "head_charge";
-                case BITE -> "head_bite";
                 default -> "head_idle";
             };
             return state.setAndContinue(!isAlive() ? RawAnimation.begin().thenPlayAndHold("animation.brickrot." + name)
-                    : name.equals("head_bite") || name.equals("head_emerge")
+                    : name.equals("head_emerge")
                     ? RawAnimation.begin().thenPlay("animation.brickrot." + name)
                     : RawAnimation.begin().thenLoop("animation.brickrot." + name));
+        }));
+        controllers.add(new AnimationController<>(this, "bite", 0, state -> {
+            if (isAlive() && action() == Action.BITE)
+                return state.setAndContinue(RawAnimation.begin().thenPlay("animation.brickrot.head_bite"));
+            state.resetCurrentAnimation();
+            return PlayState.STOP;
         }));
     }
 }
