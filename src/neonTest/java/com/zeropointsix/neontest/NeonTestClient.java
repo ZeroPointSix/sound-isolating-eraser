@@ -19,7 +19,9 @@ import net.minecraftforge.fml.common.Mod;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashSet;
+import java.util.HashMap;
 import com.mojang.blaze3d.platform.NativeImage;
+import software.bernie.geckolib.event.GeoRenderEvent;
 
 @Mod.EventBusSubscriber(modid = "neon_qa", value = Dist.CLIENT)
 public final class NeonTestClient {
@@ -28,7 +30,7 @@ public final class NeonTestClient {
     private static int ticks;
     private static boolean failed, firstFrame, captured;
     private static NativeImage previousFrame;
-    private static float previousBubbleScale;
+    private static final HashMap<Integer, float[]> breathing = new HashMap<>();
 
     private static void require(boolean condition, String message) { if (!condition) throw new AssertionError(message); }
 
@@ -39,6 +41,7 @@ public final class NeonTestClient {
             ticks = 0;
             firstFrame = false;
             captured = false;
+            breathing.clear();
             event.setCanceled(true);
         }
     }
@@ -93,27 +96,35 @@ public final class NeonTestClient {
         } catch (Throwable failure) { fail(failure); }
     }
 
+    @SubscribeEvent public static void modelRendered(GeoRenderEvent.Entity.Post event) {
+        if (failed || !phase.equals("gallery") || ticks < 80 || !(event.getEntity() instanceof NeonTumorEntity tumor)) return;
+        try {
+            float scale = event.getModel().getBone("bubble_01").orElseThrow().getScaleX();
+            float[] range = breathing.computeIfAbsent(tumor.getId(), id -> new float[]{scale, scale, 0});
+            range[0] = Math.min(range[0], scale);
+            range[1] = Math.max(range[1], scale);
+            range[2]++;
+            for (String bone : new String[]{"pod_1", "pod_2", "pod_3"}) {
+                require(event.getModel().getBone(bone).orElseThrow().isHidden(), "idle tendrils hidden: " + bone);
+            }
+        } catch (Throwable failure) { fail(failure); }
+    }
+
     @SubscribeEvent public static void render(TickEvent.RenderTickEvent event) {
-        if (event.phase != TickEvent.Phase.END || failed || !phase.equals("gallery") || ticks < 45 || captured) return;
+        if (event.phase != TickEvent.Phase.END || failed || !phase.equals("gallery") || ticks < 140 || captured) return;
         Minecraft mc = Minecraft.getInstance();
-        if (mc.player == null || mc.level == null || mc.screen != null || firstFrame && ticks < 65) return;
+        if (mc.player == null || mc.level == null || mc.screen != null || firstFrame && ticks < 193) return;
         try {
             int count = 0;
             NeonTumorModel model = new NeonTumorModel();
-            NeonTumorRenderer rendered = null;
             for (var entity : mc.level.entitiesForRendering()) {
                 if (!(entity instanceof NeonTumorEntity tumor)) continue;
                 count++;
                 require(mc.getEntityRenderDispatcher().getRenderer(tumor) instanceof NeonTumorRenderer, "GeckoLib renderer registered");
-                rendered = (NeonTumorRenderer) mc.getEntityRenderDispatcher().getRenderer(tumor);
                 mc.getResourceManager().getResourceOrThrow(model.getTextureResource(tumor));
                 mc.getResourceManager().getResourceOrThrow(model.getGlowTexture(tumor));
             }
             require(count == 9, "all nine size/color combinations synchronized; got " + count);
-            float bubbleScale = rendered.getGeoModel().getBone("bubble_01").orElseThrow().getScaleX();
-            for (String bone : new String[]{"pod_1", "pod_2", "pod_3"}) {
-                require(rendered.getGeoModel().getBone(bone).orElseThrow().isHidden(), "idle tendrils hidden: " + bone);
-            }
             var egg = (ForgeSpawnEggItem) ModItems.NEON_TUMOR_SPAWN_EGG.get();
             require(egg.getColor(0) == 0xFFFFFF && egg.getColor(1) == 0xFFFFFF, "art spawn egg is not tinted");
             mc.getResourceManager().getResourceOrThrow(new ResourceLocation("sound_isolating_eraser", "textures/mob_effect/corroded.png"));
@@ -124,7 +135,15 @@ public final class NeonTestClient {
                 require(colors.size() > 150, "actual client framebuffer is nonblank");
                 screenshot.writeToFile(RESULTS.resolve(firstFrame ? "gallery-animated.png" : "gallery.png"));
                 if (firstFrame) {
-                    require(Math.abs(bubbleScale - previousBubbleScale) > 0.002, "actual rendered breathing bone changed scale");
+                    StringBuilder poses = new StringBuilder();
+                    breathing.forEach((id, range) -> poses.append(id).append(": min=").append(range[0])
+                            .append(", max=").append(range[1]).append(", frames=").append(range[2]).append('\n'));
+                    Files.writeString(RESULTS.resolve("rendered-breathing.txt"), poses);
+                    require(breathing.size() == 9, "all nine entities actually rendered: " + breathing.size());
+                    for (float[] range : breathing.values()) {
+                        require(range[2] > 5 && range[1] - range[0] > 0.02,
+                                "actual rendered breathing cycle: min=" + range[0] + ", max=" + range[1] + ", frames=" + range[2]);
+                    }
                     int changed = 0;
                     for (int x = 0; x < screenshot.getWidth(); x++) for (int y = 0; y < screenshot.getHeight(); y++) {
                         if (screenshot.getPixelRGBA(x, y) != previousFrame.getPixelRGBA(x, y)) changed++;
@@ -133,7 +152,6 @@ public final class NeonTestClient {
                     previousFrame.close();
                     previousFrame = null;
                 } else {
-                    previousBubbleScale = bubbleScale;
                     previousFrame = Screenshot.takeScreenshot(mc.getMainRenderTarget());
                 }
             }

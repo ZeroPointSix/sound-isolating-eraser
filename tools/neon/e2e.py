@@ -38,7 +38,8 @@ def launch(role):
         (directory / "options.txt").write_text(
             "lang:zh_cn\nrenderDistance:5\nsimulationDistance:5\nguiScale:2\nmaxFps:30\n"
             "enableVsync:false\npauseOnLostFocus:false\nonboardAccessibility:false\n"
-            "showAutosaveIndicator:false\nrenderClouds:false\nnarrator:0\ntutorialStep:none\n")
+            "showAutosaveIndicator:false\nrenderClouds:false\nnarrator:0\ntutorialStep:none\n"
+            "gamma:1.0\nfov:0.0\n")
     env = os.environ.copy()
     env.update({key: expand(value) for key, value in config["env"].items()})
     env["LIBGL_ALWAYS_SOFTWARE"] = "1"

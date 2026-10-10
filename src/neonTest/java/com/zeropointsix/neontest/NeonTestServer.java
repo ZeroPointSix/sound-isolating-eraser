@@ -93,13 +93,14 @@ public final class NeonTestServer {
             level.setDayTime(6000);
             level.setWeatherParameters(6000, 0, false, false);
             level.getGameRules().getRule(GameRules.RULE_DOMOBSPAWNING).set(false, level.getServer());
+            level.getGameRules().getRule(GameRules.RULE_DAYLIGHT).set(false, level.getServer());
             level.getGameRules().getRule(GameRules.RULE_NATURAL_REGENERATION).set(false, level.getServer());
             for (BlockPos pos : BlockPos.betweenClosed(-15, 64, -16, 18, 64, 20)) level.setBlockAndUpdate(pos, Blocks.SMOOTH_QUARTZ.defaultBlockState());
             for (int size = 0; size < 3; size++) for (int variant = 0; variant < 3; variant++) spawn(level, (variant - 1) * 5, -size * 5, size, variant);
             player.setGameMode(GameType.CREATIVE);
             player.getAbilities().flying = true;
             player.onUpdateAbilities();
-            player.teleportTo(level, 12, 71, 15, 150, 16);
+            player.teleportTo(level, 10, 71, 11, 148, 18);
             player.getInventory().setItem(0, new ItemStack(com.zeropointsix.eraser.registry.ModItems.NEON_TUMOR_SPAWN_EGG.get()));
             signal(player, "gallery");
         } catch (Throwable error) { fail(error); }
