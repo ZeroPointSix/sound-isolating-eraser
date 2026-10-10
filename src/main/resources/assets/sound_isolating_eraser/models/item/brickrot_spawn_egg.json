@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "sound_isolating_eraser:item/brickrot_spawn_egg"
+  }
+}
