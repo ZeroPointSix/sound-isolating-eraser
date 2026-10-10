@@ -39,6 +39,20 @@ public final class ShadowTanglerGameTests {
         h.assertTrue(Math.abs(actual - expected) < 0.001D, message + ": " + actual + " != " + expected);
     }
 
+    private static String escapeState(ShadowTanglerEntity mob) {
+        var path = mob.getNavigation().getPath();
+        StringBuilder result = new StringBuilder("position=").append(mob.position())
+                .append(" tier=").append(mob.getLightTier()).append(" rawLight=").append(mob.brightnessAt(mob.blockPosition()))
+                .append(" age=").append(mob.getSpawnAge()).append(" ticks=").append(mob.tickCount)
+                .append(" flee=").append(mob.wantsToFlee()).append(" grounded=").append(mob.onGround())
+                .append(" motion=").append(mob.getDeltaMovement()).append(" navigationDone=").append(mob.getNavigation().isDone());
+        if (path == null) return result.append(" path=null").toString();
+        result.append(" reachable=").append(path.canReach()).append(" next=").append(path.getNextNodeIndex())
+                .append(" target=").append(path.getTarget()).append(" nodes=");
+        for (int i = 0; i < path.getNodeCount(); i++) result.append(path.getNode(i).asBlockPos()).append(';');
+        return result.toString();
+    }
+
     @GameTest(template = "shadow_arena")
     public static void shadowRegistrationAndSpawnLock(GameTestHelper h) {
         ShadowTanglerEntity mob = spawn(h, 0, false);
@@ -175,7 +189,7 @@ public final class ShadowTanglerGameTests {
         h.runAtTickTime(60, () -> {
             h.assertTrue(mob.getTarget() == null, "bright flee does not retain combat target");
             h.assertTrue(mob.position().distanceToSqr(origin) > 1 || mob.getLightTier() == ShadowLight.DARK,
-                    "mob makes real escape progress across light-tier path recalculations");
+                    "mob makes real escape progress across light-tier path recalculations: " + escapeState(mob));
         });
         h.runAtTickTime(300, () -> {
             h.assertTrue(mob.getLightTier() == ShadowLight.DARK, "real navigation reaches a dark refuge");
@@ -233,7 +247,7 @@ public final class ShadowTanglerGameTests {
         mob.getAttribute(Attributes.MAX_HEALTH).setBaseValue(200);
         mob.setHealth(200);
         h.runAtTickTime(60, () -> h.assertTrue(mob.position().distanceToSqr(origin) > 1
-                || mob.getLightTier() == ShadowLight.DARK, "glass escape also starts promptly"));
+                || mob.getLightTier() == ShadowLight.DARK, "glass escape also starts promptly: " + escapeState(mob)));
         h.runAtTickTime(300, () -> {
             h.assertTrue(mob.getLightTier() == ShadowLight.DARK, "glass floor is a valid dark refuge");
             h.succeed();
