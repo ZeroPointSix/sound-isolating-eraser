@@ -133,6 +133,19 @@ public final class BrickrotTestServer {
                 finished = true;
             } else if (phase.equals("restarted") && clientsPassed(phase)) {
                 Files.writeString(RESULTS.resolve("server-restart.pass"), "Real server restart rebuilt nine parts and preserved health/phase.\n");
+                phase("turning");
+            } else if (phase.equals("turning")) {
+                head.setYRot(90);
+                head.yBodyRot = 90;
+                head.yHeadRot = 90;
+                head.setPos(head.position().add(-0.3, 0, 0));
+                if (ticks >= 100) {
+                    user.teleportTo(level, -19.5, 77, -25.5, 0, 20);
+                    observer.teleportTo(level, -19.5, 77, 46.5, 180, 20);
+                    phase("turned");
+                }
+            } else if (phase.equals("turned") && clientsPassed(phase)) {
+                Files.writeString(RESULTS.resolve("server-turn.pass"), "Both clients rendered all nine body parts with the path heading after a right-angle turn.\n");
                 finished = true;
             }
         } catch (Throwable failure) {

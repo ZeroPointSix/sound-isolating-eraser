@@ -30,11 +30,15 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v4
-      - name: Build production jar and isolated driver
-        run: bash ./gradlew --no-daemon --max-workers=2 -PbrickrotE2E build writeBrickrotTestClasspath
+      - name: Build production jar
+        run: bash ./gradlew --no-daemon --max-workers=2 build
+      - name: Compile driver against the built production jar
+        run: bash ./gradlew --no-daemon --max-workers=2 -PbrickrotE2E -PbrickrotJarE2E writeBrickrotTestClasspath
       - name: Install native client test dependencies
         run: sudo apt-get update && sudo apt-get install -y xvfb xdotool libgl1-mesa-dri
       - name: Native egg, multipart attack, two clients and restart
+        env:
+          BRICKROT_QA_PACKAGED: '1'
         run: python3 tools/brickrot-e2e.py
       - uses: actions/upload-artifact@v4
         if: always()
@@ -79,3 +83,5 @@ jobs:
           python-version: '3.12'
       - name: Require the original models, animations and textures
         run: python3 tools/brickrot-assets.py verify
+      - name: Reject tampered assets and archives
+        run: python3 tools/test-brickrot-assets.py

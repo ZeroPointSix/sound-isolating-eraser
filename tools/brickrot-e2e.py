@@ -40,6 +40,15 @@ def launch(role, restart=False):
             "showAutosaveIndicator:false\nrenderClouds:false\nnarrator:0\ntutorialStep:none\n")
     env = os.environ.copy()
     env.update({key: expand(value) for key, value in config["env"].items()})
+    if os.environ.get("BRICKROT_QA_PACKAGED") == "1":
+        # ForgeGradle maps the already-built production jar into the dev runtime.
+        # Remove main's loose outputs so a missing class/resource in that jar cannot be masked.
+        assert str(ROOT / "build/classes/java/main") not in CLASSPATH
+        assert str(ROOT / "build/resources/main") not in CLASSPATH
+        entries = env["MOD_CLASSES"].split(os.pathsep)
+        env["MOD_CLASSES"] = os.pathsep.join(entry for entry in entries
+                                             if not entry.startswith("sound_isolating_eraser%%"))
+        assert "sound_isolating_eraser%%" not in env["MOD_CLASSES"]
     env["LIBGL_ALWAYS_SOFTWARE"] = "1"
     args = shlex.split(expand(config["args"]))
     if role != "server":
@@ -126,8 +135,9 @@ try:
     server = launch("server", restart=True)
     wait_ready(server)
     clients = [launch("user", restart=True), launch("observer", restart=True)]
-    wait_evidence(["server-restart", "user-restarted", "observer-restarted"], [server, *clients])
+    wait_evidence(["server-restart", "user-restarted", "observer-restarted", "server-turn", "user-turned", "observer-turned"], [server, *clients])
     print("BRICKROT_REAL_TWO_CLIENT_AND_SERVER_RESTART_E2E_PASSED", flush=True)
+    print("PRODUCTION_JAR_MODE=" + os.environ.get("BRICKROT_QA_PACKAGED", "0"), flush=True)
 finally:
     for process in reversed(processes):
         stop(process)

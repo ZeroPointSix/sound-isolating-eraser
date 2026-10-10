@@ -2,17 +2,21 @@ package com.zeropointsix.brickrottest;
 
 import com.mojang.blaze3d.platform.NativeImage;
 import com.zeropointsix.eraser.brickrot.BrickrotWallEntity;
+import com.zeropointsix.eraser.brickrot.BrickrotPart;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashSet;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
+import net.minecraft.util.Mth;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.ClientChatReceivedEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.lwjgl.glfw.GLFW;
+import org.joml.Vector3f;
+import software.bernie.geckolib.event.GeoRenderEvent;
 
 @Mod.EventBusSubscriber(modid = "brickrot_qa", value = Dist.CLIENT)
 public final class BrickrotTestClient {
@@ -22,6 +26,7 @@ public final class BrickrotTestClient {
     private static int ticks, firstFrameTick;
     private static boolean failed, captured;
     private static NativeImage firstFrame;
+    private static int renderedParts, orientedParts;
 
     @SubscribeEvent public static void message(ClientChatReceivedEvent event) {
         String message = event.getMessage().getString();
@@ -29,9 +34,31 @@ public final class BrickrotTestClient {
         phase = message.substring("BRICKROT_QA:".length());
         ticks = 0;
         captured = false;
+        renderedParts = orientedParts = 0;
         if (firstFrame != null) firstFrame.close();
         firstFrame = null;
         event.setCanceled(true);
+    }
+
+    @SubscribeEvent public static void beforeModel(GeoRenderEvent.Entity.Pre event) {
+        if (event.getEntity() instanceof BrickrotPart)
+            event.getRenderer().getGeoModel().getBone("segment").ifPresent(bone -> bone.setTrackingMatrices(true));
+    }
+
+    @SubscribeEvent public static void afterModel(GeoRenderEvent.Entity.Post event) {
+        if (failed || ticks < 50 || !(event.getEntity() instanceof BrickrotPart part)) return;
+        try {
+            var bone = event.getRenderer().getGeoModel().getBone("segment").orElseThrow();
+            renderedParts |= 1 << (part.index() - 1);
+            if (phase.equals("turned")) {
+                float yaw = Mth.rotLerp(event.getPartialTick(), part.yRotO, part.getYRot());
+                require(Math.abs(Mth.wrapDegrees(yaw - 90)) < 3, "body follows the completed right-angle turn");
+                var forward = bone.getWorldSpaceMatrix().transformDirection(new Vector3f(0, 0, -1)).normalize();
+                var expected = new Vector3f(-Mth.sin(yaw * Mth.DEG_TO_RAD), 0, Mth.cos(yaw * Mth.DEG_TO_RAD));
+                require(forward.dot(expected) > 0.99, "rendered part " + part.index() + " points along its trail: " + forward);
+                orientedParts |= 1 << (part.index() - 1);
+            }
+        } catch (Throwable error) { fail(error); }
     }
 
     private static void require(boolean condition, String message) {
@@ -67,7 +94,7 @@ public final class BrickrotTestClient {
 
     @SubscribeEvent public static void frame(TickEvent.RenderTickEvent event) {
         if (event.phase != TickEvent.Phase.END || failed || captured || ticks < 50
-                || !(phase.equals("intact") || phase.equals("breached") || phase.equals("restarted"))) return;
+                || !(phase.equals("intact") || phase.equals("breached") || phase.equals("restarted") || phase.equals("turned"))) return;
         var mc = Minecraft.getInstance();
         if (mc.player == null || mc.level == null || mc.screen != null) return;
         try {
@@ -75,6 +102,8 @@ public final class BrickrotTestClient {
             require(heads.size() == 1, "client sees exactly one parent");
             var head = heads.get(0);
             require(head.getParts().length == 9, "nine client multipart instances");
+            require(renderedParts == 511, "all nine body parts passed through the real renderer");
+            if (phase.equals("turned")) require(orientedParts == 511, "all nine rendered parts follow the new heading");
             require(head.phaseTwo() == !phase.equals("intact"), "phase synchronized to both clients");
             require(head.getParts()[0].modelName().equals(phase.equals("intact")
                     ? "brickrot_neck" : "brickrot_neck_breached"), "correct original neck model selected");
@@ -103,7 +132,7 @@ public final class BrickrotTestClient {
                 require(changedBodyPixels > 30, "supplied animation visibly moves between real rendered frames: "
                         + changedBodyPixels + " pixels over " + (ticks - firstFrameTick) + " ticks; entityTick=" + head.tickCount);
                 Files.writeString(RESULTS.resolve(ROLE + "-" + phase + ".pass"),
-                        "Native Forge client: parent + nine parts, model/phase sync, textured framebuffer and motion passed.\n"
+                        "Native Forge client: parent + nine rendered parts, model/phase sync, textured framebuffer and motion passed.\n"
                         + "redPixels=" + redPixels + "; changedBodyPixels=" + changedBodyPixels + "\n");
             }
             firstFrame.close();
