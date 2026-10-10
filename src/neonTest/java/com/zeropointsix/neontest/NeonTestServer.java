@@ -17,6 +17,7 @@ import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.living.LivingHurtEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.event.server.ServerStartedEvent;
 import net.minecraftforge.fml.common.Mod;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -40,6 +41,18 @@ public final class NeonTestServer {
 
     private static void signal(ServerPlayer player, String phase) {
         player.sendSystemMessage(Component.literal("NEON_QA:" + phase));
+    }
+
+    @SubscribeEvent public static void prepare(ServerStartedEvent event) {
+        ServerLevel level = event.getServer().overworld();
+        level.setDayTime(6000);
+        level.setWeatherParameters(6000, 0, false, false);
+        level.getGameRules().getRule(GameRules.RULE_DOMOBSPAWNING).set(false, level.getServer());
+        level.getGameRules().getRule(GameRules.RULE_DAYLIGHT).set(false, level.getServer());
+        level.getGameRules().getRule(GameRules.RULE_NATURAL_REGENERATION).set(false, level.getServer());
+        for (BlockPos pos : BlockPos.betweenClosed(-15, 64, -16, 18, 64, 20)) {
+            level.setBlockAndUpdate(pos, Blocks.SMOOTH_QUARTZ.defaultBlockState());
+        }
     }
 
     private static NeonTumorEntity spawn(ServerLevel level, double x, double z, int size, int variant) {
@@ -91,12 +104,6 @@ public final class NeonTestServer {
                 return;
             }
             require(stage == 0, "unexpected player login phase");
-            level.setDayTime(6000);
-            level.setWeatherParameters(6000, 0, false, false);
-            level.getGameRules().getRule(GameRules.RULE_DOMOBSPAWNING).set(false, level.getServer());
-            level.getGameRules().getRule(GameRules.RULE_DAYLIGHT).set(false, level.getServer());
-            level.getGameRules().getRule(GameRules.RULE_NATURAL_REGENERATION).set(false, level.getServer());
-            for (BlockPos pos : BlockPos.betweenClosed(-15, 64, -16, 18, 64, 20)) level.setBlockAndUpdate(pos, Blocks.SMOOTH_QUARTZ.defaultBlockState());
             player.setGameMode(GameType.CREATIVE);
             player.getAbilities().flying = true;
             player.onUpdateAbilities();

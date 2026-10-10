@@ -340,11 +340,12 @@ public final class NeonTumorGameTests {
         close(h, cloud.getRadius(), 1, "medium radius");
         h.assertTrue(cloud.getDuration() == 60 && cloud.getWaitTime() == 0, "three seconds with no startup delay");
         h.assertTrue(cloud.getColor() == 0x4FC8F0, "puddle variant color");
-        h.runAfterDelay(6, () -> {
+        h.succeedWhen(() -> {
             MobEffectInstance effect = victim.getEffect(ModEffects.CORRODED.get());
+            h.assertTrue(cloud.tickCount <= 10, "cloud must apply during its first two five-tick samples");
             h.assertTrue(effect != null && effect.getDuration() > 30 && effect.getDuration() <= 40,
-                    "custom cloud effect applies for two seconds, not eight or half a second");
-            h.succeed();
+                    "custom cloud effect applies for two seconds; cloud tick=" + cloud.tickCount
+                            + ", effect=" + effect + ", distance=" + victim.distanceTo(cloud));
         });
     }
 
