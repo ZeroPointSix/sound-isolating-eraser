@@ -142,6 +142,7 @@ public final class BrickrotGameTests {
         villager.setNoGravity(true);
         var light = new ItemEntity(h.getLevel(), wall.getX() + 20, wall.getY(), wall.getZ(), new ItemStack(Items.TORCH));
         light.setNoGravity(true);
+        light.setDeltaMovement(Vec3.ZERO);
         h.getLevel().addFreshEntity(light);
         h.assertTrue(wall.findQuarry() == light, "dropped light outranks closer living target");
         h.getLevel().setBlock(wall.blockPosition().offset(10, 1, 0), Blocks.STONE.defaultBlockState(), 3);
@@ -329,10 +330,14 @@ public final class BrickrotGameTests {
         BrickrotWallEntity wall = wall(h);
         var light = new ItemEntity(h.getLevel(), wall.getX(), wall.getY(), wall.getZ() + 3, new ItemStack(Items.TORCH));
         light.setNoGravity(true);
+        light.setDeltaMovement(Vec3.ZERO);
+        light.setPickUpDelay(32767);
         h.getLevel().addFreshEntity(light);
         wall.setNoAi(false);
         h.runAfterDelay(80, () -> {
-            h.assertTrue(wall.action() == BrickrotWallEntity.Action.TRACK, "nearby lure holds attention without scan loops");
+            h.assertTrue(light.isAlive() && wall.distanceTo(light) <= 4, "stationary lure fixture remains nearby");
+            h.assertTrue(wall.action() == BrickrotWallEntity.Action.TRACK,
+                    "nearby lure holds attention without scan loops: " + wall.action());
             h.succeed();
         });
     }
