@@ -22,10 +22,6 @@ public final class FertilizerData extends SavedData {
         public long touched;
         public final Map<UUID, Integer> doses = new HashMap<>();
         public final Set<Long> trunk = new HashSet<>();
-        /** 榕树形状种子：升级时用同一个种子重算，枝条路径互为前缀。 */
-        public long seed;
-        /** 气根落点（落点方块为生根泥土，树干从其上一格开始），不含主干。 */
-        public final List<BlockPos> pillars = new ArrayList<>();
         public Plant(BlockPos root, boolean tree, long time) { this.root = root.immutable(); this.tree = tree; touched = time; }
     }
 
@@ -89,8 +85,6 @@ public final class FertilizerData extends SavedData {
             entry.putLong("Root", p.root.asLong()); entry.putBoolean("Tree", p.tree);
             entry.putInt("Level", p.level); entry.putBoolean("Grove", p.grove); entry.putLong("Touched", p.touched);
             entry.putLongArray("Trunk", p.trunk.stream().mapToLong(Long::longValue).toArray());
-            entry.putLong("Seed", p.seed);
-            entry.putLongArray("Pillars", p.pillars.stream().mapToLong(BlockPos::asLong).toArray());
             ListTag players = new ListTag();
             p.doses.forEach((id, dose) -> { CompoundTag n = new CompoundTag(); n.putUUID("Player", id); n.putInt("Dose", dose); players.add(n); });
             entry.put("Players", players); list.add(entry);
@@ -109,11 +103,6 @@ public final class FertilizerData extends SavedData {
             for (long log : n.getLongArray("Trunk")) {
                 if (p.trunk.size() >= 16000) break;
                 if (p.root.distSqr(BlockPos.of(log)) <= 4096) p.trunk.add(log);
-            }
-            p.seed = n.getLong("Seed");
-            for (long pillar : n.getLongArray("Pillars")) {
-                if (p.pillars.size() >= 64) break;
-                if (p.root.distSqr(BlockPos.of(pillar)) <= 4096) p.pillars.add(BlockPos.of(pillar));
             }
             for (Tag t : n.getList("Players", Tag.TAG_COMPOUND)) {
                 CompoundTag d = (CompoundTag) t;
