@@ -120,6 +120,20 @@ public final class NeonTestClient {
     }
 
     @SubscribeEvent public static void render(TickEvent.RenderTickEvent event) {
+        if (event.phase == TickEvent.Phase.END && !failed && phase.equals("baseline") && ticks >= 100 && !captured) {
+            var mc = Minecraft.getInstance();
+            if (mc.level == null || mc.player == null || mc.screen != null) return;
+            try (var screenshot = Screenshot.takeScreenshot(mc.getMainRenderTarget())) {
+                screenshot.writeToFile(RESULTS.resolve("baseline.png"));
+                var pos = mc.player.blockPosition();
+                Files.writeString(RESULTS.resolve("client-baseline.pass"), "sky="
+                        + mc.level.getBrightness(net.minecraft.world.level.LightLayer.SKY, pos)
+                        + ", block=" + mc.level.getBrightness(net.minecraft.world.level.LightLayer.BLOCK, pos)
+                        + ", day=" + mc.level.getDayTime() + ", raw=" + mc.level.getMaxLocalRawBrightness(pos));
+                captured = true;
+            } catch (Throwable failure) { fail(failure); }
+            return;
+        }
         if (event.phase != TickEvent.Phase.END || failed || !phase.equals("gallery") || ticks < 140 || captured) return;
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.level == null || mc.screen != null || firstFrame && ticks < 193) return;

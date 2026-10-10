@@ -26,7 +26,7 @@ import java.util.UUID;
 public final class NeonTestServer {
     private static final Path RESULTS = Path.of(System.getProperty("neon.qa.results"));
     private static int stage, elapsed, digestionHits;
-    private static boolean failed;
+    private static boolean failed, gallerySpawned;
     private static NeonTumorEntity captor;
     private static UUID logoutCaptor;
 
@@ -97,13 +97,12 @@ public final class NeonTestServer {
             level.getGameRules().getRule(GameRules.RULE_DAYLIGHT).set(false, level.getServer());
             level.getGameRules().getRule(GameRules.RULE_NATURAL_REGENERATION).set(false, level.getServer());
             for (BlockPos pos : BlockPos.betweenClosed(-15, 64, -16, 18, 64, 20)) level.setBlockAndUpdate(pos, Blocks.SMOOTH_QUARTZ.defaultBlockState());
-            for (int size = 0; size < 3; size++) for (int variant = 0; variant < 3; variant++) spawn(level, (variant - 1) * 5, -size * 5, size, variant);
             player.setGameMode(GameType.CREATIVE);
             player.getAbilities().flying = true;
             player.onUpdateAbilities();
             player.teleportTo(level, 10, 71, 11, 148, 18);
             player.getInventory().setItem(0, new ItemStack(com.zeropointsix.eraser.registry.ModItems.NEON_TUMOR_SPAWN_EGG.get()));
-            signal(player, "gallery");
+            signal(player, "baseline");
         } catch (Throwable error) { fail(error); }
     }
 
@@ -126,6 +125,13 @@ public final class NeonTestServer {
         var server = event.getServer();
         var player = server.getPlayerList().getPlayerByName("NeonTester");
         try {
+            if (stage == 0 && player != null && !gallerySpawned && Files.exists(RESULTS.resolve("client-baseline.pass"))) {
+                for (int size = 0; size < 3; size++) for (int variant = 0; variant < 3; variant++) {
+                    spawn(player.serverLevel(), (variant - 1) * 5, -size * 5, size, variant);
+                }
+                gallerySpawned = true;
+                signal(player, "gallery");
+            }
             if (stage == 0 && player != null && Files.exists(RESULTS.resolve("client-gallery.pass"))) {
                 capture(player, true);
                 stage = 1;
