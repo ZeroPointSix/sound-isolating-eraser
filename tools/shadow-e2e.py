@@ -122,7 +122,8 @@ try:
     wait_evidence(["native-egg", "native-knife", "server-cycle", *states], [server, *clients])
     server.stdin.write("stop\n")
     server.stdin.flush()
-    server.wait(timeout=45)
+    if server.wait(timeout=int(os.environ.get("SHADOW_QA_SHUTDOWN_SECONDS", "180"))) != 0:
+        raise RuntimeError("Shadow dedicated server did not shut down cleanly before restart")
     for client in clients:
         stop(client)
     server = launch("server", restart=True)
