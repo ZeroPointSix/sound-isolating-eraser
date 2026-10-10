@@ -5,7 +5,6 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.Item;
-import net.minecraftforge.common.ForgeSpawnEggItem;
 import net.minecraftforge.event.BuildCreativeModeTabContentsEvent;
 import net.minecraftforge.event.entity.EntityAttributeCreationEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
@@ -23,7 +22,7 @@ public final class BrickrotContent {
                     .sized(3, 3).fireImmune().clientTrackingRange(8).updateInterval(1)
                     .build(ModMain.MOD_ID + ":brickrot_wall"));
     public static final RegistryObject<Item> EGG = ITEMS.register("brickrot_spawn_egg",
-            () -> new ForgeSpawnEggItem(WALL, 0x795550, 0x782b29, new Item.Properties()));
+            () -> new BrickrotSpawnEggItem(new Item.Properties()));
 
     private BrickrotContent() {}
 

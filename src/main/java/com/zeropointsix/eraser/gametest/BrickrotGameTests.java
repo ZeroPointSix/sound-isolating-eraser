@@ -7,12 +7,16 @@ import com.zeropointsix.eraser.brickrot.BrickrotPart;
 import com.zeropointsix.eraser.brickrot.BrickrotTrail;
 import com.zeropointsix.eraser.brickrot.BrickrotWallEntity;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.FloatTag;
+import net.minecraft.nbt.ListTag;
 import net.minecraft.network.protocol.game.ServerboundInteractPacket;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageType;
 import net.minecraft.world.damagesource.DamageTypes;
@@ -22,8 +26,11 @@ import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.GameRules;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.gametest.GameTestHolder;
 import net.minecraftforge.gametest.PrefixGameTestTemplate;
@@ -98,6 +105,52 @@ public final class BrickrotGameTests {
         for (int i = 0; i < 60; i++) wall.tick();
         h.assertTrue(wall.action() == BrickrotWallEntity.Action.SCAN, "opening finishes in scan");
         near(h, wall.getY(), surface.y, "opening returns to the clicked surface");
+        h.succeed();
+    }
+
+    @GameTest(template = "brickrot_empty")
+    public static void brickrotEggUsesClickingPlayerHeading(GameTestHelper h) {
+        BlockPos floor = h.absolutePos(new BlockPos(32, 3, 32));
+        h.getLevel().setBlockAndUpdate(floor, Blocks.STONE.defaultBlockState());
+        var player = h.makeMockSurvivalPlayer();
+        var egg = (ForgeSpawnEggItem) BrickrotContent.EGG.get();
+        h.assertTrue(egg.getColor(0) == 0x8E3B2E && egg.getColor(1) == 0x80807C,
+                "spawn egg uses the supplied design colors");
+        for (float yaw : new float[] {90, -135}) {
+            player.setPos(Vec3.atCenterOf(floor).add(0, 1, -4));
+            player.setYRot(yaw);
+            player.setXRot(37);
+            ItemStack stack = new ItemStack(egg, 2);
+            stack.getOrCreateTag().putString("BrickrotTestMarker", "keep");
+            CompoundTag entityTag = stack.getOrCreateTagElement("EntityTag");
+            entityTag.putFloat("Health", 240);
+            ListTag rotation = new ListTag();
+            rotation.add(FloatTag.valueOf(12));
+            rotation.add(FloatTag.valueOf(17));
+            entityTag.put("Rotation", rotation);
+            CompoundTag before = stack.getTag().copy();
+            player.setItemInHand(InteractionHand.MAIN_HAND, stack);
+            var context = new UseOnContext(player, InteractionHand.MAIN_HAND,
+                    new BlockHitResult(Vec3.atCenterOf(floor).add(0, 0.5, 0), Direction.UP, floor, false));
+            h.assertTrue(egg.useOn(context).consumesAction(), "ground egg interaction succeeds");
+            h.assertTrue(stack.getCount() == 1 && before.equals(stack.getTag()),
+                    "vanilla consumes one egg without changing its original NBT");
+            var spawned = h.getLevel().getEntitiesOfClass(BrickrotWallEntity.class,
+                    new AABB(floor.above()).inflate(2));
+            h.assertTrue(spawned.size() == 1, "one click creates exactly one nearby head");
+            BrickrotWallEntity head = spawned.get(0);
+            near(h, head.getYRot(), yaw, "head uses the actual clicking player's nonzero yaw");
+            near(h, head.getXRot(), 17, "unrelated entity rotation pitch is preserved");
+            near(h, head.getHealth(), 240, "unrelated entity NBT survives vanilla loading");
+            head.tick();
+            h.assertTrue(head.action() == BrickrotWallEntity.Action.EMERGE, "first tick keeps the emergence opening");
+            Vec3 forward = Vec3.directionFromRotation(0, yaw);
+            for (BrickrotPart part : head.getParts()) {
+                Vec3 behind = part.position().subtract(head.position()).multiply(1, 0, 1).normalize();
+                h.assertTrue(behind.dot(forward) < -0.99, "every first-tick part trails opposite the player's heading");
+            }
+            head.discard();
+        }
         h.succeed();
     }
 
