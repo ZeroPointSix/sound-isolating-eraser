@@ -304,11 +304,13 @@ public final class BrickrotGameTests {
         target.setNoAi(true);
         target.setNoGravity(true);
         wall.setNoAi(false);
-        h.runAfterDelay(60, () -> near(h, target.getHealth(), 20, "sweep telegraph precedes damage"));
-        h.runAfterDelay(70, () -> {
-            near(h, target.getHealth(), 10, "four red sections apply a single ten-damage hit");
-            h.succeed();
-        });
+        // Advance only this encounter so neighboring parallel tests cannot move the fixture.
+        for (int i = 0; i < 60; i++) wall.tick();
+        h.assertTrue(wall.action() == BrickrotWallEntity.Action.SWEEP, "side target selects sweep");
+        near(h, target.getHealth(), 20, "sweep telegraph precedes damage");
+        for (int i = 0; i < 10; i++) wall.tick();
+        near(h, target.getHealth(), 10, "four red sections apply a single ten-damage hit");
+        h.succeed();
     }
 
     @GameTest(template = "brickrot_empty")
