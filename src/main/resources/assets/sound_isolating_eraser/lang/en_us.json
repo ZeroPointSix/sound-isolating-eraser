@@ -49,5 +49,8 @@
   "sound_isolating_eraser.tier.1": "Cruise",
   "sound_isolating_eraser.tier.2": "Gale",
   "sound_isolating_eraser.tier.3": "Tempest",
-  "message.sound_isolating_eraser.speed_cap": "Speed exceeds wing limit — throttled"
+  "message.sound_isolating_eraser.speed_cap": "Speed exceeds wing limit — throttled",
+  "entity.sound_isolating_eraser.shadow_tangler": "Shadow Tangler",
+  "item.sound_isolating_eraser.shadow_tangler_spawn_egg": "Shadow Tangler Spawn Egg",
+  "death.attack.sound_isolating_eraser.light_burn": "%1$s shattered in the light"
 }

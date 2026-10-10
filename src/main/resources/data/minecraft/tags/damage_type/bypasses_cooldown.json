@@ -1,4 +1,7 @@
 {
   "replace": false,
-  "values": ["sound_isolating_eraser:shaxiadao_true"]
+  "values": [
+    "sound_isolating_eraser:shaxiadao_true",
+    "sound_isolating_eraser:light_burn"
+  ]
 }
