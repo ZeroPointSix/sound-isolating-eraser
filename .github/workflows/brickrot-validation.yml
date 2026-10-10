@@ -20,6 +20,33 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  native-client:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build production jar and isolated driver
+        run: bash ./gradlew --no-daemon --max-workers=2 -PbrickrotE2E build writeBrickrotTestClasspath
+      - name: Install native client test dependencies
+        run: sudo apt-get update && sudo apt-get install -y xvfb xdotool libgl1-mesa-dri
+      - name: Native egg, multipart attack, two clients and restart
+        run: python3 tools/brickrot-e2e.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: brickrot-native-client-evidence
+          retention-days: 7
+          path: |
+            build/libs/*.jar
+            build/brickrot-e2e/*.pass
+            build/brickrot-e2e/*.failed
+            build/brickrot-e2e/*.log
+            build/brickrot-e2e/*.png
   server-regression:
     runs-on: ubuntu-latest
     timeout-minutes: 30

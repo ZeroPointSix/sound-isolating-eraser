@@ -253,3 +253,6 @@ if (project.hasProperty('shaxiaE2E')) {
 }
 
 apply from: 'gradle/brickrot.gradle'
+if (project.hasProperty('brickrotE2E')) {
+    apply from: 'gradle/brickrot-e2e.gradle'
+}
