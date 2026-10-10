@@ -1,0 +1,27 @@
+// Opt-in integration driver, never included in the production source set.
+sourceSets {
+    brickrotTest {
+        compileClasspath += sourceSets.main.compileClasspath + sourceSets.main.output
+        runtimeClasspath += sourceSets.main.runtimeClasspath + sourceSets.main.output
+    }
+}
+if (project.hasProperty('brickrotJarE2E')) {
+    repositories { flatDir { dirs layout.buildDirectory.dir('libs') } }
+    configurations { brickrotPublished }
+    dependencies {
+        brickrotPublished fg.deobf("brickrot.qa:${mod_id}:${mod_version}")
+    }
+    sourceSets.brickrotTest {
+        compileClasspath = sourceSets.main.compileClasspath + configurations.brickrotPublished
+        runtimeClasspath = (sourceSets.main.runtimeClasspath - sourceSets.main.output) + output + configurations.brickrotPublished
+    }
+}
+minecraft.runs.configureEach {
+    mods { brickrot_qa { source sourceSets.brickrotTest } }
+}
+tasks.register('writeBrickrotTestClasspath') {
+    dependsOn 'classes', 'brickrotTestClasses', 'genVSCodeRuns'
+    def target = layout.buildDirectory.file('brickrot-test-classpath.txt')
+    outputs.file(target)
+    doLast { target.get().asFile.text = sourceSets.brickrotTest.runtimeClasspath.asPath }
+}

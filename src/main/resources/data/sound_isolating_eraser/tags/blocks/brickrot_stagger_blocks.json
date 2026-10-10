@@ -1,0 +1,4 @@
+{
+  "replace": false,
+  "values": ["minecraft:basalt", "minecraft:polished_basalt", "minecraft:smooth_basalt", "minecraft:obsidian", "minecraft:crying_obsidian", "minecraft:bedrock", "minecraft:reinforced_deepslate"]
+}

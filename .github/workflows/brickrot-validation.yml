@@ -1,0 +1,87 @@
+name: Brickrot Validation
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '**/brickrot/**'
+      - '**/*[Bb]rickrot*'
+      - build.gradle
+      - gradle.properties
+      - src/main/resources/META-INF/mods.toml
+      - .github/workflows/brickrot-validation.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: brickrot-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native-client:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build production jar
+        run: bash ./gradlew --no-daemon --max-workers=2 build
+      - name: Compile driver against the built production jar
+        run: bash ./gradlew --no-daemon --max-workers=2 -PbrickrotE2E -PbrickrotJarE2E writeBrickrotTestClasspath
+      - name: Install native client test dependencies
+        run: sudo apt-get update && sudo apt-get install -y xvfb xdotool libgl1-mesa-dri
+      - name: Native egg, multipart attack, two clients and restart
+        env:
+          BRICKROT_QA_PACKAGED: '1'
+        run: python3 tools/brickrot-e2e.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: brickrot-native-client-evidence
+          retention-days: 7
+          path: |
+            build/libs/*.jar
+            build/brickrot-e2e/*.pass
+            build/brickrot-e2e/*.failed
+            build/brickrot-e2e/*.log
+            build/brickrot-e2e/*.png
+  server-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Compile and run real Forge server tests
+        run: bash ./gradlew --no-daemon --max-workers=2 compileJava runGameTestServer
+      - name: Retain test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: brickrot-server-evidence
+          path: |
+            run/logs/latest.log
+            run/logs/debug.log
+            build/reports/
+          if-no-files-found: warn
+
+  supplied-art:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Require the original models, animations and textures
+        run: python3 tools/brickrot-assets.py verify
+      - name: Reject tampered assets and archives
+        run: python3 tools/test-brickrot-assets.py
