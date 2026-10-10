@@ -144,10 +144,14 @@ public final class BrickrotGameTests {
             near(h, head.getHealth(), 240, "unrelated entity NBT survives vanilla loading");
             head.tick();
             h.assertTrue(head.action() == BrickrotWallEntity.Action.EMERGE, "first tick keeps the emergence opening");
+            // During emergence the trail rises vertically; test the fully unfolded body after settling.
+            for (int i = 0; i < 60; i++) head.tick();
+            h.assertTrue(head.action() == BrickrotWallEntity.Action.SCAN, "opening settles before the direction check");
+            near(h, head.getYRot(), yaw, "opening preserves the clicking player's yaw");
             Vec3 forward = Vec3.directionFromRotation(0, yaw);
             for (BrickrotPart part : head.getParts()) {
                 Vec3 behind = part.position().subtract(head.position()).multiply(1, 0, 1).normalize();
-                h.assertTrue(behind.dot(forward) < -0.99, "every first-tick part trails opposite the player's heading");
+                h.assertTrue(behind.dot(forward) < -0.99, "every unfolded part trails opposite the player's heading");
             }
             head.discard();
         }
