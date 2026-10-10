@@ -26,6 +26,15 @@ jobs:
       - name: Build production jar
         id: build
         run: bash ./gradlew --no-daemon --max-workers=2 build
+      - name: Verify production jar boundary
+        run: |
+          jar_file="$(find build/libs -maxdepth 1 -type f -name '*.jar' -print -quit)"
+          test -n "$jar_file"
+          jar tf "$jar_file" > build/production-jar-entries.txt
+          if grep -Eq '(^com/zeropointsix/eraser/gametest/|^com/zeropointsix/shaxiatest/|^data/sound_isolating_eraser/structures/empty\.nbt$|^tools/)' build/production-jar-entries.txt; then
+            echo "Test-only content leaked into production jar" >&2
+            exit 1
+          fi
       - name: Run real Forge tests
         run: bash ./gradlew --no-daemon --max-workers=2 runGameTestServer
       - name: Install native client test dependencies
