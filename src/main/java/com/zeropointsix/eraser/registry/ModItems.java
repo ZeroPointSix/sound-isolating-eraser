@@ -12,6 +12,7 @@ import net.minecraft.world.item.Rarity;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
+import net.minecraftforge.common.ForgeSpawnEggItem;
 
 public final class ModItems {
     public static final DeferredRegister<Item> ITEMS =
@@ -27,6 +28,10 @@ public final class ModItems {
 
     public static final RegistryObject<ShaxiadaoItem> SHAXIADAO =
             ITEMS.register("shaxiadao", ShaxiadaoItem::new);
+
+    public static final RegistryObject<ForgeSpawnEggItem> SHADOW_TANGLER_SPAWN_EGG =
+            ITEMS.register("shadow_tangler_spawn_egg", () -> new ForgeSpawnEggItem(
+                    ModEntities.SHADOW_TANGLER, 0xFFFFFF, 0xFFFFFF, new Item.Properties()));
 
     public static final RegistryObject<SoundIsolatingEraserItem> SOUND_ISOLATING_ERASER =
             ITEMS.register("sound_isolating_eraser",

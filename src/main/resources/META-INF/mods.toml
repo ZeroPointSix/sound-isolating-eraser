@@ -26,6 +26,13 @@ ordering="AFTER"
 side="BOTH"
 
 [[dependencies.${mod_id}]]
+modId="geckolib"
+mandatory=true
+versionRange="[4.4.9,5)"
+ordering="AFTER"
+side="BOTH"
+
+[[dependencies.${mod_id}]]
 modId="minecraft"
 mandatory=true
 versionRange="${minecraft_version_range}"

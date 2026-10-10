@@ -1,0 +1,172 @@
+package com.zeropointsix.shadowtest;
+
+import com.zeropointsix.eraser.client.ShadowTanglerModel;
+import com.zeropointsix.eraser.client.ShadowTanglerRenderer;
+import com.zeropointsix.eraser.registry.ModItems;
+import com.zeropointsix.eraser.shadow.ShadowTanglerEntity;
+import com.mojang.blaze3d.platform.NativeImage;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.HashSet;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.Screenshot;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.world.item.CreativeModeTabs;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.client.event.ClientChatReceivedEvent;
+import net.minecraftforge.client.event.RenderLevelStageEvent;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
+import org.lwjgl.glfw.GLFW;
+import software.bernie.geckolib.event.GeoRenderEvent;
+
+@Mod.EventBusSubscriber(modid = "shadow_qa", value = Dist.CLIENT)
+public final class ShadowTestClient {
+    private static final Path RESULTS = Path.of(System.getProperty("shadow.qa.results"));
+    private static final String ROLE = System.getProperty("shadow.qa.role");
+    private static String phase = "";
+    private static int ticks;
+    private static boolean captured, failed;
+    private static boolean suppressShadow, suppressedThisFrame, renderedThisFrame;
+    private static NativeImage negativeFrame;
+
+    private static void require(boolean value, String message) {
+        if (!value) throw new AssertionError(message);
+    }
+
+    private static void fail(Throwable failure) {
+        failure.printStackTrace();
+        suppressShadow = false;
+        if (negativeFrame != null) negativeFrame.close();
+        negativeFrame = null;
+        try { Files.writeString(RESULTS.resolve(ROLE + ".failed"), failure.toString()); } catch (Exception ignored) { }
+        failed = true;
+    }
+
+    private static void input(String... args) throws Exception {
+        var command = new java.util.ArrayList<String>();
+        command.add("xdotool");
+        command.addAll(java.util.List.of(args));
+        require(new ProcessBuilder(command).start().waitFor() == 0, "native input failed");
+    }
+
+    @SubscribeEvent public static void message(ClientChatReceivedEvent event) {
+        String text = event.getMessage().getString();
+        if (!text.startsWith("SHADOW_QA:")) return;
+        phase = text.substring(10);
+        ticks = 0;
+        captured = false;
+        suppressShadow = false;
+        if (negativeFrame != null) negativeFrame.close();
+        negativeFrame = null;
+        event.setCanceled(true);
+    }
+
+    @SubscribeEvent public static void beforeEntity(GeoRenderEvent.Entity.Pre event) {
+        if (event.getEntity() instanceof ShadowTanglerEntity && suppressShadow) {
+            event.setCanceled(true);
+            suppressedThisFrame = true;
+        }
+    }
+
+    @SubscribeEvent public static void afterEntity(GeoRenderEvent.Entity.Post event) {
+        if (event.getEntity() instanceof ShadowTanglerEntity && !suppressShadow) renderedThisFrame = true;
+    }
+
+    private static boolean capturePhase() {
+        return phase.equals("dark") || phase.equals("dim") || phase.equals("bright")
+                || phase.equals("saved") || phase.equals("restarted");
+    }
+
+    @SubscribeEvent public static void tick(TickEvent.ClientTickEvent event) {
+        if (event.phase != TickEvent.Phase.END || failed || phase.isEmpty()) return;
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null || mc.level == null) return;
+        try {
+            ticks++;
+            if (ticks == 1) {
+                mc.setScreen(null);
+                GLFW.glfwFocusWindow(mc.getWindow().getWindow());
+                mc.mouseHandler.grabMouse();
+            }
+            if (phase.equals("place") && ticks == 40) {
+                CreativeModeTabs.tryRebuildTabContents(mc.level.enabledFeatures(), false, mc.level.registryAccess());
+                long count = BuiltInRegistries.CREATIVE_MODE_TAB.get(CreativeModeTabs.SPAWN_EGGS).getDisplayItems()
+                        .stream().filter(stack -> stack.is(ModItems.SHADOW_TANGLER_SPAWN_EGG.get())).count();
+                require(count == 1, "creative spawn egg tab includes exactly one shadow egg");
+                var stack = mc.player.getMainHandItem();
+                String texture = mc.getItemRenderer().getModel(stack, mc.level, mc.player, 0).getParticleIcon().contents().name().toString();
+                require(texture.equals("sound_isolating_eraser:item/shadow_tangler_spawn_egg"), "original egg texture resolves");
+                if (ROLE.equals("user")) input("click", "3");
+            }
+            if (phase.equals("dark") && ROLE.equals("user")) {
+                if (ticks == 5) input("key", "2");
+                if (ticks == 45) input("click", "1");
+            }
+            require(ticks < 100 || captured || phase.equals("place"), "client capture timed out: " + phase);
+        } catch (Throwable failure) { fail(failure); }
+    }
+
+    @SubscribeEvent public static void frame(RenderLevelStageEvent event) {
+        if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_SKY) {
+            suppressedThisFrame = false;
+            renderedThisFrame = false;
+            suppressShadow = capturePhase() && !failed && !captured && ticks >= 12 && negativeFrame == null;
+        }
+        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_LEVEL || failed || captured || ticks < 12
+                || !capturePhase()) return;
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null || mc.player == null || mc.screen != null) return;
+        try {
+            var entities = mc.level.getEntitiesOfClass(ShadowTanglerEntity.class, mc.player.getBoundingBox().inflate(12));
+            require(entities.size() == 1, "client tracks exactly one shadow");
+            var mob = entities.get(0);
+            int expected = phase.equals("bright") ? 2 : phase.equals("dim") ? 1 : 0;
+            require(mob.getLightTier() == expected && !mob.isSpawning(), "light tier and completed spawn synchronize: " + phase);
+            require(mc.getEntityRenderDispatcher().getRenderer(mob) instanceof ShadowTanglerRenderer, "real Gecko renderer registered");
+            var model = new ShadowTanglerModel();
+            require(mc.getResourceManager().getResource(model.getTextureResource(mob)).isPresent(), "entity texture exists");
+            require(mc.getResourceManager().getResource(model.getModelResource(mob)).isPresent(), "geometry exists");
+            require(mc.getResourceManager().getResource(model.getAnimationResource(mob)).isPresent(), "animation file exists");
+            require(model.getTextureResource(mob).getPath().contains("crystal") == (expected == 2), "fog/crystal texture selection");
+            if (phase.equals("saved") || phase.equals("restarted")) {
+                require(Math.abs(mob.getHealth() - 15.75F) < 0.01F, "health synchronized across save/restart");
+            }
+            if (negativeFrame == null) {
+                require(suppressedThisFrame, "negative control actually suppressed the visible entity");
+                negativeFrame = Screenshot.takeScreenshot(mc.getMainRenderTarget());
+                negativeFrame.writeToFile(RESULTS.resolve(ROLE + "-" + phase + "-without-shadow.png"));
+                suppressShadow = false;
+                return;
+            }
+            require(renderedThisFrame, "normal frame completed the actual Gecko entity render");
+            try (var screenshot = Screenshot.takeScreenshot(mc.getMainRenderTarget())) {
+                screenshot.writeToFile(RESULTS.resolve(ROLE + "-" + phase + ".png"));
+                var colors = new HashSet<Integer>();
+                for (int x = 0; x < screenshot.getWidth(); x += 4) for (int y = 0; y < screenshot.getHeight(); y += 4) {
+                    colors.add(screenshot.getPixelRGBA(x, y));
+                }
+                require(colors.size() > 100, "real Minecraft framebuffer is nonblank");
+                int changed = 0;
+                for (int x = screenshot.getWidth() / 4; x < screenshot.getWidth() * 3 / 4; x++) {
+                    for (int y = screenshot.getHeight() / 6; y < screenshot.getHeight() * 5 / 6; y++) {
+                        int a = screenshot.getPixelRGBA(x, y), b = negativeFrame.getPixelRGBA(x, y);
+                        int difference = Math.abs((a & 255) - (b & 255))
+                                + Math.abs(((a >>> 8) & 255) - ((b >>> 8) & 255))
+                                + Math.abs(((a >>> 16) & 255) - ((b >>> 16) & 255));
+                        if (difference > 24) changed++;
+                    }
+                }
+                require(changed > 200, "entity adds visible pixels over cancelled-render control: " + changed);
+                Files.writeString(RESULTS.resolve(ROLE + "-" + phase + ".pass"),
+                        "Real client render, synchronized tier=" + expected + ", spawnAge=" + mob.getSpawnAge()
+                        + ", texture=" + model.getTextureResource(mob) + ", framebuffer colors=" + colors.size()
+                        + ", entity-region changed pixels=" + changed + "\n");
+            }
+            negativeFrame.close();
+            negativeFrame = null;
+            captured = true;
+        } catch (Throwable failure) { fail(failure); }
+    }
+}

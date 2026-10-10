@@ -49,5 +49,8 @@
   "sound_isolating_eraser.tier.1": "巡航",
   "sound_isolating_eraser.tier.2": "疾风",
   "sound_isolating_eraser.tier.3": "神霄",
-  "message.sound_isolating_eraser.speed_cap": "速度超过风雷翅当前档位上限，已被拉回"
+  "message.sound_isolating_eraser.speed_cap": "速度超过风雷翅当前档位上限，已被拉回",
+  "entity.sound_isolating_eraser.shadow_tangler": "缠影子",
+  "item.sound_isolating_eraser.shadow_tangler_spawn_egg": "缠影子刷怪蛋",
+  "death.attack.sound_isolating_eraser.light_burn": "%1$s 在强光下碎裂了"
 }

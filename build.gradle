@@ -121,6 +121,10 @@ apply from: 'gradle/fertilizer-resources.gradle'
 
 repositories {
     maven { url = 'https://maven.theillusivec4.top/' }
+    maven {
+        url = 'https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/'
+        content { includeGroupByRegex('software\\.bernie.*') }
+    }
     // Put repositories for dependencies here
     // ForgeGradle automatically adds the Forge maven and Maven Central for you
 
@@ -140,6 +144,7 @@ dependencies {
     minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
     compileOnly fg.deobf("top.theillusivec4.curios:curios-forge:${curios_version}:api")
     runtimeOnly fg.deobf("top.theillusivec4.curios:curios-forge:${curios_version}")
+    implementation fg.deobf("software.bernie.geckolib:geckolib-forge-${minecraft_version}:${geckolib_version}")
 
     // Example mod dependency with JEI - using fg.deobf() ensures the dependency is remapped to your development mappings
     // The JEI API is declared for compile time use, while the full JEI artifact is used at runtime
@@ -181,6 +186,7 @@ tasks.named('jar', Jar).configure {
     // Keep Forge GameTests available to development runs without shipping them to players.
     exclude 'com/zeropointsix/eraser/gametest/**'
     exclude 'data/sound_isolating_eraser/structures/empty.nbt'
+    exclude 'data/sound_isolating_eraser/structures/shadow_arena.nbt'
 
     manifest {
         attributes([
@@ -245,4 +251,8 @@ if (project.hasProperty('pillE2E')) {
 
 if (project.hasProperty('shaxiaE2E')) {
     apply from: 'gradle/shaxia-e2e.gradle'
+}
+
+if (project.hasProperty('shadowE2E')) {
+    apply from: 'gradle/shadow-e2e.gradle'
 }
