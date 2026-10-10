@@ -169,12 +169,13 @@ public final class ShadowTanglerGameTests {
     @GameTest(template = "shadow_arena", timeoutTicks = 400)
     public static void shadowEscapesBrightArea(GameTestHelper h) {
         ShadowTanglerEntity mob = spawn(h, 15, false);
+        var origin = mob.position();
         mob.getAttribute(Attributes.MAX_HEALTH).setBaseValue(200);
         mob.setHealth(200);
         h.runAtTickTime(60, () -> {
             h.assertTrue(mob.getTarget() == null, "bright flee does not retain combat target");
-            h.assertTrue(!mob.getNavigation().isDone() || mob.getLightTier() == ShadowLight.DARK,
-                    "bright nodes do not trap an escaping mob");
+            h.assertTrue(mob.position().distanceToSqr(origin) > 1 || mob.getLightTier() == ShadowLight.DARK,
+                    "mob makes real escape progress across light-tier path recalculations");
         });
         h.runAtTickTime(300, () -> {
             h.assertTrue(mob.getLightTier() == ShadowLight.DARK, "real navigation reaches a dark refuge");
@@ -244,17 +245,19 @@ public final class ShadowTanglerGameTests {
         target.getAttribute(Attributes.MAX_HEALTH).setBaseValue(200);
         target.getAttribute(Attributes.KNOCKBACK_RESISTANCE).setBaseValue(1);
         target.setHealth(200);
-        int[] firstSwing = {-1}, previousHit = {-1}, hits = {0};
+        int[] lastSwing = {-1}, previousHit = {-1}, hits = {0};
+        boolean[] swinging = {false};
         float[] previousHealth = {200};
         for (int t = 1; t <= 130; t++) {
             final int tick = t;
             h.runAtTickTime(t, () -> {
-                if (mob.swinging && firstSwing[0] < 0) firstSwing[0] = tick;
+                if (mob.swinging && !swinging[0]) lastSwing[0] = tick;
+                swinging[0] = mob.swinging;
                 if (target.getHealth() < previousHealth[0]) {
-                    h.assertTrue(firstSwing[0] >= 24 && tick - firstSwing[0] >= 5,
+                    h.assertTrue(lastSwing[0] >= 24 && Math.abs(tick - lastSwing[0] - 5) <= 1,
                             "native AI waits for spawn and five-tick attack windup");
-                    h.assertTrue(previousHit[0] < 0 || tick - previousHit[0] >= 20,
-                            "native AI cannot hit faster than once per second");
+                    h.assertTrue(previousHit[0] < 0 || Math.abs(tick - previousHit[0] - 20) <= 1,
+                            "stationary target receives one native hit every 20 ticks");
                     previousHit[0] = tick;
                     previousHealth[0] = target.getHealth();
                     hits[0]++;
@@ -289,6 +292,27 @@ public final class ShadowTanglerGameTests {
             h.assertTrue(!mob.isRetreating(), "dark cooldown eventually expires");
             mob.setTarget(target);
             h.assertTrue(mob.getTarget() == target, "pursuit resumes after cooling down in darkness");
+            h.succeed();
+        });
+    }
+
+    @GameTest(template = "shadow_arena", timeoutTicks = 150)
+    public static void shadowAutomaticLightBurnCadence(GameTestHelper h) {
+        ShadowTanglerEntity mob = spawn(h, 15, true);
+        mob.getAttribute(Attributes.MAX_HEALTH).setBaseValue(200);
+        mob.setHealth(200);
+        float[] before = {0}, afterDark = {0};
+        h.runAtTickTime(35, () -> before[0] = mob.getHealth());
+        h.runAtTickTime(95, () -> {
+            close(h, before[0] - mob.getHealth(), 6, "three automatic burns in 60 ticks");
+            h.setBlock(CENTER, Blocks.AIR);
+        });
+        h.runAtTickTime(110, () -> {
+            h.assertTrue(mob.getLightTier() == ShadowLight.DARK, "light removal propagated");
+            afterDark[0] = mob.getHealth();
+        });
+        h.runAtTickTime(140, () -> {
+            close(h, mob.getHealth(), afterDark[0], "leaving bright light stops automatic damage");
             h.succeed();
         });
     }

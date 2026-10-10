@@ -1,0 +1,66 @@
+name: Shadow Tangler Validation
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '**/shadow/**'
+      - '**/*Shadow*'
+      - '**/shadow_tangler*'
+      - 'src/shadowTest/**'
+      - 'tools/shadow-e2e.py'
+      - 'gradle/shadow-e2e.gradle'
+      - 'build.gradle'
+      - 'gradle.properties'
+      - '.github/workflows/shadow-validation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: shadow-validation-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build and run real Forge regressions
+        run: bash ./gradlew --no-daemon --max-workers=2 build runGameTestServer
+      - name: Verify production jar boundary
+        run: |
+          jar_file="$(find build/libs -maxdepth 1 -type f -name '*.jar' -print -quit)"
+          test -n "$jar_file"
+          jar tf "$jar_file" > build/production-jar-entries.txt
+          if grep -Eq '(^com/zeropointsix/eraser/gametest/|^com/zeropointsix/shadowtest/|structures/(empty|shadow_arena)\.nbt$|^tools/)' build/production-jar-entries.txt; then
+            echo 'Test-only content leaked into production jar' >&2
+            exit 1
+          fi
+      - name: Install native client dependencies
+        run: sudo apt-get update && sudo apt-get install -y xvfb xdotool libgl1-mesa-dri
+      - name: Compile isolated two-client driver
+        run: bash ./gradlew --no-daemon --max-workers=2 -PshadowE2E writeShadowTestClasspath
+      - name: Native egg, melee, light sync and server restart
+        run: python3 tools/shadow-e2e.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: shadow-tangler-validation
+          retention-days: 7
+          path: |
+            build/libs/*.jar
+            build/reports/
+            run/logs/
+            build/production-jar-entries.txt
+            build/shadow-e2e/*.pass
+            build/shadow-e2e/*.failed
+            build/shadow-e2e/*.log
+            build/shadow-e2e/*.png

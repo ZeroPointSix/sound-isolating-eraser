@@ -252,3 +252,7 @@ if (project.hasProperty('pillE2E')) {
 if (project.hasProperty('shaxiaE2E')) {
     apply from: 'gradle/shaxia-e2e.gradle'
 }
+
+if (project.hasProperty('shadowE2E')) {
+    apply from: 'gradle/shadow-e2e.gradle'
+}
