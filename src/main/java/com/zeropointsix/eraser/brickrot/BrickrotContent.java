@@ -20,7 +20,7 @@ public final class BrickrotContent {
             DeferredRegister.create(ForgeRegistries.ITEMS, ModMain.MOD_ID);
     public static final RegistryObject<EntityType<BrickrotWallEntity>> WALL = ENTITIES.register(
             "brickrot_wall", () -> EntityType.Builder.of(BrickrotWallEntity::new, MobCategory.MONSTER)
-                    .sized(3, 3).fireImmune().clientTrackingRange(96).updateInterval(1)
+                    .sized(3, 3).fireImmune().clientTrackingRange(8).updateInterval(1)
                     .build(ModMain.MOD_ID + ":brickrot_wall"));
     public static final RegistryObject<Item> EGG = ITEMS.register("brickrot_spawn_egg",
             () -> new ForgeSpawnEggItem(WALL, 0x795550, 0x782b29, new Item.Properties()));

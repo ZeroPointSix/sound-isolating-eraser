@@ -30,9 +30,13 @@ import net.minecraftforge.common.ForgeSpawnEggItem;
 @PrefixGameTestTemplate(false)
 public final class BrickrotGameTests {
     private static BrickrotWallEntity wall(GameTestHelper h) {
+        return wall(h, 4);
+    }
+
+    private static BrickrotWallEntity wall(GameTestHelper h, int y) {
         for (int x = 29; x <= 35; x++) for (int z = 0; z < 63; z++)
-            h.setBlock(new BlockPos(x, 3, z), Blocks.STONE);
-        BrickrotWallEntity wall = h.spawn(BrickrotContent.WALL.get(), new BlockPos(32, 4, 25));
+            h.setBlock(new BlockPos(x, y - 1, z), Blocks.STONE);
+        BrickrotWallEntity wall = h.spawn(BrickrotContent.WALL.get(), new BlockPos(32, y, 25));
         wall.setNoAi(true);
         wall.setNoGravity(true);
         wall.setYRot(0);
@@ -235,11 +239,12 @@ public final class BrickrotGameTests {
         h.succeed();
     }
 
-    @GameTest(template = "brickrot_empty")
+    @GameTest(template = "brickrot_burrow")
     public static void brickrotBurrowProtectionAndSaveRecovery(GameTestHelper h) {
-        BrickrotWallEntity wall = wall(h);
+        BrickrotWallEntity wall = wall(h, 35);
         Vec3 surface = wall.position();
-        var target = h.spawn(EntityType.VILLAGER, new BlockPos(32, 4, 50));
+        h.assertTrue(surface.y - 26 > h.getLevel().getMinBuildHeight(), "fixture permits the full dive depth");
+        var target = h.spawn(EntityType.VILLAGER, new BlockPos(32, 35, 50));
         target.setNoAi(true);
         h.assertTrue(wall.beginBurrow(target), "safe emergence destination is accepted");
         wall.setNoAi(false);
