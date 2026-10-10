@@ -56,6 +56,7 @@ public final class BrickrotTestClient {
                 mc.setScreen(null);
                 GLFW.glfwFocusWindow(mc.getWindow().getWindow());
                 mc.mouseHandler.grabMouse();
+                mc.options.hideGui = !(phase.equals("spawn") || phase.equals("attack"));
             }
             if (ROLE.equals("user") && ticks == 40 && (phase.equals("spawn") || phase.equals("attack"))) {
                 require(new ProcessBuilder("xdotool", "click", phase.equals("spawn") ? "3" : "1")

@@ -23,12 +23,15 @@ import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.tags.TagKey;
 import net.minecraft.util.Mth;
 import net.minecraft.world.BossEvent;
+import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MoverType;
+import net.minecraft.world.entity.MobSpawnType;
+import net.minecraft.world.entity.SpawnGroupData;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.animal.IronGolem;
@@ -41,6 +44,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -90,6 +94,8 @@ public final class BrickrotWallEntity extends Monster implements GeoEntity {
     private double chargeDistance;
     private boolean movedThisTick;
     private int deathHold;
+    private boolean eggEmergencePending;
+    private double emergeDepth = 4;
     private Action previousAction = Action.SCAN;
 
     public BrickrotWallEntity(EntityType<? extends Monster> type, Level level) {
@@ -107,6 +113,12 @@ public final class BrickrotWallEntity extends Monster implements GeoEntity {
     }
 
     @Override protected void registerGoals() {}
+    @Override public SpawnGroupData finalizeSpawn(ServerLevelAccessor level, DifficultyInstance difficulty,
+                                                  MobSpawnType reason, SpawnGroupData group, CompoundTag tag) {
+        SpawnGroupData result = super.finalizeSpawn(level, difficulty, reason, group, tag);
+        eggEmergencePending = reason == MobSpawnType.SPAWN_EGG;
+        return result;
+    }
     @Override protected void defineSynchedData() {
         super.defineSynchedData();
         entityData.define(ACTION, Action.SCAN.ordinal());
@@ -132,6 +144,16 @@ public final class BrickrotWallEntity extends Monster implements GeoEntity {
     @Override public AABB getBoundingBoxForCulling() { return getBoundingBox().inflate(26); }
 
     @Override public void tick() {
+        if (!level().isClientSide && eggEmergencePending) {
+            eggEmergencePending = false;
+            safeSurface = position();
+            emergeAt = safeSurface;
+            emergeDepth = Math.min(4, Math.max(0, getY() - level().getMinBuildHeight()));
+            transition(Action.EMERGE);
+            setPos(safeSurface.add(0, -emergeDepth, 0));
+            trail.reset(position(), forward());
+            playSound(SoundEvents.WARDEN_EMERGE, 1, 0.6F);
+        }
         movedThisTick = false;
         super.tick();
         if (!level().isClientSide) {
@@ -247,7 +269,7 @@ public final class BrickrotWallEntity extends Monster implements GeoEntity {
             }
             case EMERGE -> {
                 double t = Math.min(1, actionTicks / 20.0);
-                Vec3 next = emergeAt.add(0, -4 + 4 * t + Math.sin(Math.PI * t) * 2, 0);
+                Vec3 next = emergeAt.add(0, -emergeDepth + emergeDepth * t + Math.sin(Math.PI * t) * 2, 0);
                 if (!canTraverse(next)) { abortBurrow(); break; }
                 setPos(next);
                 if (actionTicks == 10) radial(emergeAt, 4, 14, 1.2, new HashSet<>());
@@ -355,6 +377,7 @@ public final class BrickrotWallEntity extends Monster implements GeoEntity {
         if (found == null) return false;
         safeSurface = position();
         emergeAt = found;
+        emergeDepth = 4;
         sinceBurrow = 0;
         transition(Action.DIVE);
         return true;
