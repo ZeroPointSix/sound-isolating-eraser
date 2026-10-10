@@ -24,6 +24,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.gametest.GameTestHolder;
 import net.minecraftforge.gametest.PrefixGameTestTemplate;
+import net.minecraftforge.common.ForgeSpawnEggItem;
 
 @GameTestHolder(ModMain.MOD_ID)
 @PrefixGameTestTemplate(false)
@@ -63,7 +64,8 @@ public final class BrickrotGameTests {
             h.assertTrue(part.getParent() == wall && part.getId() == wall.getId() + i + 1, "stable parent and packet ids");
             h.assertTrue(!part.shouldBeSaved(), "parts never become independently saved entities");
         }
-        h.assertTrue(BrickrotContent.SPAWN_EGG.get().getType(null) == BrickrotContent.WALL.get(), "egg creates the boss");
+        h.assertTrue(((ForgeSpawnEggItem) BrickrotContent.EGG.get()).getType(null) == BrickrotContent.WALL.get(),
+                "egg creates the boss");
         h.succeed();
     }
 
