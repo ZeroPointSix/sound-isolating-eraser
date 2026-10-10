@@ -317,7 +317,9 @@ public final class BrickrotGameTests {
     @GameTest(template = "brickrot_empty", timeoutTicks = 100)
     public static void brickrotSweepHitsOnlyOnce(GameTestHelper h) {
         BrickrotWallEntity wall = wall(h);
-        var target = h.spawn(EntityType.VILLAGER, new BlockPos(35, 4, 20));
+        // A close rear-side target stays the nearest quarry with parallel fixtures and remains
+        // inside the third segment's six-block sweep radius.
+        var target = h.spawn(EntityType.VILLAGER, new BlockPos(33, 4, 24));
         target.setNoAi(true);
         target.setNoGravity(true);
         wall.setNoAi(false);
