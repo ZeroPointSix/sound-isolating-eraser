@@ -374,9 +374,14 @@ public final class BrickrotGameTests {
     @GameTest(template = "brickrot_empty", timeoutTicks = 100)
     public static void brickrotSweepHitsOnlyOnce(GameTestHelper h) {
         BrickrotWallEntity wall = wall(h);
-        var target = h.spawn(EntityType.VILLAGER, new BlockPos(35, 4, 20));
+        // Behind the head, inside the first red part's sweep radius, without a chase step.
+        var target = h.spawn(EntityType.VILLAGER, new BlockPos(33, 4, 22));
         target.setNoAi(true);
         target.setNoGravity(true);
+        wall.tick();
+        h.assertTrue(wall.getParts()[3].distanceToSqr(target) < 36,
+                "fixture begins inside a red section's six-block sweep radius");
+        h.assertTrue(wall.findQuarry() == target, "fixture selects its own side target before advancing AI");
         wall.setNoAi(false);
         // Advance only this encounter so neighboring parallel tests cannot move the fixture.
         for (int i = 0; i < 60; i++) wall.tick();
