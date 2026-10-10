@@ -25,5 +25,10 @@
   "key.sound_isolating_eraser.gravity_target": "Gravity Targeting",
   "key.categories.sound_isolating_eraser": "Sound-Isolating Eraser",
   "death.attack.gravity_crush": "%1$s was crushed by gravity",
-  "death.attack.gravity_crush.player": "%1$s was crushed by %2$s's gravity field"
+  "death.attack.gravity_crush.player": "%1$s was crushed by %2$s's gravity field",
+  "entity.sound_isolating_eraser.neon_tumor": "Neon Tumor",
+  "item.sound_isolating_eraser.neon_tumor_spawn_egg": "Neon Tumor Spawn Egg",
+  "effect.sound_isolating_eraser.corroded": "Corroded",
+  "death.attack.sound_isolating_eraser.corrosion": "%1$s was dissolved by corrosion",
+  "death.attack.sound_isolating_eraser.corrosion.player": "%1$s was dissolved by corrosion while fighting %2$s"
 }

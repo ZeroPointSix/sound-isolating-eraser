@@ -5,6 +5,7 @@ import com.zeropointsix.eraser.gravity.GravityConfig;
 import com.zeropointsix.eraser.gravity.GravityNetwork;
 import com.zeropointsix.eraser.eraser.EraserNetwork;
 import com.zeropointsix.eraser.registry.ModEntities;
+import com.zeropointsix.eraser.registry.ModEffects;
 import com.zeropointsix.eraser.registry.ModBlocks;
 import com.zeropointsix.eraser.registry.ModItems;
 import com.zeropointsix.eraser.pill.PillNetwork;
@@ -30,6 +31,7 @@ public final class ModMain {
         ModItems.ITEMS.register(bus);
         ShaxiaEnchantments.REGISTRY.register(bus);
         ModEntities.ENTITIES.register(bus);
+        ModEffects.EFFECTS.register(bus);
         GravityNetwork.register();
         EraserNetwork.register();
         PillNetwork.register();
@@ -42,6 +44,9 @@ public final class ModMain {
     }
 
     private void creativeItems(BuildCreativeModeTabContentsEvent event) {
+        if (event.getTabKey() == CreativeModeTabs.SPAWN_EGGS) {
+            event.accept(ModItems.NEON_TUMOR_SPAWN_EGG.get());
+        }
         if (event.getTabKey() == CreativeModeTabs.TOOLS_AND_UTILITIES) {
             event.accept(ModItems.SOUND_ISOLATING_ERASER.get());
             event.accept(ModItems.GRAVITY_JADE_PENDANT.get());
