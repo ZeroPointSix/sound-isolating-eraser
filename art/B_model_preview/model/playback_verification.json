@@ -1,0 +1,85 @@
+{
+  "kind": "Blender model and decoded video, not Minecraft gameplay",
+  "clips": [
+    {
+      "name": "hover",
+      "frames": 60,
+      "distinct_source_frames": 60,
+      "decoded": true,
+      "width": 768,
+      "height": 432,
+      "r_frame_rate": "24/1",
+      "nb_read_frames": "60"
+    },
+    {
+      "name": "deploy",
+      "frames": 7,
+      "distinct_source_frames": 7,
+      "decoded": true,
+      "width": 768,
+      "height": 432,
+      "r_frame_rate": "24/1",
+      "nb_read_frames": "7"
+    },
+    {
+      "name": "glide",
+      "frames": 24,
+      "distinct_source_frames": 24,
+      "decoded": true,
+      "width": 768,
+      "height": 432,
+      "r_frame_rate": "24/1",
+      "nb_read_frames": "24"
+    },
+    {
+      "name": "boost",
+      "frames": 7,
+      "distinct_source_frames": 7,
+      "decoded": true,
+      "width": 768,
+      "height": 432,
+      "r_frame_rate": "24/1",
+      "nb_read_frames": "7"
+    },
+    {
+      "name": "thunder_boost",
+      "frames": 7,
+      "distinct_source_frames": 7,
+      "decoded": true,
+      "width": 768,
+      "height": 432,
+      "r_frame_rate": "24/1",
+      "nb_read_frames": "7"
+    },
+    {
+      "name": "blink",
+      "frames": 6,
+      "distinct_source_frames": 6,
+      "decoded": true,
+      "width": 768,
+      "height": 432,
+      "r_frame_rate": "24/1",
+      "nb_read_frames": "6"
+    },
+    {
+      "name": "retract",
+      "frames": 8,
+      "distinct_source_frames": 8,
+      "decoded": true,
+      "width": 768,
+      "height": 432,
+      "r_frame_rate": "24/1",
+      "nb_read_frames": "8"
+    },
+    {
+      "name": "drop_spin_bob",
+      "frames": 96,
+      "distinct_source_frames": 96,
+      "decoded": true,
+      "width": 768,
+      "height": 432,
+      "r_frame_rate": "24/1",
+      "nb_read_frames": "96"
+    }
+  ]
+}

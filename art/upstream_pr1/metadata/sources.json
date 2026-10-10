@@ -1,0 +1,26 @@
+[
+  {
+    "类型": "用户需求",
+    "标题": "风雷翅 Minecraft 物品设计文档",
+    "链接": "https://app.notion.com/p/Minecraft-3f1463aed7e681e8a6e1cc9842ba7dc9",
+    "用途": "形态、配色、动画、边界；文末饥饿值补充优先"
+  },
+  {
+    "类型": "网上视觉参考",
+    "标题": "Bilibili：Han Li Wind and Thunder Wings Test Flight",
+    "链接": "https://www.bilibili.tv/en/video/4796494997493770",
+    "用途": "分层大翼轮廓与青金能量参考，不提取资产"
+  },
+  {
+    "类型": "网上视觉参考",
+    "标题": "韩立炼化风雷翅",
+    "链接": "https://www.sohu.com/a/865806123_568249",
+    "用途": "银蓝/青金电弧观感参考，不作设定事实依据"
+  },
+  {
+    "类型": "工具",
+    "标题": "Blender 4.2 LTS",
+    "链接": "https://www.blender.org/download/lts/4-2/",
+    "用途": "真实模型和动画生成"
+  }
+]

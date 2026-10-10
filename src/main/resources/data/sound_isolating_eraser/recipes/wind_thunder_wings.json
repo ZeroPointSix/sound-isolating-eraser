@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "pattern": [
+    "NFN",
+    "FEF",
+    "RLR"
+  ],
+  "key": {
+    "N": { "item": "minecraft:nether_star" },
+    "F": { "item": "sound_isolating_eraser:thunder_feather" },
+    "E": { "item": "minecraft:elytra" },
+    "R": { "item": "minecraft:lightning_rod" },
+    "L": { "item": "minecraft:leather_chestplate" }
+  },
+  "result": { "item": "sound_isolating_eraser:wind_thunder_wings" }
+}

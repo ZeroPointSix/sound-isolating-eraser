@@ -1,0 +1,352 @@
+{
+  "asset": "Wind / Thunder Wings",
+  "status": "original art prototype; not a completed Minecraft mod",
+  "blender_version": "4.3.2",
+  "axis_convention": "+X right, +Y back, +Z up; 1 Blender unit = 1 Minecraft block",
+  "dimensions_intent": {
+    "span_blocks": 6.4,
+    "player_height_blocks": 2.0,
+    "idle_width_blocks": 0.4,
+    "drop_width_target_blocks": 0.4
+  },
+  "small_wings": {
+    "normalization_scale": 0.06249999906867744,
+    "unrotated_actual_width_blocks": 0.4,
+    "idle_anchor": [
+      0.0,
+      0.28999999165534973,
+      1.4800000190734863
+    ],
+    "white_flash_enabled": false
+  },
+  "design": {
+    "layers_per_side": 3,
+    "feathers_per_side": 21,
+    "palette": [
+      "silver-white",
+      "thin warm gold",
+      "pale cyan",
+      "graphite"
+    ]
+  },
+  "geometry": {
+    "mesh_objects": 153,
+    "vertices": 1476,
+    "polygons": 1422,
+    "triangles": 2340,
+    "bones": 52
+  },
+  "render_engine": "CYCLES",
+  "view_validation": {
+    "orthographic_front": {
+      "screen_bounds": [
+        0.08709676563739777,
+        0.213261216878891,
+        0.9129032492637634,
+        0.7566368579864502
+      ],
+      "world_min": [
+        -3.200000047683716,
+        -0.25,
+        0.0
+      ],
+      "world_max": [
+        3.200000047683716,
+        0.4515001177787781,
+        2.3687782287597656
+      ],
+      "asset_world_dimensions": [
+        6.400000095367432,
+        0.304000124335289,
+        1.8887782096862793
+      ],
+      "orthographic_scale": 7.75,
+      "fully_in_frame": true
+    },
+    "orthographic_side": {
+      "screen_bounds": [
+        0.4354839324951172,
+        0.21326154470443726,
+        0.5260000824928284,
+        0.7566372156143188
+      ],
+      "world_min": [
+        -3.200000047683716,
+        -0.25,
+        0.0
+      ],
+      "world_max": [
+        3.200000047683716,
+        0.4515001177787781,
+        2.3687782287597656
+      ],
+      "asset_world_dimensions": [
+        6.400000095367432,
+        0.304000124335289,
+        1.8887782096862793
+      ],
+      "orthographic_scale": 7.75,
+      "fully_in_frame": true
+    },
+    "orthographic_top": {
+      "screen_bounds": [
+        0.08709676563739777,
+        0.38530465960502625,
+        0.9129032492637634,
+        0.5462222695350647
+      ],
+      "world_min": [
+        -3.200000047683716,
+        -0.25,
+        0.0
+      ],
+      "world_max": [
+        3.200000047683716,
+        0.4515001177787781,
+        2.3687782287597656
+      ],
+      "asset_world_dimensions": [
+        6.400000095367432,
+        0.304000124335289,
+        1.8887782096862793
+      ],
+      "orthographic_scale": 7.75,
+      "fully_in_frame": true
+    },
+    "hero_45": {
+      "screen_bounds": [
+        0.13989365100860596,
+        0.1889440268278122,
+        0.8745066523551941,
+        0.8716458082199097
+      ],
+      "world_min": [
+        -3.200000047683716,
+        -0.25,
+        0.0
+      ],
+      "world_max": [
+        3.200000047683716,
+        0.4515001177787781,
+        2.3687782287597656
+      ],
+      "asset_world_dimensions": [
+        6.400000095367432,
+        0.304000124335289,
+        1.8887782096862793
+      ],
+      "orthographic_scale": 7.400000095367432,
+      "fully_in_frame": true
+    },
+    "worn_idle": {
+      "screen_bounds": [
+        0.3973484933376312,
+        0.061902664601802826,
+        0.6320226192474365,
+        0.9321610331535339
+      ],
+      "world_min": [
+        -0.5,
+        -0.25,
+        0.0
+      ],
+      "world_max": [
+        0.5,
+        0.30009374022483826,
+        2.0
+      ],
+      "asset_world_dimensions": [
+        0.4000000059604645,
+        0.018999993801116943,
+        0.11804866790771484
+      ],
+      "orthographic_scale": 4.25,
+      "fully_in_frame": true
+    },
+    "worn_flight": {
+      "screen_bounds": [
+        0.11128024011850357,
+        0.22588682174682617,
+        0.8715309500694275,
+        0.8165104389190674
+      ],
+      "world_min": [
+        -3.200000047683716,
+        -0.25,
+        0.0
+      ],
+      "world_max": [
+        3.200000047683716,
+        0.4515001177787781,
+        2.3687782287597656
+      ],
+      "asset_world_dimensions": [
+        6.400000095367432,
+        0.304000124335289,
+        1.8887782096862793
+      ],
+      "orthographic_scale": 7.599999904632568,
+      "fully_in_frame": true
+    },
+    "dropped": {
+      "screen_bounds": [
+        0.32004961371421814,
+        0.27076852321624756,
+        0.6938945651054382,
+        0.730932891368866
+      ],
+      "world_min": [
+        -0.1906738579273224,
+        -0.04992526024580002,
+        0.21720153093338013
+      ],
+      "world_max": [
+        0.19440466165542603,
+        0.06289950758218765,
+        0.3352501690387726
+      ],
+      "asset_world_dimensions": [
+        0.3850785195827484,
+        0.11282476782798767,
+        0.11804863810539246
+      ],
+      "orthographic_scale": 0.7200000286102295,
+      "fully_in_frame": true
+    }
+  },
+  "glb_validation": {
+    "animation_names": [
+      "blink",
+      "boost",
+      "deploy",
+      "drop_spin_bob",
+      "glide",
+      "hover",
+      "retract",
+      "thunder_boost"
+    ],
+    "expected_clip_count": 8,
+    "all_clips_present": true,
+    "mesh_count": 153,
+    "node_count": 206
+  },
+  "renders": [
+    "/tmp/fenglei-art/model/renders/orthographic_front.png",
+    "/tmp/fenglei-art/model/renders/orthographic_side.png",
+    "/tmp/fenglei-art/model/renders/orthographic_top.png",
+    "/tmp/fenglei-art/model/renders/hero_45.png",
+    "/tmp/fenglei-art/model/renders/dropped.png",
+    "/tmp/fenglei-art/model/renders/worn_idle.png",
+    "/tmp/fenglei-art/model/renders/worn_flight.png"
+  ],
+  "animation_renders": [
+    {
+      "clip": "hover",
+      "directory": "/tmp/fenglei-art/model/frames",
+      "fps": 24,
+      "frames": 60
+    },
+    {
+      "clip": "deploy",
+      "directory": "/tmp/fenglei-art/model/frames_deploy",
+      "fps": 24,
+      "frames": 7
+    },
+    {
+      "clip": "glide",
+      "directory": "/tmp/fenglei-art/model/frames_glide",
+      "fps": 24,
+      "frames": 24
+    },
+    {
+      "clip": "boost",
+      "directory": "/tmp/fenglei-art/model/frames_boost",
+      "fps": 24,
+      "frames": 7
+    },
+    {
+      "clip": "thunder_boost",
+      "directory": "/tmp/fenglei-art/model/frames_thunder_boost",
+      "fps": 24,
+      "frames": 7
+    },
+    {
+      "clip": "blink",
+      "directory": "/tmp/fenglei-art/model/frames_blink",
+      "fps": 24,
+      "frames": 6
+    },
+    {
+      "clip": "retract",
+      "directory": "/tmp/fenglei-art/model/frames_retract",
+      "fps": 24,
+      "frames": 8
+    },
+    {
+      "clip": "drop_spin_bob",
+      "directory": "/tmp/fenglei-art/model/frames_drop_spin_bob",
+      "fps": 24,
+      "frames": 96
+    }
+  ],
+  "clips": {
+    "deploy": {
+      "frames": 7,
+      "seconds": 0.2916666666666667,
+      "description": "0.4-block miniature grows into full wingspan; requested 0.3 s quantized to 7/24 s."
+    },
+    "hover": {
+      "frames": 60,
+      "seconds": 2.5,
+      "description": "0.8 Hz wingbeat: 1.25 s per cycle; 60 rendered frames show two complete cycles."
+    },
+    "glide": {
+      "frames": 24,
+      "seconds": 1.0,
+      "description": "Restrained rearward-swept gliding pose; 1 s loop."
+    },
+    "boost": {
+      "frames": 7,
+      "seconds": 0.2916666666666667,
+      "description": "Wind boost: precise 30-degree rearward sweep; 0.292 s."
+    },
+    "thunder_boost": {
+      "frames": 7,
+      "seconds": 0.2916666666666667,
+      "description": "Wind-thunder boost: precise 60-degree rearward sweep; 0.292 s."
+    },
+    "blink": {
+      "frames": 6,
+      "seconds": 0.25,
+      "description": "Thunder blink: maximum wingspan plus optional white burst; --flash enables the burst. 0.25 s."
+    },
+    "retract": {
+      "frames": 8,
+      "seconds": 0.3333333333333333,
+      "description": "Returns to the 0.4-block glowing miniature at the back; 0.333 s."
+    },
+    "drop_spin_bob": {
+      "frames": 96,
+      "seconds": 4.0,
+      "description": "Miniature dropped item turns once and bobs twice in four seconds."
+    }
+  },
+  "files": {
+    "blend": "/tmp/fenglei-art/model/wind_thunder_wings.blend",
+    "glb": "/tmp/fenglei-art/model/wind_thunder_wings.glb",
+    "minecraft_mesh": "/tmp/fenglei-art/model/wind_thunder_wings.mesh.json"
+  },
+  "limitations": [
+    "Art prototype only: no Minecraft renderer, item registration, gameplay, or runtime UI is included.",
+    "Layered feather folding is stylized and still needs in-game collision and silhouette validation.",
+    "Workbench renders show color and geometry but not physically accurate metal or bloom."
+  ],
+  "minecraft_mesh_validation": {
+    "valid": true,
+    "mesh_count": 153,
+    "vertex_count": 1476,
+    "triangle_count": 2340,
+    "material_count": 8,
+    "bone_count": 52
+  }
+}
