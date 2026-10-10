@@ -18,6 +18,7 @@ import net.minecraft.world.damagesource.DamageType;
 import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -82,6 +83,22 @@ public final class BrickrotGameTests {
                 h.assertTrue(h.getLevel().getEntityOrPart(part.getId()) == null, "discarding head removes every part lookup");
             h.succeed();
         });
+    }
+
+    @GameTest(template = "brickrot_empty")
+    public static void brickrotEggEmergesBeforeScanning(GameTestHelper h) {
+        BrickrotWallEntity wall = wall(h);
+        Vec3 surface = wall.position();
+        wall.finalizeSpawn(h.getLevel(), h.getLevel().getCurrentDifficultyAt(wall.blockPosition()),
+                MobSpawnType.SPAWN_EGG, null, null);
+        wall.setNoAi(false);
+        wall.tick();
+        h.assertTrue(wall.action() == BrickrotWallEntity.Action.EMERGE && wall.getY() < surface.y,
+                "egg starts below the clicked surface with the original emergence animation");
+        for (int i = 0; i < 60; i++) wall.tick();
+        h.assertTrue(wall.action() == BrickrotWallEntity.Action.SCAN, "opening finishes in scan");
+        near(h, wall.getY(), surface.y, "opening returns to the clicked surface");
+        h.succeed();
     }
 
     @GameTest(template = "brickrot_empty")
@@ -304,11 +321,13 @@ public final class BrickrotGameTests {
         target.setNoAi(true);
         target.setNoGravity(true);
         wall.setNoAi(false);
-        h.runAfterDelay(60, () -> near(h, target.getHealth(), 20, "sweep telegraph precedes damage"));
-        h.runAfterDelay(70, () -> {
-            near(h, target.getHealth(), 10, "four red sections apply a single ten-damage hit");
-            h.succeed();
-        });
+        // Advance only this encounter so neighboring parallel tests cannot move the fixture.
+        for (int i = 0; i < 60; i++) wall.tick();
+        h.assertTrue(wall.action() == BrickrotWallEntity.Action.SWEEP, "side target selects sweep");
+        near(h, target.getHealth(), 20, "sweep telegraph precedes damage");
+        for (int i = 0; i < 10; i++) wall.tick();
+        near(h, target.getHealth(), 10, "four red sections apply a single ten-damage hit");
+        h.succeed();
     }
 
     @GameTest(template = "brickrot_empty")

@@ -19,7 +19,7 @@ public final class BrickrotTestClient {
     private static final Path RESULTS = Path.of(System.getProperty("brickrot.qa.results"));
     private static final String ROLE = System.getProperty("brickrot.qa.role");
     private static String phase = "";
-    private static int ticks;
+    private static int ticks, firstFrameTick;
     private static boolean failed, captured;
     private static NativeImage firstFrame;
 
@@ -56,6 +56,7 @@ public final class BrickrotTestClient {
                 mc.setScreen(null);
                 GLFW.glfwFocusWindow(mc.getWindow().getWindow());
                 mc.mouseHandler.grabMouse();
+                mc.options.hideGui = !(phase.equals("spawn") || phase.equals("attack"));
             }
             if (ROLE.equals("user") && ticks == 40 && (phase.equals("spawn") || phase.equals("attack"))) {
                 require(new ProcessBuilder("xdotool", "click", phase.equals("spawn") ? "3" : "1")
@@ -79,10 +80,12 @@ public final class BrickrotTestClient {
                     ? "brickrot_neck" : "brickrot_neck_breached"), "correct original neck model selected");
             if (firstFrame == null) {
                 firstFrame = Screenshot.takeScreenshot(mc.getMainRenderTarget());
+                firstFrameTick = ticks;
                 firstFrame.writeToFile(RESULTS.resolve(ROLE + "-" + phase + "-first.png"));
                 return;
             }
-            if (ticks < 75) return;
+            // A slow first render can already be past tick 75; compare distinct world times.
+            if (ticks - firstFrameTick < 25) return;
             try (var screenshot = Screenshot.takeScreenshot(mc.getMainRenderTarget())) {
                 screenshot.writeToFile(RESULTS.resolve(ROLE + "-" + phase + ".png"));
                 var colors = new HashSet<Integer>();
@@ -97,7 +100,8 @@ public final class BrickrotTestClient {
                     }
                 }
                 require(colors.size() > 100 && redPixels > 400, "textured brick body is visible in native framebuffer");
-                require(changedBodyPixels > 30, "supplied animation visibly moves between real rendered frames");
+                require(changedBodyPixels > 30, "supplied animation visibly moves between real rendered frames: "
+                        + changedBodyPixels + " pixels over " + (ticks - firstFrameTick) + " ticks; entityTick=" + head.tickCount);
                 Files.writeString(RESULTS.resolve(ROLE + "-" + phase + ".pass"),
                         "Native Forge client: parent + nine parts, model/phase sync, textured framebuffer and motion passed.\n"
                         + "redPixels=" + redPixels + "; changedBodyPixels=" + changedBodyPixels + "\n");

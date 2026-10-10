@@ -55,6 +55,8 @@ public final class BrickrotClient {
         }
 
         @Override protected void applyRotations(T entity, PoseStack poses, float age, float yaw, float partial) {
+            // GeckoLib derives body yaw only for LivingEntity; multipart entities need their own heading.
+            if (entity instanceof BrickrotPart) yaw = Mth.rotLerp(partial, entity.yRotO, entity.getYRot());
             super.applyRotations(entity, poses, age, yaw, partial);
             float pitch = entity instanceof BrickrotWallEntity head
                     ? head.action() == BrickrotWallEntity.Action.DIVE

@@ -9,6 +9,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.level.GameRules;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
@@ -24,6 +26,7 @@ public final class BrickrotTestServer {
     private static String phase = "waiting";
     private static int ticks, hitPart = -1;
     private static boolean finished;
+    private static boolean sawEggEmergence;
     private static BrickrotWallEntity head;
 
     private static void require(boolean condition, String message) {
@@ -69,6 +72,7 @@ public final class BrickrotTestServer {
                     player.setNoGravity(true);
                     player.getAbilities().flying = true;
                     player.onUpdateAbilities();
+                    player.addEffect(new MobEffectInstance(MobEffects.NIGHT_VISION, 20000, 0, false, false));
                 }
                 if (Boolean.getBoolean("brickrot.qa.restart")) {
                     var heads = level.getEntities(BrickrotContent.WALL.get(), entity -> true);
@@ -97,12 +101,17 @@ public final class BrickrotTestServer {
                 if (heads.isEmpty()) return;
                 require(heads.size() == 1, "one native egg click creates one parent");
                 head = heads.get(0);
+                sawEggEmergence |= head.action() == BrickrotWallEntity.Action.EMERGE;
+                if (head.tickCount < 70 || head.action() == BrickrotWallEntity.Action.EMERGE) return;
+                require(sawEggEmergence, "spawn egg plays the emergence opening before scanning");
                 head.setNoAi(true);
                 head.setNoGravity(true);
                 head.setPersistenceRequired();
                 head.moveTo(0.5, 65, 10.5, 0, 0);
                 head.yBodyRot = 0;
                 head.yBodyRotO = 0;
+                user.getInventory().clearContent();
+                user.inventoryMenu.broadcastChanges();
                 cameras(user, observer);
                 phase("intact");
             } else if (phase.equals("intact") && clientsPassed(phase)) {
