@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "sound_isolating_eraser:item/enhancement_pill_pack_10",
+    "particle": "sound_isolating_eraser:item/enhancement_pill_pack_particle"
+  }
+}

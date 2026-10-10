@@ -7,6 +7,7 @@ import com.zeropointsix.eraser.eraser.EraserNetwork;
 import com.zeropointsix.eraser.registry.ModEntities;
 import com.zeropointsix.eraser.registry.ModBlocks;
 import com.zeropointsix.eraser.registry.ModItems;
+import com.zeropointsix.eraser.pill.PillNetwork;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraftforge.event.BuildCreativeModeTabContentsEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
@@ -28,6 +29,7 @@ public final class ModMain {
         ModEntities.ENTITIES.register(bus);
         GravityNetwork.register();
         EraserNetwork.register();
+        PillNetwork.register();
         bus.addListener(this::creativeItems);
         ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER, CommonConfig.SPEC,
                 MOD_ID + "-eraser-server.toml");
@@ -38,6 +40,8 @@ public final class ModMain {
         if (event.getTabKey() == CreativeModeTabs.TOOLS_AND_UTILITIES) {
             event.accept(ModItems.SOUND_ISOLATING_ERASER.get());
             event.accept(ModItems.GRAVITY_JADE_PENDANT.get());
+            event.accept(ModItems.ENHANCEMENT_PILL_PACK.get());
+            event.accept(ModItems.EMPTY_PILL_PACK.get());
         }
     }
 }

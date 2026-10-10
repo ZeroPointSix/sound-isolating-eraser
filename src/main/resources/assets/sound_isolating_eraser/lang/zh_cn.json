@@ -1,4 +1,10 @@
 {
+  "item.sound_isolating_eraser.enhancement_pill_pack": "强化药片",
+  "item.sound_isolating_eraser.empty_pill_pack": "空药板",
+  "tooltip.sound_isolating_eraser.pill_count": "剩余 %s / %s 粒",
+  "tooltip.sound_isolating_eraser.pill_warning": "药效结束后会发生戒断反噬；牛奶默认无法解除。",
+  "hud.sound_isolating_eraser.pill_active": "药效 %s",
+  "hud.sound_isolating_eraser.pill_withdrawal": "反噬 %s",
   "item.sound_isolating_eraser.sound_isolating_eraser": "隔音橡皮",
   "item.sound_isolating_eraser.sound_isolating_eraser.no_space": "整次绘制失败：请检查空间、支撑面、领地权限或耐久",
   "key.sound_isolating_eraser.eraser_mode": "切换橡皮绘制模式",

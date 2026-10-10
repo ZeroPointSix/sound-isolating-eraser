@@ -1,4 +1,10 @@
 {
+  "item.sound_isolating_eraser.enhancement_pill_pack": "Enhancement Pill Pack",
+  "item.sound_isolating_eraser.empty_pill_pack": "Empty Pill Pack",
+  "tooltip.sound_isolating_eraser.pill_count": "%s / %s pills remaining",
+  "tooltip.sound_isolating_eraser.pill_warning": "Withdrawal follows the boost. Milk cannot cure it by default.",
+  "hud.sound_isolating_eraser.pill_active": "Active %s",
+  "hud.sound_isolating_eraser.pill_withdrawal": "Withdrawal %s",
   "item.sound_isolating_eraser.sound_isolating_eraser": "Sound-Isolating Eraser",
   "item.sound_isolating_eraser.sound_isolating_eraser.no_space": "Drawing rejected: check space, surface, protection and durability",
   "key.sound_isolating_eraser.eraser_mode": "Cycle Eraser Drawing Mode",
