@@ -229,8 +229,11 @@ public final class ShadowTanglerGameTests {
             h.setBlock(new BlockPos(x, 0, z), Blocks.GLASS);
         }
         ShadowTanglerEntity mob = spawn(h, 15, false);
+        var origin = mob.position();
         mob.getAttribute(Attributes.MAX_HEALTH).setBaseValue(200);
         mob.setHealth(200);
+        h.runAtTickTime(60, () -> h.assertTrue(mob.position().distanceToSqr(origin) > 1
+                || mob.getLightTier() == ShadowLight.DARK, "glass escape also starts promptly"));
         h.runAtTickTime(300, () -> {
             h.assertTrue(mob.getLightTier() == ShadowLight.DARK, "glass floor is a valid dark refuge");
             h.succeed();

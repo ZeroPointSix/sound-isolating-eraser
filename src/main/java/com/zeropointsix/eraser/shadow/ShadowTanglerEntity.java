@@ -145,7 +145,8 @@ public final class ShadowTanglerEntity extends Monster implements GeoEntity {
             }
         });
         goalSelector.addGoal(5, new WaterAvoidingRandomStrollGoal(this, 0.6D) {
-            @Override public boolean canUse() { return !isSpawning() && !wantsToFlee() && super.canUse(); }
+            @Override public boolean canUse() { return !isSpawning() && !isRetreating() && super.canUse(); }
+            @Override public boolean canContinueToUse() { return !isRetreating() && super.canContinueToUse(); }
         });
         goalSelector.addGoal(6, new LookAtPlayerGoal(this, Player.class, 8F));
         goalSelector.addGoal(7, new RandomLookAroundGoal(this));
