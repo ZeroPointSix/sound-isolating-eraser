@@ -9,6 +9,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -48,7 +49,7 @@ public final class FertilizerGameTests {
 
     @GameTest(template = "empty")
     public static void finalizedNumbersAndRecipe(GameTestHelper h) {
-        h.assertTrue(FertilizerConfig.TREE_COUNT.get() == 15, "final table specifies 15 trees");
+        h.assertTrue(FertilizerConfig.TREE_COUNT.get() == 15, "final table specifies 15 independent trees including the original");
         h.assertTrue(FertilizerConfig.HEAL.get() == 6.0, "functional paragraph specifies 6 HP");
         h.assertTrue(FertilizerConfig.BONE_MEAL.get() == 10, "ten real bonemeal attempts");
         var recipe = h.getLevel().getRecipeManager().byKey(FertilizerContent.id("fertile_planks")).orElseThrow();
@@ -150,16 +151,86 @@ public final class FertilizerGameTests {
         h.succeed();
     }
 
+    private static int prepareGrove(GameTestHelper h, BlockPos root) {
+        ServerLevel level=h.getLevel(); FertilizerData data=FertilizerData.get(level);
+        // GameTest resets blocks, but run/ retains SavedData between launches.
+        for (Tag raw : data.save(new CompoundTag()).getList("Plants",Tag.TAG_COMPOUND)) {
+            BlockPos savedRoot=BlockPos.of(((CompoundTag)raw).getLong("Root"));
+            if (Math.abs(savedRoot.getX()-root.getX())<=30 && Math.abs(savedRoot.getZ()-root.getZ())<=30)
+                data.remove(savedRoot.asLong());
+        }
+        for (int x=-30;x<=30;x++) for(int z=-30;z<=30;z++) {
+            level.getChunkAt(root.offset(x,0,z));
+            for(int y=-8;y<0;y++) level.setBlock(root.offset(x,y,z),(y==-1?Blocks.GRASS_BLOCK:Blocks.DIRT).defaultBlockState(),2);
+        }
+        level.setBlock(root,Blocks.OAK_SAPLING.defaultBlockState(),3);
+        h.assertTrue(FertilizerConfig.THRESHOLD.get()==5,"default grove threshold is five successful doses");
+        return data.size();
+    }
+
+    private static void assertFifteenIndependentTrees(GameTestHelper h, BlockPos original, int before) {
+        ServerLevel level=h.getLevel(); FertilizerData data=FertilizerData.get(level);
+        h.assertTrue(data.size()-before==15,"grove must contain fifteen independent plant records including the original, got "+(data.size()-before));
+        Set<BlockPos> roots=new HashSet<>(); Set<Long> ownedLogs=new HashSet<>();
+        FertilizerData reloaded=FertilizerData.load(data.save(new CompoundTag()));
+        h.assertTrue(reloaded.size()-before==15,"NBT retains fifteen separate plant records including the original");
+        int radius=FertilizerConfig.GROVE_RADIUS.get();
+        for (int x=-radius;x<=radius;x++) for (int z=-radius;z<=radius;z++) {
+            BlockPos root=original.offset(x,0,z);
+            if (!level.getBlockState(root).is(FertilizerContent.LOG.get())
+                    || !level.getBlockState(root.below()).is(Blocks.ROOTED_DIRT)) continue;
+            var tree=data.at(level,root);
+            h.assertTrue(tree!=null && tree.tree && tree.grove && tree.level==1 && tree.root.equals(root),
+                    "every grounded tree owns its root; aerial roots of one tree cannot replace independent trees");
+            h.assertTrue(roots.add(tree.root),"tree roots are distinct");
+            for (int y=0;y<6;y++) {
+                h.assertTrue(level.getBlockState(root.above(y)).is(FertilizerContent.LOG.get()),"each tree has a real six-block trunk");
+                h.assertTrue(data.at(level,root.above(y))==tree,"every actual trunk block indexes its independent tree");
+                var savedLog=reloaded.at(level,root.above(y));
+                h.assertTrue(savedLog!=null && savedLog.root.equals(root),"NBT preserves every actual trunk's independent owner");
+            }
+            boolean leaves=false;
+            for (BlockPos p : BlockPos.betweenClosed(root.offset(-2,3,-2),root.offset(2,6,2)))
+                if (level.getBlockState(p).is(FertilizerContent.LEAVES.get())) leaves=true;
+            h.assertTrue(leaves,"each tree has a real leafy crown");
+            var saved=reloaded.at(level,root);
+            h.assertTrue(saved!=null && saved.tree && saved.grove && saved.level==1
+                    && saved.root.equals(root) && saved.trunk.equals(tree.trunk),"NBT preserves each independent tree identity and grove state");
+            for (long log : tree.trunk) {
+                h.assertTrue(ownedLogs.add(log),"independent trees do not share trunk ownership");
+                h.assertTrue(level.getBlockState(BlockPos.of(log)).is(FertilizerContent.LOG.get())
+                        && data.at(level,BlockPos.of(log))==tree,"every recorded trunk is a real log owned by its own tree");
+            }
+        }
+        h.assertTrue(roots.size()==15 && roots.contains(original),"world contains exactly fifteen independent trees, with the original counted once");
+    }
+
+    @GameTest(template = "fertilizer_arena", timeoutTicks = 300, batch = "fertilizer_bag_grove")
+    public static void fifthBagDoseCreatesFifteenIndependentTrees(GameTestHelper h) {
+        FakePlayer p=player(h); BlockPos root=h.absolutePos(new BlockPos(40,9,40));
+        int before=prepareGrove(h,root);
+        ItemStack bag=new ItemStack(FertilizerContent.BAG.get());
+        p.setItemInHand(InteractionHand.MAIN_HAND,bag);
+        var data=FertilizerData.get(h.getLevel());
+        for (int dose=1;dose<=5;dose++) {
+            p.getCooldowns().removeCooldown(FertilizerContent.BAG.get());
+            use(p,root);
+            h.assertTrue(bag.getDamageValue()==dose,"real bag spends exactly one grain per successful dose");
+            var tree=data.at(h.getLevel(),root);
+            h.assertTrue(tree!=null,"the original tree retains its identity");
+            if (dose<5) h.assertTrue(data.size()-before==1 && !tree.grove && tree.doses.get(p.getUUID())==dose,
+                    "before the fifth dose only the original tree exists");
+            else h.assertTrue(tree.grove && tree.doses.isEmpty(),"fifth dose completes the grove and clears doses");
+        }
+        assertFifteenIndependentTrees(h,root,before);
+        h.succeed();
+    }
+
     @GameTest(template = "fertilizer_arena", timeoutTicks = 300, batch = "fertilizer_growth")
     public static void fifteenTreeGroveIndependentDosesPersistenceAndThreeTiers(GameTestHelper h) {
         ServerLevel level=h.getLevel(); FakePlayer a=player(h), b=player(h);
         BlockPos root=h.absolutePos(new BlockPos(40,9,40));
-        for (int x=-30;x<=30;x++) for(int z=-30;z<=30;z++) {
-            level.getChunkAt(root.offset(x,0,z));
-            for(int y=-8;y<0;y++) level.setBlock(root.offset(x,y,z), (y==-1?Blocks.GRASS_BLOCK:Blocks.DIRT).defaultBlockState(),2);
-        }
-        level.setBlock(root,Blocks.OAK_SAPLING.defaultBlockState(),3);
-        int before=FertilizerData.get(level).size();
+        int before=prepareGrove(h,root);
         h.assertTrue(FertilizerGrowth.use(level,root,a),"first use grows a fertile tree");
         var data=FertilizerData.get(level); var tree=data.at(level,root);
         h.assertTrue(tree!=null && tree.doses.get(a.getUUID())==1,"ten bonemeal attempts count as one dose");
@@ -171,8 +242,9 @@ public final class FertilizerGameTests {
         h.assertTrue(restored.at(level,root).doses.get(a.getUUID())==2 && restored.at(level,root).doses.get(b.getUUID())==2,"NBT round trip preserves independent counters");
         h.assertTrue(FertilizerGrowth.use(level,root,a),"A dose three");
         h.assertTrue(FertilizerGrowth.use(level,root,a),"A dose four");
+        h.assertTrue(data.size()-before==1 && !tree.grove,"four A doses plus B's doses still leave only the original tree");
         h.assertTrue(FertilizerGrowth.use(level,root,a),"fifth A dose generates the complete grove");
-        h.assertTrue(data.size()-before==15 && tree.grove,"grove contains exactly fifteen total trees");
+        assertFifteenIndependentTrees(h,root,before);
         level.setBlock(root.above(2), Blocks.STONE.defaultBlockState(), 2);
         h.assertTrue(!FertilizerGrowth.use(level,root,a),"old trunk identity cannot authorize overwriting a building");
         h.assertTrue(level.getBlockState(root.above(2)).is(Blocks.STONE),"player replacement remains intact");
@@ -181,6 +253,7 @@ public final class FertilizerGameTests {
         h.assertTrue(level.getBlockState(root.below(4)).is(Blocks.ROOTED_DIRT),"tier two roots extend four blocks into soil");
         h.assertTrue(FertilizerGrowth.use(level,root,a) && tree.level==3,"tier three expands the trunk and canopy");
         h.assertTrue(level.getBlockState(root.offset(2,1,2)).is(FertilizerContent.LOG.get()),"tier three has a five by five trunk");
+        h.assertTrue(data.size()-before==15,"upgrading one tree preserves all fifteen independent records");
         h.assertTrue(!FertilizerGrowth.use(level,root,a),"tier three is a hard cap");
         level.setBlock(root,Blocks.AIR.defaultBlockState(),3);
         h.assertTrue(data.at(level,root)==null,"destroying the root removes its saved identity");
