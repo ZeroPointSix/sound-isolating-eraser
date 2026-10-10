@@ -42,6 +42,13 @@ public final class NeonTestClient {
             firstFrame = false;
             captured = false;
             breathing.clear();
+            if (phase.equals("escape")) {
+                // Keep lifecycle probes responsive on the software-rendered CI client.
+                var mc = Minecraft.getInstance();
+                mc.options.renderDistance().set(2);
+                mc.options.particles().set(net.minecraft.client.ParticleStatus.MINIMAL);
+                org.lwjgl.glfw.GLFW.glfwSetWindowSize(mc.getWindow().getWindow(), 640, 360);
+            }
             event.setCanceled(true);
         }
     }
@@ -82,13 +89,15 @@ public final class NeonTestClient {
                     require(!mc.player.isPassenger(), "real client dimension transfer releases captor");
                     Files.writeString(RESULTS.resolve("client-dimension.pass"), "Real client reached Nether without mount.\n");
                 }
-            } else if (phase.equals("logout") && ticks == 12) {
-                require(mc.player.getVehicle() instanceof NeonTumorEntity, "disconnect occurs while inside captor");
-                mc.level.disconnect();
-                mc.clearLevel();
-                mc.setScreen(new TitleScreen());
-                phase = "";
-                Files.writeString(RESULTS.resolve("client-logout.pass"), "Disconnected a real client while swallowed.\n");
+            } else if (phase.equals("logout")) {
+                require(ticks < 60, "logout phase must synchronize a real captor before disconnect");
+                if (mc.player.getVehicle() instanceof NeonTumorEntity) {
+                    mc.level.disconnect();
+                    mc.clearLevel();
+                    mc.setScreen(new TitleScreen());
+                    phase = "";
+                    Files.writeString(RESULTS.resolve("client-logout.pass"), "Disconnected a real client while swallowed.\n");
+                }
             } else if (phase.equals("rejoined") && ticks == 30) {
                 require(!mc.player.isPassenger(), "rejoined client is not mounted");
                 Files.writeString(RESULTS.resolve("client-rejoined.pass"), "Real client rejoined outside captor.\n");

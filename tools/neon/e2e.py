@@ -43,6 +43,7 @@ def launch(role):
     env = os.environ.copy()
     env.update({key: expand(value) for key, value in config["env"].items()})
     env["LIBGL_ALWAYS_SOFTWARE"] = "1"
+    env["ALSOFT_DRIVERS"] = "null"
     if not server:
         env["DISPLAY"] = display
     args = shlex.split(expand(config["args"]))
@@ -53,7 +54,7 @@ def launch(role):
                 del args[index:index + 2]
         args += ["--username", "NeonTester", "--width", "960", "--height", "540",
                  "--quickPlayMultiplayer", f"127.0.0.1:{PORT}"]
-    command = ["java", "-Xmx768M", f"-Dneon.qa.results={RESULTS}"]
+    command = ["java", "-Xmx1024M" if server else "-Xmx2048M", f"-Dneon.qa.results={RESULTS}"]
     command += shlex.split(expand(config["vmArgs"]))
     if not server:
         natives = directory / "lwjgl-natives"

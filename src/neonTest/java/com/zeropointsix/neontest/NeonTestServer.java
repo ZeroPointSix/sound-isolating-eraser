@@ -54,6 +54,7 @@ public final class NeonTestServer {
     }
 
     private static void capture(ServerPlayer player, boolean weak) {
+        if (captor != null) captor.discard();
         player.setGameMode(GameType.SURVIVAL);
         player.getAbilities().flying = false;
         player.onUpdateAbilities();
