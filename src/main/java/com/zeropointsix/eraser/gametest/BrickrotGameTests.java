@@ -70,7 +70,11 @@ public final class BrickrotGameTests {
         }
         h.assertTrue(((ForgeSpawnEggItem) BrickrotContent.EGG.get()).getType(null) == BrickrotContent.WALL.get(),
                 "egg creates the boss");
-        h.succeed();
+        h.runAfterDelay(2, () -> {
+            for (BrickrotPart part : wall.getParts())
+                h.assertTrue(h.getLevel().getEntity(part.getId()) == part, "parts are registered in the live world lookup");
+            h.succeed();
+        });
     }
 
     @GameTest(template = "brickrot_empty")
@@ -260,6 +264,72 @@ public final class BrickrotGameTests {
         loaded.load(saved);
         near(h, loaded.position().distanceTo(surface), 0, "save during burrow reloads at safe surface");
         h.assertTrue(!loaded.noPhysics && !loaded.isNoGravity(), "reload restores ordinary collision and gravity");
+        h.succeed();
+    }
+
+    @GameTest(template = "brickrot_empty", timeoutTicks = 100)
+    public static void brickrotBiteHasWindupAndTwelveDamage(GameTestHelper h) {
+        BrickrotWallEntity wall = wall(h);
+        var target = h.spawn(EntityType.VILLAGER, new BlockPos(32, 4, 28));
+        target.setNoAi(true);
+        wall.setNoAi(false);
+        h.runAfterDelay(54, () -> near(h, target.getHealth(), 20, "bite does not hit before windup"));
+        h.runAfterDelay(60, () -> {
+            near(h, target.getHealth(), 8, "bite hits for twelve");
+            h.succeed();
+        });
+    }
+
+    @GameTest(template = "brickrot_empty", timeoutTicks = 100)
+    public static void brickrotSweepHitsOnlyOnce(GameTestHelper h) {
+        BrickrotWallEntity wall = wall(h);
+        var target = h.spawn(EntityType.VILLAGER, new BlockPos(35, 4, 15));
+        target.setNoAi(true);
+        wall.setNoAi(false);
+        h.runAfterDelay(60, () -> near(h, target.getHealth(), 20, "sweep telegraph precedes damage"));
+        h.runAfterDelay(70, () -> {
+            near(h, target.getHealth(), 10, "four red sections apply a single ten-damage hit");
+            h.succeed();
+        });
+    }
+
+    @GameTest(template = "brickrot_empty")
+    public static void brickrotMovingBodyCrushesOnContact(GameTestHelper h) {
+        BrickrotWallEntity wall = wall(h);
+        var target = h.spawn(EntityType.VILLAGER, new BlockPos(32, 4, 15));
+        target.setNoAi(true);
+        wall.setNoAi(false);
+        wall.beginCharge(wall.position().add(0, 0, 20));
+        h.runAfterDelay(3, () -> near(h, target.getHealth(), 16, "short body contact is not missed between second boundaries"));
+        h.runAfterDelay(10, () -> {
+            near(h, target.getHealth(), 16, "overlapping parts do not multiply crushing damage");
+            h.succeed();
+        });
+    }
+
+    @GameTest(template = "brickrot_empty", timeoutTicks = 100)
+    public static void brickrotCloseLureDoesNotRestartScan(GameTestHelper h) {
+        BrickrotWallEntity wall = wall(h);
+        var light = new ItemEntity(h.getLevel(), wall.getX(), wall.getY(), wall.getZ() + 3, new ItemStack(Items.TORCH));
+        light.setNoGravity(true);
+        h.getLevel().addFreshEntity(light);
+        wall.setNoAi(false);
+        h.runAfterDelay(80, () -> {
+            h.assertTrue(wall.action() == BrickrotWallEntity.Action.TRACK, "nearby lure holds attention without scan loops");
+            h.succeed();
+        });
+    }
+
+    @GameTest(template = "brickrot_empty")
+    public static void brickrotReloadPreservesStagger(GameTestHelper h) {
+        BrickrotWallEntity wall = wall(h);
+        wall.stagger();
+        CompoundTag saved = new CompoundTag();
+        wall.saveWithoutId(saved);
+        var loaded = BrickrotContent.WALL.get().create(h.getLevel());
+        loaded.load(saved);
+        h.assertTrue(loaded.action() == BrickrotWallEntity.Action.STAGGER, "reload cannot cancel stagger vulnerability");
+        near(h, hit(loaded, 0, damage(h, DamageTypes.GENERIC), 10), 15, "stagger multiplier survives reload");
         h.succeed();
     }
 }

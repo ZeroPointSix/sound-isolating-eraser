@@ -2,6 +2,8 @@ package com.zeropointsix.eraser.brickrot;
 
 import com.zeropointsix.eraser.ModMain;
 import java.util.HashSet;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
@@ -65,6 +67,8 @@ public final class BrickrotWallEntity extends Monster implements GeoEntity {
             BrickrotWallEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Boolean> BREACHED = SynchedEntityData.defineId(
             BrickrotWallEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Long> ACTION_STARTED = SynchedEntityData.defineId(
+            BrickrotWallEntity.class, EntityDataSerializers.LONG);
     private static final double[] LENGTHS = {2.5, 2, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.25, 1.6};
     private final BrickrotPart[] parts = new BrickrotPart[9];
     private final BrickrotTrail trail = new BrickrotTrail();
@@ -72,6 +76,7 @@ public final class BrickrotWallEntity extends Monster implements GeoEntity {
     private final ServerBossEvent boss = new ServerBossEvent(getDisplayName(), BossEvent.BossBarColor.RED,
             BossEvent.BossBarOverlay.PROGRESS);
     private final Set<UUID> struck = new HashSet<>();
+    private final Map<UUID, Integer> crushedUntil = new HashMap<>();
     private Entity quarry;
     private Vec3 chargeDirection = Vec3.ZERO;
     private Vec3 safeSurface;
@@ -80,7 +85,7 @@ public final class BrickrotWallEntity extends Monster implements GeoEntity {
     private int biteCooldown;
     private int sweepCooldown;
     private int chargeCooldown;
-    private int sinceBurrow = 400;
+    private int sinceBurrow;
     private double chargeDistance;
     private boolean movedThisTick;
     private int deathHold;
@@ -104,6 +109,7 @@ public final class BrickrotWallEntity extends Monster implements GeoEntity {
         super.defineSynchedData();
         entityData.define(ACTION, Action.SCAN.ordinal());
         entityData.define(BREACHED, false);
+        entityData.define(ACTION_STARTED, 0L);
     }
     @Override public boolean isMultipartEntity() { return true; }
     @Override public BrickrotPart[] getParts() { return parts; }
@@ -114,6 +120,9 @@ public final class BrickrotWallEntity extends Monster implements GeoEntity {
     }
     public Action action() { return Action.values()[entityData.get(ACTION)]; }
     public boolean phaseTwo() { return entityData.get(BREACHED); }
+    public int actionElapsed() {
+        return level().isClientSide ? (int) Math.max(0, level().getGameTime() - entityData.get(ACTION_STARTED)) : actionTicks;
+    }
     public boolean underground() { return action() == Action.UNDERGROUND || action() == Action.WARNING; }
     private boolean burrowing() { return action() == Action.DIVE || underground() || action() == Action.EMERGE; }
     @Override public boolean isPickable() { return isAlive() && !underground(); }
@@ -143,7 +152,8 @@ public final class BrickrotWallEntity extends Monster implements GeoEntity {
             part.setXRot((float) -Math.toDegrees(Math.atan2(direction.y, direction.horizontalDistance())));
             part.tickCount = tickCount;
         }
-        if (!level().isClientSide && isAlive() && movedThisTick && tickCount % 20 == 0) crush();
+        if (!level().isClientSide && isAlive() && movedThisTick) crush();
+        if (tickCount % 100 == 0) crushedUntil.values().removeIf(until -> until <= tickCount);
     }
 
     @Override protected void customServerAiStep() {
@@ -204,22 +214,26 @@ public final class BrickrotWallEntity extends Monster implements GeoEntity {
                 if (actionTicks >= 40) transition(Action.TRACK);
             }
             case DIVE -> {
-                setPos(position().add(0, -0.4, 0));
+                Vec3 next = position().add(0, -0.4, 0);
+                if (!canTraverse(next)) { abortBurrow(); break; }
+                setPos(next);
                 dust(safeSurface);
                 if (actionTicks >= 60) transition(Action.UNDERGROUND);
             }
             case UNDERGROUND -> {
                 Vec3 destination = emergeAt.add(0, -4, 0);
                 Vec3 difference = destination.subtract(position());
-                setPos(position().add(difference.normalize().scale(Math.min(1.2, difference.length()))));
+                Vec3 next = position().add(difference.normalize().scale(Math.min(1.2, difference.length())));
+                if (!canTraverse(next)) { abortBurrow(); break; }
+                setPos(next);
                 dust(new Vec3(getX(), safeSurface.y, getZ()));
                 if (difference.length() <= 1.2) transition(Action.WARNING);
                 else if (actionTicks > 160) {
-                    setPos(safeSurface);
-                    transition(Action.SCAN);
+                    abortBurrow();
                 }
             }
             case WARNING -> {
+                if (!canTraverse(emergeAt)) { abortBurrow(); break; }
                 dust(emergeAt);
                 if (actionTicks % 5 == 0) playSound(SoundEvents.STONE_BREAK, 0.8F, 0.5F);
                 if (actionTicks >= 20) transition(Action.EMERGE);
@@ -248,7 +262,8 @@ public final class BrickrotWallEntity extends Monster implements GeoEntity {
             if (brighter instanceof ItemEntity) quarry = brighter;
         }
         double distance = distanceTo(quarry);
-        if ((distance > 24 && sinceBurrow >= 100 || sinceBurrow >= 400) && beginBurrow(quarry)) return;
+        if (quarry instanceof ItemEntity && distance <= 4) return;
+        if ((distance > 24 || sinceBurrow >= 400) && beginBurrow(quarry)) return;
         if (sweepCooldown == 0 && !(quarry instanceof ItemEntity)) {
             for (int i = 3; i <= 6; i++) if (parts[i].distanceToSqr(quarry) <= 36) {
                 sweepCooldown = 100;
@@ -258,7 +273,6 @@ public final class BrickrotWallEntity extends Monster implements GeoEntity {
             }
         }
         if (distance <= 4 && inFront(quarry.position(), 0.5) && biteCooldown == 0) {
-            if (quarry instanceof ItemEntity) { transition(Action.SCAN); return; }
             biteCooldown = 30;
             transition(Action.BITE);
         } else if (distance >= 6 && distance <= 24 && chargeCooldown == 0
@@ -336,8 +350,22 @@ public final class BrickrotWallEntity extends Monster implements GeoEntity {
         return true;
     }
 
+    private boolean canTraverse(Vec3 point) {
+        AABB box = getDimensions(getPose()).makeBoundingBox(point);
+        return level().getWorldBorder().isWithinBounds(box)
+                && level().hasChunksAt(BlockPos.containing(box.minX, box.minY, box.minZ),
+                        BlockPos.containing(box.maxX, box.maxY, box.maxZ));
+    }
+
+    private void abortBurrow() {
+        setPos(safeSurface);
+        trail.reset(position(), forward());
+        transition(Action.SCAN);
+    }
+
     private void transition(Action next) {
         entityData.set(ACTION, next.ordinal());
+        entityData.set(ACTION_STARTED, level().getGameTime());
         actionTicks = 0;
         struck.clear();
         noPhysics = burrowing();
@@ -421,8 +449,11 @@ public final class BrickrotWallEntity extends Monster implements GeoEntity {
     private void crush() {
         if (burrowing() || action() == Action.STAGGER) return;
         Set<UUID> hits = new HashSet<>();
-        for (BrickrotPart part : parts) for (LivingEntity victim : victims(part.getBoundingBox()))
+        for (BrickrotPart part : parts) for (LivingEntity victim : victims(part.getBoundingBox())) {
+            if (crushedUntil.getOrDefault(victim.getUUID(), 0) > tickCount) continue;
             strike(victim, part.position(), 4, 0.2, hits);
+            if (hits.contains(victim.getUUID())) crushedUntil.put(victim.getUUID(), tickCount + 20);
+        }
     }
     private void dust(Vec3 position) {
         if (position != null && level() instanceof ServerLevel server && tickCount % 2 == 0)
@@ -433,6 +464,7 @@ public final class BrickrotWallEntity extends Monster implements GeoEntity {
     @Override public boolean hurt(DamageSource source, float amount) { return hurtPart(0, source, amount); }
     public boolean hurtPart(int part, DamageSource source, float amount) {
         if (level().isClientSide || !isAlive() || source.is(DamageTypeTags.IS_FIRE) || source.is(DamageTypes.IN_WALL)
+                || (burrowing() && source.is(DamageTypes.DROWN))
                 || (underground() && !source.is(DamageTypeTags.BYPASSES_INVULNERABILITY))) return false;
         float multiplier = source.is(DamageTypeTags.IS_EXPLOSION) ? 2
                 : source.is(DamageTypeTags.IS_PROJECTILE) ? 0.25F
@@ -468,6 +500,8 @@ public final class BrickrotWallEntity extends Monster implements GeoEntity {
     @Override public void addAdditionalSaveData(CompoundTag tag) {
         super.addAdditionalSaveData(tag);
         tag.putBoolean("BrickrotBreached", phaseTwo());
+        tag.putInt("BrickrotBurrowTimer", sinceBurrow);
+        if (action() == Action.STAGGER) tag.putInt("BrickrotStaggerRemaining", Math.max(1, 100 - actionTicks));
         if (burrowing() && safeSurface != null)
             tag.put("Pos", newDoubleList(safeSurface.x, safeSurface.y, safeSurface.z));
     }
@@ -475,6 +509,13 @@ public final class BrickrotWallEntity extends Monster implements GeoEntity {
         super.readAdditionalSaveData(tag);
         entityData.set(BREACHED, tag.getBoolean("BrickrotBreached") || getHealth() < getMaxHealth() / 2);
         transition(Action.SCAN);
+        sinceBurrow = Mth.clamp(tag.getInt("BrickrotBurrowTimer"), 0, 400);
+        int remaining = Mth.clamp(tag.getInt("BrickrotStaggerRemaining"), 0, 100);
+        if (remaining > 0) {
+            transition(Action.STAGGER);
+            actionTicks = 100 - remaining;
+            entityData.set(ACTION_STARTED, level().getGameTime() - actionTicks);
+        }
         trail.reset(position(), forward());
     }
     @Override public AnimatableInstanceCache getAnimatableInstanceCache() { return cache; }

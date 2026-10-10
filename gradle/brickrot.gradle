@@ -2,6 +2,7 @@ def verifyBrickrotAssets = tasks.register('verifyBrickrotAssets', Exec) {
     commandLine 'python3', 'tools/brickrot-assets.py', 'verify'
 }
 tasks.named('check').configure { dependsOn verifyBrickrotAssets }
+tasks.named('jar').configure { dependsOn verifyBrickrotAssets }
 
 def brickrotTestResources = layout.buildDirectory.dir('generated/brickrot-test-resources')
 def generateBrickrotTestTemplate = tasks.register('generateBrickrotTestTemplate') {
