@@ -305,7 +305,8 @@ public final class BrickrotWallEntity extends Monster implements GeoEntity {
         for (LivingEntity entity : victims(before.expandTowards(movement)))
             strike(entity, previous, 16, 2, struck);
         dust(position());
-        if (horizontalCollision || chargeDistance >= 24) transition(Action.SCAN);
+        if (horizontalCollision || movement.horizontalDistanceSqr() < 0.0001 || chargeDistance >= 24)
+            transition(Action.SCAN);
     }
 
     public void stagger() {
@@ -324,7 +325,8 @@ public final class BrickrotWallEntity extends Monster implements GeoEntity {
             AABB box = getDimensions(getPose()).makeBoundingBox(point);
             if (level().hasChunkAt(at) && level().getWorldBorder().isWithinBounds(box)
                     && !level().getBlockState(at.below()).getCollisionShape(level(), at.below()).isEmpty()
-                    && level().noCollision(this, box) && !level().containsAnyLiquid(box)) { found = point; break; }
+                    && !level().getBlockCollisions(this, box).iterator().hasNext()
+                    && !level().containsAnyLiquid(box)) { found = point; break; }
         }
         if (found == null) return false;
         safeSurface = position();
