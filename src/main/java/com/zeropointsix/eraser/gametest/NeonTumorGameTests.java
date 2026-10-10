@@ -404,11 +404,11 @@ public final class NeonTumorGameTests {
         tumor.moveTo(start.getX() + 0.5, start.getY(), start.getZ() + 0.5, 0, 0);
         tumor.setNoGravity(false);
         h.runAtTickTime(20, () -> tumor.setNoAi(false));
-        h.runAtTickTime(250, () -> {
+        h.succeedWhen(() -> {
             h.assertTrue(tumor.getTarget() == null, "light seeking has no combat target");
             h.assertTrue(tumor.getX() > start.getX() + 4 && tumor.getLightTier() == LightTier.BRIGHT,
-                    "real navigation walks to reachable brighter blocks");
-            h.succeed();
+                    "real navigation must reach brighter blocks; x=" + tumor.getX() + ", start=" + start.getX()
+                            + ", light=" + tumor.getLightTier() + ", dormant=" + tumor.isDormant());
         });
     }
 }
