@@ -405,6 +405,19 @@ public final class NeonTumorGameTests {
         tumor.moveTo(start.getX() + 0.5, start.getY(), start.getZ() + 0.5, 0, 0);
         tumor.setNoGravity(false);
         h.runAtTickTime(20, () -> tumor.setNoAi(false));
+        for (int sample = 40; sample <= 240; sample += 40) {
+            int tick = sample;
+            h.runAtTickTime(sample, () -> {
+                var path = tumor.getNavigation().getPath();
+                System.out.println("NEON_NAVIGATION tick=" + tick + ", position=" + tumor.position()
+                        + ", light=" + tumor.getLightTier() + ", speed=" + tumor.getSpeed()
+                        + ", alive=" + tumor.isAlive() + ", removed=" + tumor.isRemoved()
+                        + ", wanted=" + tumor.getMoveControl().hasWanted()
+                        + ", path=" + (path == null ? "null" : path.getNextNodeIndex() + "/" + path.getNodeCount()
+                        + " reachable=" + path.canReach() + " nodes=" + java.util.stream.IntStream.range(0, path.getNodeCount())
+                        .mapToObj(i -> path.getNode(i).asBlockPos().toString()).toList()));
+            });
+        }
         h.succeedWhen(() -> {
             h.assertTrue(tumor.getTarget() == null, "light seeking has no combat target");
             h.assertTrue(tumor.position().distanceToSqr(destination) < 9 && tumor.getLightTier() == LightTier.BRIGHT,
