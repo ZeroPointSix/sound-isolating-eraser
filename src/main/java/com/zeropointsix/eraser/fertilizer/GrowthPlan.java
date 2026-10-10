@@ -49,6 +49,11 @@ public final class GrowthPlan {
         check(pos);
         if (blocks.size() >= LIMIT && !blocks.containsKey(pos)) throw new UnsafePlacement();
         BlockState before = get(pos);
+        // Equal block states still have owners: never claim another tree's trunk.
+        if (before.is(FertilizerContent.LOG.get()) && state.is(FertilizerContent.LOG.get())
+                && !ownedLogs.contains(pos.asLong())
+                && (!blocks.containsKey(pos) || currentTrunk != null && !currentTrunk.contains(pos.asLong())))
+            throw new UnsafePlacement();
         if (!before.equals(state)) {
             boolean soil = (state.is(Blocks.ROOTED_DIRT) || state.is(Blocks.DIRT) || state.is(Blocks.GRASS_BLOCK))
                     && (before.is(Blocks.DIRT) || before.is(Blocks.GRASS_BLOCK) || before.is(Blocks.ROOTED_DIRT));

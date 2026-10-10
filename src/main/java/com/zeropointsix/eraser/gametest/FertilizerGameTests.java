@@ -19,6 +19,7 @@ import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.*;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
@@ -26,7 +27,10 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.util.FakePlayer;
 import net.minecraftforge.common.util.FakePlayerFactory;
+import net.minecraftforge.event.entity.EntityJoinLevelEvent;
+import net.minecraftforge.event.entity.player.BonemealEvent;
 import net.minecraftforge.event.level.BlockEvent;
+import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.gametest.GameTestHolder;
 import net.minecraftforge.gametest.PrefixGameTestTemplate;
@@ -473,6 +477,130 @@ public final class FertilizerGameTests {
             h.assertTrue(h.getLevel().getBlockState(root).is(FertilizerContent.SAPLING.get()),"ordinary bonemeal cancellation restores the sapling");
             h.assertTrue(FertilizerData.get(h.getLevel()).at(h.getLevel(),root)==null,"root rollback removes natural growth identity");
         } finally { MinecraftForge.EVENT_BUS.unregister(guard); }
+        h.succeed();
+    }
+
+    @GameTest(template = "empty")
+    public static void cancelledBonemealBatchDoesNotKeepEarlierFlowerDrops(GameTestHelper h) {
+        ServerLevel level=h.getLevel(); FakePlayer p=player(h);
+        BlockPos root=h.absolutePos(new BlockPos(5,2,5));
+        level.setBlock(root.below(),Blocks.DIRT.defaultBlockState(),Block.UPDATE_ALL);
+        level.setBlock(root,Blocks.ROSE_BUSH.defaultBlockState().setValue(DoublePlantBlock.HALF,DoubleBlockHalf.LOWER),Block.UPDATE_ALL);
+        level.setBlock(root.above(),Blocks.ROSE_BUSH.defaultBlockState().setValue(DoublePlantBlock.HALF,DoubleBlockHalf.UPPER),Block.UPDATE_ALL);
+        ItemStack bag=new ItemStack(FertilizerContent.BAG.get());
+        p.setItemInHand(InteractionHand.MAIN_HAND,bag);
+        AABB dropsArea=new AABB(root).inflate(3);
+        Set<UUID> existingDrops=new HashSet<>();
+        for (ItemEntity item : level.getEntitiesOfClass(ItemEntity.class,dropsArea))
+            if (item.isAlive()) existingDrops.add(item.getUUID());
+
+        class FlowerPublicationObserver {
+            final Map<UUID,Integer> publications=new HashMap<>();
+            @SubscribeEvent(priority = EventPriority.NORMAL)
+            public void observeFlowerPublication(EntityJoinLevelEvent event) {
+                if (event.getLevel()==level && !event.loadedFromDisk()
+                        && event.getEntity() instanceof ItemEntity item
+                        && item.getItem().is(Blocks.ROSE_BUSH.asItem()) && dropsArea.contains(item.position())
+                        && !existingDrops.contains(item.getUUID()))
+                    publications.merge(item.getUUID(),1,Integer::sum);
+            }
+        }
+        FlowerPublicationObserver observer=new FlowerPublicationObserver();
+        MinecraftForge.EVENT_BUS.register(observer);
+        try {
+            // Dirt keeps this real tall-flower target on the generic bonemeal path, not meadow growth.
+            use(p,root);
+            List<ItemEntity> successfulDrops=level.getEntitiesOfClass(ItemEntity.class,dropsArea).stream()
+                    .filter(item -> item.isAlive() && !existingDrops.contains(item.getUUID())).toList();
+            int flowers=successfulDrops.stream().filter(item -> item.getItem().is(Blocks.ROSE_BUSH.asItem()))
+                    .mapToInt(item -> item.getItem().getCount()).sum();
+            h.assertTrue(bag.getDamageValue()==1 && flowers==FertilizerConfig.BONE_MEAL.get(),
+                    "a successful real bag use spends one grain and retains every vanilla flower drop");
+            h.assertTrue(observer.publications.size()==FertilizerConfig.BONE_MEAL.get()
+                    && observer.publications.values().stream().allMatch(count -> count==1),
+                    "ordinary entity listeners observe every successful flower drop exactly once");
+            successfulDrops.forEach(ItemEntity::discard);
+            observer.publications.clear();
+            p.getCooldowns().removeCooldown(FertilizerContent.BAG.get());
+
+            class SecondFlowerBonemealGuard {
+                int attempts;
+                @SubscribeEvent public void denySecondFlowerAttempt(BonemealEvent event) {
+                    if (event.getEntity()==p && event.getPos().equals(root) && ++attempts==2) event.setCanceled(true);
+                }
+            }
+            SecondFlowerBonemealGuard guard=new SecondFlowerBonemealGuard();
+            MinecraftForge.EVENT_BUS.register(guard);
+            try {
+                use(p,root);
+                h.assertTrue(guard.attempts==2,"the real bonemeal hook cancels only after one vanilla attempt");
+                h.assertTrue(p.getMainHandItem()==bag && bag.getDamageValue()==1,
+                        "the cancelled batch does not spend another grain or replace the bag");
+                h.assertTrue(observer.publications.isEmpty(),
+                        "ordinary entity listeners never observe drops from a cancelled batch");
+                h.assertTrue(level.getEntitiesOfClass(ItemEntity.class,dropsArea).stream()
+                        .noneMatch(item -> item.isAlive() && !existingDrops.contains(item.getUUID())),
+                        "a cancelled batch must not retain item drops from an earlier successful attempt");
+                h.assertTrue(level.getBlockState(root).is(Blocks.ROSE_BUSH)
+                        && level.getBlockState(root.above()).is(Blocks.ROSE_BUSH),
+                        "both original flower halves remain after cancellation");
+            } finally { MinecraftForge.EVENT_BUS.unregister(guard); }
+        } finally { MinecraftForge.EVENT_BUS.unregister(observer); }
+        h.succeed();
+    }
+
+    @GameTest(template = "fertilizer_arena", timeoutTicks = 300, batch = "fertilizer_ownership")
+    public static void neighboringTierThreeTreesNeverShareTrunkOwnership(GameTestHelper h) {
+        ServerLevel level=h.getLevel(); FakePlayer p=player(h);
+        BlockPos firstRoot=h.absolutePos(new BlockPos(30,9,30));
+        BlockPos secondRoot=firstRoot.offset(6,0,11);
+        int before=prepareGrove(h,firstRoot);
+        level.setBlock(secondRoot,Blocks.OAK_SAPLING.defaultBlockState(),Block.UPDATE_ALL);
+        h.assertTrue(FertilizerGrowth.use(level,firstRoot,p),"first real sapling grows");
+        h.assertTrue(FertilizerGrowth.use(level,secondRoot,p),"second real sapling grows");
+        FertilizerData data=FertilizerData.get(level);
+        FertilizerData.Plant first=data.at(level,firstRoot), second=data.at(level,secondRoot);
+        h.assertTrue(first!=null && second!=null && first!=second,"the two real trees start with separate identities");
+        // Only maturation is a fixture: all physical trees and tier upgrades use the real growth path.
+        first.grove=true; first.doses.clear(); second.grove=true; second.doses.clear(); data.setDirty();
+        h.assertTrue(FertilizerGrowth.use(level,firstRoot,p) && first.level==2,"first tree reaches tier two");
+        h.assertTrue(FertilizerGrowth.use(level,secondRoot,p) && second.level==2,"second tree reaches tier two");
+        h.assertTrue(FertilizerGrowth.use(level,secondRoot,p) && second.level==3,"second tree reaches tier three");
+        h.assertTrue(data.size()-before==2 && Collections.disjoint(first.trunk,second.trunk),
+                "two real independent trees exist before the crossing branch upgrade");
+        for (int y : new int[]{14,17}) {
+            BlockPos crossing=firstRoot.offset(6,y,6);
+            h.assertTrue(level.getBlockState(crossing).is(FertilizerContent.LOG.get())
+                    && second.trunk.contains(crossing.asLong()) && data.at(level,crossing)==second,
+                    "the future diagonal branch crosses a real log already owned by the second tree");
+        }
+
+        Set<Long> secondTrunk=new HashSet<>(second.trunk);
+        CompoundTag savedBefore=data.save(new CompoundTag());
+        Map<BlockPos,BlockState> blocksBefore=new HashMap<>();
+        for (BlockPos pos : BlockPos.betweenClosed(firstRoot.offset(-9,-8,-9),firstRoot.offset(9,21,9)))
+            blocksBefore.put(pos.immutable(),level.getBlockState(pos));
+        boolean upgraded=FertilizerGrowth.use(level,firstRoot,p);
+        h.assertTrue(second.level==3 && second.trunk.equals(secondTrunk)
+                && Collections.disjoint(first.trunk,second.trunk),
+                "an upgrade cannot claim identical-state fertile logs already owned by another tree");
+        h.assertTrue(data.at(level,firstRoot)==first && data.at(level,secondRoot)==second
+                && data.size()-before==2,"both independent identities survive the crossing branch upgrade");
+        FertilizerData reloaded=FertilizerData.load(data.save(new CompoundTag()));
+        for (FertilizerData.Plant tree : List.of(first,second)) for (long log : tree.trunk) {
+            BlockPos pos=BlockPos.of(log);
+            FertilizerData.Plant saved=reloaded.at(level,pos);
+            h.assertTrue(level.getBlockState(pos).is(FertilizerContent.LOG.get()) && data.at(level,pos)==tree
+                    && saved!=null && saved.root.equals(tree.root),
+                    "every physical trunk retains its independent owner in live and persisted indexes");
+        }
+        if (!upgraded) {
+            h.assertTrue(first.level==2 && data.save(new CompoundTag()).equals(savedBefore),
+                    "a rejected overlap preserves all SavedData fields, including counters and trunk ownership");
+            for (var entry : blocksBefore.entrySet())
+                h.assertTrue(level.getBlockState(entry.getKey()).equals(entry.getValue()),
+                        "a rejected overlap leaves every original world block unchanged");
+        } else h.assertTrue(first.level==3,"an accepted upgrade advances exactly one tier without claiming foreign logs");
         h.succeed();
     }
 

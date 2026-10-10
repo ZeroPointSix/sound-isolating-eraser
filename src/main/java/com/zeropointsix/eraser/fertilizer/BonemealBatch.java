@@ -6,12 +6,17 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.CropBlock;
 import net.minecraft.world.level.block.BonemealableBlock;
 import net.minecraftforge.common.util.BlockSnapshot;
+import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.ForgeEventFactory;
+import net.minecraftforge.event.entity.EntityJoinLevelEvent;
+import net.minecraftforge.eventbus.api.EventPriority;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
 
 /** Retains vanilla growth and Forge bonemeal hooks, committing only after protection checks. */
 final class BonemealBatch {
@@ -23,6 +28,8 @@ final class BonemealBatch {
         List<BlockSnapshot> snapshots = new ArrayList<>();
         boolean success = false;
         boolean accepted = false;
+        BonemealDropCapture drops = new BonemealDropCapture(level);
+        MinecraftForge.EVENT_BUS.register(drops);
         level.captureBlockSnapshots = true;
         try {
             for (int i = 0; i < FertilizerConfig.BONE_MEAL.get(); i++) {
@@ -55,8 +62,11 @@ final class BonemealBatch {
                 level.markAndNotifyBlock(snapshot.getPos(), level.getChunkAt(snapshot.getPos()),
                         snapshot.getReplacedBlock(), state, snapshot.getFlag(), 512);
             }
+            MinecraftForge.EVENT_BUS.unregister(drops);
+            if (success) for (ItemEntity item : drops.items) level.addFreshEntity(item);
             return success;
         } finally {
+            MinecraftForge.EVENT_BUS.unregister(drops);
             if (level.capturedBlockSnapshots.size() > start) {
                 snapshots.addAll(level.capturedBlockSnapshots.subList(start, level.capturedBlockSnapshots.size()));
                 level.capturedBlockSnapshots.subList(start, level.capturedBlockSnapshots.size()).clear();
@@ -71,6 +81,24 @@ final class BonemealBatch {
             } finally {
                 level.restoringBlockSnapshots = restoring;
                 level.captureBlockSnapshots = capture;
+            }
+        }
+    }
+
+    // Flower bonemeal creates items without block snapshots. Publish those drops only
+    // after the whole batch passes its bonemeal and placement protection hooks.
+    private static final class BonemealDropCapture {
+        private final ServerLevel level;
+        private final List<ItemEntity> items = new ArrayList<>();
+
+        private BonemealDropCapture(ServerLevel level) { this.level = level; }
+
+        @SubscribeEvent(priority = EventPriority.HIGHEST)
+        public void capture(EntityJoinLevelEvent event) {
+            if (event.getLevel() == level && !event.loadedFromDisk()
+                    && event.getEntity() instanceof ItemEntity item) {
+                items.add(item);
+                event.setCanceled(true);
             }
         }
     }
