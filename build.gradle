@@ -178,6 +178,10 @@ tasks.named('processResources', ProcessResources).configure {
 
 // Example for how to get properties into the manifest for reading at runtime.
 tasks.named('jar', Jar).configure {
+    // Keep Forge GameTests available to development runs without shipping them to players.
+    exclude 'com/zeropointsix/eraser/gametest/**'
+    exclude 'data/sound_isolating_eraser/structures/empty.nbt'
+
     manifest {
         attributes([
                 'Specification-Title'     : mod_id,
@@ -220,4 +224,25 @@ tasks.withType(JavaCompile).configureEach {
 
 if (project.hasProperty('gravityE2E')) {
     apply from: 'gradle/gravity-e2e.gradle'
+}
+
+// The pose clock is pure Java, so its regressions can run without starting Minecraft.
+def compileWingsMotionCheck = tasks.register('compileWingsMotionCheck', JavaCompile) {
+    source = files('src/main/java/com/zeropointsix/eraser/client/WingsMotion.java',
+            'tools/WingsMotionCheck.java')
+    classpath = files()
+    destinationDirectory = layout.buildDirectory.dir('wings-motion-check')
+}
+def checkWingsMotion = tasks.register('checkWingsMotion', JavaExec) {
+    dependsOn compileWingsMotionCheck
+    classpath = files(compileWingsMotionCheck.flatMap { it.destinationDirectory })
+    mainClass = 'WingsMotionCheck'
+}
+tasks.named('check').configure { dependsOn checkWingsMotion }
+if (project.hasProperty('pillE2E')) {
+    apply from: 'gradle/pill-e2e.gradle'
+}
+
+if (project.hasProperty('shaxiaE2E')) {
+    apply from: 'gradle/shaxia-e2e.gradle'
 }

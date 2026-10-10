@@ -1,0 +1,18 @@
+// Opt-in real-client test driver, excluded from the production jar.
+sourceSets {
+    pillTest {
+        compileClasspath += sourceSets.main.compileClasspath + sourceSets.main.output
+        runtimeClasspath += sourceSets.main.runtimeClasspath + sourceSets.main.output
+    }
+}
+minecraft.runs.configureEach {
+    mods {
+        pill_qa { source sourceSets.pillTest }
+    }
+}
+tasks.register('writePillTestClasspath') {
+    dependsOn 'classes', 'pillTestClasses', 'genVSCodeRuns'
+    def target = layout.buildDirectory.file('pill-test-classpath.txt')
+    outputs.file(target)
+    doLast { target.get().asFile.text = sourceSets.pillTest.runtimeClasspath.asPath }
+}

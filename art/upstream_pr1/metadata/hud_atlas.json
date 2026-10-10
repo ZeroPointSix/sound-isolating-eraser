@@ -1,0 +1,130 @@
+{
+  "texture_size": [
+    256,
+    128
+  ],
+  "filter": "nearest",
+  "cooldown_semantics": "序号表示已完成冷却的比例；00=0%，15=100%就绪",
+  "frames": {
+    "hover": {
+      "x": 0,
+      "y": 0,
+      "width": 16,
+      "height": 16
+    },
+    "wind": {
+      "x": 16,
+      "y": 0,
+      "width": 16,
+      "height": 16
+    },
+    "gale": {
+      "x": 32,
+      "y": 0,
+      "width": 16,
+      "height": 16
+    },
+    "thunder": {
+      "x": 48,
+      "y": 0,
+      "width": 16,
+      "height": 16
+    },
+    "cooldown_00": {
+      "x": 0,
+      "y": 24,
+      "width": 16,
+      "height": 16
+    },
+    "cooldown_01": {
+      "x": 16,
+      "y": 24,
+      "width": 16,
+      "height": 16
+    },
+    "cooldown_02": {
+      "x": 32,
+      "y": 24,
+      "width": 16,
+      "height": 16
+    },
+    "cooldown_03": {
+      "x": 48,
+      "y": 24,
+      "width": 16,
+      "height": 16
+    },
+    "cooldown_04": {
+      "x": 64,
+      "y": 24,
+      "width": 16,
+      "height": 16
+    },
+    "cooldown_05": {
+      "x": 80,
+      "y": 24,
+      "width": 16,
+      "height": 16
+    },
+    "cooldown_06": {
+      "x": 96,
+      "y": 24,
+      "width": 16,
+      "height": 16
+    },
+    "cooldown_07": {
+      "x": 112,
+      "y": 24,
+      "width": 16,
+      "height": 16
+    },
+    "cooldown_08": {
+      "x": 128,
+      "y": 24,
+      "width": 16,
+      "height": 16
+    },
+    "cooldown_09": {
+      "x": 144,
+      "y": 24,
+      "width": 16,
+      "height": 16
+    },
+    "cooldown_10": {
+      "x": 160,
+      "y": 24,
+      "width": 16,
+      "height": 16
+    },
+    "cooldown_11": {
+      "x": 176,
+      "y": 24,
+      "width": 16,
+      "height": 16
+    },
+    "cooldown_12": {
+      "x": 192,
+      "y": 24,
+      "width": 16,
+      "height": 16
+    },
+    "cooldown_13": {
+      "x": 208,
+      "y": 24,
+      "width": 16,
+      "height": 16
+    },
+    "cooldown_14": {
+      "x": 224,
+      "y": 24,
+      "width": 16,
+      "height": 16
+    },
+    "cooldown_15": {
+      "x": 240,
+      "y": 24,
+      "width": 16,
+      "height": 16
+    }
+  }
+}

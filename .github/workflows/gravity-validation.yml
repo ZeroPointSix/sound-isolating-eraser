@@ -2,9 +2,9 @@ name: Gravity Jade Validation
 
 on:
   push:
-    branches: [feature/gravity-jade-pendant]
+    branches: [feature/gravity-jade-pendant, feature/wind-thunder-wings]
   pull_request:
-    branches: [main, devin/sound-isolating-eraser, feature/flat-mark-server-opts-gha]
+    branches: [main, devin/sound-isolating-eraser, feature/flat-mark-server-opts-gha, feature/wind-thunder-wings]
     paths:
       - src/**
       - gradle/**
@@ -13,6 +13,11 @@ on:
       - tools/**
       - .github/workflows/gravity-validation.yml
   workflow_dispatch:
+    inputs:
+      record_showcase:
+        description: Record real-client wings model views and animation
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -34,6 +39,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Build distributable mod
         run: bash ./gradlew --no-daemon build
+      - name: Validate reference mesh
+        run: python3 tools/validate_wings_mesh.py
       - name: Run Forge integration tests
         run: bash ./gradlew --no-daemon runGameTestServer
       - name: Verify production outline mappings
@@ -45,11 +52,20 @@ jobs:
           LIBGL_ALWAYS_SOFTWARE: '1'
         run: xvfb-run -a -s '-screen 0 1280x720x24' bash tools/client-smoke.sh
       - name: Prepare isolated multiplayer test driver
+        id: driver
         run: bash ./gradlew --no-daemon -PgravityE2E writeGravityTestClasspath
       - name: Install native X11 input driver
-        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y xdotool
+        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y xdotool ffmpeg
       - name: Exercise real two-client gameplay
         run: python3 tools/gravity-e2e.py
+      - name: Exercise real two-client wings gameplay
+        if: ${{ !cancelled() && steps.driver.outcome == 'success' }}
+        run: python3 tools/wings-e2e.py
+      - name: Record wings model showcase
+        if: ${{ !cancelled() && inputs.record_showcase && steps.driver.outcome == 'success' }}
+        env:
+          LP_NUM_THREADS: '2'
+        run: python3 tools/wings-showcase.py
       - name: Preserve build and test evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -64,5 +80,14 @@ jobs:
             build/gravity-e2e/*.png
             build/gravity-e2e/*.pass
             build/gravity-e2e/*.failed
+            build/wings-e2e/*.log
+            build/wings-e2e/*.png
+            build/wings-e2e/*.pass
+            build/wings-e2e/*.failed
+            build/wings-showcase/*.log
+            build/wings-showcase/*.png
+            build/wings-showcase/*.pass
+            build/wings-showcase/*.failed
+            build/wings-showcase/*.mp4
             run/logs/
           if-no-files-found: warn

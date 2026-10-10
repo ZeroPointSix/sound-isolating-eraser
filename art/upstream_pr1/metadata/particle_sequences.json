@@ -1,0 +1,13 @@
+{
+  "frame_size": [
+    32,
+    32
+  ],
+  "frame_count": 8,
+  "layout": "vertical",
+  "fps_reference": 20,
+  "playback": "one_shot",
+  "final_frame": "transparent",
+  "duration_seconds": 0.4,
+  "note": "mcmeta只提供帧组织；单次寿命、触发时机与混合方式由游戏渲染器实现，不能当无限循环贴图。"
+}

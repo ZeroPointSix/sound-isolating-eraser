@@ -1,22 +1,50 @@
 # Sound-Isolating Eraser · 隔音橡皮
 
 《畸海浮城》× Minecraft 1.20.1 Forge 一次性小道具 mod。手持隔音橡皮点击方块表面，
-一次画出 1 列 5 格高的透明虚拟墙；底部的白色擦痕是整列墙的锚点。
+用可切换形状画出多列 5 格高的透明虚拟墙；底部连续白痕是墙的锚点。
+
+## 第三个小物品：强化药片（0.4.0）
+
+- 物品 ID：`sound_isolating_eraser:enhancement_pill_pack`；空板为 `sound_isolating_eraser:empty_pill_pack`。工具创造物品栏或 `/give` 获取，不添加合成和掉落。
+- 默认一板 12 粒，满饥饿也可长按右键 32 tick 吞服。中途松开不消耗，最后一粒替换为空板。不可修复、附魔或通过铁砧合并补药；创造模式默认不消耗。
+- 默认药效 48000 tick：力量 II、速度 II、急迫 II、抗性 I；通过 `pill_suppressed` mob_effect 标签拦截十种负面效果。不会免疫伤害，也不会阻止未加入标签的其他模组效果。
+- 药效归零同 tick 进入 12000 tick 戒断：缓慢 II、挖掘疲劳 II、虚弱 II、黑暗。牛奶只清除表现，40 tick 内重新施加；戒断期间再吃一粒会立刻恢复完整药效。重复吃药只刷新，不累加时长或倍率。
+- 真正计时在可序列化的玩家 Capability 内，死亡、跨维度、保存重进及服务器重启都保留。仅在线且存活时递减，离线和死亡界面不计时。原有外部药水及其隐藏效果链单独保留，切相不会误删其他来源的增益。
+- 参数统一位于既有世界配置 `serverconfig/sound_isolating_eraser-eraser-server.toml` 的 `enhancement_pill` 节：`pillPackUses=12`、`pillDurationTicks=48000`、`withdrawalDurationTicks=12000`、`useDurationTicks=32`，以及各增益/反噬等级、`withdrawalDarknessEnabled=true`、`withdrawalNauseaEnabled=false`、`allowMilkCureWithdrawal=false`、`consumeInCreative=false`、`showHudTimer=true`。药片不新增前置依赖，原仓库重力玉佩的 Curios 依赖仍保留。
+- 左上角显示仅本人可见的药效/反噬计时、48 像素进度条和药板图标；吞服时准星下方显示细进度条。网络仅服务端向本人发送状态，不新增服药 C2S 消息。
+- 原始美术来自设计稿 8.4 的 `D:\mc\preview\pixelart.js`，保留在 `tools/pill/pixelart.js`。12→1 粒及空板按原版 damage 谓词切换，末粒在右下角；专用粒子贴图只产生淡蓝药屑。`python3 tools/pill/export-assets.py` 可无第三方图片依赖重导出相同 RGBA 像素。
+- [原始需求](https://app.notion.com/p/3f3463aed7e681be8d51e866a8623dd1)。本功能接续 PR #9，不包含其他待合并的风雷翅分支。
+
+药片验证（JDK 17；真实客户端测试额外需要 Xvfb、xdotool 和软件 OpenGL）：
+
+```bash
+bash ./gradlew --no-daemon build runGameTestServer
+bash ./gradlew --no-daemon -PpillE2E writePillTestClasspath
+python3 tools/pill-e2e.py
+```
+
+GameTest 同时回归隔音橡皮、重力玉佩和药片。独立的 `pillE2E` 测试模组不会打入正式 jar；两位真实 Forge 客户端通过原生右键验证取消、吞服、免疫、反噬、喝奶、再次服用与空板同步，再实际关闭和重启测试服核验持久化。证据位于 `build/pill-e2e/`，测试服仅绑定 `127.0.0.1:25576`。CI 的 `Enhancement Pill Validation` 只上传构建与验证工件，不发布 Release。
 
 ## 玩法规则（与设计稿一致）
 
 - **点地面（上表面）**：点击位置上方立起 1×5 半透明墙，底格锚点把白色擦痕作为**平面贴花**贴在脚下那个方块的上表面（非立体凸起）。
 - **点墙面（侧表面）**：同样 5 格一列，白痕同样以平面贴花贴在被点击的那一面上。
 - **点方块下表面**：拒绝，什么都不发生。
-- **原子放置**：5 格任一被实心方块、液体、已有墙体或实体占用 → 整列不生成、不耗耐久，
-  ActionBar 提示「空间不足」。
+- **模式切换**：手持时按 `R` 循环单点、横排、纵排、斜线、圆环；可在 Controls 重绑定，支持副手。模式保存于各物品，服务端验证切换，HUD 显示当前模式。
+- **形状**：以点击格为中心、玩家水平朝向为前方，横排沿左右轴 5 格，纵排沿前后轴 5 格，斜线沿前右/后左方向 5 格；圆环在 5×5 外框上取 12 格，中心留空。每个落点都向上生成 5 格墙。
+- **预览与白痕**：释放前显示整条白痕和墙高线框；本地可判定的非法位置显示红色。地面横纵线、斜线、圆环白痕相接，成功后保留相同轨迹。服务端保护插件的最终裁决可能晚于预览。
+- **原子放置**：整个形状任一格被实心方块、液体、已有墙体或生物占用，越界、区块未加载、无权限、耐久不足，或多点任一落点缺少支撑面，均整次失败，不留下半成品、不耗耐久。Forge 多格放置事件只发一次；被保护插件取消或写入失败时回滚全部原方块。
+- **侧墙边界**：保留单点侧面白痕；多点仍在同一水平面绘制，每点须有相同方向的实心支撑面，因此直立墙面通常只支持与墙相切的一排。圆环/斜线完整体验以平地为准，不会自动跳点、爬台阶或转成竖直画布。下表面继续拒绝。
 - **联动销毁**：拆任意一格墙或底部白痕 → 整列立即一起消失；TNT/苦力怕爆炸同样整列消失；
   相邻列互不影响。孤儿屏障（锚点被 /setblock 拆掉）1 tick 后自毁。
-- **墙体性质**：半透明薄膜（Mob 视线可穿透）、完整实体碰撞（挡玩家/怪物/弹射物/寻路/水岩浆）、
+- **墙体性质**：半透明薄膜、完整实体碰撞（挡玩家/怪物/弹射物/寻路/水岩浆）、
   泥土级硬度 0.5 / 爆炸抗性 0.5、无掉落物、非红石导体、活塞不可推动、不可生成怪物。
-- **耐久**：每成功一列耗 1 点（创造不消耗）。配置 `sound_isolating_eraser-common.toml`：
+- **有限隔绝仇恨**：仅当 tag 内生物与玩家眼部连线确实穿过橡皮墙的碰撞体时，阻止视线感知/新目标获取；已有目标及对应受伤仇恨每 5 tick 清除并停止追踪路径。绕开或拆墙后立即允许原版 AI 重新发现。非玩家目标不受此机制影响；没有全局隐身或永久失忆。
+- **默认名单**：`sound_isolating_eraser:eraser_isolated_mobs` 实体类型 tag 含 zombie、zombie_villager、husk、drowned、skeleton、stray、creeper、spider、cave_spider、silverfish、endermite；数据包可覆盖。Boss、高级怪默认不在名单，仍保留先前穿透明墙的视线行为。
+- **耐久**：每成功一列耗 1 点，五格线耗 5、圆环耗 12（创造不消耗）。世界目录 `serverconfig/sound_isolating_eraser-eraser-server.toml`：
   `barrierHeight`（默认 5）、`eraserDurability`（默认 64）。墙硬度/抗性按设计稿固定 0.5，
   烘焙在方块属性里，不走配置。
+- **配置迁移**：本轮橡皮配置改为 Forge SERVER 配置并同步客户端，避免预览高度、耐久与服务端不一致。旧 `config/sound_isolating_eraser-common.toml` 不再读取；使用过非默认设置的服主应将同名两节复制到上述世界配置，也可放进 `defaultconfigs/` 作为新世界默认值。默认 5/64 不变；玉佩原配置文件不变。
 
 ## 结构
 
@@ -32,7 +60,7 @@ com.zeropointsix.eraser
 ├── mixin/LivingEntityWallVisibilityMixin  Mob 视线穿透墙（原版按碰撞形状挡视线）
 ├── config/CommonConfig        Forge 配置
 ├── client/ClientSetup         半透明渲染层
-└── gametest/EraserGameTests   14 个 GameTest 用例
+└── gametest/                  原有用例及第二轮原子回滚、绘制、仇恨、压伤回归测试
 ```
 
 ## 构建与验证
@@ -45,6 +73,7 @@ com.zeropointsix.eraser
 ```
 
 纹理由 `tools/generate_textures.py` 生成（PIL，可复现）。
+多格白痕模型与 blockstate 由 `python3 tools/generate_eraser_traces.py` 生成。
 
 ## 说明
 
@@ -67,7 +96,8 @@ artifact (same filename), and publishes a GitHub Release with that jar attached.
 - 只有 Curios 的实际 `necklace` 槽启用能力；手持、背包和饰品外观槽不会启用。复用 Curios 的项链槽预设，不增加同名槽数量。
 - 被动感知：佩戴者本地每 2 tick 检测附近 16 格 AABB 内实体的位置变化；阈值 0.02 格/tick，停下约 4 tick 消失，最多显示最近 64 个。生物显示白色模型轮廓，其他实体显示白色边框。
 - 按住 `V` 预览 5×5 的范围，滚轮每格调整 1 方块距离（默认 8，范围 3–20），松开施放。`Esc`、右键、打开界面、死亡、摘下玉佩和切换维度取消；按键可在原版设置中修改。
-- 重力场默认高 5 格、持续 15 秒：范围内所有生物包含施法者受缓慢 II，每秒承受 1 点普通伤害。护甲、无敌帧及创造免疫仍按原版规则处理。成功施放后冷却 30 秒，拒绝施放不消耗冷却。
+- 重力场默认高 5 格、持续 15 秒：范围内所有生物包含施法者受缓慢 III，每秒承受 1 点自定义 `gravity_crush` 压伤。效果每 tick 刷新为 10 tick，离场约 0.5 秒内消失。护甲、无敌帧及创造免疫仍按原版规则处理。成功施放后冷却 30 秒，拒绝施放不消耗冷却。
+- **压伤无击退**：伤害类型加入 `minecraft:no_impact`，并由 `GravityDamage.hurt` 在真实 `LivingEntity.hurt` 调用范围内取消该受害者的 `LivingKnockBackEvent`，在 `finally` 恢复伤害前速度、`hurtMarked`、`hasImpulse`。不取消伤害、不持续锁位置、不清除玩家本来的运动；普通攻击仍可击退。缓慢 amplifier 默认/最小值为 2，旧值 1 经 Forge 配置校正为 III。
 - 创建时仅压毁一次标签内的脆弱方块；每列只考虑最高的暴露土层，以 25% 概率破坏，不递归挖掘。方块实体、不可破坏方块与取消 Forge 方块破坏事件的领地保护会保留。
 - 参数位于世界目录 `serverconfig/sound_isolating_eraser-server.toml`；`gravity_fragile` 和 `gravity_surface_fragile` 方块标签可由数据包扩展。
 - 服务端接收客户端预览中心 `BlockPos` 与维度，不再按当前朝向重算选区；校验装备、存活、冷却、距离、边界和区块加载状态，客户端不执行伤害或破坏。
@@ -75,3 +105,33 @@ artifact (same filename), and publishes a GitHub Release with that jar attached.
 玉佩的 32×32 像素纹理由 `gradle/gravity-texture.gradle` 在资源处理前自动生成，不需要额外图片工具。
 功能分支的 `Gravity Jade Validation` 工作流构建 jar 并运行原有及新增的 Forge GameTest，不发布 Release。
 工作流还会启动两个隔离的实际 Forge 客户端，以 X11 原生按键、滚轮和鼠标输入验证穿墙模型轮廓、预览与取消、可重绑定按键、私有感知隔离及公共重力场同步，并保存截图与日志证据。
+
+
+## Wind-Thunder Wings / 风雷翅
+
+银白金纹的飞行法宝，胸甲槽穿戴（同鞘翅惯例），消耗原版饥饿值——**没有也不新增灵力条**。
+
+- 物品：`sound_isolating_eraser:wind_thunder_wings`（EPIC 级，防火）与材料 `sound_isolating_eraser:thunder_feather`（雷鹏骨羽，幻翼被雷击陨落掉落）。
+- 展开/收起：空中双击空格；落地或入水自动收起。
+- 四档速度（G 切换）：悬停 ≤5 / 御风 30 / 疾风 60 / 神霄 120 m/s；H 切换悬停锚定。
+- 雷遁（R）：向视线方向闪现 24 格，12 tick 内连闪最多 3 次；满 3 次进入 160 tick 冷却，否则 40 tick。
+- 饥饿消耗：按档每秒 0.4/0.8/2.0/4.0 点 exhaustion（`wings/` 下 `FlightEvents.onPlayerTick` 调 `FoodData.addExhaustion`）；饥饿 <4 禁止展开，<6 限制为悬停/巡航，=0 强制悬停并附加缓降。
+- 被雷劈中：回满饥饿并获得 60 秒「充能」——期间飞行与雷遁不消耗饥饿。
+- HUD：右下角 64×16 铭牌（`textures/gui/wings_hud.png` 图集：四档图标 + 雷遁冷却环 + 充能珠 + 铭牌底），雷闪时有短暂白屏闪光；无灵力条。
+- 数值全部在 `serverconfig/sound_isolating_eraser-wings-server.toml`（独立文件名，避免与 gravity SERVER 配置冲突）与客户端 config 中可调。
+- 音效：`wind_loop`（飞行环境声）、`thunder_boom`（破档音爆）、`thunder_blink`（雷瞬）。
+- 合成：下界之星 + 雷鹏骨羽×2 + 鞘翅 + 避雷针×2 + 皮革胸甲（`data/.../recipes/wind_thunder_wings.json`）。
+
+美术与资源分包（`art/`）：A `art/A_concept/` 概念稿与 HUD 样张；B `art/B_model_preview/` Blender 三视图/穿戴/掉落渲染与 8 段动作视频；C `art/C_game_assets/` 已接入游戏的贴图。游戏贴图可由 `tools/generate_wings_textures.py`（PIL + 内嵌 NotoSansSC 字体）复现生成；`tools/blender_wings_scene.py` 为渲染脚本。上游 fenglei-wings 仓 PR #1 的脚本/清单/预览保留在 `art/upstream_pr1/`。
+## 第二轮验收
+
+```bash
+bash ./gradlew --no-daemon --max-workers=2 -Dorg.gradle.jvmargs=-Xmx1G compileJava runGameTestServer
+bash ./gradlew --no-daemon -PgravityE2E writeGravityTestClasspath
+python3 tools/gravity-e2e.py
+```
+
+- GameTest 覆盖五种形状/四朝向/负坐标、逐列清理、最后一格障碍或液体整次失败、缺支撑、保护取消恢复原植物、真实 `ItemStack.useOn` 包装路径与恰好一次事件、主副手模式及非法数据、仇恨失去/绕行/拆墙恢复及高级怪排除。
+- 压伤测试保留真实伤害源和攻击者，连续 300 tick 检查 Cow/Zombie/Player 的 15 次伤害、无位移、缓慢 III、到期清理；另检查原有速度不被抹掉和普通击退仍生效。测试将受试者血量设 100、防御设 0 以准确数伤害，关闭测试玩家自然回血，但不关闭伤害或强制锁定位置。
+- 双客户端测试继续运行玉佩全部已有白描框/瞄准/同步/像素回归，再用真实联网生存玩家和两种生物检查 15 次压伤。随后通过原生 `R`/重绑定 `Y` 和右键完成五种预览与放置，另一客户端验证全部形状同步。
+- 日志、通过标记与截图位于 `build/gravity-e2e/`；运行会清理旧标记，必须重新获得证据。仅本机回环测试服，不部署生产。共享机器较慢时可显式设置 `GRAVITY_QA_STARTUP_SECONDS` 和 `GRAVITY_QA_TEST_SECONDS` 扩大启动/测试等待上限，不放宽断言。

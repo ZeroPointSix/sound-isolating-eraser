@@ -1,0 +1,13 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="MIT"
+[[mods]]
+modId="shaxia_qa"
+version="1.0.0"
+displayName="Shaxiadao Integration Driver"
+[[dependencies.shaxia_qa]]
+modId="sound_isolating_eraser"
+mandatory=true
+versionRange="[0.5.0,)"
+ordering="AFTER"
+side="BOTH"
