@@ -401,13 +401,14 @@ public final class NeonTumorGameTests {
         h.setBlock(new BlockPos(9, 1, 2), Blocks.LIGHT.defaultBlockState().setValue(LightBlock.LEVEL, 15));
         NeonTumorEntity tumor = tumor(h, 1);
         var start = h.absolutePos(new BlockPos(2, 1, 2));
+        var destination = net.minecraft.world.phys.Vec3.atBottomCenterOf(h.absolutePos(new BlockPos(9, 1, 2)));
         tumor.moveTo(start.getX() + 0.5, start.getY(), start.getZ() + 0.5, 0, 0);
         tumor.setNoGravity(false);
         h.runAtTickTime(20, () -> tumor.setNoAi(false));
         h.succeedWhen(() -> {
             h.assertTrue(tumor.getTarget() == null, "light seeking has no combat target");
-            h.assertTrue(tumor.getX() > start.getX() + 4 && tumor.getLightTier() == LightTier.BRIGHT,
-                    "real navigation must reach brighter blocks; x=" + tumor.getX() + ", start=" + start.getX()
+            h.assertTrue(tumor.position().distanceToSqr(destination) < 9 && tumor.getLightTier() == LightTier.BRIGHT,
+                    "real navigation must reach brighter blocks; position=" + tumor.position() + ", goal=" + destination
                             + ", light=" + tumor.getLightTier() + ", dormant=" + tumor.isDormant());
         });
     }
