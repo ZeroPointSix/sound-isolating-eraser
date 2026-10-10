@@ -37,6 +37,9 @@ def launch(name, role, display=None):
             "generate-structures=false\nspawn-monsters=false\ngamemode=creative\n"
         )
     else:
+        # Xvfb exercises the real game window without Forge's optional splash.
+        (directory / "config").mkdir(exist_ok=True)
+        (directory / "config/fml.toml").write_text("earlyWindowControl = false\n")
         (directory / "options.txt").write_text(
             "renderDistance:4\nsimulationDistance:5\nguiScale:2\nmaxFps:30\n"
             "enableVsync:false\npauseOnLostFocus:false\nonboardAccessibility:false\n"
@@ -71,7 +74,7 @@ try:
         processes.append(subprocess.Popen(["Xvfb", display, "-screen", "0", "1280x720x24", "-nolisten", "tcp"],
                                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL))
     server = launch("runServer", "server")
-    deadline = time.monotonic() + 180
+    deadline = time.monotonic() + int(os.environ.get("GRAVITY_QA_STARTUP_SECONDS", "180"))
     while True:
         if server.poll() is not None or time.monotonic() >= deadline:
             raise RuntimeError("Dedicated test server did not start")
@@ -82,9 +85,11 @@ try:
             time.sleep(1)
     wearer = launch("runClient", "wearer", ":91")
     observer = launch("runClient", "observer", ":92")
-    deadline = time.monotonic() + 600
+    deadline = time.monotonic() + int(os.environ.get("GRAVITY_QA_TEST_SECONDS", "600"))
     required = ("wearer", "observer", "server-effects", "wearer-stress",
-                "wearer-preview-pixels", "wearer-active-pixels", "observer-active-pixels")
+                "wearer-preview-pixels", "wearer-active-pixels", "observer-active-pixels",
+                "server-pressure", "server-eraser", "wearer-eraser", "observer-eraser",
+                "server-atomic", "server-isolation")
     while not all((RESULTS / f"{role}.pass").exists() for role in required):
         failures = list(RESULTS.glob("*.failed"))
         if failures:
@@ -94,6 +99,9 @@ try:
         if time.monotonic() >= deadline:
             raise TimeoutError("Two-client gameplay validation timed out")
         time.sleep(1)
+    failures = list(RESULTS.glob("*.failed"))
+    if failures:
+        raise AssertionError("; ".join(path.read_text() for path in failures))
     print("REAL_TWO_CLIENT_E2E_PASSED", flush=True)
 finally:
     for process in reversed(processes):

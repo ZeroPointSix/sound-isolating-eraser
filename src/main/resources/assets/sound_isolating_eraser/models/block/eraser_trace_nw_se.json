@@ -1,0 +1,134 @@
+{
+  "parent": "minecraft:block/block",
+  "ambientocclusion": false,
+  "render_type": "minecraft:translucent",
+  "textures": {
+    "film": "sound_isolating_eraser:block/eraser_wall",
+    "particle": "sound_isolating_eraser:block/eraser_wall",
+    "chalk": "minecraft:block/white_concrete"
+  },
+  "elements": [
+    {
+      "from": [
+        0,
+        0,
+        0
+      ],
+      "to": [
+        16,
+        16,
+        16
+      ],
+      "faces": {
+        "north": {
+          "texture": "#film",
+          "cullface": "north"
+        },
+        "east": {
+          "texture": "#film",
+          "cullface": "east"
+        },
+        "south": {
+          "texture": "#film",
+          "cullface": "south"
+        },
+        "west": {
+          "texture": "#film",
+          "cullface": "west"
+        },
+        "up": {
+          "texture": "#film",
+          "cullface": "up"
+        },
+        "down": {
+          "texture": "#film",
+          "cullface": "down"
+        }
+      }
+    },
+    {
+      "from": [
+        7,
+        0.015,
+        8
+      ],
+      "to": [
+        9,
+        0.025,
+        19.3137085
+      ],
+      "shade": false,
+      "faces": {
+        "up": {
+          "texture": "#chalk",
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ]
+        },
+        "down": {
+          "texture": "#chalk",
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ]
+        }
+      },
+      "rotation": {
+        "origin": [
+          8,
+          0,
+          8
+        ],
+        "axis": "y",
+        "angle": 45
+      }
+    },
+    {
+      "from": [
+        7,
+        0.015,
+        -3.3137085
+      ],
+      "to": [
+        9,
+        0.025,
+        8
+      ],
+      "shade": false,
+      "faces": {
+        "up": {
+          "texture": "#chalk",
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ]
+        },
+        "down": {
+          "texture": "#chalk",
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ]
+        }
+      },
+      "rotation": {
+        "origin": [
+          8,
+          0,
+          8
+        ],
+        "axis": "y",
+        "angle": 45
+      }
+    }
+  ]
+}

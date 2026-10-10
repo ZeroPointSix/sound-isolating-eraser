@@ -1,6 +1,12 @@
 {
   "item.sound_isolating_eraser.sound_isolating_eraser": "Sound-Isolating Eraser",
-  "item.sound_isolating_eraser.sound_isolating_eraser.no_space": "Not enough space to draw the wall",
+  "item.sound_isolating_eraser.sound_isolating_eraser.no_space": "Drawing rejected: check space, surface, protection and durability",
+  "key.sound_isolating_eraser.eraser_mode": "Cycle Eraser Drawing Mode",
+  "eraser.mode.point": "Eraser: Single column",
+  "eraser.mode.across": "Eraser: Across (5)",
+  "eraser.mode.forward": "Eraser: Forward (5)",
+  "eraser.mode.diagonal": "Eraser: Diagonal (5)",
+  "eraser.mode.ring": "Eraser: Ring (12)",
   "block.sound_isolating_eraser.eraser_anchor": "Eraser Anchor",
   "block.sound_isolating_eraser.eraser_barrier": "Eraser Barrier",
   "item.sound_isolating_eraser.gravity_jade_pendant": "Gravity Jade Pendant",

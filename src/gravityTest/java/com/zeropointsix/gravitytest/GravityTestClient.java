@@ -41,6 +41,7 @@ public final class GravityTestClient {
     private static AABB previewBounds;
     private static AABB serverBounds;
     private static long renderedFrames;
+    private static long inputReadyFrame;
     private static long stressStarted;
     private static long stressFrames;
     private static int stressPeak;
@@ -130,6 +131,9 @@ public final class GravityTestClient {
     }
 
     private static void exerciseWearer(Minecraft mc, Entity moving) throws Exception {
+        // Catch-up ticks can run before GLFW polls the xdotool event. Keep the
+        // exact gameplay assertions, but first allow two real rendered frames.
+        if (renderedFrames < inputReadyFrame) { ticks--; return; }
         switch (ticks) {
             case 1 -> nativeInput("keydown", "v");
             case 15 -> {
@@ -274,6 +278,7 @@ public final class GravityTestClient {
         Process process = new ProcessBuilder(command).inheritIO().start();
         int exitCode = process.waitFor();
         if (exitCode != 0) throw new AssertionError("xdotool exited with " + exitCode);
+        inputReadyFrame = renderedFrames + 2;
     }
 
     private static void command(Minecraft mc, String phase) { mc.player.connection.sendCommand("gravityqa phase " + phase); }

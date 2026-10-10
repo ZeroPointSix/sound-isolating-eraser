@@ -1,6 +1,12 @@
 {
   "item.sound_isolating_eraser.sound_isolating_eraser": "隔音橡皮",
-  "item.sound_isolating_eraser.sound_isolating_eraser.no_space": "空间不足，画不出墙",
+  "item.sound_isolating_eraser.sound_isolating_eraser.no_space": "整次绘制失败：请检查空间、支撑面、领地权限或耐久",
+  "key.sound_isolating_eraser.eraser_mode": "切换橡皮绘制模式",
+  "eraser.mode.point": "橡皮：单列",
+  "eraser.mode.across": "橡皮：横向五列",
+  "eraser.mode.forward": "橡皮：纵向五列",
+  "eraser.mode.diagonal": "橡皮：斜线五列",
+  "eraser.mode.ring": "橡皮：十二列圆环",
   "block.sound_isolating_eraser.eraser_anchor": "橡皮锚点",
   "block.sound_isolating_eraser.eraser_barrier": "橡皮屏障",
   "item.sound_isolating_eraser.gravity_jade_pendant": "重力玉佩",

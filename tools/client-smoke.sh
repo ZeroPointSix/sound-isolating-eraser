@@ -1,7 +1,21 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-mkdir -p build
+mkdir -p build run/config
+# The early Forge splash window can time out under Xvfb. The real Minecraft
+# window, OpenGL resource reload, mixins, and screenshot checks remain enabled.
+python3 - <<'PY'
+from pathlib import Path
+import re
+path = Path("run/config/fml.toml")
+text = path.read_text() if path.exists() else ""
+setting = "earlyWindowControl = false"
+if re.search(r"(?m)^earlyWindowControl\s*=", text):
+    text = re.sub(r"(?m)^earlyWindowControl\s*=.*$", setting, text)
+else:
+    text = setting + "\n" + text
+path.write_text(text)
+PY
 bash ./gradlew --no-daemon runClient > build/client-smoke.log 2>&1 &
 client_pid=$!
 cleanup() {

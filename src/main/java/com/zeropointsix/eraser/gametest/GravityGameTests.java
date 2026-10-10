@@ -182,7 +182,7 @@ public final class GravityGameTests {
         float health = cow.getHealth();
         h.runAtTickTime(22, () -> {
             h.assertTrue(cow.hasEffect(MobEffects.MOVEMENT_SLOWDOWN), "field continuously applies slowness");
-            h.assertTrue(cow.getEffect(MobEffects.MOVEMENT_SLOWDOWN).getAmplifier() == 1, "slowness II amplifier");
+            h.assertTrue(cow.getEffect(MobEffects.MOVEMENT_SLOWDOWN).getAmplifier() == 2, "slowness III amplifier");
             h.assertTrue(cow.getHealth() == health - 1, "one damage pulse after 20 ticks");
             cow.setPos(Vec3.atCenterOf(center.offset(6, 0, 0)));
         });
