@@ -120,6 +120,10 @@ apply from: 'gradle/gravity-texture.gradle'
 apply from: 'gradle/fertilizer-resources.gradle'
 
 repositories {
+    maven {
+        url = 'https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/'
+        content { includeGroupByRegex('software\\.bernie.*'); includeGroup('com.eliotlash.mclib') }
+    }
     maven { url = 'https://maven.theillusivec4.top/' }
     // Put repositories for dependencies here
     // ForgeGradle automatically adds the Forge maven and Maven Central for you
@@ -132,6 +136,7 @@ repositories {
 }
 
 dependencies {
+    implementation fg.deobf("software.bernie.geckolib:geckolib-forge-${minecraft_version}:4.4.9")
     // Specify the version of Minecraft to use.
     // Any artifact can be supplied so long as it has a "userdev" classifier artifact and is a compatible patcher artifact.
     // The "userdev" classifier will be requested and setup by ForgeGradle.
@@ -246,3 +251,5 @@ if (project.hasProperty('pillE2E')) {
 if (project.hasProperty('shaxiaE2E')) {
     apply from: 'gradle/shaxia-e2e.gradle'
 }
+
+apply from: 'gradle/brickrot.gradle'

@@ -30,6 +30,7 @@ public final class ModMain {
 
     public ModMain() {
         IEventBus bus = FMLJavaModLoadingContext.get().getModEventBus();
+        com.zeropointsix.eraser.brickrot.BrickrotContent.register(bus);
         com.zeropointsix.eraser.fertilizer.FertilizerContent.register(bus);
         ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER,
                 com.zeropointsix.eraser.fertilizer.FertilizerConfig.SPEC, "super-fertilizer-server.toml");

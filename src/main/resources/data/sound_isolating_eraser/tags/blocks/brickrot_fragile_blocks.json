@@ -1,0 +1,4 @@
+{
+  "replace": false,
+  "values": ["#minecraft:leaves", "#minecraft:crops", {"id": "#forge:glass", "required": false}, {"id": "#forge:glass_panes", "required": false}, "minecraft:glass", "minecraft:glass_pane", "minecraft:tinted_glass"]
+}
