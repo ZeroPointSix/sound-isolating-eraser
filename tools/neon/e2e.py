@@ -72,7 +72,7 @@ def launch(role):
 
 
 def wait_ready(server):
-    deadline = time.monotonic() + 240
+    deadline = time.monotonic() + int(os.environ.get("NEON_QA_STARTUP_SECONDS", "600"))
     while time.monotonic() < deadline and server.poll() is None:
         try:
             with socket.create_connection(("127.0.0.1", PORT), timeout=1):

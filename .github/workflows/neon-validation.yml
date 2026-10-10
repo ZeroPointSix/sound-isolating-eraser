@@ -15,6 +15,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: neon-validation-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
 jobs:
   validate:
     runs-on: ubuntu-latest
@@ -34,6 +38,12 @@ jobs:
       - run: chmod +x gradlew
       - run: ./gradlew test runGameTestServer build --no-daemon --stacktrace
       - run: python tools/neon/verify-gametests.py
+      - name: Prepare isolated real-client test driver
+        run: ./gradlew -PneonE2E writeNeonTestClasspath --no-daemon
+      - name: Exercise rendered monster and real-client lifecycle
+        env:
+          LP_NUM_THREADS: '2'
+        run: python tools/neon/e2e.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -42,3 +52,9 @@ jobs:
             build/libs/*.jar
             build/reports/
             run/logs/latest.log
+            build/neon-e2e-*/*.log
+            build/neon-e2e-*/*.png
+            build/neon-e2e-*/*.pass
+            build/neon-e2e-*/*.failed
+            build/neon-e2e-*/rendered-breathing.txt
+            build/neon-e2e-*/client-lighting.txt
