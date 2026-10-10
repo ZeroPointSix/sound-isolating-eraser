@@ -47,6 +47,16 @@ def validate(files):
     json.loads(files["models/item/brickrot_spawn_egg.json"])
 
 
+def remap_namespace(value):
+    if isinstance(value, dict):
+        return {key: remap_namespace(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [remap_namespace(item) for item in value]
+    if isinstance(value, str) and value.startswith("qihai:"):
+        return "sound_isolating_eraser:" + value[len("qihai:"):]
+    return value
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("command", choices=["verify", "import"])
@@ -64,20 +74,16 @@ def main():
                     raise ValueError("Missing, duplicate, or oversized source: " + name)
                 contents[name] = archive.read(matches[0])
         validate(contents)
+        for name in contents:
+            if name.startswith("models/"):
+                contents[name] = (json.dumps(remap_namespace(json.loads(contents[name])),
+                                            ensure_ascii=False, indent=2) + "\n").encode()
         # Only the allowlisted asset paths are written; no archive paths are extracted.
         for name, data in contents.items():
-            if name.endswith(".json"):
-                parsed = json.loads(data)
-                if name.startswith("models/"):
-                    parsed = json.loads(json.dumps(parsed).replace("qihai:", "sound_isolating_eraser:"))
-                    data = (json.dumps(parsed, ensure_ascii=False, indent=2) + "\n").encode()
             target = DEST / name
             if target.exists() and target.read_bytes() != data:
                 raise ValueError("Refusing to overwrite different existing art: " + name)
         for name, data in contents.items():
-            if name.startswith("models/"):
-                data = (json.dumps(json.loads(data), ensure_ascii=False, indent=2)
-                        .replace("qihai:", "sound_isolating_eraser:") + "\n").encode()
             target = DEST / name
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(data)

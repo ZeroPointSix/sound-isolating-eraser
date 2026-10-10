@@ -248,7 +248,7 @@ public final class BrickrotWallEntity extends Monster implements GeoEntity {
             if (brighter instanceof ItemEntity) quarry = brighter;
         }
         double distance = distanceTo(quarry);
-        if ((distance > 24 && sinceBurrow >= 100 || sinceBurrow >= 400) && beginBurrow()) return;
+        if ((distance > 24 && sinceBurrow >= 100 || sinceBurrow >= 400) && beginBurrow(quarry)) return;
         if (sweepCooldown == 0 && !(quarry instanceof ItemEntity)) {
             for (int i = 3; i <= 6; i++) if (parts[i].distanceToSqr(quarry) <= 36) {
                 sweepCooldown = 100;
@@ -314,10 +314,10 @@ public final class BrickrotWallEntity extends Monster implements GeoEntity {
         playSound(SoundEvents.RAVAGER_STUNNED, 1, 0.6F);
     }
 
-    private boolean beginBurrow() {
-        if (getY() - 26 <= level().getMinBuildHeight()) return false;
+    public boolean beginBurrow(Entity target) {
+        if (!valid(target) || getY() - 26 <= level().getMinBuildHeight()) return false;
         Vec3 found = null;
-        BlockPos feet = quarry.blockPosition();
+        BlockPos feet = target.blockPosition();
         for (int dy = 3; dy >= -3; dy--) {
             BlockPos at = feet.offset(0, dy, 0);
             Vec3 point = Vec3.atBottomCenterOf(at);

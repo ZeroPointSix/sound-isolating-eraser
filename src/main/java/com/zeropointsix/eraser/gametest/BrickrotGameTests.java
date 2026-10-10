@@ -19,6 +19,7 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.GameRules;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.gametest.GameTestHolder;
@@ -28,6 +29,8 @@ import net.minecraftforge.gametest.PrefixGameTestTemplate;
 @PrefixGameTestTemplate(false)
 public final class BrickrotGameTests {
     private static BrickrotWallEntity wall(GameTestHelper h) {
+        for (int x = 29; x <= 35; x++) for (int z = 0; z < 63; z++)
+            h.setBlock(new BlockPos(x, 3, z), Blocks.STONE);
         BrickrotWallEntity wall = h.spawn(BrickrotContent.WALL.get(), new BlockPos(32, 4, 25));
         wall.setNoAi(true);
         wall.setNoGravity(true);
@@ -203,6 +206,53 @@ public final class BrickrotGameTests {
         near(h, loaded.getHealth(), 148, "health survives reload");
         h.assertTrue(loaded.phaseTwo() && loaded.getParts().length == 9, "phase and multipart layout survive reload");
         h.assertTrue(loaded.action() == BrickrotWallEntity.Action.SCAN, "reload starts a safe scan");
+        h.succeed();
+    }
+
+    @GameTest(template = "brickrot_empty")
+    public static void brickrotMobGriefingAndFragileBlocks(GameTestHelper h) {
+        BrickrotWallEntity wall = wall(h);
+        BlockPos glass = wall.blockPosition().offset(0, 0, 2);
+        h.getLevel().setBlock(glass, Blocks.GLASS.defaultBlockState(), 3);
+        var rule = h.getLevel().getGameRules().getRule(GameRules.RULE_MOBGRIEFING);
+        boolean original = rule.get();
+        try {
+            rule.set(false, h.getLevel().getServer());
+            wall.setNoAi(false);
+            wall.beginCharge(wall.position().add(0, 0, 20));
+            wall.tick();
+            h.assertTrue(h.getLevel().getBlockState(glass).is(Blocks.GLASS), "mobGriefing false protects glass");
+            h.assertTrue(wall.action() == BrickrotWallEntity.Action.SCAN, "protected glass stops charge");
+            rule.set(true, h.getLevel().getServer());
+            wall.beginCharge(wall.position().add(0, 0, 20));
+            wall.tick();
+            h.assertTrue(h.getLevel().getBlockState(glass).isAir(), "glass is fragile when terrain damage is enabled");
+        } finally {
+            rule.set(original, h.getLevel().getServer());
+        }
+        h.succeed();
+    }
+
+    @GameTest(template = "brickrot_empty")
+    public static void brickrotBurrowProtectionAndSaveRecovery(GameTestHelper h) {
+        BrickrotWallEntity wall = wall(h);
+        Vec3 surface = wall.position();
+        var target = h.spawn(EntityType.VILLAGER, new BlockPos(32, 4, 50));
+        target.setNoAi(true);
+        h.assertTrue(wall.beginBurrow(target), "safe emergence destination is accepted");
+        wall.setNoAi(false);
+        for (int i = 0; i < 65; i++) wall.tick();
+        h.assertTrue(wall.underground(), "head and body enter underground stage");
+        near(h, hit(wall, 0, damage(h, DamageTypes.GENERIC), 20), 0, "underground immunity");
+        h.assertTrue(!wall.isPickable() && !wall.getParts()[0].isPickable(), "underground parts cannot be picked");
+        h.assertTrue(h.getLevel().getBlockState(BlockPos.containing(surface).below()).is(Blocks.STONE),
+                "burrowing never destroys the entry floor");
+        CompoundTag saved = new CompoundTag();
+        wall.saveWithoutId(saved);
+        BrickrotWallEntity loaded = BrickrotContent.WALL.get().create(h.getLevel());
+        loaded.load(saved);
+        near(h, loaded.position().distanceTo(surface), 0, "save during burrow reloads at safe surface");
+        h.assertTrue(!loaded.noPhysics && !loaded.isNoGravity(), "reload restores ordinary collision and gravity");
         h.succeed();
     }
 }
