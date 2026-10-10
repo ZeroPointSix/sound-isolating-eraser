@@ -7,6 +7,7 @@ import com.zeropointsix.eraser.registry.ModEffects;
 import com.zeropointsix.eraser.registry.ModItems;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
+import net.minecraft.client.gui.screens.DisconnectedScreen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.phys.EntityHitResult;
@@ -65,6 +66,11 @@ public final class NeonTestClient {
     @SubscribeEvent public static void tick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END || failed || phase.isEmpty()) return;
         Minecraft mc = Minecraft.getInstance();
+        if (mc.screen instanceof DisconnectedScreen) {
+            fail(new AssertionError("Unexpected disconnect during " + phase + ": "
+                    + mc.screen.getNarrationMessage().getString()));
+            return;
+        }
         if (mc.player == null || mc.level == null) return;
         try {
             ticks++;

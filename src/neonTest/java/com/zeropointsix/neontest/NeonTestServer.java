@@ -53,6 +53,12 @@ public final class NeonTestServer {
         for (BlockPos pos : BlockPos.betweenClosed(-15, 64, -16, 18, 64, 20)) {
             level.setBlockAndUpdate(pos, Blocks.SMOOTH_QUARTZ.defaultBlockState());
         }
+        // Generate the destination before login so a slow test host does not stall the connection.
+        ServerLevel nether = event.getServer().getLevel(net.minecraft.world.level.Level.NETHER);
+        for (int x = -3; x <= 3; x++) for (int z = -3; z <= 3; z++) {
+            nether.getChunk(x, z);
+            nether.setChunkForced(x, z, true);
+        }
     }
 
     private static NeonTumorEntity spawn(ServerLevel level, double x, double z, int size, int variant) {

@@ -35,8 +35,9 @@ def launch(role):
     else:
         (directory / "config").mkdir()
         (directory / "config/fml.toml").write_text("earlyWindowControl = false\n")
+        distance = 2 if role == "client-rejoin" else 5
         (directory / "options.txt").write_text(
-            "lang:zh_cn\nrenderDistance:5\nsimulationDistance:5\nguiScale:2\nmaxFps:30\n"
+            f"lang:zh_cn\nrenderDistance:{distance}\nsimulationDistance:{distance}\nguiScale:2\nmaxFps:30\n"
             "enableVsync:false\npauseOnLostFocus:false\nonboardAccessibility:false\n"
             "showAutosaveIndicator:false\nrenderClouds:false\nnarrator:0\ntutorialStep:none\n"
             "gamma:1.0\nfov:0.0\n")
@@ -52,7 +53,8 @@ def launch(role):
             while option in args:
                 index = args.index(option)
                 del args[index:index + 2]
-        args += ["--username", "NeonTester", "--width", "960", "--height", "540",
+        width, height = ("640", "360") if role == "client-rejoin" else ("960", "540")
+        args += ["--username", "NeonTester", "--width", width, "--height", height,
                  "--quickPlayMultiplayer", f"127.0.0.1:{PORT}"]
     command = ["java", "-Xmx1024M" if server else "-Xmx2048M", f"-Dneon.qa.results={RESULTS}"]
     command += shlex.split(expand(config["vmArgs"]))
