@@ -1,4 +1,10 @@
 {
+  "item.sound_isolating_eraser.shaxiadao": "Shaxiadao",
+  "enchantment.sound_isolating_eraser.jijie_special_attack": "Aberrant Foe Slayer",
+  "tooltip.sound_isolating_eraser.shaxiadao": "Special attack effects against hostile aberrant creatures",
+  "death.attack.shaxiadao_true": "%1$s was slain by %2$s's Shaxiadao",
+  "death.attack.shaxiadao_true.player": "%1$s was slain by %2$s's Shaxiadao",
+  "death.attack.shaxiadao_true.item": "%1$s was slain by %2$s using %3$s",
   "item.sound_isolating_eraser.enhancement_pill_pack": "Enhancement Pill Pack",
   "item.sound_isolating_eraser.empty_pill_pack": "Empty Pill Pack",
   "tooltip.sound_isolating_eraser.pill_count": "%s / %s pills remaining",
