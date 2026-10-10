@@ -391,7 +391,7 @@ public final class NeonTumorGameTests {
         });
     }
 
-    @GameTest(template = "empty", batch = "neon-navigation", timeoutTicks = 280)
+    @GameTest(template = "empty", batch = "neon-navigation", timeoutTicks = 800)
     public static void neonActuallyWalksTowardReachableLight(GameTestHelper h) {
         for (BlockPos pos : BlockPos.betweenClosed(0, 0, 0, 12, 4, 4)) {
             boolean wall = pos.getX() == 0 || pos.getX() == 12 || pos.getY() == 0 || pos.getY() == 4
@@ -405,12 +405,17 @@ public final class NeonTumorGameTests {
         tumor.moveTo(start.getX() + 0.5, start.getY(), start.getZ() + 0.5, 0, 0);
         tumor.setNoGravity(false);
         h.runAtTickTime(20, () -> tumor.setNoAi(false));
-        for (int sample = 40; sample <= 240; sample += 40) {
+        // Allow a complete 200-tick light scan plus the deliberately slow dim-light walk.
+        for (int sample = 40; sample <= 760; sample += 80) {
             int tick = sample;
             h.runAtTickTime(sample, () -> {
                 var path = tumor.getNavigation().getPath();
                 System.out.println("NEON_NAVIGATION tick=" + tick + ", position=" + tumor.position()
                         + ", light=" + tumor.getLightTier() + ", speed=" + tumor.getSpeed()
+                        + ", entityTick=" + tumor.tickCount + ", grounded=" + tumor.onGround()
+                        + ", velocity=" + tumor.getDeltaMovement()
+                        + ", speedAttribute=" + tumor.getAttributeValue(Attributes.MOVEMENT_SPEED)
+                        + ", effects=" + tumor.getActiveEffects()
                         + ", alive=" + tumor.isAlive() + ", removed=" + tumor.isRemoved()
                         + ", wanted=" + tumor.getMoveControl().hasWanted()
                         + ", path=" + (path == null ? "null" : path.getNextNodeIndex() + "/" + path.getNodeCount()

@@ -40,6 +40,6 @@ public final class SeekLightGoal extends Goal {
         return path != null;
     }
     @Override public boolean canContinueToUse() { return !tumor.isDormant() && tumor.getTarget() == null && !tumor.getNavigation().isDone(); }
-    @Override public void start() { tumor.getNavigation().moveTo(path, 0.6); }
+    @Override public void start() { tumor.getNavigation().moveTo(path, 1.0); }
     @Override public void stop() { tumor.getNavigation().stop(); path = null; }
 }
