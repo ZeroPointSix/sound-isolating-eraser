@@ -1,0 +1,208 @@
+package com.zeropointsix.eraser.gametest;
+
+import com.zeropointsix.eraser.ModMain;
+import com.zeropointsix.eraser.brickrot.BrickrotContent;
+import com.zeropointsix.eraser.brickrot.BrickrotPart;
+import com.zeropointsix.eraser.brickrot.BrickrotTrail;
+import com.zeropointsix.eraser.brickrot.BrickrotWallEntity;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.gametest.framework.GameTest;
+import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.damagesource.DamageType;
+import net.minecraft.world.damagesource.DamageTypes;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.Vec3;
+import net.minecraftforge.gametest.GameTestHolder;
+import net.minecraftforge.gametest.PrefixGameTestTemplate;
+
+@GameTestHolder(ModMain.MOD_ID)
+@PrefixGameTestTemplate(false)
+public final class BrickrotGameTests {
+    private static BrickrotWallEntity wall(GameTestHelper h) {
+        BrickrotWallEntity wall = h.spawn(BrickrotContent.WALL.get(), new BlockPos(32, 4, 25));
+        wall.setNoAi(true);
+        wall.setNoGravity(true);
+        wall.setYRot(0);
+        return wall;
+    }
+
+    private static DamageSource damage(GameTestHelper h, ResourceKey<DamageType> type) {
+        return new DamageSource(h.getLevel().registryAccess().registryOrThrow(Registries.DAMAGE_TYPE).getHolderOrThrow(type));
+    }
+
+    private static void near(GameTestHelper h, double actual, double expected, String message) {
+        h.assertTrue(Math.abs(actual - expected) < 0.02, message + ": expected " + expected + ", got " + actual);
+    }
+
+    private static float hit(BrickrotWallEntity wall, int part, DamageSource source, float amount) {
+        wall.invulnerableTime = 0;
+        float before = wall.getHealth();
+        wall.hurtPart(part, source, amount);
+        return before - wall.getHealth();
+    }
+
+    @GameTest(template = "brickrot_empty")
+    public static void brickrotMultipartRegistration(GameTestHelper h) {
+        BrickrotWallEntity wall = wall(h);
+        near(h, wall.getMaxHealth(), 300, "boss health");
+        h.assertTrue(wall.isMultipartEntity() && wall.getParts().length == 9, "one head plus nine parts");
+        for (int i = 0; i < 9; i++) {
+            BrickrotPart part = wall.getParts()[i];
+            h.assertTrue(part.getParent() == wall && part.getId() == wall.getId() + i + 1, "stable parent and packet ids");
+            h.assertTrue(!part.shouldBeSaved(), "parts never become independently saved entities");
+        }
+        h.assertTrue(BrickrotContent.SPAWN_EGG.get().getType(null) == BrickrotContent.WALL.get(), "egg creates the boss");
+        h.succeed();
+    }
+
+    @GameTest(template = "brickrot_empty")
+    public static void brickrotMeleeAndBreachedNeck(GameTestHelper h) {
+        BrickrotWallEntity wall = wall(h);
+        DamageSource source = damage(h, DamageTypes.GENERIC);
+        near(h, hit(wall, 0, source, 10), 10, "head damage");
+        near(h, hit(wall, 1, source, 10), 10, "intact neck damage");
+        near(h, hit(wall, 4, source, 10), 5, "body damage");
+        wall.setHealth(149);
+        hit(wall, 0, source, 1);
+        h.assertTrue(wall.phaseTwo(), "below half health breaches neck");
+        near(h, hit(wall, 1, source, 10), 20, "breached neck damage");
+        h.succeed();
+    }
+
+    @GameTest(template = "brickrot_empty")
+    public static void brickrotProjectileExplosionAndSharedCooldown(GameTestHelper h) {
+        BrickrotWallEntity wall = wall(h);
+        near(h, hit(wall, 4, damage(h, DamageTypes.ARROW), 16), 4, "projectile quarter damage overrides part multiplier");
+        DamageSource explosion = damage(h, DamageTypes.EXPLOSION);
+        near(h, hit(wall, 4, explosion, 10), 20, "explosion double damage");
+        float before = wall.getHealth();
+        for (BrickrotPart part : wall.getParts()) part.hurt(explosion, 10);
+        near(h, wall.getHealth(), before, "one explosion cannot damage all parts separately");
+        h.succeed();
+    }
+
+    @GameTest(template = "brickrot_empty")
+    public static void brickrotImmunitiesAndStagger(GameTestHelper h) {
+        BrickrotWallEntity wall = wall(h);
+        near(h, hit(wall, 0, damage(h, DamageTypes.LAVA), 20), 0, "lava immunity");
+        near(h, hit(wall, 0, damage(h, DamageTypes.IN_WALL), 20), 0, "wall suffocation immunity");
+        wall.stagger();
+        near(h, hit(wall, 0, damage(h, DamageTypes.GENERIC), 10), 15, "stagger amplifies damage");
+        near(h, hit(wall, 4, damage(h, DamageTypes.ARROW), 16), 6, "stagger also amplifies projectiles");
+        h.succeed();
+    }
+
+    @GameTest(template = "brickrot_empty")
+    public static void brickrotArcLengthTrail(GameTestHelper h) {
+        BrickrotTrail trail = new BrickrotTrail();
+        trail.reset(Vec3.ZERO, new Vec3(0, 0, 1));
+        for (int i = 1; i <= 20; i++) trail.record(new Vec3(0, 0, i * 0.5), new Vec3(0, 0, 1));
+        for (int i = 1; i <= 10; i++) trail.record(new Vec3(i, 0, 10), new Vec3(1, 0, 0));
+        near(h, trail.sample(5).distanceTo(new Vec3(5, 0, 10)), 0, "straight distance sampling");
+        near(h, trail.sample(15).distanceTo(new Vec3(0, 0, 5)), 0, "turn follows recorded path");
+        trail.record(new Vec3(200, 0, 0), new Vec3(1, 0, 0));
+        near(h, trail.sample(5).distanceTo(new Vec3(195, 0, 0)), 0, "teleport resets history");
+        h.succeed();
+    }
+
+    @GameTest(template = "brickrot_empty")
+    public static void brickrotLightLureAndLineOfSight(GameTestHelper h) {
+        BrickrotWallEntity wall = wall(h);
+        var villager = h.spawn(EntityType.VILLAGER, new BlockPos(32, 4, 31));
+        villager.setNoAi(true);
+        villager.setNoGravity(true);
+        var light = new ItemEntity(h.getLevel(), wall.getX() + 20, wall.getY(), wall.getZ(), new ItemStack(Items.TORCH));
+        light.setNoGravity(true);
+        h.getLevel().addFreshEntity(light);
+        h.assertTrue(wall.findQuarry() == light, "dropped light outranks closer living target");
+        h.getLevel().setBlock(wall.blockPosition().offset(10, 1, 0), Blocks.STONE.defaultBlockState(), 3);
+        h.assertTrue(wall.detectable(light), "dropped light can lure around obstacles");
+        light.discard();
+        h.assertTrue(wall.findQuarry() == villager, "living target is acquired without lure");
+        for (int x = -2; x <= 2; x++) for (int y = 0; y <= 4; y++)
+            h.getLevel().setBlock(wall.blockPosition().offset(x, y, 3), Blocks.STONE.defaultBlockState(), 3);
+        h.assertTrue(!wall.detectable(villager), "living target requires line of sight");
+        h.succeed();
+    }
+
+    @GameTest(template = "brickrot_empty")
+    public static void brickrotHeldLightRange(GameTestHelper h) {
+        BrickrotWallEntity wall = wall(h);
+        var villager = h.spawn(EntityType.VILLAGER, new BlockPos(32, 4, 55));
+        villager.setNoAi(true);
+        villager.setNoGravity(true);
+        h.assertTrue(!wall.detectable(villager), "unlit targets beyond 24 are hidden even in daylight");
+        villager.setItemSlot(EquipmentSlot.OFFHAND, new ItemStack(Items.LANTERN));
+        h.assertTrue(wall.detectable(villager), "offhand light extends range to 40");
+        h.assertTrue(!BrickrotWallEntity.luminous(new ItemStack(Items.DIRT)), "ordinary items do not glow");
+        h.succeed();
+    }
+
+    @GameTest(template = "brickrot_empty", timeoutTicks = 140)
+    public static void brickrotHardImpactAndRecovery(GameTestHelper h) {
+        BrickrotWallEntity wall = wall(h);
+        h.getLevel().setBlock(wall.blockPosition().offset(0, 0, 2), Blocks.BASALT.defaultBlockState(), 3);
+        wall.setNoAi(false);
+        wall.beginCharge(wall.position().add(0, 0, 20));
+        h.runAfterDelay(3, () -> h.assertTrue(wall.action() == BrickrotWallEntity.Action.STAGGER, "basalt causes stagger"));
+        h.runAfterDelay(95, () -> h.assertTrue(wall.action() == BrickrotWallEntity.Action.STAGGER, "stagger lasts five seconds"));
+        h.runAfterDelay(104, () -> {
+            h.assertTrue(wall.action() == BrickrotWallEntity.Action.SCAN, "stagger recovers into scan");
+            h.succeed();
+        });
+    }
+
+    @GameTest(template = "brickrot_empty")
+    public static void brickrotOrdinaryWallStopsWithoutStagger(GameTestHelper h) {
+        BrickrotWallEntity wall = wall(h);
+        BlockPos barrier = wall.blockPosition().offset(0, 0, 2);
+        h.getLevel().setBlock(barrier, Blocks.STONE.defaultBlockState(), 3);
+        wall.setNoAi(false);
+        wall.beginCharge(wall.position().add(0, 0, 20));
+        h.runAfterDelay(3, () -> {
+            h.assertTrue(wall.action() == BrickrotWallEntity.Action.SCAN, "ordinary stone stops without stagger");
+            h.assertTrue(h.getLevel().getBlockState(barrier).is(Blocks.STONE), "ordinary wall remains intact");
+            h.succeed();
+        });
+    }
+
+    @GameTest(template = "brickrot_empty")
+    public static void brickrotChargeIsStraightAndBounded(GameTestHelper h) {
+        BrickrotWallEntity wall = wall(h);
+        Vec3 start = wall.position();
+        wall.setNoAi(false);
+        wall.beginCharge(start.add(0, 0, 20));
+        h.runAfterDelay(10, () -> wall.setYRot(90));
+        h.runAfterDelay(30, () -> {
+            near(h, wall.getX(), start.x, "turning yaw cannot steer a charge");
+            near(h, wall.getZ() - start.z, 24, "charge stops at 24 blocks");
+            h.assertTrue(wall.action() == BrickrotWallEntity.Action.SCAN, "charge ends in scan");
+            h.succeed();
+        });
+    }
+
+    @GameTest(template = "brickrot_empty")
+    public static void brickrotHeadOnlySaveAndReload(GameTestHelper h) {
+        BrickrotWallEntity wall = wall(h);
+        wall.setHealth(149);
+        hit(wall, 0, damage(h, DamageTypes.GENERIC), 1);
+        CompoundTag saved = new CompoundTag();
+        wall.saveWithoutId(saved);
+        h.assertTrue(!saved.contains("Passengers") && !saved.contains("Parts"), "only head state is serialized");
+        BrickrotWallEntity loaded = BrickrotContent.WALL.get().create(h.getLevel());
+        loaded.load(saved);
+        near(h, loaded.getHealth(), 148, "health survives reload");
+        h.assertTrue(loaded.phaseTwo() && loaded.getParts().length == 9, "phase and multipart layout survive reload");
+        h.assertTrue(loaded.action() == BrickrotWallEntity.Action.SCAN, "reload starts a safe scan");
+        h.succeed();
+    }
+}
