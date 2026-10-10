@@ -1,0 +1,14 @@
+{
+  "parent": "minecraft:builtin/entity",
+  "gui_light": "front",
+  "textures": {
+    "layer0": "sound_isolating_eraser:item/wind_thunder_wings"
+  },
+  "display": {
+    "ground": {
+      "rotation": [0, 0, 0],
+      "translation": [0, 4, 0],
+      "scale": [1, 1, 1]
+    }
+  }
+}

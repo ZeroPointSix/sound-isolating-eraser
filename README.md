@@ -106,6 +106,23 @@ artifact (same filename), and publishes a GitHub Release with that jar attached.
 功能分支的 `Gravity Jade Validation` 工作流构建 jar 并运行原有及新增的 Forge GameTest，不发布 Release。
 工作流还会启动两个隔离的实际 Forge 客户端，以 X11 原生按键、滚轮和鼠标输入验证穿墙模型轮廓、预览与取消、可重绑定按键、私有感知隔离及公共重力场同步，并保存截图与日志证据。
 
+
+## Wind-Thunder Wings / 风雷翅
+
+银白金纹的飞行法宝，胸甲槽穿戴（同鞘翅惯例），消耗原版饥饿值——**没有也不新增灵力条**。
+
+- 物品：`sound_isolating_eraser:wind_thunder_wings`（EPIC 级，防火）与材料 `sound_isolating_eraser:thunder_feather`（雷鹏骨羽，幻翼被雷击陨落掉落）。
+- 展开/收起：空中双击空格；落地或入水自动收起。
+- 四档速度（G 切换）：悬停 ≤5 / 御风 30 / 疾风 60 / 神霄 120 m/s；H 切换悬停锚定。
+- 雷遁（R）：向视线方向闪现 24 格，12 tick 内连闪最多 3 次；满 3 次进入 160 tick 冷却，否则 40 tick。
+- 饥饿消耗：按档每秒 0.4/0.8/2.0/4.0 点 exhaustion（`wings/` 下 `FlightEvents.onPlayerTick` 调 `FoodData.addExhaustion`）；饥饿 <4 禁止展开，<6 限制为悬停/巡航，=0 强制悬停并附加缓降。
+- 被雷劈中：回满饥饿并获得 60 秒「充能」——期间飞行与雷遁不消耗饥饿。
+- HUD：右下角 64×16 铭牌（`textures/gui/wings_hud.png` 图集：四档图标 + 雷遁冷却环 + 充能珠 + 铭牌底），雷闪时有短暂白屏闪光；无灵力条。
+- 数值全部在 `serverconfig/sound_isolating_eraser-wings-server.toml`（独立文件名，避免与 gravity SERVER 配置冲突）与客户端 config 中可调。
+- 音效：`wind_loop`（飞行环境声）、`thunder_boom`（破档音爆）、`thunder_blink`（雷瞬）。
+- 合成：下界之星 + 雷鹏骨羽×2 + 鞘翅 + 避雷针×2 + 皮革胸甲（`data/.../recipes/wind_thunder_wings.json`）。
+
+美术与资源分包（`art/`）：A `art/A_concept/` 概念稿与 HUD 样张；B `art/B_model_preview/` Blender 三视图/穿戴/掉落渲染与 8 段动作视频；C `art/C_game_assets/` 已接入游戏的贴图。游戏贴图可由 `tools/generate_wings_textures.py`（PIL + 内嵌 NotoSansSC 字体）复现生成；`tools/blender_wings_scene.py` 为渲染脚本。上游 fenglei-wings 仓 PR #1 的脚本/清单/预览保留在 `art/upstream_pr1/`。
 ## 第二轮验收
 
 ```bash

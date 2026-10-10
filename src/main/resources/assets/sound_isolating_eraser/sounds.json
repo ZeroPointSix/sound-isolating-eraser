@@ -1,0 +1,11 @@
+{
+  "wind_loop": {
+    "sounds": ["sound_isolating_eraser:wind_loop"]
+  },
+  "thunder_boom": {
+    "sounds": ["sound_isolating_eraser:thunder_boom"]
+  },
+  "thunder_blink": {
+    "sounds": ["sound_isolating_eraser:thunder_blink"]
+  }
+}
