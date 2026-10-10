@@ -506,7 +506,7 @@ public final class BrickrotWallEntity extends Monster implements GeoEntity {
     }
     @Override protected void tickDeath() {
         // Keep vanilla removal/experience handling after the delayed body collapse has finished.
-        if (deathHold++ < 18) return;
+        if (deathHold++ < 22) return;
         super.tickDeath();
     }
     @Override protected ResourceLocation getDefaultLootTable() {

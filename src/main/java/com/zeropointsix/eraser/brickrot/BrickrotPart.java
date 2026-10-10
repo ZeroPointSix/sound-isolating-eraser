@@ -48,17 +48,25 @@ public final class BrickrotPart extends PartEntity<BrickrotWallEntity> implement
     @Override public AnimatableInstanceCache getAnimatableInstanceCache() { return cache; }
 
     @Override public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
-        controllers.add(new AnimationController<>(this, "body", 2, state -> {
+        controllers.add(new AnimationController<>(this, "body", 0, state -> {
             BrickrotWallEntity head = getParent();
-            String name = !head.isAlive() ? "segment_death"
-                    : index >= 4 && index <= 7 && head.action() == BrickrotWallEntity.Action.SWEEP
-                    ? "red_sweep" : index >= 8 ? "tail_pulse" : "segment_crawl";
+            if (!head.isAlive()) {
+                state.setControllerSpeed(1);
+                return state.setAndContinue(RawAnimation.begin().thenWait(index * 2)
+                        .thenPlayAndHold("animation.brickrot.segment_death"));
+            }
+            if (index >= 4 && index <= 7 && head.action() == BrickrotWallEntity.Action.SWEEP) {
+                state.setControllerSpeed(1);
+                RawAnimation sweep = RawAnimation.begin();
+                if (index > 4) sweep.thenWait(index - 4);
+                return state.setAndContinue(sweep.thenPlay("animation.brickrot.red_sweep"));
+            }
+            boolean moving = head.position().distanceToSqr(head.xo, head.yo, head.zo) > 1.0E-6;
             state.setControllerSpeed(head.action() == BrickrotWallEntity.Action.CHARGE ? 2.5F
-                    : head.action() == BrickrotWallEntity.Action.IDLE ? 0.35F : 1F);
-            return state.setAndContinue(!head.isAlive()
-                    ? RawAnimation.begin().thenPlayAndHold("animation.brickrot." + name)
-                    : name.equals("red_sweep") ? RawAnimation.begin().thenPlay("animation.brickrot." + name)
-                    : RawAnimation.begin().thenLoop("animation.brickrot." + name));
+                    : moving ? 1F : 0.35F);
+            // A one-time lead-in offsets the unchanged supplied looping animation.
+            return state.setAndContinue(RawAnimation.begin().thenWait(Math.round(index * 2.6F))
+                    .thenLoop("animation.brickrot." + (index >= 8 ? "tail_pulse" : "segment_crawl")));
         }));
     }
 }

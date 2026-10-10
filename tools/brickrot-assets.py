@@ -76,8 +76,10 @@ def main():
         validate(contents)
         for name in contents:
             if name.startswith("models/"):
-                contents[name] = (json.dumps(remap_namespace(json.loads(contents[name])),
-                                            ensure_ascii=False, indent=2) + "\n").encode()
+                # Forge 1.20.1 colors the vanilla two-layer egg; the supplied single
+                # texture model is for newer Minecraft versions and would be tinted twice.
+                contents[name] = (json.dumps({"parent": "minecraft:item/template_spawn_egg"},
+                                            indent=2) + "\n").encode()
         # Only the allowlisted asset paths are written; no archive paths are extracted.
         for name, data in contents.items():
             target = DEST / name

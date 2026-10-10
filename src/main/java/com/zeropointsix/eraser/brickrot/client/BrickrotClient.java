@@ -1,6 +1,7 @@
 package com.zeropointsix.eraser.brickrot.client;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Axis;
 import com.zeropointsix.eraser.ModMain;
 import com.zeropointsix.eraser.brickrot.BrickrotContent;
 import com.zeropointsix.eraser.brickrot.BrickrotPart;
@@ -47,14 +48,36 @@ public final class BrickrotClient {
         }
     }
 
-    private static final class HeadRenderer extends GeoEntityRenderer<BrickrotWallEntity> {
+    private static class DirectionalRenderer<T extends Entity & GeoEntity> extends GeoEntityRenderer<T> {
+        private DirectionalRenderer(EntityRendererProvider.Context context) {
+            super(context, new Model<>());
+            addRenderLayer(new AutoGlowingGeoLayer<>(this));
+        }
+
+        @Override protected void applyRotations(T entity, PoseStack poses, float age, float yaw, float partial) {
+            super.applyRotations(entity, poses, age, yaw, partial);
+            float pitch = entity instanceof BrickrotWallEntity head
+                    ? head.action() == BrickrotWallEntity.Action.DIVE
+                        ? Math.min(70, (head.actionElapsed() + partial) * 7) : 0
+                    : Mth.rotLerp(partial, entity.xRotO, entity.getXRot());
+            float center = entity instanceof BrickrotPart part
+                    ? part.index() == 1 ? 21F / 16 : part.index() >= 8 ? 15F / 16 : 20F / 16
+                    : 24F / 16;
+            poses.translate(0, center, 0);
+            poses.mulPose(Axis.XP.rotationDegrees(-pitch));
+            poses.translate(0, -center, 0);
+        }
+
+        // The supplied death clip already collapses the head and body in place.
+        @Override protected float getDeathMaxRotation(T entity) { return 0; }
+    }
+
+    private static final class HeadRenderer extends DirectionalRenderer<BrickrotWallEntity> {
         private final GeoEntityRenderer<BrickrotPart> body;
 
         private HeadRenderer(EntityRendererProvider.Context context) {
-            super(context, new Model<>());
-            addRenderLayer(new AutoGlowingGeoLayer<>(this));
-            body = new GeoEntityRenderer<>(context, new Model<>());
-            body.addRenderLayer(new AutoGlowingGeoLayer<>(body));
+            super(context);
+            body = new DirectionalRenderer<>(context);
             shadowRadius = 1.3F;
         }
 
