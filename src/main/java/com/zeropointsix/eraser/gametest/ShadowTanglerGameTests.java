@@ -19,6 +19,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LightBlock;
+import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.gametest.GameTestHolder;
 import net.minecraftforge.gametest.PrefixGameTestTemplate;
 import net.minecraftforge.fml.util.ObfuscationReflectionHelper;
@@ -57,6 +58,17 @@ public final class ShadowTanglerGameTests {
                 .append(" target=").append(path.getTarget()).append(" nodes=");
         for (int i = 0; i < path.getNodeCount(); i++) result.append(path.getNode(i).asBlockPos()).append(';');
         return result.toString();
+    }
+
+    private static void assertPromptEscape(GameTestHelper h, ShadowTanglerEntity mob, Vec3 origin) {
+        h.assertTrue(mob.isAlive() && mob.getTarget() == null, "escape remains alive without a combat target");
+        boolean dark = mob.getLightTier() == ShadowLight.DARK;
+        // After the 24-tick spawn lock, vanilla's 0.10 speed moves about 0.7 blocks by tick 60.
+        h.assertTrue(mob.position().subtract(origin).horizontalDistanceSqr() >= 0.25 || dark,
+                "prompt horizontal escape progress: " + escapeState(mob));
+        var path = mob.getNavigation().getPath();
+        h.assertTrue(dark || (path != null && path.canReach() && !mob.getNavigation().isDone()),
+                "escape follows a reachable path: " + escapeState(mob));
     }
 
     @GameTest(template = "shadow_arena")
@@ -192,13 +204,11 @@ public final class ShadowTanglerGameTests {
         var origin = mob.position();
         mob.getAttribute(Attributes.MAX_HEALTH).setBaseValue(200);
         mob.setHealth(200);
-        h.runAtTickTime(60, () -> {
-            h.assertTrue(mob.getTarget() == null, "bright flee does not retain combat target");
-            h.assertTrue(mob.position().distanceToSqr(origin) > 1 || mob.getLightTier() == ShadowLight.DARK,
-                    "mob makes real escape progress across light-tier path recalculations: " + escapeState(mob));
-        });
+        h.runAtTickTime(60, () -> assertPromptEscape(h, mob, origin));
+        h.runAtTickTime(100, () -> h.assertTrue(mob.position().subtract(origin).horizontalDistanceSqr() >= 1
+                || mob.getLightTier() == ShadowLight.DARK, "escape continues beyond one block: " + escapeState(mob)));
         h.runAtTickTime(300, () -> {
-            h.assertTrue(mob.getLightTier() == ShadowLight.DARK, "real navigation reaches a dark refuge");
+            h.assertTrue(mob.isAlive() && mob.getLightTier() == ShadowLight.DARK, "real navigation reaches a dark refuge");
             h.succeed();
         });
     }
@@ -252,10 +262,11 @@ public final class ShadowTanglerGameTests {
         var origin = mob.position();
         mob.getAttribute(Attributes.MAX_HEALTH).setBaseValue(200);
         mob.setHealth(200);
-        h.runAtTickTime(60, () -> h.assertTrue(mob.position().distanceToSqr(origin) > 1
-                || mob.getLightTier() == ShadowLight.DARK, "glass escape also starts promptly: " + escapeState(mob)));
+        h.runAtTickTime(60, () -> assertPromptEscape(h, mob, origin));
+        h.runAtTickTime(100, () -> h.assertTrue(mob.position().subtract(origin).horizontalDistanceSqr() >= 1
+                || mob.getLightTier() == ShadowLight.DARK, "glass escape continues beyond one block: " + escapeState(mob)));
         h.runAtTickTime(300, () -> {
-            h.assertTrue(mob.getLightTier() == ShadowLight.DARK, "glass floor is a valid dark refuge");
+            h.assertTrue(mob.isAlive() && mob.getLightTier() == ShadowLight.DARK, "glass floor is a valid dark refuge");
             h.succeed();
         });
     }
