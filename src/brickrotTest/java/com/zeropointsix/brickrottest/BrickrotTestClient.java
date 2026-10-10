@@ -16,6 +16,7 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.lwjgl.glfw.GLFW;
 import org.joml.Vector3f;
+import org.joml.Matrix4f;
 import software.bernie.geckolib.event.GeoRenderEvent;
 
 @Mod.EventBusSubscriber(modid = "brickrot_qa", value = Dist.CLIENT)
@@ -53,7 +54,9 @@ public final class BrickrotTestClient {
             if (phase.equals("turned")) {
                 float yaw = Mth.rotLerp(event.getPartialTick(), part.yRotO, part.getYRot());
                 require(Math.abs(Mth.wrapDegrees(yaw - 90)) < 3, "body follows the completed right-angle turn");
-                var forward = bone.getWorldSpaceMatrix().transformDirection(new Vector3f(0, 0, -1)).normalize();
+                // GeckoLib 4.4.9 translateMatrix adds an identity matrix to the tracked local transform.
+                var transform = new Matrix4f(bone.getLocalSpaceMatrix()).sub(new Matrix4f());
+                var forward = transform.transformDirection(new Vector3f(0, 0, -1)).normalize();
                 var expected = new Vector3f(-Mth.sin(yaw * Mth.DEG_TO_RAD), 0, Mth.cos(yaw * Mth.DEG_TO_RAD));
                 require(forward.dot(expected) > 0.99, "rendered part " + part.index() + " points along its trail: " + forward);
                 orientedParts |= 1 << (part.index() - 1);
