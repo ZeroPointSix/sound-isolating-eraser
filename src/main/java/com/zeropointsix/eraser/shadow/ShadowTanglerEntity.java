@@ -75,6 +75,7 @@ public final class ShadowTanglerEntity extends Monster implements GeoEntity {
     private int retreatTicks;
     private boolean shattered;
     private int attackWindup;
+    private int attackCooldown;
     private LivingEntity pendingAttack;
 
     public ShadowTanglerEntity(EntityType<? extends ShadowTanglerEntity> type, Level level) {
@@ -135,8 +136,11 @@ public final class ShadowTanglerEntity extends Monster implements GeoEntity {
             @Override public boolean canContinueToUse() { return canPursue() && super.canContinueToUse(); }
             @Override protected int getAttackInterval() { return 20; }
             @Override protected void checkAndPerformAttack(LivingEntity target, double distanceSqr) {
-                if (distanceSqr <= getAttackReachSqr(target) && isTimeToAttack() && canPursue()) {
+                if (distanceSqr <= getAttackReachSqr(target) && isTimeToAttack() && canPursue()
+                        && attackCooldown == 0 && pendingAttack == null) {
                     resetAttackCooldown();
+                    // Vanilla resets its goal-local cooldown whenever pursuit restarts.
+                    attackCooldown = getAttackInterval();
                     pendingAttack = target;
                     attackWindup = 5;
                     swing(InteractionHand.MAIN_HAND);
@@ -190,6 +194,7 @@ public final class ShadowTanglerEntity extends Monster implements GeoEntity {
     @Override
     public void tick() {
         if (!level().isClientSide && isAlive()) {
+            if (attackCooldown > 0) --attackCooldown;
             refreshLightTier();
             if (retreatTicks > 0 && getLightTier() == ShadowLight.DARK) --retreatTicks;
             dimTicks = getLightTier() == ShadowLight.DIM

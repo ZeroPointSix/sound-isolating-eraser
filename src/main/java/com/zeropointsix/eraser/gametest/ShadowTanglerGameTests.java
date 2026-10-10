@@ -17,6 +17,7 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.ExperienceOrb;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.ai.goal.MeleeAttackGoal;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LightBlock;
 import net.minecraft.world.phys.Vec3;
@@ -281,23 +282,39 @@ public final class ShadowTanglerGameTests {
         target.setHealth(200);
         int[] lastSwing = {-1}, previousHit = {-1}, hits = {0};
         boolean[] swinging = {false};
+        boolean[] interrupted = {false};
+        var meleeGoal = mob.goalSelector.getAvailableGoals().stream()
+                .filter(goal -> goal.getGoal() instanceof MeleeAttackGoal).findFirst().orElseThrow();
         float[] previousHealth = {200};
         for (int t = 1; t <= 130; t++) {
             final int tick = t;
             h.runAtTickTime(t, () -> {
-                if (mob.swinging && !swinging[0]) lastSwing[0] = tick;
+                if (mob.swinging && !swinging[0]) {
+                    h.assertTrue(lastSwing[0] < 0 || tick - lastSwing[0] >= 20,
+                            "swing interval never falls below 20 ticks: " + (tick - lastSwing[0]));
+                    lastSwing[0] = tick;
+                }
                 swinging[0] = mob.swinging;
                 if (target.getHealth() < previousHealth[0]) {
                     h.assertTrue(lastSwing[0] >= 24 && Math.abs(tick - lastSwing[0] - 5) <= 1,
                             "native AI waits for spawn and five-tick attack windup");
-                    h.assertTrue(previousHit[0] < 0 || Math.abs(tick - previousHit[0] - 20) <= 1,
-                            "stationary target receives one native hit every 20 ticks");
+                    h.assertTrue(previousHit[0] < 0 || tick - previousHit[0] >= 20,
+                            "successful native hits remain at least 20 ticks apart: " + (tick - previousHit[0])
+                                    + ", attacker=" + mob.position() + ", target=" + target.position());
                     previousHit[0] = tick;
                     previousHealth[0] = target.getHealth();
                     hits[0]++;
                 }
+                if (!interrupted[0] && hits[0] >= 2 && tick - previousHit[0] == 5) {
+                    meleeGoal.stop();
+                    h.assertTrue(!meleeGoal.isRunning(), "real melee goal stopped");
+                    meleeGoal.start();
+                    h.assertTrue(meleeGoal.isRunning(), "real melee goal restarted");
+                    interrupted[0] = true;
+                }
                 if (tick == 130) {
-                    h.assertTrue(hits[0] >= 2, "native AI actually attacked multiple times");
+                    h.assertTrue(interrupted[0] && hits[0] >= 3,
+                            "native AI resumes attacks after pursuit interruption: hits=" + hits[0]);
                     h.succeed();
                 }
             });
