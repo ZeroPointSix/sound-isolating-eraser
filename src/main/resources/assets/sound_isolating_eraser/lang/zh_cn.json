@@ -1,4 +1,11 @@
 {
+  "item.sound_isolating_eraser.super_fertilizer_bag": "超级肥料",
+  "item.sound_isolating_eraser.empty_fertilizer_bag": "空肥料袋",
+  "item.sound_isolating_eraser.fertile_fruit": "肥沃果实",
+  "block.sound_isolating_eraser.fertile_log": "肥沃原木",
+  "block.sound_isolating_eraser.fertile_leaves": "肥沃树叶",
+  "block.sound_isolating_eraser.fertile_planks": "肥沃木板",
+  "block.sound_isolating_eraser.fertile_sapling": "肥沃树苗",
   "item.sound_isolating_eraser.shaxiadao": "杀夏刀",
   "enchantment.sound_isolating_eraser.jijie_special_attack": "畸界特攻",
   "tooltip.sound_isolating_eraser.shaxiadao": "针对畸界怪物具有特殊攻击效果",

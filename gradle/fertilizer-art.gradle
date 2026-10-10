@@ -1,0 +1,395 @@
+import java.awt.image.BufferedImage
+import javax.imageio.ImageIO
+
+// 超级肥料体系的像素贴图（物品 32×32、方块 16×16）与袋子 3D 模型贴图（64×64）。
+// 全部由确定性哈希与字符图绘制，不读外部文件；同一份源码每次输出逐字节相同。
+ext.paintFertilizerArt = { File texRoot ->
+    def argb = { String hex, int a = 255 -> (a << 24) | Integer.parseInt(hex.substring(1), 16) }
+    def CLEAR = 0
+    def hash = { int x, int y, int seed ->
+        int h = x * 374761393 + y * 668265263 + seed * 144269504
+        h = (h ^ (h >>> 13)) * 1274126177
+        h = h ^ (h >>> 16)
+        (h & 0x7fffffff) / 2147483647.0d
+    }
+    // 周期值噪声（默认周期 32），保证贴图上下左右都能无缝平铺
+    def pnoise = { double x, double y, int cell, int seed, int period = 32 ->
+        int n = period.intdiv(cell)
+        double gx = x / cell, gy = y / cell
+        int ix = (int) Math.floor(gx), iy = (int) Math.floor(gy)
+        double fx = gx - ix, fy = gy - iy
+        fx = fx * fx * (3 - 2 * fx); fy = fy * fy * (3 - 2 * fy)
+        def at = { int i, int j -> hash(Math.floorMod(i, n), Math.floorMod(j, n), seed) }
+        double top = at(ix, iy) + (at(ix + 1, iy) - at(ix, iy)) * fx
+        double bot = at(ix, iy + 1) + (at(ix + 1, iy + 1) - at(ix, iy + 1)) * fx
+        top + (bot - top) * fy
+    }
+    def image = { int w = 32, int h = 32 -> new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB) }
+    def put = { BufferedImage img, int x, int y, int c ->
+        if (x >= 0 && y >= 0 && x < img.width && y < img.height) img.setRGB(x, y, c)
+    }
+    def solid = { BufferedImage img, int x, int y ->
+        x >= 0 && y >= 0 && x < img.width && y < img.height && (img.getRGB(x, y) >>> 24) != 0
+    }
+    def pick = { List<Integer> palette, double v -> palette[Math.max(0, Math.min(palette.size() - 1, (int) Math.floor(v * palette.size())))] }
+    def save = { BufferedImage img, String path ->
+        def file = new File(texRoot, path)
+        file.parentFile.mkdirs()
+        ImageIO.write(img, 'png', file)
+    }
+    def stamp = { BufferedImage img, List<String> rows, int ox, int oy, Map<String, Integer> colors, int scale = 1 ->
+        rows.eachWithIndex { String row, int j ->
+            for (int i = 0; i < row.length(); i++) {
+                def c = colors[row[i]]
+                if (c == null) continue
+                for (int sy = 0; sy < scale; sy++) for (int sx = 0; sx < scale; sx++) put(img, ox + i * scale + sx, oy + j * scale + sy, c)
+            }
+        }
+    }
+
+    // ---------- 袋子 ----------
+    // 银箔：line, d2, d1, m, l1, l2, hi
+    def FOIL = ['#2c3138', '#5b626c', '#7d858f', '#a3aab3', '#c6ccd3', '#e4e8ec', '#f8fafb'].collect { argb(it) }
+    def GREEN = [d: argb('#1f5a2a'), m: argb('#3c8f3a'), l: argb('#79c25f')]
+    // 未知植物：顶端小卷芽、三片不对称的叶、细根（与概念模型印花同一株）
+    def EMBLEM = [
+        '......mm....',
+        '.....m..m...',
+        '.....m.lm...',
+        '..ll..mm....',
+        '.lmmd.m.....',
+        '..ddmmm.....',
+        '......m..ll.',
+        '.ll...m.lmml',
+        'lmmll.mmmmd.',
+        '.dmmmmm.dd..',
+        '...ddmm.....',
+        '......m.....',
+        '.....dmd....',
+        '....d.d.d...'
+    ]
+    def grain = { BufferedImage img, int gx, int gy ->
+        put(img, gx, gy, argb('#ffffff', 245)); put(img, gx + 1, gy, argb('#e6eeea', 225))
+        put(img, gx, gy + 1, argb('#e6eeea', 225)); put(img, gx + 1, gy + 1, argb('#b5c6c0', 200))
+        if (!solid(img, gx + 2, gy + 1)) put(img, gx + 2, gy + 1, argb('#1c2024', 90))
+    }
+    def outline = { BufferedImage img, Closure<Boolean> sealRow ->
+        def snap = image()
+        for (int y = 0; y < 32; y++) for (int x = 0; x < 32; x++) snap.setRGB(x, y, img.getRGB(x, y))
+        for (int y = 0; y < 32; y++) for (int x = 0; x < 32; x++) {
+            if (!solid(snap, x, y)) continue
+            boolean edge = !solid(snap, x - 1, y) || !solid(snap, x + 1, y) || (!sealRow(y) && (!solid(snap, x, y - 1) || !solid(snap, x, y + 1)))
+            if (edge) put(img, x, y, FOIL[0])
+        }
+    }
+    def seal = { BufferedImage img, int y, int outer, int inner ->
+        for (int x = 5; x <= 26; x++) {
+            boolean stripe = x % 2 == 0
+            int c = y == outer ? (stripe ? FOIL[4] : FOIL[3]) : y == inner ? (stripe ? FOIL[3] : FOIL[2]) : (stripe ? FOIL[5] : FOIL[4])
+            if (y == outer && !stripe) continue // 锯齿外沿
+            put(img, x, y, c)
+        }
+    }
+    def bodyShade = { int x, int y, int s0, int s1, int offset ->
+        double f = (x - s0) / (double) (s1 - s0)
+        int lum = f < 0.08 ? 2 : f < 0.2 ? 5 : f < 0.3 ? 4 : f < 0.72 ? 3 : f < 0.88 ? 2 : 1
+        double h = hash(x, y, 7)
+        if (h > 0.93) lum++
+        else if (h < 0.06) lum--
+        if ((x + y) % 7 == 0 && y > 8 && y < 24 && f > 0.6) lum--
+        Math.max(1, Math.min(6, lum + 1 + offset))
+    }
+
+    def bag = image()
+    for (int y = 3; y <= 28; y++) {
+        if ((y >= 3 && y <= 5) || y >= 27) { seal(bag, y, y <= 5 ? 3 : 28, y <= 5 ? 5 : 27); continue }
+        int s0 = (y == 6 || y == 26) ? 7 : 6, s1 = (y == 6 || y == 26) ? 24 : 25
+        for (int x = s0; x <= s1; x++) {
+            int lum = bodyShade(x, y, s0, s1, 0)
+            if (y == 7 || y == 25) lum--
+            put(bag, x, y, FOIL[Math.max(1, lum)])
+        }
+    }
+    put(bag, 26, 4, CLEAR) // 撕口 V 槽
+    outline(bag) { int y -> (y >= 3 && y <= 5) || y >= 27 }
+    for (int x = 7; x <= 24; x++) { put(bag, x, 6, FOIL[1]); put(bag, x, 26, FOIL[1]) }
+    stamp(bag, EMBLEM, 10, 9, GREEN)
+    [[21, 29], [24, 30], [27, 29]].each { grain(bag, it[0], it[1]) }
+    save(bag, 'item/super_fertilizer_bag.png')
+
+    // 空袋：上封口连同一截袋身被撕掉，袋身压扁、暗一档、折痕更多，袋口露出内衬暗缝
+    def empty = image()
+    def tear = [6, 7, 6, 6, 7, 8, 7, 6, 7, 7, 6, 7, 8, 7, 6, 6, 7, 6, 7, 6]
+    for (int x = 6; x <= 25; x++) {
+        int top = tear[x - 6]
+        for (int y = top; y <= 26; y++) {
+            int lum = bodyShade(x, y, 6, 25, -1)
+            if (Math.floorMod(x - y, 9) == 0 && hash(x, y, 3) > 0.35) lum -= 2
+            else if (Math.floorMod(x - y, 9) == 1 && hash(x, y, 3) > 0.35) lum += 1
+            if (y == top + 1) lum = 1
+            put(empty, x, y, FOIL[Math.max(1, Math.min(5, lum))])
+        }
+    }
+    for (int y = 27; y <= 28; y++) seal(empty, y, 28, 27)
+    outline(empty) { int y -> y >= 27 }
+    for (int x = 6; x <= 25; x++) put(empty, x, 26, FOIL[1])
+    stamp(empty, EMBLEM, 10, 10, GREEN)
+    save(empty, 'item/empty_fertilizer_bag.png')
+
+    // ---------- 肥沃果实 ----------
+    // 卖相完美到不像长出来的：左右严格对称、饱和的红、干净利落的高光
+    def RED = ['#5a0d17', '#7c1420', '#a01c27', '#c42a2e', '#df4537', '#f06a4c'].collect { argb(it) }
+    def fruit = image()
+    double lx = -0.48, ly = -0.62, lz = 0.62
+    for (int y = 0; y < 32; y++) for (int x = 0; x < 32; x++) {
+        double px = x + 0.5, py = y + 0.5
+        double best = 9, nx = 0, ny = 0
+        [[12.6d, 18.6d], [19.4d, 18.6d]].each { c ->
+            double dx = (px - c[0]) / 9.6, dy = (py - c[1]) / 9.8
+            double d = dx * dx + dy * dy
+            if (d < best) { best = d; nx = dx; ny = dy }
+        }
+        if (best > 1) continue
+        double nz = Math.sqrt(Math.max(0, 1 - nx * nx - ny * ny))
+        // 以 x=16 为轴对称取法线，保证完全对称；光照只决定明暗
+        double shade = Math.max(0, nx * lx + ny * ly + nz * lz)
+        double v = 0.18 + shade * 0.86 - (py < 11.5 && Math.abs(px - 16) < 4 ? 0.25 : 0)
+        put(fruit, x, y, pick(RED, v))
+    }
+    def snapF = image()
+    for (int y = 0; y < 32; y++) for (int x = 0; x < 32; x++) snapF.setRGB(x, y, fruit.getRGB(x, y))
+    for (int y = 0; y < 32; y++) for (int x = 0; x < 32; x++)
+        if (solid(snapF, x, y) && (!solid(snapF, x - 1, y) || !solid(snapF, x + 1, y) || !solid(snapF, x, y - 1) || !solid(snapF, x, y + 1)))
+            put(fruit, x, y, argb('#3a0910'))
+    stamp(fruit, [
+        '..wwh.',
+        '.wwhh.',
+        '.wh...',
+        '.h....'
+    ], 8, 12, [w: argb('#fff4ec'), h: argb('#ffb59a')])
+    stamp(fruit, [
+        '.......kll.....',
+        '......kmmll....',
+        '...s.kmmmmlk...',
+        '...s.kmmmmk....',
+        '...st.kkkk.....',
+        '....s..........',
+        '....t..........'
+    ], 12, 3, [s: argb('#6b4a22'), t: argb('#4a3216'), k: argb('#1f4a1d'), m: argb('#3f8a34'), l: argb('#7cc35a')])
+    save(fruit, 'item/fertile_fruit.png')
+
+    // ---------- 肥沃方块：16×16，与原版方块像素密度一致 ----------
+    // 画法同原版：每个像素都有细微变化，纹理顺着木纹方向拉长（原木竖、木板横、树叶斜），
+    // 低对比、6 个相近色阶，Bayer 抖动避免色带；全部无缝平铺。
+    // 配色：蜂蜜偏橄榄的木色 + 饱和的深绿叶，与原版各木种都能区分开。
+    def BARK = ['#231a10', '#30241a', '#3e2f1f', '#4d3b25', '#5c482c', '#6c5533'].collect { argb(it) }
+    def MOSSY = ['#24221a', '#30301d', '#3e4022', '#4c5027', '#5a602d', '#697033'].collect { argb(it) }
+    def LIVE = ['#6d7a33', '#87953e'].collect { argb(it) }
+    def WOOD = ['#5d4520', '#75592a', '#8b6c33', '#9f7f3c', '#b19046', '#c0a050'].collect { argb(it) }
+    def PLANK = ['#5a4521', '#725a2b', '#887034', '#9c823d', '#ad9347', '#bca351'].collect { argb(it) }
+    def LEAF = ['#163b17', '#1e4d1d', '#2a6225', '#37782c', '#4a8f33', '#64a83d'].collect { argb(it) }
+    def BAYER = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]]
+    def quant = { List<Integer> pal, double v, int x, int y ->
+        double d = (BAYER[y & 3][x & 3] - 7.5) / 16.0 / pal.size()
+        pick(pal, Math.max(0, Math.min(0.999, v + d)))
+    }
+    // 各向异性周期噪声（周期 16）：cx、cy 分别是 x、y 方向的格子大小
+    def anoise = { double x, double y, int cx, int cy, int seed ->
+        int nx = 16.intdiv(cx), ny = 16.intdiv(cy)
+        double gx = x / cx, gy = y / cy
+        int ix = (int) Math.floor(gx), iy = (int) Math.floor(gy)
+        double fx = gx - ix, fy = gy - iy
+        fx = fx * fx * (3 - 2 * fx); fy = fy * fy * (3 - 2 * fy)
+        def at = { int i, int j -> hash(Math.floorMod(i, nx), Math.floorMod(j, ny), seed) }
+        double top = at(ix, iy) + (at(ix + 1, iy) - at(ix, iy)) * fx
+        double bot = at(ix, iy + 1) + (at(ix + 1, iy + 1) - at(ix, iy + 1)) * fx
+        top + (bot - top) * fy
+    }
+
+    // 原木侧面：每列独立的竖向长纹 + 中等尺度的明暗起伏 + 像素级细节；部分竖纹带青苔绿
+    def barkAt = { int x, int y ->
+        double v = anoise(x, y, 1, 8, 201) * 0.5 + anoise(x, y, 2, 4, 202) * 0.3 + hash(x, y, 203) * 0.2
+        v = (v - 0.2) / 0.65
+        double moss = anoise(x, y, 4, 8, 204) * 0.7 + anoise(x, y, 1, 4, 205) * 0.3
+        quant(moss > 0.7 ? MOSSY : BARK, v, x, y)
+    }
+    def log = image(16, 16)
+    for (int y = 0; y < 16; y++) for (int x = 0; x < 16; x++) put(log, x, y, barkAt(x, y))
+    save(log, 'block/fertile_log.png')
+
+    // 原木顶面：1 像素树皮边、一圈嫩绿形成层、1 像素一圈的方形年轮（外暗内亮），髓心 2×2
+    def logTop = image(16, 16)
+    for (int y = 0; y < 16; y++) for (int x = 0; x < 16; x++) {
+        int ring = Math.min(Math.min(x, 15 - x), Math.min(y, 15 - y)) // 0 = 最外圈
+        double n = hash(x, y, 211)
+        int c
+        if (ring == 0) { put(logTop, x, y, quant(BARK, 0.3 + n * 0.45, x, y)); continue }
+        if (ring == 1) { put(logTop, x, y, n > 0.25 ? LIVE[n > 0.7 ? 1 : 0] : WOOD[2]); continue }
+        // 暗亮交替的方形年轮（2/4/6 圈为暗线），越往中心越亮；髓心 2×2 偏暗
+        if (ring == 7) c = 2
+        else if (ring % 2 == 0) c = ring == 2 ? 1 : 2
+        else c = ring == 3 ? 3 : ring == 5 ? 4 : 5
+        if (n > 0.88) c++
+        else if (n < 0.08) c--
+        put(logTop, x, y, WOOD[Math.max(0, Math.min(5, c))])
+    }
+    save(logTop, 'block/fertile_log_top.png')
+
+    // 木板：4 条板各 4 像素；上沿亮、下沿是稍暗的接缝；板面横向细纹；端缝错开
+    def JOINTS = [3, 11, 7, 14]
+    def planks = image(16, 16)
+    for (int y = 0; y < 16; y++) for (int x = 0; x < 16; x++) {
+        int board = y.intdiv(4), row = y % 4
+        double v = [0.66, 0.58, 0.52, 0.2][row]
+        v += (anoise(x, y, 8, 1, 221 + board) - 0.5) * 0.32 + (hash(x, y, 225) - 0.5) * 0.12
+        int j = JOINTS[board]
+        if (x == j) v -= 0.3
+        else if (x == Math.floorMod(j + 1, 16)) v += 0.08
+        put(planks, x, y, quant(PLANK, v, x, y))
+    }
+    save(planks, 'block/fertile_planks.png')
+
+    // 树叶：斜向叶纹（沿 x+y 方向拉长），零星单像素镂空，最暗的一档几乎像孔洞以做出纵深
+    def leafV = { int x, int y ->
+        double u = Math.floorMod(x + y, 16), w = Math.floorMod(x - y, 16)
+        anoise(u, w, 4, 1, 231) * 0.55 + anoise(x, y, 4, 4, 232) * 0.25 + hash(x, y, 233) * 0.2
+    }
+    def leaves = image(16, 16)
+    for (int y = 0; y < 16; y++) for (int x = 0; x < 16; x++) {
+        double v = leafV(x, y)
+        if (v < 0.24 && hash(x, y, 234) > 0.35) continue
+        put(leaves, x, y, quant(LEAF, (v - 0.26) / 0.48, x, y))
+    }
+    save(leaves, 'block/fertile_leaves.png')
+
+    // 蓬松叶边：交叉面片用，同一套叶纹，按成团的噪声镂空约六成
+    def fringe = image(16, 16)
+    for (int y = 0; y < 16; y++) for (int x = 0; x < 16; x++) {
+        if (anoise(x, y, 4, 4, 241) < 0.55) continue
+        put(fringe, x, y, quant(LEAF, (leafV(x, y) - 0.15) / 0.65, x, y))
+    }
+    save(fringe, 'block/fertile_leaves_fringe.png')
+
+    // 挂果用的小贴图：[0,0)-(4,4) 果面（左上高光），[4,0)-(6,2) 果柄，[6,0)-(8,2) 果顶
+    def fruitTex = image(16, 16)
+    stamp(fruitTex, ['hrrq', 'rrrq', 'rrqd', 'qqdd'], 0, 0, [h: argb('#ff9a76'), r: argb('#d8432f'), q: argb('#a52a28'), d: argb('#6e1820')])
+    stamp(fruitTex, ['st', 'ts'], 4, 0, [s: argb('#6b4a22'), t: argb('#4a3216')])
+    stamp(fruitTex, ['qr', 'rq'], 6, 0, [r: argb('#c43a2c'), q: argb('#8f2326')])
+    save(fruitTex, 'block/fertile_leaves_fruit.png')
+
+    // 树苗：与袋子印花同一株——顶端卷芽、互生宽叶、茎下粗上细
+    def sapling = image(16, 16)
+    stamp(sapling, [
+        '................',
+        '.......mm.......',
+        '......m..m......',
+        '......m.lm......',
+        '.......mm.......',
+        '..ll....m.......',
+        '.lmmd..m...ll...',
+        '..ddmm.m.llmmd..',
+        '......mmmmdd....',
+        '.......s........',
+        '..llm..s........',
+        '.lmmmdds..lll...',
+        '..ddd..s.lmmmd..',
+        '.......smmddd...',
+        '.......st.......',
+        '.......st.......'
+    ], 0, 0, [d: GREEN.d, m: GREEN.m, l: GREEN.l, s: argb('#55702c'), t: argb('#3b4f1f')])
+    save(sapling, 'block/fertile_sapling.png')
+
+    // ---------- 袋子 3D 模型贴图 64×64（1 模型单位 = 4 像素） ----------
+    // [0,0)-(30,37) 正面印花板；[32,0)-(62,37) 背面；[0,40)-(32,44) 封口压纹；[32,40)-(40,64) 侧边
+    def model = image(64, 64)
+    def panel = { int ox, boolean printed ->
+        for (int y = 0; y < 37; y++) for (int x = 0; x < 30; x++) {
+            double f = x / 29.0
+            double v = f < 0.06 ? 0.35 : f < 0.22 ? 0.92 : f < 0.32 ? 0.75 : f < 0.7 ? 0.55 : f < 0.88 ? 0.38 : 0.22
+            v += (pnoise(x, y, 4, ox + 71) - 0.5) * 0.18
+            if (Math.floorMod(x + y, 11) == 0 && hash(x, y, ox) > 0.5) v -= 0.18
+            if (y < 2 || y > 34) v -= 0.15
+            put(model, ox + x, y, pick(FOIL.subList(1, 7), v))
+        }
+        if (printed) stamp(model, EMBLEM, ox + 3, 4, GREEN, 2)
+    }
+    panel(0, true)
+    panel(32, false)
+    for (int y = 40; y < 44; y++) for (int x = 0; x < 32; x++) {
+        boolean stripe = x % 2 == 0
+        put(model, x, y, y == 40 || y == 43 ? (stripe ? FOIL[3] : FOIL[2]) : (stripe ? FOIL[5] : FOIL[4]))
+    }
+    for (int y = 40; y < 64; y++) for (int x = 32; x < 40; x++)
+        put(model, x, y, pick(FOIL.subList(1, 6), 0.35 + (x - 32) / 7.0 * 0.4 + (hash(x, y, 81) - 0.5) * 0.15))
+    save(model, 'item/super_fertilizer_bag_model.png')
+}
+
+// 蓬松树叶：普通整块 + 两片 45° 交叉的叶边面片，面片略伸出方块角与上下沿，
+// 让树冠轮廓毛茸茸的（思路同 Better Leaves 一类资源包），不需要任何代码或 shader。
+ext.bushyLeaves = { String all, String fringe, String fruit = null ->
+    def cube = [:]
+    ['north', 'south', 'east', 'west', 'up', 'down'].each { cube[it] = [uv:[0, 0, 16, 16], texture:'#all', cullface:it] }
+    def plane = { List from, List to, List faces ->
+        def f = [:]
+        faces.each { f[it] = [uv:[0, 0, 16, 16], texture:'#fringe'] }
+        [from:from, to:to, rotation:[origin:[8, 8, 8], axis:'y', angle:45, rescale:true], faces:f]
+    }
+    def elements = [[from:[0, 0, 0], to:[16, 16, 16], faces:cube],
+                    plane([-1, -1.5, 8], [17, 17.5, 8], ['north', 'south']),
+                    plane([8, -1.5, -1], [8, 17.5, 17], ['east', 'west'])]
+    def textures = [all:all, fringe:fringe, particle:all]
+    if (fruit) {
+        // 3 像素见方的小果 + 1 像素果柄，一颗垂在底面、一颗贴在侧面；在树冠内部会被相邻树叶挡住，只在外缘露出
+        textures.fruit = fruit
+        def berry = { List from, List to ->
+            def f = [:]
+            ['north', 'south', 'east', 'west'].each { f[it] = [uv:[0, 0, 4, 4], texture:'#fruit'] }
+            f.up = [uv:[6, 0, 8, 2], texture:'#fruit']; f.down = [uv:[1, 1, 4, 4], texture:'#fruit']
+            [from:from, to:to, faces:f]
+        }
+        def stem = { List from, List to ->
+            def f = [:]
+            ['north', 'south', 'east', 'west', 'up', 'down'].each { f[it] = [uv:[4, 0, 5, 1], texture:'#fruit'] }
+            [from:from, to:to, faces:f]
+        }
+        elements += [stem([10, -1, 5.5], [11, 0, 6.5]), berry([9, -4, 4.5], [12, -1, 7.5]),
+                     stem([3.5, 9, 16], [4.5, 10, 17]), berry([2.5, 6, 16], [5.5, 9, 18.5])]
+    }
+    [parent:'minecraft:block/block', render_type:'minecraft:cutout_mipped', textures:textures, elements:elements]
+}
+
+// 超级肥料袋 3D 模型：袋身 + 前后两层鼓包（枕式袋的鼓起）+ 上下压纹封口。
+// 贴图 64×64，1 个 UV 单位 = 4 像素；正面各层按相对袋身的位置取 UV，印花在层与层之间连续。
+ext.bagModel = { String tex, String particle ->
+    def side = [8, 10, 10, 16]
+    def box = { List from, List to, Map faces -> [from:from, to:to, faces:faces.collectEntries { k, v -> [(k): [uv:v, texture:'#bag']] }] }
+    def layer = { double x0, double y0, double x1, double y1, double z0, double z1, boolean front ->
+        // 正面 UV：相对袋身左上角 (4.25, 12.5) 的偏移；背面镜像取背板
+        def south = [x0 - 4.25, 12.5 - y1, x1 - 4.25, 12.5 - y0]
+        def north = [8 + (11.75 - x1), 12.5 - y1, 8 + (11.75 - x0), 12.5 - y0]
+        def faces = [east:side, west:side, up:[8, 10, 10, 11], down:[8, 10, 10, 11]]
+        faces[front ? 'south' : 'north'] = front ? south : north
+        box([x0, y0, z0], [x1, y1, z1], faces)
+    }
+    def seal = { double y0, double y1 ->
+        box([4, y0, 7.85], [12, y1, 8.15], [north:[0, 10, 8, 11], south:[0, 10, 8, 11], east:[0, 10, 0.3, 11], west:[0, 10, 0.3, 11], up:[0, 10, 8, 10.25], down:[0, 10, 8, 10.25]])
+    }
+    def t = { List r, List tr, double s -> [rotation:r, translation:tr, scale:[s, s, s]] }
+    [textures:[bag:tex, particle:particle],
+     elements:[
+         box([4.25, 3.25, 7], [11.75, 12.5, 9], [south:[0, 0, 7.5, 9.25], north:[8, 0, 15.5, 9.25], east:side, west:side, up:[8, 10, 10, 11], down:[8, 10, 10, 11]]),
+         layer(4.75, 4, 11.25, 11.75, 9, 9.5, true),
+         layer(5.5, 5, 10.5, 10.75, 9.5, 9.85, true),
+         layer(4.75, 4, 11.25, 11.75, 6.5, 7, false),
+         layer(5.5, 5, 10.5, 10.75, 6.15, 6.5, false),
+         seal(12.5, 13.75),
+         seal(2.25, 3.25)],
+     display:[
+         thirdperson_righthand:t([0, 0, 0], [0, 2.5, 0.5], 0.85),
+         thirdperson_lefthand:t([0, 0, 0], [0, 2.5, 0.5], 0.85),
+         firstperson_righthand:t([0, -90, 25], [1.13, 3.2, 1.13], 0.95),
+         firstperson_lefthand:t([0, 90, -25], [1.13, 3.2, 1.13], 0.95),
+         ground:t([0, 0, 0], [0, 2, 0], 0.8),
+         fixed:t([0, 180, 0], [0, 0, 0], 1.5),
+         head:t([0, 180, 0], [0, 13, 7], 1)]]
+}
