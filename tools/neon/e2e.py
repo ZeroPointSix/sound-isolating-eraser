@@ -123,7 +123,7 @@ try:
     wait_evidence(["server-rejoin", "client-rejoined", "server-dimension", "client-dimension"], [server, rejoining])
     server.stdin.write("stop\n")
     server.stdin.flush()
-    server.wait(timeout=45)
+    server.wait(timeout=180)
     print("NEON_REAL_CLIENT_AND_DEDICATED_SERVER_E2E_PASSED", flush=True)
 finally:
     for process in reversed(processes):

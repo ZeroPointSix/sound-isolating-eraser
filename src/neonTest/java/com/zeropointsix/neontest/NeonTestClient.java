@@ -124,8 +124,15 @@ public final class NeonTestClient {
             var mc = Minecraft.getInstance();
             if (mc.level == null || mc.player == null || mc.screen != null) return;
             try (var screenshot = Screenshot.takeScreenshot(mc.getMainRenderTarget())) {
-                screenshot.writeToFile(RESULTS.resolve("baseline.png"));
                 var pos = mc.player.blockPosition();
+                int brightness = mc.level.getMaxLocalRawBrightness(pos);
+                if (brightness < 11) {
+                    Files.writeString(RESULTS.resolve("client-lighting.txt"), "ticks=" + ticks + ", raw=" + brightness
+                            + ", sky=" + mc.level.getBrightness(net.minecraft.world.level.LightLayer.SKY, pos));
+                    require(ticks < 400, "sunlit control scene must receive bright client light data");
+                    return;
+                }
+                screenshot.writeToFile(RESULTS.resolve("baseline.png"));
                 Files.writeString(RESULTS.resolve("client-baseline.pass"), "sky="
                         + mc.level.getBrightness(net.minecraft.world.level.LightLayer.SKY, pos)
                         + ", block=" + mc.level.getBrightness(net.minecraft.world.level.LightLayer.BLOCK, pos)
