@@ -272,7 +272,7 @@ public final class EraserGameTests {
     }
 
     @GameTest(template = "empty", timeoutTicks = 60)
-    public static void mobSeesThroughButCannotCross(GameTestHelper h) {
+    public static void lowTierMobCannotSenseThroughWall(GameTestHelper h) {
         ServerLevel level = h.getLevel();
         for (int x = 6; x <= 8; x++) {
             for (int z = 4; z <= 8; z++) {
@@ -286,8 +286,8 @@ public final class EraserGameTests {
         Zombie zombie = h.spawn(EntityType.ZOMBIE, new BlockPos(6, 2, 6));
         FakePlayer bait = playerAt(h,
                 Vec3.atCenterOf(h.absolutePos(new BlockPos(8, 2, 6))));
-        h.assertTrue(zombie.getSensing().hasLineOfSight(bait),
-                "the transparent wall must not block mob line of sight");
+        h.assertTrue(!zombie.getSensing().hasLineOfSight(bait),
+                "tagged low-tier mobs must not sense a player behind the wall");
         h.assertTrue(!level.getBlockState(h.absolutePos(new BlockPos(7, 3, 6)))
                 .getCollisionShape(level, h.absolutePos(new BlockPos(7, 3, 6))).isEmpty(),
                 "the wall still collides like a solid block");

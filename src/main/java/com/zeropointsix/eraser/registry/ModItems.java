@@ -5,6 +5,8 @@ import com.zeropointsix.eraser.item.SoundIsolatingEraserItem;
 import com.zeropointsix.eraser.item.GravityJadePendantItem;
 import com.zeropointsix.eraser.item.WindThunderWingsItem;
 import com.zeropointsix.eraser.item.ThunderFeatherItem;
+import com.zeropointsix.eraser.item.EnhancementPillPackItem;
+import com.zeropointsix.eraser.item.ShaxiadaoItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Rarity;
 import net.minecraftforge.registries.DeferredRegister;
@@ -17,6 +19,14 @@ public final class ModItems {
 
     public static final RegistryObject<GravityJadePendantItem> GRAVITY_JADE_PENDANT =
             ITEMS.register("gravity_jade_pendant", GravityJadePendantItem::new);
+
+    public static final RegistryObject<EnhancementPillPackItem> ENHANCEMENT_PILL_PACK =
+            ITEMS.register("enhancement_pill_pack", EnhancementPillPackItem::new);
+    public static final RegistryObject<Item> EMPTY_PILL_PACK =
+            ITEMS.register("empty_pill_pack", () -> new Item(new Item.Properties().stacksTo(1)));
+
+    public static final RegistryObject<ShaxiadaoItem> SHAXIADAO =
+            ITEMS.register("shaxiadao", ShaxiadaoItem::new);
 
     public static final RegistryObject<SoundIsolatingEraserItem> SOUND_ISOLATING_ERASER =
             ITEMS.register("sound_isolating_eraser",

@@ -192,7 +192,8 @@ public final class FlightEvents {
     @SubscribeEvent
     public static void onPlayerTick(TickEvent.PlayerTickEvent event) {
         if (event.phase != TickEvent.Phase.END || event.player.level().isClientSide) return;
-        ServerPlayer p = (ServerPlayer) event.player;
+        // GameTest mock players are server-side Players but not ServerPlayers.
+        if (!(event.player instanceof ServerPlayer p)) return;
         WingsConfig.Server cfg = WingsConfig.SERVER;
 
         if (!WingsState.wearing(p)) {
