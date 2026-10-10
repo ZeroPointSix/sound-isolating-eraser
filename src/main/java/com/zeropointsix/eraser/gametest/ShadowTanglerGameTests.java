@@ -26,12 +26,18 @@ import net.minecraftforge.fml.util.ObfuscationReflectionHelper;
 @GameTestHolder(ModMain.MOD_ID)
 @PrefixGameTestTemplate(false)
 public final class ShadowTanglerGameTests {
-    private static final BlockPos CENTER = new BlockPos(12, 1, 12);
+    // GameTest places template y=0 at helper y=1, above its structure block.
+    private static final BlockPos CENTER = new BlockPos(12, 2, 12);
 
     private static ShadowTanglerEntity spawn(GameTestHelper h, int brightness, boolean noAi) {
+        h.assertTrue(!h.getBlockState(CENTER.below()).getCollisionShape(h.getLevel(), h.absolutePos(CENTER.below())).isEmpty(),
+                "arena has solid support beneath the spawn position");
+        h.assertTrue(h.getBlockState(CENTER).isAir() && h.getBlockState(CENTER.above()).isAir(),
+                "spawn and light source are above the floor, not inside it");
         h.setBlock(CENTER, Blocks.LIGHT.defaultBlockState().setValue(LightBlock.LEVEL, brightness));
         ShadowTanglerEntity mob = h.spawn(ModEntities.SHADOW_TANGLER.get(), CENTER);
         mob.setNoAi(noAi);
+        h.assertTrue(h.getLevel().noCollision(mob, mob.getBoundingBox()), "spawn has full collision clearance");
         return mob;
     }
 
@@ -57,7 +63,7 @@ public final class ShadowTanglerGameTests {
     public static void shadowRegistrationAndSpawnLock(GameTestHelper h) {
         ShadowTanglerEntity mob = spawn(h, 0, false);
         double x = mob.getX(), z = mob.getZ();
-        var target = h.spawn(EntityType.VILLAGER, new BlockPos(14, 1, 12));
+        var target = h.spawn(EntityType.VILLAGER, new BlockPos(14, 2, 12));
         target.setNoAi(true);
         mob.setTarget(target);
         h.assertTrue(mob.getTarget() == null && !mob.doHurtTarget(target), "spawn prevents targeting and attacks");
@@ -82,7 +88,7 @@ public final class ShadowTanglerGameTests {
     @GameTest(template = "shadow_arena")
     public static void shadowDarkResistanceAndMelee(GameTestHelper h) {
         ShadowTanglerEntity mob = spawn(h, 0, true);
-        var target = h.spawn(EntityType.VILLAGER, new BlockPos(14, 1, 12));
+        var target = h.spawn(EntityType.VILLAGER, new BlockPos(14, 2, 12));
         target.setNoAi(true);
         h.runAtTickTime(30, () -> {
             mob.refreshLightTier();
@@ -125,7 +131,7 @@ public final class ShadowTanglerGameTests {
     @GameTest(template = "shadow_arena", timeoutTicks = 140)
     public static void shadowDimRetreatAndPersistence(GameTestHelper h) {
         ShadowTanglerEntity mob = spawn(h, 8, true);
-        var target = h.spawn(EntityType.VILLAGER, new BlockPos(14, 1, 12));
+        var target = h.spawn(EntityType.VILLAGER, new BlockPos(14, 2, 12));
         target.setNoAi(true);
         h.runAtTickTime(30, () -> {
             mob.refreshLightTier();
@@ -217,7 +223,7 @@ public final class ShadowTanglerGameTests {
             player.setItemInHand(InteractionHand.MAIN_HAND, stack);
             player.getAttributes().addTransientAttributeModifiers(stack.getAttributeModifiers(EquipmentSlot.MAINHAND));
             player.setOnGround(true);
-            player.moveTo(h.absolutePos(new BlockPos(10, 1, 12)), 0, 0);
+            player.moveTo(h.absolutePos(new BlockPos(10, 2, 12)), 0, 0);
             ObfuscationReflectionHelper.setPrivateValue(LivingEntity.class, player, 100, "f_20922_");
             mob.invulnerableTime = 0;
             float before = mob.getHealth();
@@ -240,7 +246,7 @@ public final class ShadowTanglerGameTests {
     @GameTest(template = "shadow_arena", timeoutTicks = 400)
     public static void shadowEscapesAcrossGlass(GameTestHelper h) {
         for (int x = 1; x < 24; x++) for (int z = 1; z < 24; z++) {
-            h.setBlock(new BlockPos(x, 0, z), Blocks.GLASS);
+            h.setBlock(new BlockPos(x, 1, z), Blocks.GLASS);
         }
         ShadowTanglerEntity mob = spawn(h, 15, false);
         var origin = mob.position();
@@ -257,7 +263,7 @@ public final class ShadowTanglerGameTests {
     @GameTest(template = "shadow_arena", timeoutTicks = 160)
     public static void shadowMeleeWindupAndInterval(GameTestHelper h) {
         ShadowTanglerEntity mob = spawn(h, 0, false);
-        var target = h.spawn(EntityType.VILLAGER, new BlockPos(13, 1, 12));
+        var target = h.spawn(EntityType.VILLAGER, new BlockPos(13, 2, 12));
         target.setNoAi(true);
         target.getAttribute(Attributes.MAX_HEALTH).setBaseValue(200);
         target.getAttribute(Attributes.KNOCKBACK_RESISTANCE).setBaseValue(1);
@@ -290,7 +296,7 @@ public final class ShadowTanglerGameTests {
     @GameTest(template = "shadow_arena", timeoutTicks = 200)
     public static void shadowRetreatCooldownStartsInDark(GameTestHelper h) {
         ShadowTanglerEntity mob = spawn(h, 15, true);
-        var target = h.spawn(EntityType.VILLAGER, new BlockPos(14, 1, 12));
+        var target = h.spawn(EntityType.VILLAGER, new BlockPos(14, 2, 12));
         target.setNoAi(true);
         h.runAtTickTime(30, () -> h.setBlock(CENTER,
                 Blocks.LIGHT.defaultBlockState().setValue(LightBlock.LEVEL, 8)));
