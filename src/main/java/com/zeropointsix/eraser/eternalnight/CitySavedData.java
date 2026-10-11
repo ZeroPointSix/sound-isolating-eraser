@@ -56,6 +56,14 @@ public final class CitySavedData extends SavedData {
 
     public boolean hasBoss(long region) { return bosses.containsKey(region); }
 
+    /** Clears exits and boss reservations; intended for GameTest batch isolation. */
+    public void clearForTesting() {
+        if (exits.isEmpty() && bosses.isEmpty()) return;
+        exits.clear();
+        bosses.clear();
+        setDirty();
+    }
+
     public void releaseBoss(UUID uuid) {
         if (bosses.values().removeIf(uuid::equals)) setDirty();
     }

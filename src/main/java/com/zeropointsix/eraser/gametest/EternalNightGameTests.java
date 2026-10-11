@@ -26,6 +26,10 @@ public final class EternalNightGameTests {
     @BeforeBatch(batch = "eternal_night")
     public static void isolateConfig(ServerLevel level) {
         liveConfig = GameTestConfigs.sandbox(NightConfig.SPEC);
+        // SavedData lives on the shared city level and leaks between tests
+        // (exits, boss reservations) — reset it so batch order cannot matter.
+        ServerLevel city = level.getServer().getLevel(EternalNightContent.LEVEL);
+        if (city != null) CitySavedData.get(city).clearForTesting();
     }
 
     @AfterBatch(batch = "eternal_night")

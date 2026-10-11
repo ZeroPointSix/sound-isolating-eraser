@@ -82,7 +82,9 @@ public final class NightEvents {
                 if (pos.distToCenterSqr(player.position()) > 25 || !level.hasChunkAt(pos)) continue;
                 BlockState state = level.getBlockState(pos);
                 if (!(state.getBlock() instanceof DoorBlock) || !state.getValue(DoorBlock.OPEN)) continue;
-                if (crossedDoor(previous, player.position(), pos, state.getValue(DoorBlock.FACING))) {
+                if (crossedDoor(previous, player.position(), pos, state.getValue(DoorBlock.FACING))
+                        || player.getBoundingBox().intersects(new AABB(pos.getX(), pos.getY(), pos.getZ(),
+                                pos.getX() + 1, pos.getY() + 2, pos.getZ() + 1).inflate(0.05, 0, 0.05))) {
                     returnHome(player);
                     break;
                 }
@@ -201,8 +203,13 @@ public final class NightEvents {
             }
         }
         if (target == null) {
+            // Never strand a visitor in the city: fall back to the shared spawn column.
+            BlockPos spawn = overworld.getSharedSpawnPos();
+            int y = overworld.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
+                    spawn.getX(), spawn.getZ());
+            target = new Vec3(spawn.getX() + 0.5, Math.max(y, overworld.getMinBuildHeight() + 1), spawn.getZ() + 0.5);
+            System.out.println("NIGHT_UNSAFE_HOME " + player.getGameProfile().getName() + " fallback to shared spawn");
             player.displayClientMessage(Component.translatable("message.sound_isolating_eraser.city.unsafe_home"), true);
-            return;
         }
         player.teleportTo(overworld, target.x, target.y, target.z, player.getRespawnAngle(), 0);
         player.fallDistance = 0;
