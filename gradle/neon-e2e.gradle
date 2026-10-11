@@ -1,0 +1,18 @@
+// Opt-in dedicated-server and real-client probe; never included in the player jar.
+sourceSets {
+    neonTest {
+        compileClasspath += sourceSets.main.compileClasspath + sourceSets.main.output
+        runtimeClasspath += sourceSets.main.runtimeClasspath + sourceSets.main.output
+    }
+}
+minecraft.runs.matching { it.name == 'client' || it.name == 'server' }.configureEach {
+    mods {
+        neon_qa { source sourceSets.neonTest }
+    }
+}
+tasks.register('writeNeonTestClasspath') {
+    dependsOn 'classes', 'neonTestClasses', 'genVSCodeRuns'
+    def target = layout.buildDirectory.file('neon-test-classpath.txt')
+    outputs.file(target)
+    doLast { target.get().asFile.text = sourceSets.neonTest.runtimeClasspath.asPath }
+}
