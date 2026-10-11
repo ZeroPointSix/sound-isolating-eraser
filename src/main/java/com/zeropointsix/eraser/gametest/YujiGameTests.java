@@ -324,4 +324,111 @@ public final class YujiGameTests {
             close(h, p.getHealth(), 17, "curse damage capped at three"); h.succeed();
         } finally { server.setDifficulty(difficulty, true); }
     }
+
+    private static void boundaryStep(YujiMonster mob) throws ReflectiveOperationException {
+        var method = YujiMonster.class.getDeclaredMethod("customServerAiStep");
+        method.setAccessible(true);
+        method.invoke(mob);
+    }
+    private static void grudgeIs(GameTestHelper h, YujiMonster giant, Player expected) {
+        CompoundTag data = new CompoundTag(); giant.addAdditionalSaveData(data);
+        h.assertTrue(data.hasUUID("YujiGrudge") && data.getUUID("YujiGrudge").equals(expected.getUUID())
+                && giant.getTarget() == expected, "R12 original valid grudge and target remain locked");
+    }
+    private static void playerHit(GameTestHelper h, YujiMonster giant, Player attacker) {
+        giant.invulnerableTime = 0;
+        h.assertTrue(giant.hurt(giant.damageSources().playerAttack(attacker), 10), "player hit accepted");
+    }
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
+    public static void yujiOriginalGrudgeSurvivesSecondAttacker(GameTestHelper h) {
+        YujiMonster giant = monster(h, YujiKind.CHENNU);
+        Player first = player(h, giant), second = player(h, giant);
+        playerHit(h, giant, first); grudgeIs(h, giant, first);
+        playerHit(h, giant, second); grudgeIs(h, giant, first);
+        h.succeed();
+    }
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
+    public static void yujiReloadedGrudgeIgnoresSecondAttacker(GameTestHelper h) {
+        YujiMonster giant = monster(h, YujiKind.CHENNU);
+        Player first = player(h, giant), second = player(h, giant);
+        h.assertTrue(h.getLevel().addFreshEntity(first), "original player is queryable after reload");
+        try {
+            playerHit(h, giant, first);
+            CompoundTag saved = new CompoundTag(); giant.addAdditionalSaveData(saved); giant.discard();
+            YujiMonster restored = monster(h, YujiKind.CHENNU); restored.readAdditionalSaveData(saved);
+            playerHit(h, restored, second); grudgeIs(h, restored, first);
+            h.succeed();
+        } finally { first.discard(); }
+    }
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
+    public static void yujiGrudgeClearsOnlyBeyond128Blocks(GameTestHelper h) {
+        YujiMonster giant = monster(h, YujiKind.CHENNU);
+        Player first = player(h, giant), second = player(h, giant);
+        playerHit(h, giant, first);
+        first.moveTo(giant.position().add(128, 0, 0));
+        playerHit(h, giant, second); grudgeIs(h, giant, first);
+        first.moveTo(giant.position().add(128.01, 0, 0));
+        playerHit(h, giant, second); grudgeIs(h, giant, second);
+        h.succeed();
+    }
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
+    public static void yujiDeadGrudgeAllowsNewAttacker(GameTestHelper h) {
+        YujiMonster giant = monster(h, YujiKind.CHENNU);
+        Player first = player(h, giant), second = player(h, giant);
+        playerHit(h, giant, first); first.setHealth(0);
+        playerHit(h, giant, second); grudgeIs(h, giant, second);
+        h.succeed();
+    }
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
+    public static void yujiBetrayalBuffAffectsBothTimedSlashes(GameTestHelper h) throws ReflectiveOperationException {
+        YujiMonster blade = monster(h, YujiKind.SHASHENG), source = monster(h, YujiKind.LIANGSHE);
+        Player p = player(h, blade);
+        YujiAfflictions.apply(p, source, "betrayed"); YujiAfflictions.recruit(p, true);
+        var cow = h.spawn(EntityType.COW, new BlockPos(3, 2, 2)); cow.setNoAi(true); cow.setNoGravity(true);
+        cow.getAttribute(Attributes.MAX_HEALTH).setBaseValue(20); cow.setHealth(20);
+        try {
+            close(h, blade.getAttributeValue(Attributes.ATTACK_DAMAGE), 3.9, "real betrayal attack attribute");
+            blade.setTarget(cow); blade.begin("chop", 24, cow);
+            for (int tick = 0; tick <= 12; tick++) {
+                boundaryStep(blade);
+                close(h, 20 - cow.getHealth(), tick < 6 ? 0 : tick < 12 ? 3.9 : 7.8,
+                        "R04/R08 actual damage at action tick " + tick);
+            }
+            h.succeed();
+        } finally { YujiAfflictions.restore(blade); }
+    }
+    private static void bossContact(GameTestHelper h, double x, double y, boolean touching) throws ReflectiveOperationException {
+        var server = h.getLevel().getServer(); var difficulty = h.getLevel().getDifficulty();
+        YujiMonster boss = monster(h, YujiKind.SHIFOTOU); Player p = player(h, boss);
+        p.moveTo(boss.position().add(x, y, 0));
+        h.assertTrue(h.getLevel().addFreshEntity(p), "contact player added to world entity queries");
+        try {
+            server.setDifficulty(net.minecraft.world.Difficulty.NORMAL, true);
+            h.assertTrue(boss.getBoundingBox().intersects(p.getBoundingBox()) == touching, "actual AABB contact control");
+            h.assertTrue(boss.nearbyPlayers(32).contains(p), "positive control: player is queryable");
+            boss.tickCount = 19; boundaryStep(boss); close(h, p.getHealth(), 20, "no damage before interval");
+            boss.tickCount = 20; boundaryStep(boss); close(h, p.getHealth(), touching ? 10 : 20, "R13 contact damage is ten");
+            p.invulnerableTime = 0;
+            for (int tick = 21; tick < 40; tick++) { boss.tickCount = tick; boundaryStep(boss); }
+            close(h, p.getHealth(), touching ? 10 : 20, "no duplicate damage within the second");
+            p.setHealth(20); p.invulnerableTime = 0;
+            boss.tickCount = 40; boundaryStep(boss); close(h, p.getHealth(), touching ? 10 : 20, "next second contact damage");
+            h.succeed();
+        } finally { p.discard(); server.setDifficulty(difficulty, true); }
+    }
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
+    public static void yujiBossCrushesSideContact(GameTestHelper h) throws ReflectiveOperationException { bossContact(h, 3.2, 0, true); }
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
+    public static void yujiBossCrushesUpperContact(GameTestHelper h) throws ReflectiveOperationException { bossContact(h, 0, 7.8, true); }
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
+    public static void yujiBossDoesNotCrushOutsideBody(GameTestHelper h) throws ReflectiveOperationException { bossContact(h, 3.31, 0, false); }
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
+    public static void yujiBossDoesNotCrushAboveBody(GameTestHelper h) throws ReflectiveOperationException { bossContact(h, 0, 8.01, false); }
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji", timeoutTicks = 100)
+    public static void yujiGiantDeathAnimationCompletes(GameTestHelper h) {
+        YujiMonster boss = monster(h, YujiKind.SHIFOTOU);
+        boss.hurt(boss.damageSources().genericKill(), 10000);
+        h.runAtTickTime(55, () -> h.assertTrue(!boss.isRemoved(), "death animation retains entity before completion"));
+        h.runAtTickTime(85, () -> { h.assertTrue(boss.isRemoved(), "boss removed after death animation completes"); h.succeed(); });
+    }
 }

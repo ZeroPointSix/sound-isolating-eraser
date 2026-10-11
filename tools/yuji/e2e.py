@@ -8,7 +8,8 @@ import subprocess
 import time
 
 ROOT = Path(__file__).resolve().parents[2]
-RESULTS = ROOT / "build" / ("yuji-e2e-" + str(time.time_ns()))
+BOUNDARIES = os.environ.get("YUJI_QA_BOUNDARIES") == "1"
+RESULTS = ROOT / "build" / (("yuji-boundaries-" if BOUNDARIES else "yuji-e2e-") + str(time.time_ns()))
 RESULTS.mkdir(parents=True)
 CONFIGS = {c["name"]: c for c in json.loads((ROOT / ".vscode/launch.json").read_text())["configurations"]}
 CLASSPATH = (ROOT / "build/yuji-test-classpath.txt").read_text().strip()
@@ -20,7 +21,7 @@ def expand(value):
     return value.replace("${workspaceFolder}", str(ROOT))
 
 
-def launch(role):
+def launch(role, username="YujiTester"):
     server = role == "server"
     config = CONFIGS["runServer" if server else "runClient"]
     directory = RESULTS / role
@@ -51,9 +52,11 @@ def launch(role):
             while option in args:
                 index = args.index(option)
                 del args[index:index + 2]
-        args += ["--username", "YujiTester", "--width", "960", "--height", "540",
+        args += ["--username", username, "--width", "960", "--height", "540",
                  "--quickPlayMultiplayer", f"127.0.0.1:{PORT}"]
     command = ["java", "-Xmx1024M" if server else "-Xmx2048M", f"-Dyuji.qa.results={RESULTS}"]
+    if BOUNDARIES:
+        command += ["-Dyuji.qa.boundaries=true"]
     command += shlex.split(expand(config["vmArgs"]))
     if not server:
         natives = directory / "lwjgl-natives"
@@ -110,14 +113,21 @@ try:
     server = launch("server")
     wait_for(ready, [server], "dedicated server startup", 600)
     client = launch("client")
-    wait_for(lambda: all((RESULTS / (name + ".pass")).exists() for name in ["server-gallery", "client-gallery"]),
-             [server, client], "eleven rendered profiles, real-player AI, collisions, audio and projectile", 900)
+    if BOUNDARIES:
+        witness = launch("witness", "YujiWitness")
+        wait_for(lambda: all((RESULTS / (name + ".pass")).exists() for name in
+                            ["server-boundaries", "client-boundaries-YujiTester", "client-boundaries-YujiWitness"]),
+                 [server, client, witness], "two real players, grudge, buffed slashes and body-contact boundaries", 900)
+        stop(witness)
+    else:
+        wait_for(lambda: all((RESULTS / (name + ".pass")).exists() for name in ["server-gallery", "client-gallery"]),
+                 [server, client], "eleven rendered profiles, real-player AI, collisions, audio and projectile", 900)
     stop(client)
     server.stdin.write("stop\n")
     server.stdin.flush()
     if server.wait(timeout=180) != 0:
         raise RuntimeError("Dedicated server did not shut down cleanly")
-    print("YUJI_REAL_CLIENT_AI_COLLISION_AND_AUDIO_ACCEPTANCE_PASSED", flush=True)
+    print("YUJI_TWO_REAL_CLIENT_BOUNDARIES_PASSED" if BOUNDARIES else "YUJI_REAL_CLIENT_AI_COLLISION_AND_AUDIO_ACCEPTANCE_PASSED", flush=True)
 finally:
     for process in reversed(processes):
         stop(process)

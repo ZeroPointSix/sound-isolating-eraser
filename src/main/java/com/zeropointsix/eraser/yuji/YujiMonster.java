@@ -160,9 +160,8 @@ public final class YujiMonster extends Monster implements GeoEntity {
         if (fleeTicks > 0) fleeTicks--;
         if (startledTicks > 0) startledTicks--;
         if (kind == YujiKind.CHENNU) {
-            Player player = grudge == null ? null : level().getPlayerByUUID(grudge);
-            if (player != null && (!vulnerable(player) || distanceToSqr(player) > 128 * 128)) grudge = null;
-            setTarget(grudge == null ? null : player);
+            Player player = grudgePlayer();
+            setTarget(player != null && vulnerable(player) ? player : null);
         } else if (getTarget() == null || !getTarget().isAlive() || distanceToSqr(getTarget()) > 40 * 40
                 || getTarget() instanceof Player p && !vulnerable(p)) {
             setTarget(nearbyPlayers(kind == YujiKind.WANGYU ? 24 : 32).stream()
@@ -194,7 +193,11 @@ public final class YujiMonster extends Monster implements GeoEntity {
             boss.setProgress(getHealth() / getMaxHealth());
             boss.setName(getDisplayName());
             if (horizontalCollision && getTarget() != null) setDeltaMovement(getDeltaMovement().x, .2, getDeltaMovement().z);
-            if (tickCount % 20 == 0) for (Player p : nearbyPlayers(3)) p.hurt(damageSources().mobAttack(this), 10);
+            if (tickCount % 20 == 0) {
+                for (Player p : level().getEntitiesOfClass(Player.class, getBoundingBox(), YujiMonster::vulnerable)) {
+                    p.hurt(damageSources().mobAttack(this), 10);
+                }
+            }
         }
         if (kind == YujiKind.CHENNU && getTarget() != null && tickCount % 10 == 0
                 && ForgeEventFactory.getMobGriefingEvent(level(), this)) {
@@ -212,6 +215,17 @@ public final class YujiMonster extends Monster implements GeoEntity {
     }
     public List<Player> nearbyPlayers(double range) {
         return level().getEntitiesOfClass(Player.class, getBoundingBox().inflate(range), p -> vulnerable(p) && distanceToSqr(p) <= range * range);
+    }
+    @Nullable private Player grudgePlayer() {
+        if (grudge == null) return null;
+        Player player = level().getPlayerByUUID(grudge);
+        if (player == null && getTarget() instanceof Player target && grudge.equals(target.getUUID())) player = target;
+        // An unloaded player must not let a second attacker overwrite the saved grudge.
+        if (player != null && (!player.isAlive() || distanceToSqr(player) > 128 * 128)) {
+            grudge = null;
+            return null;
+        }
+        return player;
     }
     public static boolean lookingAt(Player player, Vec3 point, double degrees) {
         return point != null && player.getLookAngle().dot(point.subtract(player.getEyePosition()).normalize()) >= Math.cos(Math.toRadians(degrees));
@@ -256,7 +270,7 @@ public final class YujiMonster extends Monster implements GeoEntity {
     private void resolveAction(int tick) {
         LivingEntity target = actionTarget == null ? null : ((ServerLevel) level()).getEntity(actionTarget) instanceof LivingEntity l ? l : null;
         switch (action()) {
-            case "chop" -> { if (tick == 6 || tick == 12) strike(target, 3, tick == 12); }
+            case "chop" -> { if (tick == 6 || tick == 12) strike(target, (float) getAttributeValue(Attributes.ATTACK_DAMAGE), tick == 12); }
             case "snatch", "claw", "scratch", "strike", "grab_bite" -> {
                 if (tick == (kind == YujiKind.TANYU ? 12 : 6) && strike(target, (float) getAttributeValue(Attributes.ATTACK_DAMAGE), false)
                         && kind == YujiKind.TOUDAO && target instanceof Player p) steal(p);
@@ -357,7 +371,12 @@ public final class YujiMonster extends Monster implements GeoEntity {
             for (Player p : nearbyPlayers(8)) p.addEffect(new MobEffectInstance(MobEffects.CONFUSION, 60));
         }
         if (kind == YujiKind.CHENNU && source.getEntity() instanceof Player p && vulnerable(p)) {
-            grudge = p.getUUID(); setTarget(p); setPersistenceRequired(); begin("roar", 30, p);
+            Player remembered = grudgePlayer();
+            if (grudge == null) {
+                grudge = p.getUUID(); setTarget(p); setPersistenceRequired(); begin("roar", 30, p);
+            } else {
+                setTarget(remembered != null && vulnerable(remembered) ? remembered : null);
+            }
         }
         if (kind == YujiKind.TANYU) {
             if (damage >= 6) { setLayers(layers() - 1, false); begin("peel", 20, null); }

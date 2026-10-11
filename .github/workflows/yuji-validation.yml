@@ -69,6 +69,8 @@ jobs:
         run: bash ./gradlew -PyujiE2E writeYujiTestClasspath --no-daemon
       - name: Render each profile and exercise sound pipeline
         run: python tools/yuji/e2e.py
+      - name: Exercise grudge, buffed slashes and body contact with two real clients
+        run: YUJI_QA_BOUNDARIES=1 python tools/yuji/e2e.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -78,3 +80,7 @@ jobs:
             build/yuji-e2e-*/*.pass
             build/yuji-e2e-*/*.failed
             build/yuji-e2e-*/*.png
+            build/yuji-boundaries-*/*.log
+            build/yuji-boundaries-*/*.pass
+            build/yuji-boundaries-*/*.failed
+            build/yuji-boundaries-*/*.png
