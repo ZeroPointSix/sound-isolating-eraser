@@ -152,6 +152,11 @@ public final class EternalNightGameTests {
         var channel = session.channel();
         BlockPos first = new BlockPos(2048, 120, 2048);
         try {
+            // This test also runs repeatedly in the same developer world.
+            for (int x = -1; x <= 4; x++) for (int z = -1; z <= 9; z++) {
+                city.setBlock(first.offset(x, -1, z), Blocks.STONE_BRICKS.defaultBlockState(), 2);
+                for (int y = 0; y <= 3; y++) city.setBlock(first.offset(x, y, z), Blocks.AIR.defaultBlockState(), 2);
+            }
             player.teleportTo(city, first.getX() + 0.5, first.getY(), first.getZ() - 2, 0, 0);
             h.assertTrue(CitySpawns.withinCountedRange(player, first), "nearby candidate counted");
             h.assertTrue(!CitySpawns.withinCountedRange(player, first.above(80)), "out-of-range roof cannot bypass cap");
@@ -268,14 +273,18 @@ public final class EternalNightGameTests {
             city.getGameRules().getRule(net.minecraft.world.level.GameRules.RULE_KEEPINVENTORY).set(false, server);
             NightConfig.RESET_ON_DEATH.set(true);
             BlockPos bed = new BlockPos(-128, 90, -128);
-            for (int dx = -2; dx <= 2; dx++) for (int dz = -2; dz <= 2; dz++)
+            for (int dx = -2; dx <= 2; dx++) for (int dz = -2; dz <= 2; dz++) {
                 h.getLevel().setBlock(bed.offset(dx, -1, dz), Blocks.STONE_BRICKS.defaultBlockState(), 2);
+                for (int dy = 0; dy <= 3; dy++) h.getLevel().setBlock(bed.offset(dx, dy, dz), Blocks.AIR.defaultBlockState(), 2);
+            }
             var bedState = Blocks.RED_BED.defaultBlockState().setValue(net.minecraft.world.level.block.BedBlock.FACING, Direction.NORTH);
             h.getLevel().setBlock(bed, bedState.setValue(net.minecraft.world.level.block.BedBlock.PART,
                     net.minecraft.world.level.block.state.properties.BedPart.FOOT), 2);
             h.getLevel().setBlock(bed.north(), bedState.setValue(net.minecraft.world.level.block.BedBlock.PART,
                     net.minecraft.world.level.block.state.properties.BedPart.HEAD), 2);
             player.setRespawnPosition(net.minecraft.world.level.Level.OVERWORLD, bed.north(), 0, false, false);
+            h.assertTrue(net.minecraft.world.entity.player.Player.findRespawnPositionAndUseSpawnBlock(
+                    h.getLevel(), bed.north(), 0, false, true).isPresent(), "bed fixture is safe for this world seed");
             BlockPos death = new BlockPos(4096, 120, 4096);
             city.setBlock(death.below(), Blocks.STONE_BRICKS.defaultBlockState(), 2);
             player.teleportTo(city, death.getX() + 0.5, death.getY(), death.getZ() + 0.5, 0, 0);
@@ -296,7 +305,8 @@ public final class EternalNightGameTests {
                     .stream().mapToInt(item -> item.getItem().getCount()).sum() == priorDrops + 7, "vanilla death drops inventory exactly once");
             var respawned = server.getPlayerList().respawn(player, false);
             h.assertTrue(respawned.serverLevel() == h.getLevel() && respawned.blockPosition().distSqr(bed) < 25,
-                    "real respawn returns to the original overworld bed");
+                    "real respawn returns to the original overworld bed: actual=" + respawned.blockPosition()
+                            + " dimension=" + respawned.level().dimension().location());
             h.assertTrue(NightEvents.playerData(respawned).isEmpty(), "respawn clears visit and death marker");
             h.assertTrue(respawned.getInventory().isEmpty(), "death return does not duplicate dropped items");
             h.succeed();

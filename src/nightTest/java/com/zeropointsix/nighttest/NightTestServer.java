@@ -28,6 +28,7 @@ public final class NightTestServer {
     private static final Path RESULTS = Path.of(System.getProperty("night.qa.results", "build/night-e2e"));
     private static final Set<UUID> CAPTURED = new HashSet<>();
     private static final Set<UUID> READY = new HashSet<>();
+    private static final Set<UUID> SLEPT = new HashSet<>();
     private static final Map<UUID, BlockPos> BEDS = new HashMap<>();
     private static ServerPlayer owner, observer;
     private static BlockPos door;
@@ -62,11 +63,18 @@ public final class NightTestServer {
                 observer = server.getPlayerList().getPlayers().stream().filter(p -> p.getGameProfile().getName().equals("NightObserver")).findFirst().orElse(null);
                 if (owner == null || observer == null) return;
                 NightConfig.SPAWNING.set(false);
+                NightConfig.ENTRY_BASE.set(1.0);
+                NightConfig.ENTRY_CAP.set(1.0);
                 server.getPlayerList().setViewDistance(2);
                 server.overworld().setDayTime(18000);
+                server.overworld().updateSkyBrightness();
                 prepareBed(owner, -8); prepareBed(observer, 8);
-                require(NightEvents.enter(owner) && NightEvents.enter(observer), "both real clients queue original city entry");
-                require(CityEntryQueue.pending(owner) && CityEntryQueue.pending(observer), "entry is nonblocking");
+                say(owner, "SLEEP"); say(observer, "SLEEP");
+                phase = -2;
+            } else if (phase == -2) {
+                if (owner.isSleeping()) SLEPT.add(owner.getUUID());
+                if (observer.isSleeping()) SLEPT.add(observer.getUUID());
+                if (SLEPT.size() != 2) return;
                 lastEntryTick = System.nanoTime();
                 phase = -1;
             } else if (phase == -1 && EternalNightContent.isCity(owner.level()) && EternalNightContent.isCity(observer.level())) {
@@ -92,7 +100,7 @@ public final class NightTestServer {
                 assertHome(observer);
                 var city = owner.server.getLevel(EternalNightContent.LEVEL);
                 require(CitySavedData.get(city).active(door, city.getGameTime()), "exit remains shared after both returns");
-                Files.writeString(RESULTS.resolve("server-cycle.pass"), "PASS: asynchronous cold-world same-night entry, native 100th door, shared exit, distinct beds, inventory and counter reset\n");
+                Files.writeString(RESULTS.resolve("server-cycle.pass"), "PASS: native bed clicks and deep sleep, responsive cold-world same-night entry, native 100th door, shared exit, distinct beds, inventory and counter reset; max entry tick gap " + longestEntryTick / 1_000_000 + " ms\n");
                 phase = 99;
             }
         } catch (Throwable error) {
@@ -105,7 +113,7 @@ public final class NightTestServer {
     private static void prepareBed(ServerPlayer player, int x) {
         ServerLevel world = player.server.overworld();
         BlockPos bed = new BlockPos(x, 65, 0);
-        for (int dx = -3; dx <= 3; dx++) for (int dz = -3; dz <= 3; dz++)
+        for (int dx = -3; dx <= 3; dx++) for (int dz = -4; dz <= 4; dz++)
             world.setBlock(bed.offset(dx, -1, dz), Blocks.STONE_BRICKS.defaultBlockState(), 2);
         var state = Blocks.RED_BED.defaultBlockState().setValue(BedBlock.FACING, Direction.NORTH);
         world.setBlock(bed, state.setValue(BedBlock.PART, BedPart.FOOT), 2);
@@ -113,6 +121,7 @@ public final class NightTestServer {
         player.setRespawnPosition(Level.OVERWORLD, bed.north(), 0, false, false);
         BEDS.put(player.getUUID(), bed.north());
         player.setGameMode(GameType.CREATIVE);
+        player.teleportTo(world, x + 0.5, bed.getY(), bed.getZ() - 3, 0, 24);
         player.getInventory().clearContent();
         player.getInventory().setItem(0, new ItemStack(Items.DIAMOND, 7));
     }

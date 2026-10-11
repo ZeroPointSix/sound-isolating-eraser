@@ -53,6 +53,18 @@ public final class NightTestClient {
                     "native client disconnected before scenario completion");
             if (client.player == null || client.level == null) return;
             ticks++;
+            if (phase.equals("SLEEP") && ticks == 40) {
+                require(client.level.dimension().equals(Level.OVERWORLD), "native sleep starts in overworld");
+                client.setScreen(null);
+                org.lwjgl.glfw.GLFW.glfwFocusWindow(client.getWindow().getWindow());
+                client.mouseHandler.grabMouse();
+                capture(client, "before-sleep");
+                nativeInput("click", "3");
+            }
+            if (phase.equals("SLEEP") && ticks == 80) {
+                require(client.player.isSleeping(), "native bed click actually starts sleep");
+                capture(client, "sleeping");
+            }
             if (phase.equals("READY") && ticks == 80) {
                 require(EternalNightContent.isCity(client.level), "client actually loaded the city dimension");
                 client.setScreen(null);
@@ -92,6 +104,7 @@ public final class NightTestClient {
                 finished = true;
             }
             if (walking && ticks > 300) throw new AssertionError("Native walk did not cross the exit");
+            if (!phase.isEmpty() && ticks > 2400) throw new AssertionError("Native phase timed out: " + phase);
         } catch (Throwable error) {
             hidePlane = false;
             error.printStackTrace();

@@ -47,6 +47,7 @@ def launch(role, display=None):
     env.update({key: expand(value) for key, value in config["env"].items()})
     env["LIBGL_ALWAYS_SOFTWARE"] = "1"
     env["ALSOFT_DRIVERS"] = "null"
+    env["LP_NUM_THREADS"] = "2"
     args = shlex.split(expand(config["args"]))
     if display:
         env["DISPLAY"] = display
@@ -56,7 +57,7 @@ def launch(role, display=None):
                 del args[index:index + 2]
         args += ["--username", "NightOwner" if role == "owner" else "NightObserver",
                  "--width", "960", "--height", "540", "--quickPlayMultiplayer", f"127.0.0.1:{PORT}"]
-    command = ["java", "-Xmx1536M" if role == "server" else "-Xmx768M",
+    command = ["java", "-Xmx1536M" if role == "server" else "-Xmx1280M",
                f"-Dnight.qa.results={RESULTS}", f"-Dnight.qa.role={role}"]
     command += shlex.split(expand(config["vmArgs"]))
     if display:
