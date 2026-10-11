@@ -1,4 +1,6 @@
 {
+  "entity.sound_isolating_eraser.brickrot_wall": "砌腐墙",
+  "item.sound_isolating_eraser.brickrot_spawn_egg": "砌腐墙刷怪蛋",
   "item.sound_isolating_eraser.super_fertilizer_bag": "超级肥料",
   "item.sound_isolating_eraser.empty_fertilizer_bag": "空肥料袋",
   "item.sound_isolating_eraser.fertile_fruit": "肥沃果实",

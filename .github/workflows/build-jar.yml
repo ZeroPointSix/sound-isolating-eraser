@@ -74,6 +74,7 @@ jobs:
               "",
               "- Minecraft " + mc + " · Forge 1.20.1 (47.x)",
               "- 必需依赖 / Required: Curios API 5.14.1+ (重力玉佩饰品槽 / Gravity Jade Pendant slot)",
+              "- 双端必需 / Required on client and server: GeckoLib Forge 1.20.1 4.4.9+ (below 5.0)",
               "- 安装 / Install: 将 " + jar + " 放入 mods/ 目录 / drop the jar into mods/"
             ].join("\n");
             const rel = await github.rest.repos.createRelease({

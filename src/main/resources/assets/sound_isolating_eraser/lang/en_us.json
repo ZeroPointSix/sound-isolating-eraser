@@ -1,4 +1,6 @@
 {
+  "entity.sound_isolating_eraser.brickrot_wall": "Brickrot Wall",
+  "item.sound_isolating_eraser.brickrot_spawn_egg": "Brickrot Wall Spawn Egg",
   "item.sound_isolating_eraser.super_fertilizer_bag": "Super Fertilizer",
   "item.sound_isolating_eraser.empty_fertilizer_bag": "Empty Fertilizer Bag",
   "item.sound_isolating_eraser.fertile_fruit": "Fertile Fruit",
