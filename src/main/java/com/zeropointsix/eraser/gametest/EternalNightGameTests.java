@@ -134,11 +134,11 @@ public final class EternalNightGameTests {
         try {
             CompoundTag prior = new CompoundTag();
             prior.putLongArray("Doors", new long[]{12, 34});
-            player.getPersistentData().put(NightEvents.PLAYER_TAG, prior);
+            player.getPersistentData().put(NightEvents.PLAYER_TAG, prior.copy());
             h.assertTrue(NightEvents.enter(player) && NightEvents.enter(player), "duplicate requests are accepted once");
             h.assertTrue(CityEntryQueue.pending(player) && player.serverLevel() == h.getLevel(),
                     "request does not synchronously teleport");
-            var attempt = new net.minecraftforge.event.entity.player.PlayerSleepInBedEvent(player, player.blockPosition());
+            var attempt = new net.minecraftforge.event.entity.player.PlayerSleepInBedEvent(player, java.util.Optional.of(player.blockPosition()));
             NightEvents.sleep(attempt);
             h.assertTrue(attempt.getResultStatus() == net.minecraft.world.entity.player.Player.BedSleepingProblem.OTHER_PROBLEM,
                     "pending entry rejects another sleep that could advance the night");
@@ -287,7 +287,7 @@ public final class EternalNightGameTests {
         h.succeed();
     }
 
-    @GameTest(template = "empty", batch = "eternal_night")
+    @GameTest(template = "empty", batch = "eternal_night", timeoutTicks = 300)
     public static void cityDeathDropsAndRespawnsAtOwnBed(GameTestHelper h) {
         var session = login(h);
         var player = session.player();
@@ -295,7 +295,24 @@ public final class EternalNightGameTests {
         ServerLevel city = server.getLevel(EternalNightContent.LEVEL);
         boolean keepInventory = city.getGameRules().getBoolean(net.minecraft.world.level.GameRules.RULE_KEEPINVENTORY);
         boolean reset = NightConfig.RESET_ON_DEATH.get();
+        var observed = new java.util.ArrayList<net.minecraftforge.event.entity.living.LivingDropsEvent>();
+        java.util.function.Consumer<net.minecraftforge.event.entity.living.LivingDropsEvent> listener = event -> {
+            if (event.getEntity() == player) observed.add(event);
+        };
+        java.util.concurrent.atomic.AtomicBoolean cleaned = new java.util.concurrent.atomic.AtomicBoolean();
+        Runnable cleanup = () -> {
+            if (!cleaned.compareAndSet(false, true)) return;
+            net.minecraftforge.common.MinecraftForge.EVENT_BUS.unregister(listener);
+            observed.forEach(event -> event.getDrops().forEach(net.minecraft.world.entity.Entity::discard));
+            city.getGameRules().getRule(net.minecraft.world.level.GameRules.RULE_KEEPINVENTORY).set(keepInventory, server);
+            NightConfig.RESET_ON_DEATH.set(reset);
+            var current = server.getPlayerList().getPlayer(player.getUUID());
+            if (current != null) server.getPlayerList().remove(current);
+            session.channel().finishAndReleaseAll();
+        };
         try {
+            net.minecraftforge.common.MinecraftForge.EVENT_BUS.addListener(net.minecraftforge.eventbus.api.EventPriority.LOWEST,
+                    true, net.minecraftforge.event.entity.living.LivingDropsEvent.class, listener);
             city.getGameRules().getRule(net.minecraft.world.level.GameRules.RULE_KEEPINVENTORY).set(false, server);
             NightConfig.RESET_ON_DEATH.set(true);
             BlockPos bed = new BlockPos(-128, 90, -128);
@@ -319,29 +336,38 @@ public final class EternalNightGameTests {
             CompoundTag data = new CompoundTag();
             data.putLongArray("Doors", new long[]{12, 34}); data.putBoolean("Visiting", true);
             player.getPersistentData().put(NightEvents.PLAYER_TAG, data);
-            var dropArea = new net.minecraft.world.phys.AABB(death).inflate(3);
-            int priorDrops = city.getEntitiesOfClass(net.minecraft.world.entity.item.ItemEntity.class, dropArea,
-                    item -> item.getItem().is(net.minecraft.world.item.Items.DIAMOND))
-                    .stream().mapToInt(item -> item.getItem().getCount()).sum();
+            h.runAfterDelay(290, cleanup);
+            h.startSequence().thenWaitUntil(() -> h.assertTrue(city.isPositionEntityTicking(death),
+                    "death fixture chunk is entity-ticking")).thenExecute(() -> {
+            try {
             h.assertTrue(player.hurt(player.damageSources().genericKill(), Float.MAX_VALUE) && !player.isAlive(), "real damage causes death");
             h.assertTrue(NightEvents.playerData(player).getBoolean("ReturnAfterDeath"), "death return marker is persisted before respawn");
             h.assertTrue(NightEvents.playerData(player).getLongArray("Doors").length == 0, "death clears prior door history");
-            h.assertTrue(city.getEntitiesOfClass(net.minecraft.world.entity.item.ItemEntity.class,
-                    dropArea, item -> item.getItem().is(net.minecraft.world.item.Items.DIAMOND))
-                    .stream().mapToInt(item -> item.getItem().getCount()).sum() == priorDrops + 7, "vanilla death drops inventory exactly once");
+            h.assertTrue(observed.size() == 1 && !observed.get(0).isCanceled(), "one uncancelled real death-drop event");
+            int diamonds = 0;
+            for (var drop : observed.get(0).getDrops()) {
+                String evidence = "id=" + drop.getUUID() + " count=" + drop.getItem().getCount()
+                        + " removed=" + drop.isRemoved() + " visible=" + (city.getEntity(drop.getUUID()) == drop);
+                System.out.println("CITY_DEATH_DROP " + evidence);
+                h.assertTrue(drop.getItem().is(net.minecraft.world.item.Items.DIAMOND), "only the configured diamond inventory drops");
+                h.assertTrue(!drop.isRemoved() && drop.level() == city && city.getEntity(drop.getUUID()) == drop,
+                        "death item actually entered the world: " + evidence);
+                diamonds += drop.getItem().getCount();
+            }
+            h.assertTrue(diamonds == 7, "vanilla death drops exactly seven diamonds, got " + diamonds);
             var respawned = server.getPlayerList().respawn(player, false);
             h.assertTrue(respawned.serverLevel() == h.getLevel() && respawned.blockPosition().distSqr(bed) < 25,
                     "real respawn returns to the original overworld bed: actual=" + respawned.blockPosition()
                             + " dimension=" + respawned.level().dimension().location());
             h.assertTrue(NightEvents.playerData(respawned).isEmpty(), "respawn clears visit and death marker");
             h.assertTrue(respawned.getInventory().isEmpty(), "death return does not duplicate dropped items");
-            h.succeed();
-        } finally {
-            city.getGameRules().getRule(net.minecraft.world.level.GameRules.RULE_KEEPINVENTORY).set(keepInventory, server);
-            NightConfig.RESET_ON_DEATH.set(reset);
-            var current = server.getPlayerList().getPlayer(player.getUUID());
-            if (current != null) server.getPlayerList().remove(current);
-            session.channel().finishAndReleaseAll();
+            } finally {
+                cleanup.run();
+            }
+            }).thenSucceed();
+        } catch (RuntimeException | Error failure) {
+            cleanup.run();
+            throw failure;
         }
     }
 
