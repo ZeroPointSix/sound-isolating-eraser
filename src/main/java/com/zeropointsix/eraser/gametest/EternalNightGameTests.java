@@ -40,6 +40,7 @@ public final class EternalNightGameTests {
         NightConfig.ENTRY_BASE.set(1.0);
         NightConfig.ENTRY_CAP.set(1.0);
         overworld.setDayTime(18000);
+        overworld.updateSkyBrightness();
         BlockPos bed = h.absolutePos(new BlockPos(1, 2, 1));
         overworld.setBlock(bed.below(), Blocks.STONE_BRICKS.defaultBlockState(), 2);
         overworld.setBlock(bed.north().below(), Blocks.STONE_BRICKS.defaultBlockState(), 2);
@@ -150,6 +151,7 @@ public final class EternalNightGameTests {
             installDoor(city, first, Blocks.OAK_DOOR);
             installDoor(city, first.east(3), Blocks.BIRCH_DOOR);
             use(player, first.above());
+            h.assertTrue(city.getBlockState(first).getValue(DoorBlock.OPEN), "real upper-half use opens the door");
             use(player, first);
             use(player, first);
             use(player, first.east(3));

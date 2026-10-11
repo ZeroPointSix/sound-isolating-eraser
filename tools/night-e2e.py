@@ -108,12 +108,15 @@ try:
     clients = [launch("owner", displays[0]), launch("observer", displays[1])]
     required = ["server-cycle", "owner-white", "observer-white", "owner-return", "observer-return"]
     deadline = time.monotonic() + int(os.environ.get("NIGHT_QA_TIMEOUT_SECONDS", "1200"))
-    while not all((RESULTS / (name + ".pass")).exists() for name in required):
+    while True:
         failures = list(RESULTS.glob("*.failed"))
         if failures:
             raise AssertionError("; ".join(path.read_text() for path in failures))
         if any(process.poll() is not None for process in [server, *clients]):
             raise RuntimeError("Minecraft exited before evidence completed; see role logs")
+        if all((RESULTS / (name + ".pass")).exists()
+               and (RESULTS / (name + ".pass")).read_text().strip() for name in required):
+            break
         if time.monotonic() > deadline:
             raise TimeoutError("Native-client scenario timed out; see role logs and screenshots")
         time.sleep(1)
@@ -121,7 +124,13 @@ try:
         print((RESULTS / (name + ".pass")).read_text().strip(), flush=True)
     server.stdin.write("stop\n")
     server.stdin.flush()
-    server.wait(timeout=90)
+    if server.wait(timeout=90) != 0:
+        raise RuntimeError("Minecraft server failed during shutdown; see server.log")
+    failures = list(RESULTS.glob("*.failed"))
+    if failures:
+        raise AssertionError("; ".join(path.read_text() for path in failures))
+    if not all((RESULTS / (name + ".pass")).read_text().strip() for name in required):
+        raise AssertionError("Empty evidence marker after shutdown")
     print("NIGHT_TWO_CLIENT_E2E_PASS", flush=True)
 finally:
     for process in reversed(processes):

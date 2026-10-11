@@ -17,6 +17,7 @@ public final class CityClientRuntime {
     private static java.util.List<net.minecraft.core.BlockPos> exits = java.util.List.of();
 
     public static void setExits(java.util.List<net.minecraft.core.BlockPos> doors) { exits = java.util.List.copyOf(doors); }
+    public static java.util.List<net.minecraft.core.BlockPos> activeExits() { return exits; }
 
     @SubscribeEvent public static void tick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
