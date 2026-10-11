@@ -58,20 +58,26 @@ public final class YujiBoundaryServer {
     private static void setupPlayer(ServerPlayer p) {
         p.setGameMode(GameType.SURVIVAL); p.setNoGravity(true); p.getInventory().clearContent();
         p.getAttribute(Attributes.MAX_HEALTH).setBaseValue(400); p.setHealth(400); p.removeAllEffects();
+        p.getAttribute(Attributes.KNOCKBACK_RESISTANCE).setBaseValue(1);
+        // Hold exact geometry in survival mode without disabling damage or body collision.
+        p.getAbilities().mayfly = true; p.getAbilities().flying = true; p.onUpdateAbilities();
         p.invulnerableTime = 0; p.getFoodData().setFoodLevel(20);
     }
     private static YujiMonster spawn(ServerPlayer p, YujiKind kind, double x) {
         YujiMonster mob = YujiContent.MOBS.get(kind).get().create(p.serverLevel());
         mob.moveTo(x, 65, 0, 0, 0); mob.setNoGravity(true); mob.setPersistenceRequired();
         mob.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(0);
+        mob.getAttribute(Attributes.KNOCKBACK_RESISTANCE).setBaseValue(1);
         p.serverLevel().addFreshEntity(mob); return mob;
     }
     private static void assertGrudge(ServerPlayer expected) throws Exception {
         CompoundTag tag = new CompoundTag(); current.addAdditionalSaveData(tag);
+        log("grudge stage=" + stage + " saved=" + (tag.hasUUID("YujiGrudge") ? tag.getUUID("YujiGrudge") : "none")
+                + " target=" + (current.getTarget() == null ? "none" : current.getTarget().getUUID())
+                + " distance=" + current.distanceTo(expected) + " mobPos=" + current.position() + " playerPos=" + expected.position()
+                + " firstHits=" + firstHits + " secondHits=" + secondHits);
         require(tag.hasUUID("YujiGrudge") && tag.getUUID("YujiGrudge").equals(expected.getUUID())
                 && current.getTarget() == expected, "valid original grudge retained during " + stage);
-        log("grudge stage=" + stage + " saved=" + tag.getUUID("YujiGrudge") + " target=" + current.getTarget().getUUID()
-                + " distance=" + current.distanceTo(expected) + " firstHits=" + firstHits + " secondHits=" + secondHits);
     }
     @SubscribeEvent public static void prepare(ServerStartedEvent event) {
         if (!Boolean.getBoolean("yuji.qa.boundaries")) return;
@@ -80,7 +86,7 @@ public final class YujiBoundaryServer {
         level.getGameRules().getRule(GameRules.RULE_DOMOBSPAWNING).set(false, server);
         level.getGameRules().getRule(GameRules.RULE_NATURAL_REGENERATION).set(false, server);
         level.getGameRules().getRule(GameRules.RULE_DAYLIGHT).set(false, server);
-        for (BlockPos p : BlockPos.betweenClosed(-16, 64, -16, 24, 64, 24)) level.setBlockAndUpdate(p, Blocks.SMOOTH_QUARTZ.defaultBlockState());
+        for (BlockPos p : BlockPos.betweenClosed(-16, 64, -16, 140, 64, 24)) level.setBlockAndUpdate(p, Blocks.SMOOTH_QUARTZ.defaultBlockState());
     }
     @SubscribeEvent public static void hurt(LivingDamageEvent event) {
         if (!Boolean.getBoolean("yuji.qa.boundaries") || current == null || failed || complete) return;

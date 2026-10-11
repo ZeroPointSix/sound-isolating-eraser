@@ -350,15 +350,18 @@ public final class YujiGameTests {
     @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
     public static void yujiReloadedGrudgeIgnoresSecondAttacker(GameTestHelper h) {
         YujiMonster giant = monster(h, YujiKind.CHENNU);
-        Player first = player(h, giant), second = player(h, giant);
-        h.assertTrue(h.getLevel().addFreshEntity(first), "original player is queryable after reload");
+        var first = h.makeMockServerPlayerInLevel();
+        first.setGameMode(net.minecraft.world.level.GameType.SURVIVAL);
+        first.moveTo(giant.position()); first.setNoGravity(true);
+        Player second = player(h, giant);
+        h.assertTrue(h.getLevel().getPlayerByUUID(first.getUUID()) == first, "original player is queryable after reload");
         try {
             playerHit(h, giant, first);
             CompoundTag saved = new CompoundTag(); giant.addAdditionalSaveData(saved); giant.discard();
             YujiMonster restored = monster(h, YujiKind.CHENNU); restored.readAdditionalSaveData(saved);
             playerHit(h, restored, second); grudgeIs(h, restored, first);
             h.succeed();
-        } finally { first.discard(); }
+        } finally { h.getLevel().getServer().getPlayerList().remove(first); }
     }
     @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
     public static void yujiGrudgeClearsOnlyBeyond128Blocks(GameTestHelper h) {
