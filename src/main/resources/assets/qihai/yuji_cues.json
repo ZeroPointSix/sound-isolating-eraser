@@ -1,0 +1,402 @@
+{
+ "yuchi": {
+  "idle": [
+   {
+    "t": 0.3,
+    "vfx": "karma_wisp",
+    "bone": "head",
+    "off": [
+     0,
+     8,
+     0
+    ]
+   }
+  ],
+  "stare": [
+   {
+    "t": 0.2,
+    "vfx": "karma_wisp",
+    "bone": "head",
+    "off": [
+     0,
+     8,
+     0
+    ]
+   }
+  ]
+ },
+ "shasheng": {
+  "chop": [
+   {
+    "t": 0.28,
+    "vfx": "blade_slash",
+    "bone": "right_forearm",
+    "off": [
+     0,
+     -2,
+     -8
+    ],
+    "spread": 2,
+    "sound": "chop"
+   },
+   {
+    "t": 0.58,
+    "vfx": "blade_slash",
+    "bone": "right_forearm",
+    "off": [
+     0,
+     -2,
+     -8
+    ],
+    "spread": 2
+   }
+  ]
+ },
+ "toudao": {
+  "snatch": [
+   {
+    "t": 0.28,
+    "vfx": "snatch_glint",
+    "bone": "left_hand",
+    "sound": "steal"
+   }
+  ],
+  "scream": [
+   {
+    "t": 0.15,
+    "vfx": "scream_ring",
+    "bone": "head",
+    "off": [
+     0,
+     3,
+     -3
+    ],
+    "sound": "scream"
+   }
+  ]
+ },
+ "ekou": {
+  "curse": [
+   {
+    "t": 0.3,
+    "vfx": "curse_glyph",
+    "bone": "head",
+    "off": [
+     0,
+     4,
+     0
+    ],
+    "spread": 14,
+    "sound": "curse"
+   },
+   {
+    "t": 0.5,
+    "vfx": "curse_aura",
+    "bone": "torso",
+    "off": [
+     0,
+     4,
+     0
+    ],
+    "spread": 24
+   }
+  ],
+  "burst": [
+   {
+    "t": 0.16,
+    "vfx": "bone_shard",
+    "bone": "torso",
+    "off": [
+     0,
+     6,
+     0
+    ],
+    "speed": 55,
+    "spread": 3,
+    "count": 12,
+    "sound": "burst"
+   }
+  ],
+  "spike_volley": [
+   {
+    "t": 0.55,
+    "vfx": "bone_shard",
+    "bone": "torso",
+    "off": [
+     0,
+     6,
+     -4
+    ],
+    "dir": [
+     0,
+     0.05,
+     1
+    ],
+    "speed": 70,
+    "spread": 4,
+    "sound": "volley"
+   }
+  ]
+ },
+ "wangyu": {
+  "mimic": [
+   {
+    "t": 0.2,
+    "vfx": "voice_ripple",
+    "bone": "torso",
+    "off": [
+     0,
+     10,
+     0
+    ],
+    "spread": 16,
+    "sound": "mimic"
+   }
+  ]
+ },
+ "liangshe": {
+  "whisper": [
+   {
+    "t": 0.3,
+    "vfx": "discord_twist",
+    "bone": "head",
+    "off": [
+     0,
+     6,
+     -4
+    ],
+    "spread": 10,
+    "sound": "whisper"
+   },
+   {
+    "t": 0.9,
+    "vfx": "betray_mark",
+    "bone": "root",
+    "off": [
+     0,
+     30,
+     -20
+    ],
+    "spread": 40,
+    "sound": "betray"
+   }
+  ]
+ },
+ "xieyin": {
+  "lure": [
+   {
+    "t": 0.1,
+    "vfx": "sweet_haze",
+    "bone": "torso",
+    "off": [
+     0,
+     8,
+     0
+    ],
+    "spread": 12,
+    "sound": "lure"
+   },
+   {
+    "t": 0.4,
+    "vfx": "lure_pull",
+    "bone": "root",
+    "off": [
+     0,
+     16,
+     -34
+    ],
+    "dir": [
+     0,
+     0,
+     1
+    ],
+    "speed": 16,
+    "spread": 10,
+    "sound": "pull"
+   }
+  ],
+  "idle": [
+   {
+    "t": 1.0,
+    "vfx": "sweet_haze",
+    "bone": "torso",
+    "off": [
+     0,
+     8,
+     0
+    ],
+    "count": 1
+   }
+  ]
+ },
+ "qiyu": {
+  "idle_play": [
+   {
+    "t": 0.6,
+    "vfx": "ink_note",
+    "bone": "flute",
+    "off": [
+     0,
+     -4,
+     -6
+    ],
+    "sound": "flute"
+   },
+   {
+    "t": 2.2,
+    "vfx": "ink_note",
+    "bone": "flute",
+    "off": [
+     0,
+     -4,
+     -6
+    ]
+   }
+  ]
+ },
+ "tanyu": {
+  "peel": [
+   {
+    "t": 0.3,
+    "vfx": "skin_flake",
+    "bone": "head",
+    "off": [
+     0,
+     4,
+     -6
+    ],
+    "sound": "peel"
+   }
+  ],
+  "absorb": [
+   {
+    "t": 0.3,
+    "vfx": "skin_absorb",
+    "bone": "head",
+    "off": [
+     0,
+     2,
+     -8
+    ],
+    "spread": 12,
+    "sound": "absorb"
+   }
+  ],
+  "grab_bite": [
+   {
+    "t": 0.6,
+    "vfx": "skin_flake",
+    "bone": "head",
+    "off": [
+     0,
+     0,
+     -8
+    ],
+    "count": 3,
+    "sound": "bite"
+   }
+  ]
+ },
+ "chennu": {
+  "stomp": [
+   {
+    "t": 0.6,
+    "vfx": "dust_ring",
+    "bone": "root",
+    "off": [
+     0,
+     2,
+     -48
+    ],
+    "spread": 40,
+    "count": 18,
+    "sound": "stomp"
+   }
+  ],
+  "roar": [
+   {
+    "t": 0.4,
+    "vfx": "eye_glow",
+    "bone": "head",
+    "off": [
+     0,
+     10,
+     8
+    ],
+    "sound": "roar"
+   }
+  ]
+ },
+ "shifotou": {
+  "slam": [
+   {
+    "t": 0.8,
+    "vfx": "dust_ring",
+    "bone": "root",
+    "off": [
+     0,
+     2,
+     -56
+    ],
+    "spread": 70,
+    "count": 24,
+    "sound": "slam"
+   },
+   {
+    "t": 0.82,
+    "vfx": "stone_debris",
+    "bone": "root",
+    "off": [
+     0,
+     4,
+     -56
+    ],
+    "spread": 40,
+    "count": 14
+   }
+  ],
+  "idle": [
+   {
+    "t": 1.5,
+    "vfx": "black_ooze",
+    "bone": "core",
+    "off": [
+     0,
+     44,
+     0
+    ],
+    "spread": 30
+   }
+  ],
+  "gaze": [
+   {
+    "t": 0.6,
+    "vfx": "eye_glow",
+    "bone": "core",
+    "off": [
+     0,
+     60,
+     -10
+    ],
+    "spread": 50,
+    "count": 6,
+    "sound": "gaze"
+   }
+  ],
+  "death": [
+   {
+    "t": 1.2,
+    "vfx": "dust_ring",
+    "bone": "root",
+    "off": [
+     0,
+     2,
+     0
+    ],
+    "spread": 80,
+    "count": 24,
+    "sound": "death"
+   }
+  ]
+ }
+}

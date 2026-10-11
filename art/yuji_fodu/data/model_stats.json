@@ -1,0 +1,159 @@
+{
+ "yuchi": {
+  "bones": 10,
+  "cubes": 9,
+  "anims": [
+   "idle",
+   "walk",
+   "stare",
+   "crawl",
+   "death"
+  ],
+  "tex": 128,
+  "glow": false
+ },
+ "shasheng": {
+  "bones": 10,
+  "cubes": 10,
+  "anims": [
+   "idle",
+   "run",
+   "chop",
+   "death"
+  ],
+  "tex": 128,
+  "glow": false
+ },
+ "toudao": {
+  "bones": 9,
+  "cubes": 8,
+  "anims": [
+   "idle",
+   "scuttle",
+   "snatch",
+   "scream",
+   "death"
+  ],
+  "tex": 64,
+  "glow": false
+ },
+ "ekou": {
+  "bones": 10,
+  "cubes": 9,
+  "anims": [
+   "idle",
+   "walk",
+   "curse",
+   "spike_volley",
+   "claw",
+   "burst",
+   "death"
+  ],
+  "tex": 128,
+  "glow": false
+ },
+ "wangyu": {
+  "bones": 10,
+  "cubes": 8,
+  "anims": [
+   "idle",
+   "walk",
+   "mimic",
+   "claw",
+   "death"
+  ],
+  "tex": 128,
+  "glow": false
+ },
+ "liangshe": {
+  "bones": 13,
+  "cubes": 11,
+  "anims": [
+   "idle",
+   "walk",
+   "whisper",
+   "scratch",
+   "death"
+  ],
+  "tex": 128,
+  "glow": false
+ },
+ "xieyin": {
+  "bones": 6,
+  "cubes": 6,
+  "anims": [
+   "idle",
+   "walk",
+   "curl",
+   "lure",
+   "death"
+  ],
+  "tex": 64,
+  "glow": false
+ },
+ "qiyu": {
+  "bones": 9,
+  "cubes": 9,
+  "anims": [
+   "idle_play",
+   "glide",
+   "strike",
+   "death"
+  ],
+  "tex": 128,
+  "glow": false
+ },
+ "tanyu": {
+  "bones": 15,
+  "cubes": 15,
+  "anims": [
+   "idle",
+   "walk",
+   "crawl_charge",
+   "grab_bite",
+   "peel",
+   "absorb",
+   "eat",
+   "death"
+  ],
+  "tex": 128,
+  "glow": false
+ },
+ "chennu": {
+  "bones": 20,
+  "cubes": 34,
+  "anims": [
+   "idle",
+   "walk",
+   "stomp",
+   "roar",
+   "death"
+  ],
+  "tex": 256,
+  "glow": true
+ },
+ "shifotou": {
+  "bones": 29,
+  "cubes": 69,
+  "anims": [
+   "idle",
+   "crawl",
+   "slam",
+   "sweep",
+   "gaze",
+   "climb",
+   "death"
+  ],
+  "tex": 256,
+  "glow": true
+ },
+ "bone_spike": {
+  "bones": 2,
+  "cubes": 2,
+  "anims": [
+   "fly"
+  ],
+  "tex": 32,
+  "glow": false
+ }
+}

@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "qihai:item/ekou_spawn_egg"
+  }
+}

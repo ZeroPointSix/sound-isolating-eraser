@@ -101,7 +101,9 @@ minecraft {
         // By default, the server will crash when no gametests are provided.
         // The gametest system is also enabled by default for other run configs under the /test command.
         gameTestServer {
-            property 'forge.enabledGameTestNamespaces', project.hasProperty('nightOnly') ? 'eternal_night_tests' : "${mod_id},eternal_night_tests"
+            property 'forge.enabledGameTestNamespaces', project.hasProperty('yujiOnly') ? 'yuji_tests' :
+                    project.hasProperty('coreOnly') ? "${mod_id},yuji_tests" :
+                    project.hasProperty('nightOnly') ? 'eternal_night_tests' : "${mod_id},eternal_night_tests,yuji_tests"
         }
 
         data {

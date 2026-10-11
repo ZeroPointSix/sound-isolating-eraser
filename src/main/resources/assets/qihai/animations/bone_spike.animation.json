@@ -1,0 +1,25 @@
+{
+ "format_version": "1.8.0",
+ "animations": {
+  "animation.bone_spike.fly": {
+   "loop": true,
+   "animation_length": 0.4,
+   "bones": {
+    "spike": {
+     "rotation": {
+      "0.0": [
+       0,
+       0,
+       0
+      ],
+      "0.4": [
+       0,
+       0,
+       360
+      ]
+     }
+    }
+   }
+  }
+ }
+}

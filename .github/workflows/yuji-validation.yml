@@ -1,0 +1,46 @@
+name: Yuji Fodu validation
+
+on:
+  pull_request:
+    paths:
+      - 'src/main/**'
+      - 'art/yuji_fodu/**'
+      - 'tools/yuji/**'
+      - 'build.gradle'
+      - 'gradle.properties'
+      - '.github/workflows/yuji-validation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: yuji-validation-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate all models, animation cues and resource references
+        run: python tools/yuji/validate_assets.py
+      - name: Build and run all Forge GameTests
+        run: bash ./gradlew build runGameTestServer --no-daemon --stacktrace
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: yuji-validation
+          path: |
+            build/libs/*.jar
+            build/reports/
+            run/logs/latest.log
