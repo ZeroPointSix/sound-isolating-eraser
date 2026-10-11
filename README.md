@@ -3,6 +3,19 @@
 《畸海浮城》× Minecraft 1.20.1 Forge 一次性小道具 mod。手持隔音橡皮点击方块表面，
 用可切换形状画出多列 5 格高的透明虚拟墙；底部连续白痕是墙的锚点。
 
+## 安装与双端依赖
+
+本分支运行环境为 **Minecraft 1.20.1 + Forge 47.2.0**。客户端与独立服务端都必须安装本 mod 及以下两个前置模组：
+
+| 前置模组 | 版本与加载器 | 安装位置 |
+| --- | --- | --- |
+| GeckoLib | **Forge / Minecraft 1.20.1** 版，建议使用 **4.4.9**；依赖范围为 `[4.4.9,5)`，即 `>= 4.4.9` 且 `< 5` 的兼容版本 | 每位玩家的客户端与服务端均必需 |
+| Curios API | **Forge / Minecraft 1.20.1** 版，沿用 **5.14.1+1.20.1**；依赖范围 `[5.14.1,6)` | 每位玩家的客户端与服务端均必需，重力玉佩的现有依赖保留 |
+
+将本 mod、GeckoLib 和 Curios API 的 jar 分别放入客户端与服务端各自的 `mods/` 目录，双端保持相同的模组及依赖版本。单人游戏也需要在本地客户端安装全部前置；不要使用 Fabric、NeoForge 或其他 Minecraft 版本的依赖包。
+
+公开的 `sound_isolating_eraser-<ver>.jar` **不内置 GeckoLib 或 Curios API**，下载本 mod 后仍需另行安装这两个依赖，不能只安装在客户端或只安装在服务端。
+
 ## 第三个小物品：强化药片（0.4.0）
 
 - 物品 ID：`sound_isolating_eraser:enhancement_pill_pack`；空板为 `sound_isolating_eraser:empty_pill_pack`。工具创造物品栏或 `/give` 获取，不添加合成和掉落。
@@ -91,7 +104,7 @@ artifact (same filename), and publishes a GitHub Release with that jar attached.
 
 ## Gravity Jade Pendant / 重力玉佩
 
-- 运行依赖：Minecraft 1.20.1、Forge 47.x、Curios API 5.14.1+1.20.1。客户端与服务端均需安装本 mod 和 Curios。
+- 运行依赖见上方“安装与双端依赖”：Minecraft 1.20.1、Forge 47.2.0；客户端与服务端均需安装本 mod、Curios API 和 GeckoLib，Curios 项链槽依赖保持不变。
 - 物品：`sound_isolating_eraser:gravity_jade_pendant`，在工具创造物品栏中获取，也可使用 `/give`。设计未定义合成配方，因此不添加配方。
 - 只有 Curios 的实际 `necklace` 槽启用能力；手持、背包和饰品外观槽不会启用。复用 Curios 的项链槽预设，不增加同名槽数量。
 - 被动感知：佩戴者本地每 2 tick 检测附近 16 格 AABB 内实体的位置变化；阈值 0.02 格/tick，停下约 4 tick 消失，最多显示最近 64 个。生物显示白色模型轮廓，其他实体显示白色边框。

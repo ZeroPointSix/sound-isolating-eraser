@@ -3,6 +3,7 @@ package com.zeropointsix.eraser.registry;
 import com.zeropointsix.eraser.ModMain;
 import com.zeropointsix.eraser.gravity.GravityFieldEntity;
 import com.zeropointsix.eraser.shadow.ShadowTanglerEntity;
+import com.zeropointsix.eraser.neon.NeonTumorEntity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraftforge.registries.DeferredRegister;
@@ -26,4 +27,10 @@ public final class ModEntities {
                     .of(ShadowTanglerEntity::new, MobCategory.MONSTER)
                     .sized(0.6F, 2.0F).clientTrackingRange(8)
                     .build(ModMain.MOD_ID + ":shadow_tangler"));
+
+    public static final RegistryObject<EntityType<NeonTumorEntity>> NEON_TUMOR =
+            ENTITIES.register("neon_tumor", () -> EntityType.Builder
+                    .of(NeonTumorEntity::new, MobCategory.MONSTER)
+                    .sized(1.0F, 1.1F).clientTrackingRange(10)
+                    .build(ModMain.MOD_ID + ":neon_tumor"));
 }

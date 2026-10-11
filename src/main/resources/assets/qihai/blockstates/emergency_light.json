@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "qihai:block/emergency_light"
+    }
+  }
+}

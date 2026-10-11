@@ -1,0 +1,169 @@
+{
+  "tested_commit": "0ef5a18b23c5fdff900620432f32da3582772a8e",
+  "run": 38143076580,
+  "artifact": 11703902286,
+  "lifecycle_result": "PASS real restart, both native clients, death and native respawn",
+  "building_survey_result": "FAIL 0/12 entrances; collection completion is not acceptance",
+  "files": [
+    {
+      "path": "docs/evidence/eternal-night-restart-20261011/city-survey.json",
+      "bytes": 45818,
+      "sha256": "8d096abce91e54db04217b26c31d6d89a54164ea5ec72758325e676ba123c30f"
+    },
+    {
+      "path": "docs/evidence/eternal-night-restart-20261011/observer-reload-white.pass",
+      "bytes": 158,
+      "sha256": "fe97ffa347fb977a2fe11c6f29d4489f6ec844aadede40e8d868c83d67713532"
+    },
+    {
+      "path": "docs/evidence/eternal-night-restart-20261011/observer-reload.log",
+      "bytes": 194266,
+      "sha256": "ccf48de15ba786f050db4f5f568defdf78e168341312fb147993be06495e5974"
+    },
+    {
+      "path": "docs/evidence/eternal-night-restart-20261011/observer-restart-ready.pass",
+      "bytes": 57,
+      "sha256": "fca70a9397693d83aadf581e233c176549c1e3ee589128e506c01ca0317a2645"
+    },
+    {
+      "path": "docs/evidence/eternal-night-restart-20261011/observer-return.pass",
+      "bytes": 69,
+      "sha256": "ab47f67d26b907cd2938aeed81056825b76ae1c80d32c4b7b975c9034b8d8dde"
+    },
+    {
+      "path": "docs/evidence/eternal-night-restart-20261011/observer-white.pass",
+      "bytes": 158,
+      "sha256": "a12fb6741882c475444bd019f45f99b4218c1d7e513c5bb78c575c4139a853ed"
+    },
+    {
+      "path": "docs/evidence/eternal-night-restart-20261011/observer.log",
+      "bytes": 203352,
+      "sha256": "6f000c97ab922c69d3b56c847df07d3ee3d6d698e62e6d8e8be0a1fe8b3e032d"
+    },
+    {
+      "path": "docs/evidence/eternal-night-restart-20261011/owner-death.pass",
+      "bytes": 105,
+      "sha256": "573d2e3835800ba60df8fea47496285b78f283cc724be945f5617ba2ae31c8dd"
+    },
+    {
+      "path": "docs/evidence/eternal-night-restart-20261011/owner-reload-white.pass",
+      "bytes": 159,
+      "sha256": "298df643796e3ed1af60130b5407600f0e240e35ce145f5f338355413bc888d8"
+    },
+    {
+      "path": "docs/evidence/eternal-night-restart-20261011/owner-reload.log",
+      "bytes": 194770,
+      "sha256": "8de2372fa978540638a88651c098f98ce9ac89ea1dc6e19ad1ac225f11d1cec3"
+    },
+    {
+      "path": "docs/evidence/eternal-night-restart-20261011/owner-restart-ready.pass",
+      "bytes": 57,
+      "sha256": "fca70a9397693d83aadf581e233c176549c1e3ee589128e506c01ca0317a2645"
+    },
+    {
+      "path": "docs/evidence/eternal-night-restart-20261011/owner-return.pass",
+      "bytes": 69,
+      "sha256": "ab47f67d26b907cd2938aeed81056825b76ae1c80d32c4b7b975c9034b8d8dde"
+    },
+    {
+      "path": "docs/evidence/eternal-night-restart-20261011/owner-survey.complete",
+      "bytes": 105,
+      "sha256": "81b75b863429bc39e29714a542a85bcf135088e1aa469f6cfcdca03f8822c776"
+    },
+    {
+      "path": "docs/evidence/eternal-night-restart-20261011/owner-white.pass",
+      "bytes": 158,
+      "sha256": "8ed0367b5b6ff507470d560bc6e42b06ab5d5f7418c20e85685d5d1cd233b6d2"
+    },
+    {
+      "path": "docs/evidence/eternal-night-restart-20261011/owner.log",
+      "bytes": 203415,
+      "sha256": "57301e75f2433cebe2e605d3f7ec86915eef6499c82be82beca6e0ffb42a09d7"
+    },
+    {
+      "path": "docs/evidence/eternal-night-restart-20261011/server-checkpoint.pass",
+      "bytes": 109,
+      "sha256": "ac5e94c94e2cc11b3366be16ad9a25545283c2ed189a8c75e5ed30f838a42d73"
+    },
+    {
+      "path": "docs/evidence/eternal-night-restart-20261011/server-cycle.pass",
+      "bytes": 183,
+      "sha256": "b2a9cbe335ece7643a8d93a551449880cda2062f34595e2f022532fe23f5eb45"
+    },
+    {
+      "path": "docs/evidence/eternal-night-restart-20261011/server-death.pass",
+      "bytes": 139,
+      "sha256": "ee0ff0b72ecc1586161b440d64f03fe04d517cbb0568e627cc41dc0573d2ae46"
+    },
+    {
+      "path": "docs/evidence/eternal-night-restart-20261011/server-reload.log",
+      "bytes": 197797,
+      "sha256": "c834df863e6818b30a994bfec2fa266014a886a1b6bd847ad32dbc62a1e4b558"
+    },
+    {
+      "path": "docs/evidence/eternal-night-restart-20261011/server-reload.pass",
+      "bytes": 138,
+      "sha256": "17636cb0a2c77ed0ba5ac70e7a05acb08b693cc62aed64812db500cdbf7f9d52"
+    },
+    {
+      "path": "docs/evidence/eternal-night-restart-20261011/server-survey.complete",
+      "bytes": 124,
+      "sha256": "2a95d64b4b915ccd196bc8b840bd36fba54facf5022430297fbd1924bbef294f"
+    },
+    {
+      "path": "docs/evidence/eternal-night-restart-20261011/server.log",
+      "bytes": 207540,
+      "sha256": "4a43649468367856940163dd776a216ad81e20087690dcc2d52f889456be3128"
+    },
+    {
+      "path": "docs/evidence/eternal-night-restart-20261011/owner-reload-death-screen.png",
+      "bytes": 85352,
+      "sha256": "baa4422234fdead253c4fcc2d3d60061eeba105b72e697579fca33753f4fbbd4"
+    },
+    {
+      "path": "docs/evidence/eternal-night-restart-20261011/owner-reload-death-respawn.png",
+      "bytes": 74521,
+      "sha256": "00aaa76cc8146a04731c379e6de51ae656c26651ae02c039abaccd3a732f6d20"
+    },
+    {
+      "path": "docs/evidence/eternal-night-restart-20261011/owner-reload-natural-mobs-office_dark.png",
+      "bytes": 79841,
+      "sha256": "4cb3c1cbfdfdf9fd19e39531714402a24588c5f73bd97939b73a2b6f13289f28"
+    },
+    {
+      "path": "docs/evidence/eternal-night-restart-20261011/owner-reload-natural-mobs-office_tower.png",
+      "bytes": 55756,
+      "sha256": "93de2b47b33ffa8d724fdfd47f47ede9b3b9366074c59b98c10f98fbcdc9d7a6"
+    },
+    {
+      "path": "docs/evidence/eternal-night-restart-20261011/owner-reload-entrance-before-office_tower.png",
+      "bytes": 52488,
+      "sha256": "8a0c9b0b6174b84ea532098ba5bc6e7c8bf732e1b645dfcc96631fff09b85214"
+    },
+    {
+      "path": "docs/evidence/eternal-night-restart-20261011/owner-reload-entrance-after-office_tower.png",
+      "bytes": 55756,
+      "sha256": "93de2b47b33ffa8d724fdfd47f47ede9b3b9366074c59b98c10f98fbcdc9d7a6"
+    },
+    {
+      "path": "docs/evidence/eternal-night-restart-20261011/owner-reload-shared-white-exit.png",
+      "bytes": 108795,
+      "sha256": "32861bab507f92b7d76cbf64821ef44612fdd9d5bfe1789f15991506cedaf173"
+    },
+    {
+      "path": "docs/evidence/eternal-night-restart-20261011/observer-reload-shared-white-exit.png",
+      "bytes": 119266,
+      "sha256": "e5eedc7aa2712ac68dc84725506171f29a9f1e26e614a243727eb858e9abfa79"
+    },
+    {
+      "path": "docs/evidence/eternal-night-restart-20261011/night-native-validation.log",
+      "bytes": 1894,
+      "sha256": "c570f157530b01ba9aea58ab13a3922ff42539307cf23263052a52670b17af64"
+    },
+    {
+      "path": "docs/evidence/eternal-night-restart-20261011/night-jar-sha256.txt",
+      "bytes": 110,
+      "sha256": "7c5a4d0aa668106201248aa17541fb5f7dbc3e4d63fb8e5c6008783f96110f55"
+    }
+  ]
+}

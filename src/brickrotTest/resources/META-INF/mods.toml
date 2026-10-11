@@ -1,0 +1,13 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="MIT"
+[[mods]]
+modId="brickrot_qa"
+version="1.0.0"
+displayName="Brickrot Integration Driver"
+[[dependencies.brickrot_qa]]
+modId="sound_isolating_eraser"
+mandatory=true
+versionRange="[0.8.0,)"
+ordering="AFTER"
+side="BOTH"

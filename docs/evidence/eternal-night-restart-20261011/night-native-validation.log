@@ -1,0 +1,17 @@
+NIGHT_REAL_RESTART old_pid=3309 new_pid=3638 world=/home/runner/work/sound-isolating-eraser/sound-isolating-eraser/build/night-e2e/server/world
+COLLECTED city survey: 0/12 entrances crossed; consult deviations in city-survey.json; not full building/monster acceptance
+PASS checkpoint before restart: owner doors=100, two visiting players, shared exit until=7176, gameTime=1239
+PASS original models and shared white plane with rendered negative control; negative=Pixels[white=6091, square=484] positive=Pixels[white=25459, square=4900]
+PASS original models and shared white plane with rendered negative control; negative=Pixels[white=2790, square=196] positive=Pixels[white=14945, square=2116]
+PASS native client ready for intentional server shutdown
+PASS native client ready for intentional server shutdown
+PASS new server process loaded same world, exact shared expiry, two player compounds, owner 100 doors, both original beds and inventories
+PASS original models and shared white plane with rendered negative control; negative=Pixels[white=10493, square=961] positive=Pixels[white=29885, square=5625]
+PASS original models and shared white plane with rendered negative control; negative=Pixels[white=9690, square=961] positive=Pixels[white=21124, square=3969]
+PASS: native bed clicks and deep sleep, responsive cold-world same-night entry, native 100th door, shared exit, distinct beds, inventory and counter reset; max entry tick gap 3001 ms
+PASS native walking through shared exit returned client to overworld
+PASS native walking through shared exit returned client to overworld
+PASS real client death screen and native respawn: seven visible dropped diamonds, zero retained diamonds, original bed and cleared history
+PASS real DeathScreen, native Respawn-button click and rendered living overworld player with no diamonds
+NIGHT_TWO_CLIENT_E2E_PASS
+NIGHT_RESTART_AND_REAL_CLIENT_DEATH_PASS

@@ -1,0 +1,146 @@
+{
+  "tested_commit": "fabebb34d7287529d787efbc4aad8550c97373ba",
+  "evidence_commit_parent": "2919632c0d4f90946b3d3efca3efb7b5ccb8a568",
+  "ci_run": 38139059463,
+  "artifact_id": 11701344208,
+  "artifact_sha256": "fe6ca4b9a9edce7d00c9377aeac7bc7854bf1e0a8e7937be2b73c972cdf898af",
+  "ci_result": "PASS",
+  "host_native_result": "FAIL: client disconnected during login",
+  "files": [
+    {
+      "path": "docs/evidence/eternal-night-20261011/ci-fabebb34/observer-before-sleep.png",
+      "bytes": 77135,
+      "sha256": "b02fb86e63c8b893efc1c7303c387c00b02fc0c9ce4031dfae62f28a30c63d28"
+    },
+    {
+      "path": "docs/evidence/eternal-night-20261011/ci-fabebb34/observer-negative-no-plane.png",
+      "bytes": 128059,
+      "sha256": "b9c5b0ae6d232fd627a76596b33683a4c249b7622a3abfbcc533e45deae99c58"
+    },
+    {
+      "path": "docs/evidence/eternal-night-20261011/ci-fabebb34/observer-original-art.png",
+      "bytes": 126400,
+      "sha256": "791168576cc4cdb7203d58b78d13ae2539f428c205d3139c1f44072a603aa76b"
+    },
+    {
+      "path": "docs/evidence/eternal-night-20261011/ci-fabebb34/observer-return.pass",
+      "bytes": 69,
+      "sha256": "ab47f67d26b907cd2938aeed81056825b76ae1c80d32c4b7b975c9034b8d8dde"
+    },
+    {
+      "path": "docs/evidence/eternal-night-20261011/ci-fabebb34/observer-returned-home.png",
+      "bytes": 81924,
+      "sha256": "6bfb47e33de442320cdc7ff0ff8059b1d24000bdd37efcbd37908a510dff8991"
+    },
+    {
+      "path": "docs/evidence/eternal-night-20261011/ci-fabebb34/observer-shared-white-exit.png",
+      "bytes": 124757,
+      "sha256": "c6963107679f6daae0c25eacaa55b1654dce8c63452b92515f8726f3d7a47c87"
+    },
+    {
+      "path": "docs/evidence/eternal-night-20261011/ci-fabebb34/observer-sleeping.png",
+      "bytes": 70064,
+      "sha256": "1540341a25616936fcc298c6856de9f15b14f37c0abd9149cae27a2c2a3d23d1"
+    },
+    {
+      "path": "docs/evidence/eternal-night-20261011/ci-fabebb34/observer-white.pass",
+      "bytes": 158,
+      "sha256": "43c6b83d67b2953e8d42c89e62d2899d229031842476603a2196fc8d1c00bbe0"
+    },
+    {
+      "path": "docs/evidence/eternal-night-20261011/ci-fabebb34/observer.log",
+      "bytes": 202185,
+      "sha256": "32ba1151316abb36039a77b2694aa9c84487f20c9bc3d23cb14a88ee412a3436"
+    },
+    {
+      "path": "docs/evidence/eternal-night-20261011/ci-fabebb34/owner-before-sleep.png",
+      "bytes": 76673,
+      "sha256": "c02e8c7251247759235d593e160c20596656282055744c0e4f4a8ddd5015fdd9"
+    },
+    {
+      "path": "docs/evidence/eternal-night-20261011/ci-fabebb34/owner-negative-no-plane.png",
+      "bytes": 111903,
+      "sha256": "e491874ff46027a46adccc09cc9a6dc7c66a4c8c3eb5dac1087503c3015e41d1"
+    },
+    {
+      "path": "docs/evidence/eternal-night-20261011/ci-fabebb34/owner-original-art.png",
+      "bytes": 111398,
+      "sha256": "b3fbd30e9649c537f842dd2803cf7cc871b9a3a965128d66f459e1be4ecc9eeb"
+    },
+    {
+      "path": "docs/evidence/eternal-night-20261011/ci-fabebb34/owner-return.pass",
+      "bytes": 69,
+      "sha256": "ab47f67d26b907cd2938aeed81056825b76ae1c80d32c4b7b975c9034b8d8dde"
+    },
+    {
+      "path": "docs/evidence/eternal-night-20261011/ci-fabebb34/owner-returned-home.png",
+      "bytes": 81261,
+      "sha256": "edba48d43b909d2212b1c1b0c641783c9a2428cbd08a2a50a88d13e22b4462e4"
+    },
+    {
+      "path": "docs/evidence/eternal-night-20261011/ci-fabebb34/owner-shared-white-exit.png",
+      "bytes": 110034,
+      "sha256": "a58ac3a497241a134e307d5528ef04e9c569286d90f3780016db386ef60cf0aa"
+    },
+    {
+      "path": "docs/evidence/eternal-night-20261011/ci-fabebb34/owner-sleeping.png",
+      "bytes": 69886,
+      "sha256": "26884195b7b4e402e81d66f29a316945824eab056f68bb79a303674ef0b4720b"
+    },
+    {
+      "path": "docs/evidence/eternal-night-20261011/ci-fabebb34/owner-white.pass",
+      "bytes": 158,
+      "sha256": "280936fe6b5e57c90d5b2b4f39d6fb92a81af6684bd8afaa6c84864736e4f85a"
+    },
+    {
+      "path": "docs/evidence/eternal-night-20261011/ci-fabebb34/owner.log",
+      "bytes": 203140,
+      "sha256": "5ebbf9a51c9423bfb9d7458d5fdc386f1f051de4b4104c7866636014966789e9"
+    },
+    {
+      "path": "docs/evidence/eternal-night-20261011/ci-fabebb34/server-cycle.pass",
+      "bytes": 182,
+      "sha256": "06d6d50d5f839f30d7e7d142dd568b5372c4e51ed68dcfcc0002d5a16cd0bc38"
+    },
+    {
+      "path": "docs/evidence/eternal-night-20261011/ci-fabebb34/server.log",
+      "bytes": 213271,
+      "sha256": "1ac0adb3dff93204c957faed59815a4625c79a2e6688fa9a32a4180a6395bbb9"
+    },
+    {
+      "path": "docs/evidence/eternal-night-20261011/ci-fabebb34/native-summary.log",
+      "bytes": 662,
+      "sha256": "0274f88f8ddae4bb6519565a50ddc07d859ba93d1edc01c4100d14babd463a50"
+    },
+    {
+      "path": "docs/evidence/eternal-night-20261011/ci-fabebb34/jar-sha256.txt",
+      "bytes": 110,
+      "sha256": "43766af5c897df4afb76131247d3fe943858e7288aedc27dd51c06bd95fe055c"
+    },
+    {
+      "path": "docs/evidence/eternal-night-20261011/host-fabebb34-login-timeout/server.log",
+      "bytes": 210170,
+      "sha256": "8fd7fafad73ae4d9a67eeda8730c79effcb5996de151eb2ba57e195bcef7f3d1"
+    },
+    {
+      "path": "docs/evidence/eternal-night-20261011/host-fabebb34-login-timeout/owner.log",
+      "bytes": 138311,
+      "sha256": "c2a022ff2a11154887966607881f4feaebdfe79510b16f09d78743f7e9313bf7"
+    },
+    {
+      "path": "docs/evidence/eternal-night-20261011/host-fabebb34-login-timeout/observer.log",
+      "bytes": 145911,
+      "sha256": "2dd8b827fcd740611eaf56016052c78e6173888ff4d028f96135b18ed86d9e99"
+    },
+    {
+      "path": "docs/evidence/eternal-night-20261011/host-fabebb34-login-timeout/observer.failed",
+      "bytes": 79,
+      "sha256": "b74197fb9ea089ff68fba7fa9e01032a54c0ad8bee2383419a19094df5cbb759"
+    },
+    {
+      "path": "docs/evidence/eternal-night-20261011/host-fabebb34-login-timeout/launcher.log",
+      "bytes": 296,
+      "sha256": "d9b6c7487184cfa100e94928a616dcd088942c3fcef685df1eef93113c2d5590"
+    }
+  ]
+}
