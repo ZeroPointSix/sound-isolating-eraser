@@ -46,6 +46,7 @@ public final class EternalNightContent {
         ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER, NightConfig.SPEC, "eternal-night-server.toml");
         MinecraftForge.EVENT_BUS.register(NightEvents.class);
         MinecraftForge.EVENT_BUS.register(CitySpawns.class);
+        CityExitNetwork.register();
     }
 
     public static boolean isCity(Level level) { return level.dimension().equals(LEVEL); }

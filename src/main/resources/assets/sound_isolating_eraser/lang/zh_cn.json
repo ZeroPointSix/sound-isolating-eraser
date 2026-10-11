@@ -59,6 +59,7 @@
   "death.attack.sound_isolating_eraser.corrosion.player": "%1$s 在与 %2$s 战斗时被腐蚀殆尽",
   "message.sound_isolating_eraser.city.arrival": "你醒了，但天没有亮。",
   "message.sound_isolating_eraser.city.doors": "已开启 %s 扇不同的门",
+  "message.sound_isolating_eraser.city.unsafe_home": "床位和出生点附近暂无安全落点，开门进度已保留。",
   "message.sound_isolating_eraser.city.milestone.25": "门后的黑暗似乎开始松动。",
   "message.sound_isolating_eraser.city.milestone.50": "你已经走过一半。",
   "message.sound_isolating_eraser.city.milestone.75": "远处传来低沉的回响。",

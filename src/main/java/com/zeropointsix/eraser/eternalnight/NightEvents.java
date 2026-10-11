@@ -189,9 +189,23 @@ public final class NightEvents {
         }
         if (target == null) {
             BlockPos spawn = overworld.getSharedSpawnPos();
-            int y = overworld.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
-                    spawn.getX(), spawn.getZ());
-            target = new Vec3(spawn.getX() + 0.5, Math.max(spawn.getY(), y), spawn.getZ() + 0.5);
+            for (int radius = 0; radius <= 8 && target == null; radius++) {
+                for (int dx = -radius; dx <= radius && target == null; dx++) for (int dz = -radius; dz <= radius; dz++) {
+                    if (Math.max(Math.abs(dx), Math.abs(dz)) != radius) continue;
+                    int x = spawn.getX() + dx, z = spawn.getZ() + dz;
+                    int y = overworld.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
+                    BlockPos feet = new BlockPos(x, y, z);
+                    if (!overworld.getWorldBorder().isWithinBounds(feet) || !overworld.getFluidState(feet).isEmpty()
+                            || !overworld.getFluidState(feet.below()).isEmpty()) continue;
+                    target = net.minecraft.world.entity.vehicle.DismountHelper.findSafeDismountLocation(
+                            net.minecraft.world.entity.EntityType.PLAYER, overworld, feet, true);
+                    if (target != null) break;
+                }
+            }
+        }
+        if (target == null) {
+            player.displayClientMessage(Component.translatable("message.sound_isolating_eraser.city.unsafe_home"), true);
+            return;
         }
         player.teleportTo(overworld, target.x, target.y, target.z, player.getRespawnAngle(), 0);
         player.fallDistance = 0;
@@ -244,6 +258,7 @@ public final class NightEvents {
         if (event.phase != TickEvent.Phase.END || !(event.level instanceof ServerLevel level)
                 || !EternalNightContent.isCity(level)) return;
         if (level.getGameTime() % 20 == 0) {
+            CityExitNetwork.sync(level);
             for (long packed : CitySavedData.get(level).activeExits(level.getGameTime()).keySet()) {
                 BlockPos pos = BlockPos.of(packed);
                 if (!level.hasChunkAt(pos)) continue;

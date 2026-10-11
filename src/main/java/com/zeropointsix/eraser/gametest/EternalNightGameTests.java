@@ -22,11 +22,20 @@ public final class EternalNightGameTests {
     @GameTest(template = "empty", batch = "eternal_night", timeoutTicks = 240)
     public static void cityDeepSleepAndReturnPreservePlayer(GameTestHelper h) {
         ServerLevel overworld = h.getLevel();
-        var player = h.makeMockServerPlayerInLevel();
-        var channel = connect(player);
+        var session = login(h);
+        var player = session.player();
+        var channel = session.channel();
         double base = NightConfig.ENTRY_BASE.get(), cap = NightConfig.ENTRY_CAP.get();
         long time = overworld.getDayTime();
         int distance = player.server.getPlayerList().getViewDistance();
+        Runnable cleanup = () -> {
+            NightConfig.ENTRY_BASE.set(base); NightConfig.ENTRY_CAP.set(cap);
+            overworld.setDayTime(time);
+            player.server.getPlayerList().setViewDistance(distance);
+            player.server.getPlayerList().remove(player);
+            channel.finishAndReleaseAll();
+        };
+        try {
         player.server.getPlayerList().setViewDistance(2);
         NightConfig.ENTRY_BASE.set(1.0);
         NightConfig.ENTRY_CAP.set(1.0);
@@ -67,13 +76,13 @@ public final class EternalNightGameTests {
                 h.assertTrue(player.getInventory().getItem(0).getCount() == 7, "return preserves inventory");
                 h.succeed();
             } finally {
-                NightConfig.ENTRY_BASE.set(base); NightConfig.ENTRY_CAP.set(cap);
-                overworld.setDayTime(time);
-                player.server.getPlayerList().setViewDistance(distance);
-                player.server.getPlayerList().remove(player);
-                channel.finishAndReleaseAll();
+                cleanup.run();
             }
         });
+        } catch (RuntimeException | Error failure) {
+            cleanup.run();
+            throw failure;
+        }
     }
 
     @GameTest(template = "empty", batch = "eternal_night", timeoutTicks = 240)
@@ -102,20 +111,40 @@ public final class EternalNightGameTests {
         h.succeed();
     }
 
-    private static io.netty.channel.embedded.EmbeddedChannel connect(net.minecraft.server.level.ServerPlayer player) {
-        var channel = new io.netty.channel.embedded.EmbeddedChannel(player.connection.connection);
-        player.connection.connection.setProtocol(net.minecraft.network.ConnectionProtocol.PLAY);
-        return channel;
+    private record TestSession(net.minecraft.server.level.ServerPlayer player,
+            io.netty.channel.embedded.EmbeddedChannel channel) { }
+
+    private static TestSession login(GameTestHelper h) {
+        var connection = new net.minecraft.network.Connection(net.minecraft.network.protocol.PacketFlow.SERVERBOUND) {
+            @Override public void send(net.minecraft.network.protocol.Packet<?> packet) { }
+            @Override public void send(net.minecraft.network.protocol.Packet<?> packet,
+                    net.minecraft.network.PacketSendListener callback) { }
+        };
+        // Forge's login hook needs a channel before PlayerList.placeNewPlayer, unlike vanilla's helper.
+        var channel = new io.netty.channel.embedded.EmbeddedChannel(connection);
+        connection.setProtocol(net.minecraft.network.ConnectionProtocol.PLAY);
+        UUID uuid = UUID.randomUUID();
+        var player = new net.minecraft.server.level.ServerPlayer(h.getLevel().getServer(), h.getLevel(),
+                new com.mojang.authlib.GameProfile(uuid, "City" + uuid.toString().substring(0, 8)));
+        h.getLevel().getServer().getPlayerList().placeNewPlayer(connection, player);
+        return new TestSession(player, channel);
     }
 
     @GameTest(template = "empty", batch = "eternal_night", timeoutTicks = 200)
     public static void cityRealPlayerDoorInteractions(GameTestHelper h) {
         ServerLevel city = h.getLevel().getServer().getLevel(EternalNightContent.LEVEL);
-        net.minecraft.server.level.ServerPlayer player = h.makeMockServerPlayerInLevel();
-        var channel = connect(player);
+        var session = login(h);
+        var player = session.player();
+        var channel = session.channel();
         BlockPos first = new BlockPos(2048, 120, 2048);
         try {
             player.teleportTo(city, first.getX() + 0.5, first.getY(), first.getZ() - 2, 0, 0);
+            h.assertTrue(CitySpawns.withinCountedRange(player, first), "nearby candidate counted");
+            h.assertTrue(!CitySpawns.withinCountedRange(player, first.above(80)), "out-of-range roof cannot bypass cap");
+            player.connection.teleport(first.getX() + 0.5, 42, first.getZ() + 0.5, 0, 0);
+            h.assertTrue(!CitySpawns.withinCountedRange(player, new BlockPos(first.getX(), 80, first.getZ())),
+                    "underground players cannot trigger surface spawns");
+            player.connection.teleport(first.getX() + 0.5, first.getY(), first.getZ() - 2, 0, 0);
             player.getPersistentData().remove(NightEvents.PLAYER_TAG);
             installDoor(city, first, Blocks.OAK_DOOR);
             installDoor(city, first.east(3), Blocks.BIRCH_DOOR);

@@ -50,11 +50,11 @@ public final class CitySpawns {
                 int z = player.getBlockZ() + level.random.nextInt(81) - 40;
                 if (!level.hasChunkAt(new BlockPos(x, player.getBlockY(), z))) continue;
                 boolean underground = player.getY() < 56;
-                int y = underground ? CityChunkGenerator.SUBWAY_Y + 1 : player.getBlockY() + level.random.nextInt(17) - 8;
+                int y = underground ? CityChunkGenerator.SUBWAY_Y + 2 : player.getBlockY() + level.random.nextInt(17) - 8;
                 // Check nearby occupied floors, not just the roof heightmap: wall lights live below rooftops.
                 if (!level.getBlockState(new BlockPos(x, y - 1, z)).isSolid()) {
-                    if (underground) continue;
-                    y = level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
+                    y = underground ? CityChunkGenerator.SUBWAY_Y + 1
+                            : level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
                 }
                 BlockPos feet = new BlockPos(x, y, z);
                 if (!withinCountedRange(player, feet) || !level.hasChunkAt(feet)
