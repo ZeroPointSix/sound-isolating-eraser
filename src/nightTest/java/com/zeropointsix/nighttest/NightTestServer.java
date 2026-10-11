@@ -29,6 +29,7 @@ public final class NightTestServer {
     private static final Set<UUID> CAPTURED = new HashSet<>();
     private static final Set<UUID> READY = new HashSet<>();
     private static final Set<UUID> SLEPT = new HashSet<>();
+    private static final Set<UUID> DEEP_SLEEP = new HashSet<>();
     private static final Map<UUID, BlockPos> BEDS = new HashMap<>();
     private static ServerPlayer owner, observer;
     private static BlockPos door;
@@ -47,11 +48,20 @@ public final class NightTestServer {
                 })));
     }
 
+    @SubscribeEvent(priority = net.minecraftforge.eventbus.api.EventPriority.HIGHEST)
+    public static void sleepTick(TickEvent.PlayerTickEvent event) {
+        if (ENABLED && event.phase == TickEvent.Phase.END && event.player instanceof ServerPlayer player
+                && BEDS.containsKey(player.getUUID()) && player.isSleepingLongEnough()) {
+            if (DEEP_SLEEP.add(player.getUUID()))
+                System.out.println("NIGHT_DEEP_SLEEP " + player.getGameProfile().getName() + " reached 100 ticks");
+        }
+    }
+
     @SubscribeEvent public static void tick(TickEvent.ServerTickEvent event) {
         if (!ENABLED || event.phase != TickEvent.Phase.END || phase == 99) return;
         try {
             var server = event.getServer();
-            if (phase == -1) {
+            if (phase == -2 || phase == -1) {
                 long gap = System.nanoTime() - lastEntryTick;
                 longestEntryTick = Math.max(longestEntryTick, gap);
                 require(gap < 10_000_000_000L, "entry keeps server responsive: tick gap " + gap / 1_000_000 + " ms");
@@ -69,6 +79,7 @@ public final class NightTestServer {
                 server.overworld().setDayTime(18000);
                 server.overworld().updateSkyBrightness();
                 prepareBed(owner, -8); prepareBed(observer, 8);
+                lastEntryTick = System.nanoTime();
                 say(owner, "SLEEP"); say(observer, "SLEEP");
                 phase = -2;
             } else if (phase == -2) {
@@ -78,6 +89,7 @@ public final class NightTestServer {
                 lastEntryTick = System.nanoTime();
                 phase = -1;
             } else if (phase == -1 && EternalNightContent.isCity(owner.level()) && EternalNightContent.isCity(observer.level())) {
+                require(DEEP_SLEEP.size() == 2, "both real players reached the 100-tick deep-sleep threshold");
                 require(entryTicks >= 2, "server advances while cold city prepares");
                 System.out.println("NIGHT_ENTRY_RESPONSIVE ticks=" + entryTicks + " maxGapMs=" + longestEntryTick / 1_000_000);
                 require(owner.position().distanceTo(observer.position()) <= 48, "same-night cohort remains within 48 blocks");
