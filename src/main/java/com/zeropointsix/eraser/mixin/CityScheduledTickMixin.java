@@ -8,8 +8,9 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+// Dual MCP+SRG names with remap=false; see CityBlockTickMixin.
 @Mixin(LevelTicks.class)
 public abstract class CityScheduledTickMixin {
-    @Inject(method = "schedule", at = @At("HEAD"))
+    @Inject(method = {"schedule", "m_183393_"}, at = @At("HEAD"), remap = false)
     private void citySchedule(ScheduledTick<?> tick, CallbackInfo ci) { CityDoorActions.scheduled(this, tick); }
 }

@@ -9,12 +9,15 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+// No Mixin annotation processor runs in this build: the refmap is a static file, so every
+// City mixin lists both the MCP (userdev) and SRG (production) names with remap=false,
+// matching LivingEntityWallVisibilityMixin.
 @Mixin(ServerLevel.class)
 public abstract class CityBlockTickMixin {
-    @Inject(method = "tickBlock", at = @At("HEAD"))
+    @Inject(method = {"tickBlock", "m_184112_"}, at = @At("HEAD"), remap = false)
     private void cityBeginTick(BlockPos pos, Block block, CallbackInfo ci) {
         CityDoorActions.beginScheduled((ServerLevel) (Object) this, pos, block);
     }
-    @Inject(method = "tickBlock", at = @At("RETURN"))
+    @Inject(method = {"tickBlock", "m_184112_"}, at = @At("RETURN"), remap = false)
     private void cityEndTick(BlockPos pos, Block block, CallbackInfo ci) { CityDoorActions.end(); }
 }
