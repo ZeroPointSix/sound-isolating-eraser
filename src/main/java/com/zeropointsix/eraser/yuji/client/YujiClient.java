@@ -153,7 +153,7 @@ public final class YujiClient {
     }
     @SubscribeEvent public static void maskSound(PlaySoundEvent event) {
         var sound = event.getSound(); Minecraft mc = Minecraft.getInstance();
-        if (sound == null || sound.getSource() != SoundSource.HOSTILE || sound.isLooping() || mc.player == null || mc.level == null
+        if (sound == null || sound.getSource() != SoundSource.HOSTILE || mc.player == null || mc.level == null
                 || sound.getLocation().getPath().contains("qiyu.flute")) return;
         boolean flute = !mc.level.getEntitiesOfClass(YujiMonster.class, mc.player.getBoundingBox().inflate(32),
                 y -> y.kind() == YujiKind.QIYU && y.isAlive() && y.distanceToSqr(mc.player) <= 1024).isEmpty();

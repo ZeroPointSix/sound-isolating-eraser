@@ -39,6 +39,17 @@ python3 tools/yuji/validate_assets.py
 bash ./gradlew build runGameTestServer --no-daemon
 ```
 
+独立复验本模块可加 `-PyujiOnly`。将运行日志交给 `python3 tools/yuji/verify_gametest_log.py <log>`，可拒绝未发现用例、部分完成或失败的运行。
+
+真实客户端烟测复用仓库独立 QA 模组方式，不进入玩家 Jar：
+
+```bash
+bash ./gradlew -PyujiE2E writeYujiTestClasspath --no-daemon
+python3 tools/yuji/e2e.py
+```
+
+需本机 Xvfb 和软件 OpenGL；仅监听回环地址的测试服按仓库既有 E2E 方式运行。证据写入 `build/yuji-e2e-*/`，包含十一张实际游戏截图、动画骨骼变化、声音衰减和循环停止记录。这是单客户端烟测，仍不能替代下述双玩家专项验收。
+
 资源校验覆盖十二套模型/动画、十一枚蛋、三种状态图标、十九套粒子、全部声音引用、特效骨骼和动画时序。`YujiGameTests` 覆盖物品保存归还、成长边界、多来源状态解除、牛奶、众叛属性/宠物恢复、投射物和伤害抗性。
 
 ### 客户端验收清单

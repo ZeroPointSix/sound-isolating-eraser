@@ -1,6 +1,5 @@
 package com.zeropointsix.eraser.gametest;
 
-import com.zeropointsix.eraser.ModMain;
 import com.zeropointsix.eraser.yuji.BoneSpike;
 import com.zeropointsix.eraser.yuji.YujiAfflictions;
 import com.zeropointsix.eraser.yuji.YujiContent;
@@ -48,7 +47,7 @@ public final class YujiGameTests {
     private static CompoundTag state(Player p, String type, YujiMonster source) {
         return p.getPersistentData().getCompound("QihaiAfflictions").getCompound(type).getCompound(source.getStringUUID());
     }
-    @GameTest(templateNamespace = ModMain.MOD_ID, template = "empty", batch = "yuji")
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
     public static void yujiAllProfilesRegistered(GameTestHelper h) {
         h.assertTrue(YujiContent.MOBS.size() == 11, "ten monsters plus boss");
         h.assertTrue(YujiContent.PARTICLE.size() == 19, "nineteen particle providers");
@@ -61,14 +60,14 @@ public final class YujiGameTests {
         }
         h.succeed();
     }
-    @GameTest(templateNamespace = ModMain.MOD_ID, template = "empty", batch = "yuji")
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
     public static void yujiMilkCannotCureCustomEffects(GameTestHelper h) {
         for (var effect : new net.minecraft.world.effect.MobEffect[]{YujiContent.CURSED.get(), YujiContent.BETRAYED.get(), YujiContent.ENTHRALLED.get()}) {
             h.assertTrue(!new MobEffectInstance(effect, 100).isCurativeItem(new ItemStack(Items.MILK_BUCKET)), "milk must not cure " + effect);
         }
         h.succeed();
     }
-    @GameTest(templateNamespace = ModMain.MOD_ID, template = "empty", batch = "yuji")
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
     public static void yujiTheftPriorityAndArmor(GameTestHelper h) {
         YujiMonster thief = monster(h, YujiKind.TOUDAO); Player p = player(h, thief);
         ItemStack enchanted = new ItemStack(Items.DIAMOND_SWORD); enchanted.enchant(Enchantments.SHARPNESS, 3);
@@ -83,7 +82,7 @@ public final class YujiGameTests {
         h.assertTrue(!thief.removeWhenFarAway(10000), "stolen items prevent despawn");
         h.succeed();
     }
-    @GameTest(templateNamespace = ModMain.MOD_ID, template = "empty", batch = "yuji")
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
     public static void yujiStolenStackReloadAndNoLootRule(GameTestHelper h) {
         YujiMonster thief = monster(h, YujiKind.TOUDAO); Player p = player(h, thief);
         ItemStack expected = new ItemStack(Items.DIAMOND, 37); expected.getOrCreateTag().putString("Receipt", "yuji");
@@ -103,7 +102,7 @@ public final class YujiGameTests {
         } finally { h.getLevel().getGameRules().getRule(GameRules.RULE_DOMOBLOOT).set(rule, h.getLevel().getServer()); }
         h.succeed();
     }
-    @GameTest(templateNamespace = ModMain.MOD_ID, template = "empty", batch = "yuji")
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
     public static void yujiGreedLayersClampAndReload(GameTestHelper h) {
         YujiMonster greed = monster(h, YujiKind.TANYU); greed.setLayers(99, true);
         h.assertTrue(greed.layers() == 12, "layer cap"); close(h, greed.getMaxHealth(), 78, "layer health");
@@ -115,7 +114,7 @@ public final class YujiGameTests {
         restored.setLayers(-9, false); h.assertTrue(restored.layers() == 0, "negative layers clamp");
         close(h, restored.getHealth(), 30, "health clamped after peeling"); h.succeed();
     }
-    @GameTest(templateNamespace = ModMain.MOD_ID, template = "empty", batch = "yuji")
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
     public static void yujiGreedPeelsOnlyLargeAcceptedHit(GameTestHelper h) {
         YujiMonster greed = monster(h, YujiKind.TANYU); greed.setLayers(6, false); greed.setHealth(greed.getMaxHealth());
         greed.hurt(greed.damageSources().generic(), 5); h.assertTrue(greed.layers() == 6, "small hit cannot peel");
@@ -123,14 +122,14 @@ public final class YujiGameTests {
         h.assertTrue(greed.layers() == 5, "large hit peels once");
         greed.hurt(greed.damageSources().generic(), 6); h.assertTrue(greed.layers() == 5, "rejected hit cannot peel"); h.succeed();
     }
-    @GameTest(templateNamespace = ModMain.MOD_ID, template = "empty", batch = "yuji")
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
     public static void yujiGreedDeathFeedsOnlyNearest(GameTestHelper h) {
         YujiMonster dead = monster(h, YujiKind.TANYU), near = monster(h, YujiKind.TANYU), far = monster(h, YujiKind.TANYU);
         near.setPos(dead.position().add(1, 0, 0)); far.setPos(dead.position().add(4, 0, 0));
         dead.hurt(dead.damageSources().mobAttack(near), 10000);
         h.assertTrue(near.layers() == 5 && far.layers() == 2, "nearest receives exactly three, without extra kill layer"); h.succeed();
     }
-    @GameTest(templateNamespace = ModMain.MOD_ID, template = "empty", batch = "yuji")
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
     public static void yujiEggLayersUseOneToThree(GameTestHelper h) {
         for (int i = 0; i < 30; i++) {
             YujiMonster greed = YujiContent.MOBS.get(YujiKind.TANYU).get().create(h.getLevel());
@@ -140,7 +139,7 @@ public final class YujiGameTests {
         }
         h.succeed();
     }
-    @GameTest(templateNamespace = ModMain.MOD_ID, template = "empty", batch = "yuji")
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
     public static void yujiCurseMultiSourceAndExitGrace(GameTestHelper h) {
         YujiMonster a = monster(h, YujiKind.EKOU), b = monster(h, YujiKind.EKOU); Player p = player(h, a);
         YujiAfflictions.apply(p, a, "cursed"); YujiAfflictions.apply(p, b, "cursed"); a.discard(); YujiAfflictions.tickPlayer(p);
@@ -150,7 +149,7 @@ public final class YujiGameTests {
         h.assertTrue(p.hasEffect(YujiContent.CURSED.get()), "three-second grace"); YujiAfflictions.tickPlayer(p);
         h.assertTrue(!p.hasEffect(YujiContent.CURSED.get()), "leaving clears curse after grace"); h.succeed();
     }
-    @GameTest(templateNamespace = ModMain.MOD_ID, template = "empty", batch = "yuji")
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
     public static void yujiEnthrallLongExposureStillCrouchable(GameTestHelper h) {
         YujiMonster source = monster(h, YujiKind.XIEYIN); Player p = player(h, source);
         YujiAfflictions.apply(p, source, "enthralled"); state(p, "enthralled", source).putInt("Age", 240);
@@ -159,7 +158,7 @@ public final class YujiGameTests {
         YujiAfflictions.tickPlayer(p);
         h.assertTrue(p.getEffect(YujiContent.ENTHRALLED.get()).getAmplifier() == 1, "does not rebound immediately to III"); h.succeed();
     }
-    @GameTest(templateNamespace = ModMain.MOD_ID, template = "empty", batch = "yuji")
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
     public static void yujiEnthrallDamageAndRangeClear(GameTestHelper h) {
         YujiMonster source = monster(h, YujiKind.XIEYIN); Player p = player(h, source);
         YujiAfflictions.apply(p, source, "enthralled"); p.hurt(p.damageSources().generic(), 1);
@@ -167,7 +166,7 @@ public final class YujiGameTests {
         YujiAfflictions.apply(p, source, "enthralled"); p.moveTo(source.position().add(17, 0, 0)); YujiAfflictions.tickPlayer(p);
         h.assertTrue(!p.hasEffect(YujiContent.ENTHRALLED.get()), "outside sixteen blocks clears lure"); h.succeed();
     }
-    @GameTest(templateNamespace = ModMain.MOD_ID, template = "empty", batch = "yuji")
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
     public static void yujiCrushRequiresTwoHighOpposingWalls(GameTestHelper h) {
         YujiMonster source = monster(h, YujiKind.XIEYIN); Player p = player(h, source); BlockPos pos = p.blockPosition();
         h.getLevel().setBlockAndUpdate(pos.east(), Blocks.STONE.defaultBlockState());
@@ -177,7 +176,7 @@ public final class YujiGameTests {
         h.getLevel().setBlockAndUpdate(pos.west().above(), Blocks.STONE.defaultBlockState());
         h.assertTrue(YujiAfflictions.cramped(p), "opposing two-high walls crush"); h.succeed();
     }
-    @GameTest(templateNamespace = ModMain.MOD_ID, template = "empty", batch = "yuji")
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
     public static void yujiWeaknessShortRefreshStillOwned(GameTestHelper h) {
         YujiMonster source = monster(h, YujiKind.WANGYU); Player p = player(h, source);
         YujiAfflictions.weakness(p, source, 400, 1); YujiAfflictions.weakness(p, source, 160, 1);
@@ -185,7 +184,7 @@ public final class YujiGameTests {
         source.discard(); YujiAfflictions.tickPlayer(p);
         h.assertTrue(!p.hasEffect(MobEffects.WEAKNESS), "dead source leaves no stale weakness"); h.succeed();
     }
-    @GameTest(templateNamespace = ModMain.MOD_ID, template = "empty", batch = "yuji")
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
     public static void yujiWeaknessMultiSourcePreservesExternal(GameTestHelper h) {
         YujiMonster a = monster(h, YujiKind.WANGYU), b = monster(h, YujiKind.WANGYU); Player p = player(h, a);
         p.addEffect(new MobEffectInstance(MobEffects.WEAKNESS, 600, 0));
@@ -196,14 +195,14 @@ public final class YujiGameTests {
         h.assertTrue(p.hasEffect(MobEffects.WEAKNESS) && p.getEffect(MobEffects.WEAKNESS).getDuration() >= 598,
                 "external weakness survives both sources"); h.succeed();
     }
-    @GameTest(templateNamespace = ModMain.MOD_ID, template = "empty", batch = "yuji")
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
     public static void yujiWeaknessMilkDoesNotReappear(GameTestHelper h) {
         YujiMonster source = monster(h, YujiKind.WANGYU); Player p = player(h, source);
         YujiAfflictions.weakness(p, source, 400, 1);
         p.curePotionEffects(new ItemStack(Items.MILK_BUCKET)); YujiAfflictions.tickPlayer(p);
         h.assertTrue(!p.hasEffect(MobEffects.WEAKNESS), "vanilla weakness remains curable by milk"); h.succeed();
     }
-    @GameTest(templateNamespace = ModMain.MOD_ID, template = "empty", batch = "yuji")
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
     public static void yujiBetrayalBuffDoesNotStack(GameTestHelper h) {
         YujiMonster source = monster(h, YujiKind.LIANGSHE); Player p = player(h, source);
         var zombie = h.spawn(EntityType.ZOMBIE, new BlockPos(3, 2, 2)); zombie.setNoAi(true);
@@ -215,7 +214,7 @@ public final class YujiGameTests {
         close(h, zombie.getAttributeValue(Attributes.MOVEMENT_SPEED), speed, "speed restored");
         h.assertTrue(zombie.getTarget() == null, "forced target restored"); h.succeed();
     }
-    @GameTest(templateNamespace = ModMain.MOD_ID, template = "empty", batch = "yuji")
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
     public static void yujiBetrayalPetSittingRestores(GameTestHelper h) {
         YujiMonster source = monster(h, YujiKind.LIANGSHE); Player p = player(h, source);
         var wolf = h.spawn(EntityType.WOLF, new BlockPos(3, 2, 2)); wolf.setNoAi(true); wolf.tame(p); wolf.setOrderedToSit(true);
@@ -226,7 +225,7 @@ public final class YujiGameTests {
         h.assertTrue(wolf.isOrderedToSit() && !cat.isOrderedToSit(), "original orders restored");
         h.assertTrue(p.getUUID().equals(wolf.getOwnerUUID()) && p.getUUID().equals(cat.getOwnerUUID()), "ownership remains intact"); h.succeed();
     }
-    @GameTest(templateNamespace = ModMain.MOD_ID, template = "empty", batch = "yuji")
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
     public static void yujiBetrayalGhastKeepsNativeAttack(GameTestHelper h) {
         var ghast = h.spawn(EntityType.GHAST, new BlockPos(2, 4, 2)); ghast.setNoAi(true);
         h.assertTrue(ghast.getAttribute(Attributes.ATTACK_DAMAGE) == null, "regression covers a non-melee enemy");
@@ -236,7 +235,7 @@ public final class YujiGameTests {
                 g.getGoal().getClass().getEnclosingClass() == YujiAfflictions.class && g.getFlags().contains(Goal.Flag.TARGET)),
                 "only native targeting is locked"); h.succeed();
     }
-    @GameTest(templateNamespace = ModMain.MOD_ID, template = "empty", batch = "yuji")
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
     public static void yujiResistancesAndBossImmunity(GameTestHelper h) {
         YujiMonster giant = monster(h, YujiKind.CHENNU), boss = monster(h, YujiKind.SHIFOTOU);
         LivingHurtEvent blast = new LivingHurtEvent(giant, giant.damageSources().explosion(giant, giant), 10);
@@ -248,7 +247,7 @@ public final class YujiGameTests {
         h.assertTrue(boss.isInvulnerableTo(boss.damageSources().inFire()) && boss.isInvulnerableTo(boss.damageSources().inWall())
                 && boss.isInvulnerableTo(boss.damageSources().fall()), "boss environmental immunity"); h.succeed();
     }
-    @GameTest(templateNamespace = ModMain.MOD_ID, template = "empty", batch = "yuji")
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
     public static void yujiSpikeFanBurstAndExpiry(GameTestHelper h) {
         YujiMonster source = monster(h, YujiKind.EKOU); Player p = player(h, source); p.moveTo(source.position().add(0, 0, 6));
         source.volley(p, false);
@@ -261,7 +260,7 @@ public final class YujiGameTests {
         data.putBoolean("Stuck", true); data.putInt("StuckTicks", 199); stuck.readAdditionalSaveData(data); stuck.tick();
         h.assertTrue(stuck.isRemoved(), "stuck spike expires after ten seconds across reload"); h.succeed();
     }
-    @GameTest(templateNamespace = ModMain.MOD_ID, template = "empty", batch = "yuji")
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
     public static void yujiPassiveAndGliderSafety(GameTestHelper h) {
         YujiMonster idle = monster(h, YujiKind.YUCHI), lure = monster(h, YujiKind.XIEYIN), flute = monster(h, YujiKind.QIYU);
         Player p = player(h, idle);
@@ -269,16 +268,17 @@ public final class YujiGameTests {
         h.assertTrue(!flute.causeFallDamage(30, 1, flute.damageSources().fall()), "glider is fall immune");
         idle.setHealth(8); h.assertTrue(idle.crawling(), "low-health crawl state"); h.succeed();
     }
-    @GameTest(templateNamespace = ModMain.MOD_ID, template = "empty", batch = "yuji", timeoutTicks = 80)
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji", timeoutTicks = 80)
     public static void yujiDoubleSlashDealsTwoTimedHits(GameTestHelper h) {
         YujiMonster slasher = monster(h, YujiKind.SHASHENG);
         var cow = h.spawn(EntityType.COW, new BlockPos(3, 2, 2)); cow.setNoAi(true); cow.setNoGravity(true);
+        cow.getAttribute(Attributes.MAX_HEALTH).setBaseValue(20); cow.setHealth(20);
         slasher.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(0); slasher.setNoAi(false);
         slasher.begin("chop", 24, cow);
         h.runAtTickTime(9, () -> close(h, cow.getHealth(), 17, "first slash deals three damage"));
         h.runAtTickTime(17, () -> { close(h, cow.getHealth(), 14, "second slash is not swallowed by hurt immunity"); h.succeed(); });
     }
-    @GameTest(templateNamespace = ModMain.MOD_ID, template = "empty", batch = "yuji", timeoutTicks = 80)
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji", timeoutTicks = 80)
     public static void yujiGreedCollectsAndConsumesOnlyOneFlesh(GameTestHelper h) {
         YujiMonster greed = monster(h, YujiKind.TANYU); greed.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(0); greed.setNoAi(false);
         for (ItemStack stack : new ItemStack[]{new ItemStack(Items.ROTTEN_FLESH, 3), new ItemStack(Items.DIAMOND, 10)}) {
@@ -297,7 +297,7 @@ public final class YujiGameTests {
             h.assertTrue(flesh == 2 && diamonds == 10, "unconsumed items remain complete in saved hoard"); h.succeed();
         });
     }
-    @GameTest(templateNamespace = ModMain.MOD_ID, template = "empty", batch = "yuji")
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
     public static void yujiGiantGrudgeSurvivesReload(GameTestHelper h) {
         YujiMonster giant = monster(h, YujiKind.CHENNU); Player p = player(h, giant);
         h.assertTrue(giant.getTarget() == null, "giant starts neutral");
@@ -308,14 +308,20 @@ public final class YujiGameTests {
         CompoundTag after = new CompoundTag(); restored.addAdditionalSaveData(after);
         h.assertTrue(after.hasUUID("YujiGrudge") && after.getUUID("YujiGrudge").equals(p.getUUID()), "grudge survives reload"); h.succeed();
     }
-    @GameTest(templateNamespace = ModMain.MOD_ID, template = "empty", batch = "yuji")
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
     public static void yujiCurseRampsAndCapsDamage(GameTestHelper h) {
-        YujiMonster curse = monster(h, YujiKind.EKOU); Player p = player(h, curse);
-        YujiAfflictions.apply(p, curse, "cursed"); state(p, "cursed", curse).putInt("Age", 200);
-        for (int i = 0; i < 30; i++) { p.invulnerableTime = 0; YujiAfflictions.tickPlayer(p); }
-        close(h, p.getHealth(), 18, "curse ramps to two damage");
-        p.setHealth(20); state(p, "cursed", curse).putInt("Age", 2000);
-        for (int i = 0; i < 30; i++) { p.invulnerableTime = 0; YujiAfflictions.tickPlayer(p); }
-        close(h, p.getHealth(), 17, "curse damage capped at three"); h.succeed();
+        var server = h.getLevel().getServer();
+        var difficulty = h.getLevel().getDifficulty();
+        try {
+            // Mob-attributed magic is difficulty-scaled; test raw card values in Normal.
+            server.setDifficulty(net.minecraft.world.Difficulty.NORMAL, true);
+            YujiMonster curse = monster(h, YujiKind.EKOU); Player p = player(h, curse);
+            YujiAfflictions.apply(p, curse, "cursed"); state(p, "cursed", curse).putInt("Age", 200);
+            for (int i = 0; i < 30; i++) { p.invulnerableTime = 0; YujiAfflictions.tickPlayer(p); }
+            close(h, p.getHealth(), 18, "curse ramps to two damage");
+            p.setHealth(20); state(p, "cursed", curse).putInt("Age", 2000);
+            for (int i = 0; i < 30; i++) { p.invulnerableTime = 0; YujiAfflictions.tickPlayer(p); }
+            close(h, p.getHealth(), 17, "curse damage capped at three"); h.succeed();
+        } finally { server.setDifficulty(difficulty, true); }
     }
 }
