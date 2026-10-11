@@ -4,6 +4,8 @@ import com.zeropointsix.eraser.ModMain;
 import com.zeropointsix.eraser.eternalnight.*;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.gametest.framework.AfterBatch;
+import net.minecraft.gametest.framework.BeforeBatch;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
@@ -19,6 +21,21 @@ import java.util.UUID;
 @GameTestHolder("eternal_night_tests")
 @PrefixGameTestTemplate(false)
 public final class EternalNightGameTests {
+    private static GameTestConfigs.LiveConfig liveConfig;
+
+    @BeforeBatch(batch = "eternal_night")
+    public static void isolateConfig(ServerLevel level) {
+        liveConfig = GameTestConfigs.sandbox(NightConfig.SPEC);
+    }
+
+    @AfterBatch(batch = "eternal_night")
+    public static void restoreConfig(ServerLevel level) {
+        if (liveConfig != null) {
+            liveConfig.close();
+            liveConfig = null;
+        }
+    }
+
     @GameTest(template = "empty", batch = "eternal_night", timeoutTicks = 1400)
     public static void cityDeepSleepAndReturnPreservePlayer(GameTestHelper h) {
         ServerLevel overworld = h.getLevel();
@@ -29,6 +46,7 @@ public final class EternalNightGameTests {
         long time = overworld.getDayTime();
         int distance = player.server.getPlayerList().getViewDistance();
         java.util.concurrent.atomic.AtomicBoolean cleaned = new java.util.concurrent.atomic.AtomicBoolean();
+        java.util.concurrent.atomic.AtomicBoolean entryChecked = new java.util.concurrent.atomic.AtomicBoolean();
         Runnable cleanup = () -> {
             if (!cleaned.compareAndSet(false, true)) return;
             CityEntryQueue.cancel(player.getUUID());
@@ -63,12 +81,15 @@ public final class EternalNightGameTests {
         });
         BlockPos savedBed = player.getRespawnPosition();
         h.runAfterDelay(105, () -> {
+            h.assertTrue(NightConfig.ENTRY_BASE.get() == 1.0 && NightConfig.ENTRY_CAP.get() == 1.0,
+                    "isolated entry probability remains deterministic through deep sleep");
             h.assertTrue(!player.isSleeping(), "deep sleep wakes before vanilla skips the night");
             h.assertTrue(CityEntryQueue.pending(player) || EternalNightContent.isCity(player.level()),
                     "deep sleep schedules entry at 100 ticks without blocking");
+            entryChecked.set(true);
         });
         h.runAfterDelay(1390, cleanup);
-        h.startSequence().thenWaitUntil(() -> h.assertTrue(EternalNightContent.isCity(player.level()),
+        h.startSequence().thenWaitUntil(() -> h.assertTrue(entryChecked.get() && EternalNightContent.isCity(player.level()),
                 "asynchronous deep-sleep entry completes")).thenExecute(() -> {
             try {
                 h.assertTrue(overworld.getDayTime() < 24000, "entry happens before vanilla skips the night");
