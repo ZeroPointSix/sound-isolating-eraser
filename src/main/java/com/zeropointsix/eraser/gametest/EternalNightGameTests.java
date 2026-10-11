@@ -19,12 +19,100 @@ import java.util.UUID;
 @GameTestHolder("eternal_night_tests")
 @PrefixGameTestTemplate(false)
 public final class EternalNightGameTests {
+    @GameTest(template = "empty", batch = "eternal_night", timeoutTicks = 240)
+    public static void cityDeepSleepAndReturnPreservePlayer(GameTestHelper h) {
+        ServerLevel overworld = h.getLevel();
+        var player = h.makeMockServerPlayerInLevel();
+        var channel = connect(player);
+        double base = NightConfig.ENTRY_BASE.get(), cap = NightConfig.ENTRY_CAP.get();
+        long time = overworld.getDayTime();
+        int distance = player.server.getPlayerList().getViewDistance();
+        player.server.getPlayerList().setViewDistance(2);
+        NightConfig.ENTRY_BASE.set(1.0);
+        NightConfig.ENTRY_CAP.set(1.0);
+        overworld.setDayTime(18000);
+        BlockPos bed = h.absolutePos(new BlockPos(1, 2, 1));
+        overworld.setBlock(bed.below(), Blocks.STONE_BRICKS.defaultBlockState(), 2);
+        overworld.setBlock(bed.north().below(), Blocks.STONE_BRICKS.defaultBlockState(), 2);
+        var state = Blocks.RED_BED.defaultBlockState().setValue(net.minecraft.world.level.block.BedBlock.FACING, Direction.NORTH);
+        overworld.setBlock(bed, state.setValue(net.minecraft.world.level.block.BedBlock.PART,
+                net.minecraft.world.level.block.state.properties.BedPart.FOOT), 2);
+        overworld.setBlock(bed.north(), state.setValue(net.minecraft.world.level.block.BedBlock.PART,
+                net.minecraft.world.level.block.state.properties.BedPart.HEAD), 2);
+        player.connection.teleport(bed.getX() + 0.5, bed.getY(), bed.getZ() + 0.5, 0, 0);
+        player.getInventory().setItem(0, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIAMOND, 7));
+        player.getStats().setValue(player, net.minecraft.stats.Stats.CUSTOM.get(net.minecraft.stats.Stats.TIME_SINCE_REST), 96000);
+        var result = player.startSleepInBed(bed.north());
+        h.assertTrue(result.right().isPresent(), "real valid bed sleep starts");
+        BlockPos savedBed = player.getRespawnPosition();
+        h.runAfterDelay(160, () -> {
+            try {
+                h.assertTrue(EternalNightContent.isCity(player.level()), "deep sleep naturally enters city at 100 ticks");
+                h.assertTrue(overworld.getDayTime() < 24000, "entry happens before vanilla skips the night");
+                h.assertTrue(player.getInventory().getItem(0).getCount() == 7, "entry preserves inventory");
+                h.assertTrue(savedBed.equals(player.getRespawnPosition()), "entry preserves original bed");
+                h.assertTrue(CityLayout.street(player.getBlockX(), player.getBlockZ()), "arrives on a city street");
+                var data = NightEvents.playerData(player);
+                data.putLongArray("Doors", new long[]{12, 34});
+                player.getPersistentData().put(NightEvents.PLAYER_TAG, data);
+                CompoundTag saved = player.saveWithoutId(new CompoundTag());
+                var reloaded = new net.minecraft.server.level.ServerPlayer(player.server, player.serverLevel(), player.getGameProfile());
+                reloaded.load(saved);
+                h.assertTrue(NightEvents.playerData(reloaded).getLongArray("Doors").length == 2,
+                        "actual player save/load preserves door history");
+                NightEvents.returnHome(player);
+                h.assertTrue(player.serverLevel() == overworld, "returns to overworld");
+                h.assertTrue(player.blockPosition().distSqr(savedBed) < 25, "returns beside own bed");
+                h.assertTrue(NightEvents.playerData(player).isEmpty(), "return clears history");
+                h.assertTrue(player.getInventory().getItem(0).getCount() == 7, "return preserves inventory");
+                h.succeed();
+            } finally {
+                NightConfig.ENTRY_BASE.set(base); NightConfig.ENTRY_CAP.set(cap);
+                overworld.setDayTime(time);
+                player.server.getPlayerList().setViewDistance(distance);
+                player.server.getPlayerList().remove(player);
+                channel.finishAndReleaseAll();
+            }
+        });
+    }
+
+    @GameTest(template = "empty", batch = "eternal_night", timeoutTicks = 240)
+    public static void cityGeneratedSubwayAndShaftConnect(GameTestHelper h) {
+        ServerLevel city = h.getLevel().getServer().getLevel(EternalNightContent.LEVEL);
+        int bx = 0;
+        while (!CityTemplates.hasStation(city.getSeed(), bx, 0) && bx < 100) bx++;
+        h.assertTrue(bx < 100, "deterministic nearby station exists");
+        int x = bx * 64, z = 48;
+        for (int dx = 0; dx <= 71; dx++) {
+            BlockPos feet = new BlockPos(x + dx, CityChunkGenerator.SUBWAY_Y + 2, z + 7);
+            h.assertTrue(city.getBlockState(feet).isAir() && city.getBlockState(feet.above()).isAir(),
+                    "station line remains open across chunk seams at " + feet);
+        }
+        for (int dz = 0; dz <= 64; dz++) {
+            BlockPos feet = new BlockPos(x + 8, CityChunkGenerator.SUBWAY_Y + 2, dz);
+            h.assertTrue(city.getBlockState(feet).isAir() && city.getBlockState(feet.above()).isAir(),
+                    "north/south line and both junctions stay open at " + feet);
+        }
+        int surface = CityLayout.plateau(bx, 0);
+        for (int y = CityChunkGenerator.SUBWAY_Y + 2; y <= surface; y++) {
+            BlockPos ladder = new BlockPos(x + 48 + 4, y, z + 13);
+            h.assertTrue(city.getBlockState(ladder).is(Blocks.LADDER), "continuous climb to surface at " + ladder);
+            h.assertTrue(city.getBlockState(ladder.west()).isSolid(), "ladder has continuous support");
+        }
+        h.succeed();
+    }
+
+    private static io.netty.channel.embedded.EmbeddedChannel connect(net.minecraft.server.level.ServerPlayer player) {
+        var channel = new io.netty.channel.embedded.EmbeddedChannel(player.connection.connection);
+        player.connection.connection.setProtocol(net.minecraft.network.ConnectionProtocol.PLAY);
+        return channel;
+    }
+
     @GameTest(template = "empty", batch = "eternal_night", timeoutTicks = 200)
     public static void cityRealPlayerDoorInteractions(GameTestHelper h) {
         ServerLevel city = h.getLevel().getServer().getLevel(EternalNightContent.LEVEL);
         net.minecraft.server.level.ServerPlayer player = h.makeMockServerPlayerInLevel();
-        io.netty.channel.embedded.EmbeddedChannel channel = new io.netty.channel.embedded.EmbeddedChannel(player.connection.connection);
-        player.connection.connection.setProtocol(net.minecraft.network.ConnectionProtocol.PLAY);
+        var channel = connect(player);
         BlockPos first = new BlockPos(2048, 120, 2048);
         try {
             player.teleportTo(city, first.getX() + 0.5, first.getY(), first.getZ() - 2, 0, 0);
