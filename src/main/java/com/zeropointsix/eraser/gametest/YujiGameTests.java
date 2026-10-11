@@ -350,9 +350,12 @@ public final class YujiGameTests {
     @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
     public static void yujiReloadedGrudgeIgnoresSecondAttacker(GameTestHelper h) {
         YujiMonster giant = monster(h, YujiKind.CHENNU);
-        var first = h.makeMockServerPlayerInLevel();
+        // Forge's vanilla mock-login helper has no Netty channel; register its supported test player directly.
+        var first = net.minecraftforge.common.util.FakePlayerFactory.get(h.getLevel(),
+                new com.mojang.authlib.GameProfile(UUID.randomUUID(), "YujiGrudgeFixture"));
         first.setGameMode(net.minecraft.world.level.GameType.SURVIVAL);
         first.moveTo(giant.position()); first.setNoGravity(true);
+        h.getLevel().addNewPlayer(first);
         Player second = player(h, giant);
         h.assertTrue(h.getLevel().getPlayerByUUID(first.getUUID()) == first, "original player is queryable after reload");
         try {
@@ -361,7 +364,7 @@ public final class YujiGameTests {
             YujiMonster restored = monster(h, YujiKind.CHENNU); restored.readAdditionalSaveData(saved);
             playerHit(h, restored, second); grudgeIs(h, restored, first);
             h.succeed();
-        } finally { h.getLevel().getServer().getPlayerList().remove(first); }
+        } finally { first.discard(); }
     }
     @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
     public static void yujiGrudgeClearsOnlyBeyond128Blocks(GameTestHelper h) {
