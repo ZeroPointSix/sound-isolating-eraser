@@ -139,8 +139,13 @@ public final class NightTestClient {
                     capture(client, "death-screen");
                     double scaleX = (double) client.getWindow().getScreenWidth() / client.getWindow().getGuiScaledWidth();
                     double scaleY = (double) client.getWindow().getScreenHeight() / client.getWindow().getGuiScaledHeight();
-                    nativeInput("mousemove", Integer.toString((int) ((button.getX() + button.getWidth() / 2.0) * scaleX)),
-                            Integer.toString((int) ((button.getY() + button.getHeight() / 2.0) * scaleY)), "click", "1");
+                    int x = client.getWindow().getX() + (int) ((button.getX() + button.getWidth() / 2.0) * scaleX);
+                    int y = client.getWindow().getY() + (int) ((button.getY() + button.getHeight() / 2.0) * scaleY);
+                    System.out.println("NIGHT_NATIVE_RESPAWN_CLICK x=" + x + " y=" + y
+                            + " windowOrigin=" + client.getWindow().getX() + "," + client.getWindow().getY());
+                    org.lwjgl.glfw.GLFW.glfwFocusWindow(client.getWindow().getWindow());
+                    nativeInput("mousemove", "--sync", Integer.toString(x), Integer.toString(y));
+                    nativeInput("click", "1");
                     respawnClicked = true; respawnFrames = 0;
                     break;
                 }
