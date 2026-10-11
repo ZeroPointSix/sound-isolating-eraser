@@ -1,0 +1,16 @@
+// Opt-in native-client QA, isolated from the shipped source set and jar.
+sourceSets {
+    nightTest {
+        compileClasspath += sourceSets.main.compileClasspath + sourceSets.main.output
+        runtimeClasspath += sourceSets.main.runtimeClasspath + sourceSets.main.output
+    }
+}
+minecraft.runs.configureEach {
+    mods { night_qa { source sourceSets.nightTest } }
+}
+tasks.register('writeNightTestClasspath') {
+    dependsOn 'classes', 'nightTestClasses', 'genVSCodeRuns'
+    def target = layout.buildDirectory.file('night-test-classpath.txt')
+    outputs.file(target)
+    doLast { target.get().asFile.text = sourceSets.nightTest.runtimeClasspath.asPath }
+}

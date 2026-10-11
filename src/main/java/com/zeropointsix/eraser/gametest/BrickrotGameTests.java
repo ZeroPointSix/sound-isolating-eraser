@@ -210,10 +210,19 @@ public final class BrickrotGameTests {
 
     @GameTest(template = "brickrot_empty")
     public static void brickrotLightLureAndLineOfSight(GameTestHelper h) {
+        // The 40-block lure scan must not include another parallel fixture's dropped items.
         BrickrotWallEntity wall = wall(h);
-        var villager = h.spawn(EntityType.VILLAGER, new BlockPos(32, 4, 31));
+        wall.setPos(wall.getX(), wall.getY() + 96, wall.getZ());
+        var villager = h.spawn(EntityType.VILLAGER, new BlockPos(32, 100, 31));
         villager.setNoAi(true);
         villager.setNoGravity(true);
+        var baseline = h.getLevel().clip(new net.minecraft.world.level.ClipContext(wall.getEyePosition(),
+                villager.getEyePosition(), net.minecraft.world.level.ClipContext.Block.COLLIDER,
+                net.minecraft.world.level.ClipContext.Fluid.NONE, wall));
+        System.out.println("BRICKROT_LURE_BASELINE_HIT " + baseline.getType() + " at=" + baseline.getBlockPos()
+                + " block=" + h.getLevel().getBlockState(baseline.getBlockPos()));
+        for (int x = -2; x <= 2; x++) for (int y = 0; y <= 5; y++) for (int z = -1; z <= 8; z++)
+            h.getLevel().setBlock(wall.blockPosition().offset(x, y, z), Blocks.AIR.defaultBlockState(), 3);
         var light = new ItemEntity(h.getLevel(), wall.getX() + 20, wall.getY(), wall.getZ(), new ItemStack(Items.TORCH));
         light.setNoGravity(true);
         light.setDeltaMovement(Vec3.ZERO);
@@ -222,10 +231,16 @@ public final class BrickrotGameTests {
         h.getLevel().setBlock(wall.blockPosition().offset(10, 1, 0), Blocks.STONE.defaultBlockState(), 3);
         h.assertTrue(wall.detectable(light), "dropped light can lure around obstacles");
         light.discard();
-        h.assertTrue(wall.findQuarry() == villager, "living target is acquired without lure");
+        var selected = wall.findQuarry();
+        System.out.println("BRICKROT_LURE_SELECTED actual=" + selected + " expected=" + villager
+                + " detectable=" + wall.detectable(villager) + " distance=" + wall.distanceTo(villager)
+                + " alive=" + villager.isAlive() + " eyes=" + wall.getEyePosition() + "/" + villager.getEyePosition());
+        h.assertTrue(selected == villager, "living target is acquired without lure: " + selected);
         for (int x = -2; x <= 2; x++) for (int y = 0; y <= 4; y++)
             h.getLevel().setBlock(wall.blockPosition().offset(x, y, 3), Blocks.STONE.defaultBlockState(), 3);
         h.assertTrue(!wall.detectable(villager), "living target requires line of sight");
+        wall.discard();
+        villager.discard();
         h.succeed();
     }
 
@@ -363,12 +378,20 @@ public final class BrickrotGameTests {
         BrickrotWallEntity wall = wall(h);
         var target = h.spawn(EntityType.VILLAGER, new BlockPos(32, 4, 28));
         target.setNoAi(true);
-        wall.setNoAi(false);
-        h.runAfterDelay(54, () -> near(h, target.getHealth(), 20, "bite does not hit before windup"));
-        h.runAfterDelay(60, () -> {
+        target.setNoGravity(true);
+        try {
+            h.assertTrue(wall.findQuarry() == target, "bite fixture selects its own target");
+            wall.setNoAi(false);
+            // Like the sweep test, advance only this encounter rather than neighboring fixtures.
+            for (int i = 0; i < 54; i++) wall.tick();
+            h.assertTrue(wall.action() == BrickrotWallEntity.Action.BITE, "bite telegraph starts");
+            near(h, target.getHealth(), 20, "bite does not hit before windup");
+            for (int i = 0; i < 6; i++) wall.tick();
             near(h, target.getHealth(), 8, "bite hits for twelve");
             h.succeed();
-        });
+        } finally {
+            wall.discard(); target.discard();
+        }
     }
 
     @GameTest(template = "brickrot_empty", timeoutTicks = 100)
@@ -414,13 +437,21 @@ public final class BrickrotGameTests {
         light.setDeltaMovement(Vec3.ZERO);
         light.setPickUpDelay(32767);
         h.getLevel().addFreshEntity(light);
-        wall.setNoAi(false);
-        h.runAfterDelay(80, () -> {
-            h.assertTrue(light.isAlive() && wall.distanceTo(light) <= 4, "stationary lure fixture remains nearby");
-            h.assertTrue(wall.action() == BrickrotWallEntity.Action.TRACK,
-                    "nearby lure holds attention without scan loops: " + wall.action());
+        try {
+            h.assertTrue(wall.findQuarry() == light, "lure fixture selects its own light");
+            wall.setNoAi(false);
+            for (int i = 0; i < 50; i++) wall.tick();
+            for (int i = 0; i < 30; i++) {
+                wall.tick();
+                h.assertTrue(light.isAlive() && wall.distanceTo(light) <= 4, "stationary lure fixture remains nearby");
+                h.assertTrue(wall.findQuarry() == light, "fixture keeps its own light");
+                h.assertTrue(wall.action() == BrickrotWallEntity.Action.TRACK,
+                        "nearby lure holds attention without scan loops: " + wall.action());
+            }
             h.succeed();
-        });
+        } finally {
+            wall.discard(); light.discard();
+        }
     }
 
     @GameTest(template = "brickrot_empty")

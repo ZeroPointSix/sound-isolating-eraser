@@ -56,5 +56,16 @@
   "item.sound_isolating_eraser.neon_tumor_spawn_egg": "Neon Tumor Spawn Egg",
   "effect.sound_isolating_eraser.corroded": "Corroded",
   "death.attack.sound_isolating_eraser.corrosion": "%1$s was dissolved by corrosion",
-  "death.attack.sound_isolating_eraser.corrosion.player": "%1$s was dissolved by corrosion while fighting %2$s"
+  "death.attack.sound_isolating_eraser.corrosion.player": "%1$s was dissolved by corrosion while fighting %2$s",
+  "message.sound_isolating_eraser.city.arrival": "You woke up, but dawn never came.",
+  "message.sound_isolating_eraser.city.preparing": "The city is taking shape...",
+  "message.sound_isolating_eraser.city.entry_failed": "The city could not be reached. You remain safely in this world.",
+  "message.sound_isolating_eraser.city.doors": "Distinct doors opened: %s",
+  "message.sound_isolating_eraser.city.unsafe_home": "No safe return point near your bed or world spawn. Your door progress is preserved.",
+  "message.sound_isolating_eraser.city.milestone.25": "The darkness beyond the doors begins to stir.",
+  "message.sound_isolating_eraser.city.milestone.50": "You are halfway there.",
+  "message.sound_isolating_eraser.city.milestone.75": "A low echo reaches you from afar.",
+  "message.sound_isolating_eraser.city.milestone.90": "The way out is close.",
+  "block.qihai.neon_sign": "Neon Sign",
+  "block.qihai.emergency_light": "Emergency Light"
 }

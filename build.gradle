@@ -101,7 +101,7 @@ minecraft {
         // By default, the server will crash when no gametests are provided.
         // The gametest system is also enabled by default for other run configs under the /test command.
         gameTestServer {
-            property 'forge.enabledGameTestNamespaces', mod_id
+            property 'forge.enabledGameTestNamespaces', project.hasProperty('nightOnly') ? 'eternal_night_tests' : "${mod_id},eternal_night_tests"
         }
 
         data {
@@ -177,6 +177,9 @@ dependencies {
 // When "copyIdeResources" is enabled, this will also run before the game launches in IDE environments.
 // See https://docs.gradle.org/current/dsl/org.gradle.language.jvm.tasks.ProcessResources.html
 tasks.named('processResources', ProcessResources).configure {
+    from('src/main/resources/data/sound_isolating_eraser/structures/empty.nbt') {
+        into 'data/eternal_night_tests/structures'
+    }
     var replaceProperties = [
             minecraft_version: minecraft_version, minecraft_version_range: minecraft_version_range,
             forge_version: forge_version, forge_version_range: forge_version_range,
@@ -196,6 +199,7 @@ tasks.named('jar', Jar).configure {
     // Keep Forge GameTests available to development runs without shipping them to players.
     exclude 'com/zeropointsix/eraser/gametest/**'
     exclude 'data/sound_isolating_eraser/structures/empty.nbt'
+    exclude 'data/eternal_night_tests/**'
 
     manifest {
         attributes([
@@ -240,6 +244,9 @@ tasks.withType(JavaCompile).configureEach {
 if (project.hasProperty('gravityE2E')) {
     apply from: 'gradle/gravity-e2e.gradle'
 }
+if (project.hasProperty('nightE2E')) {
+    apply from: 'gradle/night-e2e.gradle'
+}
 
 // The pose clock is pure Java, so its regressions can run without starting Minecraft.
 def compileWingsMotionCheck = tasks.register('compileWingsMotionCheck', JavaCompile) {
@@ -254,6 +261,23 @@ def checkWingsMotion = tasks.register('checkWingsMotion', JavaExec) {
     mainClass = 'WingsMotionCheck'
 }
 tasks.named('check').configure { dependsOn checkWingsMotion }
+
+def compileNightRulesCheck = tasks.register('compileNightRulesCheck', JavaCompile) {
+    source = files('src/main/java/com/zeropointsix/eraser/eternalnight/NightRules.java',
+            'src/main/java/com/zeropointsix/eraser/eternalnight/CityLayout.java', 'tools/NightRulesCheck.java')
+    classpath = files()
+    destinationDirectory = layout.buildDirectory.dir('night-rules-check')
+}
+def checkNightRules = tasks.register('checkNightRules', JavaExec) {
+    dependsOn compileNightRulesCheck
+    classpath = files(compileNightRulesCheck.flatMap { it.destinationDirectory })
+    mainClass = 'NightRulesCheck'
+}
+tasks.named('check').configure { dependsOn checkNightRules }
+def verifyCityAssets = tasks.register('verifyCityAssets', Exec) {
+    commandLine 'python3', 'tools/verify_city_art.py'
+}
+tasks.named('check').configure { dependsOn verifyCityAssets }
 if (project.hasProperty('pillE2E')) {
     apply from: 'gradle/pill-e2e.gradle'
 }
