@@ -562,4 +562,62 @@ public final class EternalNightGameTests {
         h.assertTrue(EternalNightContent.EMERGENCY_LIGHT.get().defaultBlockState().getLightEmission() == 4, "emergency light has light 4");
         h.succeed();
     }
+
+    /** Spec bans in the city: sleep problem, bed/anchor click, spawn set, growth, vanilla mobs. */
+    @GameTest(template = "empty", batch = "eternal_night", timeoutTicks = 120)
+    public static void cityEventInterceptionCoversSpec(GameTestHelper h) {
+        ServerLevel city = h.getLevel().getServer().getLevel(EternalNightContent.LEVEL);
+        BlockPos pos = new BlockPos(0, 70, 0);
+        var player = login(h).player();
+        player.teleportTo(city, pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5, 0, 0);
+
+        var bus = net.minecraftforge.common.MinecraftForge.EVENT_BUS;
+
+        var sleep = new net.minecraftforge.event.entity.player.PlayerSleepInBedEvent(player, java.util.Optional.of(pos));
+        bus.post(sleep);
+        h.assertTrue(sleep.getResultStatus() == net.minecraft.world.entity.player.Player.BedSleepingProblem.OTHER_PROBLEM,
+                "sleep resolves OTHER_PROBLEM in city");
+
+        for (var bed : new net.minecraft.world.level.block.Block[] { Blocks.RED_BED, Blocks.RESPAWN_ANCHOR }) {
+            city.setBlock(pos, bed.defaultBlockState(), 3);
+            var click = new net.minecraftforge.event.entity.player.PlayerInteractEvent.RightClickBlock(
+                    player, net.minecraft.world.InteractionHand.MAIN_HAND, pos,
+                    new net.minecraft.world.phys.BlockHitResult(Vec3.atCenterOf(pos), Direction.UP, pos, false));
+            bus.post(click);
+            h.assertTrue(click.isCanceled(), bed + " interaction canceled in city");
+            city.removeBlock(pos, false);
+        }
+
+        var setSpawn = new net.minecraftforge.event.entity.player.PlayerSetSpawnEvent(player, EternalNightContent.LEVEL, pos, false);
+        bus.post(setSpawn);
+        h.assertTrue(setSpawn.isCanceled(), "spawn point cannot be set in city");
+
+        city.setBlock(pos, Blocks.WHEAT.defaultBlockState(), 3);
+        var crop = new net.minecraftforge.event.level.BlockEvent.CropGrowEvent.Pre(city, pos,
+                Blocks.WHEAT.defaultBlockState());
+        bus.post(crop);
+        h.assertTrue(crop.getResult() == net.minecraftforge.eventbus.api.Event.Result.DENY,
+                "crop growth denied in city");
+        var oakFeature = city.registryAccess().registryOrThrow(net.minecraft.core.registries.Registries.CONFIGURED_FEATURE)
+                .getHolderOrThrow(net.minecraft.data.worldgen.features.TreeFeatures.OAK);
+        var tree = new net.minecraftforge.event.level.SaplingGrowTreeEvent(city,
+                net.minecraft.util.RandomSource.create(0), pos, oakFeature);
+        bus.post(tree);
+        h.assertTrue(tree.getResult() == net.minecraftforge.eventbus.api.Event.Result.DENY,
+                "tree growth denied in city");
+        var bonemeal = new net.minecraftforge.event.entity.player.BonemealEvent(player, city, pos,
+                Blocks.WHEAT.defaultBlockState(), new net.minecraft.world.item.ItemStack(
+                        net.minecraft.world.item.Items.BONE_MEAL));
+        bus.post(bonemeal);
+        h.assertTrue(bonemeal.isCanceled(), "bonemeal canceled in city");
+        city.removeBlock(pos, false);
+
+        var zombie = new net.minecraft.world.entity.monster.Zombie(city);
+        var spawn = new net.minecraftforge.event.entity.living.MobSpawnEvent.FinalizeSpawn(zombie, city,
+                0, 70, 0, city.getCurrentDifficultyAt(pos),
+                net.minecraft.world.entity.MobSpawnType.NATURAL, null, null, null);
+        bus.post(spawn);
+        h.assertTrue(spawn.isSpawnCancelled(), "vanilla natural spawn denied in city");
+        h.succeed();
+    }
 }
