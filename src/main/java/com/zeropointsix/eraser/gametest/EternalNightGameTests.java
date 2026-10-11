@@ -127,6 +127,32 @@ public final class EternalNightGameTests {
     private record TestSession(net.minecraft.server.level.ServerPlayer player,
             io.netty.channel.embedded.EmbeddedChannel channel) { }
 
+    @GameTest(template = "empty", batch = "eternal_night")
+    public static void cityPendingEntryIsUniqueAndLogoutCancels(GameTestHelper h) {
+        var session = login(h);
+        var player = session.player();
+        try {
+            CompoundTag prior = new CompoundTag();
+            prior.putLongArray("Doors", new long[]{12, 34});
+            player.getPersistentData().put(NightEvents.PLAYER_TAG, prior);
+            h.assertTrue(NightEvents.enter(player) && NightEvents.enter(player), "duplicate requests are accepted once");
+            h.assertTrue(CityEntryQueue.pending(player) && player.serverLevel() == h.getLevel(),
+                    "request does not synchronously teleport");
+            var attempt = new net.minecraftforge.event.entity.player.PlayerSleepInBedEvent(player, player.blockPosition());
+            NightEvents.sleep(attempt);
+            h.assertTrue(attempt.getResultStatus() == net.minecraft.world.entity.player.Player.BedSleepingProblem.OTHER_PROBLEM,
+                    "pending entry rejects another sleep that could advance the night");
+            h.assertTrue(NightEvents.playerData(player).equals(prior), "waiting preserves prior player data");
+            player.server.getPlayerList().remove(player);
+            h.assertTrue(!CityEntryQueue.pending(player), "real logout releases the pending request");
+            h.succeed();
+        } finally {
+            CityEntryQueue.cancel(player.getUUID());
+            if (player.server.getPlayerList().getPlayer(player.getUUID()) != null) player.server.getPlayerList().remove(player);
+            session.channel().finishAndReleaseAll();
+        }
+    }
+
     private static TestSession login(GameTestHelper h) {
         var connection = new net.minecraft.network.Connection(net.minecraft.network.protocol.PacketFlow.SERVERBOUND) {
             @Override public void send(net.minecraft.network.protocol.Packet<?> packet) { }

@@ -48,7 +48,7 @@ public final class NightEvents {
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void sleep(PlayerSleepInBedEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
-        if (EternalNightContent.isCity(player.level())) {
+        if (EternalNightContent.isCity(player.level()) || CityEntryQueue.pending(player)) {
             event.setResult(Player.BedSleepingProblem.OTHER_PROBLEM);
             return;
         }
