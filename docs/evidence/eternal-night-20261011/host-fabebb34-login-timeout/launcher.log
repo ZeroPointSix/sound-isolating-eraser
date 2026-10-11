@@ -1,0 +1,4 @@
+Traceback (most recent call last):
+  File "/data/eternal-night-city-20261011/repo/tools/night-e2e.py", line 138, in <module>
+    raise AssertionError("; ".join(path.read_text() for path in failures))
+AssertionError: java.lang.AssertionError: native client disconnected before scenario completion

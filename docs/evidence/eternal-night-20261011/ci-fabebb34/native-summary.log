@@ -1,0 +1,6 @@
+PASS: native bed clicks and deep sleep, responsive cold-world same-night entry, native 100th door, shared exit, distinct beds, inventory and counter reset; max entry tick gap 152 ms
+PASS original models and shared white plane with rendered negative control; negative=Pixels[white=6553, square=289] positive=Pixels[white=24401, square=5776]
+PASS original models and shared white plane with rendered negative control; negative=Pixels[white=4701, square=225] positive=Pixels[white=15524, square=2209]
+PASS native walking through shared exit returned client to overworld
+PASS native walking through shared exit returned client to overworld
+NIGHT_TWO_CLIENT_E2E_PASS

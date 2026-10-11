@@ -31,9 +31,9 @@
 | --- | --- | --- |
 | 固定 18000、无天光/天气/自然光、无日月星云 | dimension_type、三个 biome JSON、CityClient | 真实客户端天空/雾截图 |
 | 黑场与到达文案 | CityClientRuntime 黑场渐隐、服务器中文标题 | 客户端视觉测试 |
-| 合法深睡只抽一次，失眠天数公式 | NightEvents 睡前快照；NightRules `min(.02+.08*floor(t/24000),.5)`；CityEntryQueue 后台准备不阻塞 tick | Forge 深睡、夜晚不跳过、原床位及背包测试通过；原生双客户端重跑中 |
-| 背包、原床位不改 | 只传送；禁止都市设置重生点 | 双客户端往返实测 |
-| 同夜同一区域，安全街道，附近无怪 | 同主世界日数确定中心；31x31安全落点区域在24格半径内；碰撞/液体/16格怪物检查；拒绝挖穿街道下方 | Forge 实际落点测试通过；原生测试增加同夜48格范围与服务器响应间隔断言 |
+| 合法深睡只抽一次，失眠天数公式 | NightEvents 睡前快照；NightRules `min(.02+.08*floor(t/24000),.5)`；CityEntryQueue 后台准备不阻塞 tick | Forge 深睡、夜晚不跳过测试通过；两个原生客户端点床并达到100 tick深睡后入城通过 |
+| 背包、原床位不改 | 只传送；禁止都市设置重生点 | 两个原生客户端分别回到个人床位，均保留7颗钻石，计数清空；实测通过 |
+| 同夜同一区域，安全街道，附近无怪 | 同主世界日数确定中心；31x31安全落点区域在24格半径内；碰撞/液体/16格怪物检查；拒绝挖穿街道下方 | Forge及原生双客户端同夜48格范围断言通过；冷世界准备期间最大服务端tick间隔152ms |
 | 三分区 55/15/30、20~30格高差、平地建筑街区 | CityBiomeSource/CityLayout；24格高差；楼块平面与街道坡度 | 原 NBT 接缝、楼梯、跨区块生成实测 |
 | 无限人工地表、无自然洞穴/矿/液体/植被 | 专用 ChunkGenerator，不调用原版地形特征/洞穴；模板处理清除自然地表/液体/植物 | 原包内全部方块实际扫描 |
 | 固定地下地铁，无动态列车 | Y=40 模板接入；竖井按表面高度堆叠；原包允许的梯子连接 | Forge 跨72格东西线、65格南北线、四向路口、站台和连续梯子断言通过 |
@@ -41,8 +41,8 @@
 | 木门手动打开、上下半块归一、重复不重抽 | 实际 BlockState.use 作用域及 Level.setBlock 前后迁移；LongArray 玩家 NBT | Forge 上半门、下半门、重复打开及拉杆铁门通过；修复 use 参数被原版覆盖造成漏计的问题 |
 | 铁门仅归因按钮/拉杆 | 同步红石和由该动作安排的计划 tick 传递身份；没有近邻猜测 | 延迟器交互测试；超过200 tick或重启中断的线路保守不计数 |
 | 每新门1%、100门保底、计数与提示 | NightRules/NightEvents；25/50/75/90提示；NBT跨登录/克隆；死亡标记持久化 | 重启前后实机存档复测 |
-| 出口共享5分钟、穿过返回个人床/出生点 | CitySavedData 到期gameTime；线段过门；服务端主动同步共享白色门面，辅以原版白色粒子和低沉音效 | NBT保存/到期边界及穿越几何通过；原生双客户端白面负对照与共享返床重跑中 |
-| 出去清空计数，死亡规则 | returnHome/Clone/Respawn；不改原版掉落规则 | Forge 真实伤害死亡、7颗钻石一次性掉落、个人床重生及计数清空已通过一轮；随机床位地形干扰修复后重跑 |
+| 出口共享5分钟、穿过返回个人床/出生点 | CitySavedData 到期gameTime；线段过门；服务端主动同步共享白色门面，辅以原版白色粒子和低沉音效 | NBT保存/到期边界、穿越几何及原生双客户端共享白面负对照/共享返床通过；未进行5分钟实时时长和听觉验收 |
+| 出去清空计数，死亡规则 | returnHome/Clone/Respawn；不改原版掉落规则 | 三轮完整CI及开发机复用世界测试通过：真实伤害死亡、7颗钻石一次性掉落且实体在世界中可见、个人床重生及计数清空 |
 | 缠影子、霓虹瘤独立密度 | CitySpawns 自有生成与配置；亮度/墙面/分区条件；霓虹瘤大体型整街区上限 | 实际怪物分布与挂壁视觉；缠影子依赖 PR #18 |
 | 砌腐墙每512x512区最多一只、持久 | 世界 SavedData UUID 预留；实体持久；死亡释放，卸载不释放 | 跨区、重启、自然生成实测 |
 | 禁原版自然生物、袭击、地狱门；床不爆炸但不能睡；锚无效 | 无生物群系生成表；拦截原版自然/事件生成；has_raids=false；PortalSpawn/睡床/重生点事件 | 原版特殊生成器兼容回归 |
@@ -85,6 +85,32 @@ python3 tools/verify_city_art.py
 | 3858fa5 | GitHub Actions `server-regression` | [155/155通过](https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38134243150/job/114454791007)，含异步入城；另一流水线出现随机地形遮挡测试床位，已补清理与前置断言 |
 | 3858fa5 | 开发机同上构建/聚焦测试命令 | 规则、美术、编译及构建通过；9/10城市测试通过；复用世界中的旧红石块影响物品放置fixture，已补重置；深睡异步入城通过 |
 | a7170e2 | `python3 tools/night-e2e.py`（双原生客户端，serverconfig 预置后） | **五项证据全过**：双深睡同夜入城（Observer→14601,88,12088；Owner→14590,85,12103）、共享白门、双回各自床边（-7,65,-1 / 9,65,-1）；server-cycle/owner-white/observer-white/owner-return/observer-return 全 .pass |
+| a34868f | GitHub Actions `server-regression` / `validate` | 两条完整流水线均155/155通过：[服务端](https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38134584769/job/114455737754)、[validate](https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38134584761/job/114455737481) |
+| a34868f | 开发机复用旧世界 `runGameTestServer` | 死亡场景区域计数失败，保留原日志/世界；未证实是历史物品污染，改为等待实体区块并追踪本次死亡实际产生的物品实体，不把原因猜测当结论 |
+| 8e18d0d | CI Java编译 | 失败：PlayerSleepInBedEvent 构造参数应为 Optional<BlockPos>；debc8d8修正后重新验证 |
+| debc8d8 | GitHub Actions `server-regression` / `validate` | 两条完整流水线均156/156通过，含11项城市测试：[服务端](https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38135577172/job/114458631165)、[validate](https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38135577104/job/114458630735)。死亡掉落日志 `count=7 removed=false visible=true` |
+| debc8d8 | 开发机同上聚焦命令，保留原测试世界 | 2026-10-11 11:38 UTC，11/11城市测试通过；死亡掉落实体同样 `count=7 removed=false visible=true`。原日志 `night-gametest-9.log` |
+| debc8d8 | GitHub Actions `build-and-game-tests` | Forge阶段156项完成且BUILD SUCCESSFUL，但后续既有重力玉佩原生E2E在 `server unequip cancels without cooldown` 失败，不能声明全部CI为绿；[失败日志](https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38135577132/job/114458630883) |
+| debc8d8 | 开发机 `python3 tools/night-e2e.py` 第3轮 | 登录阶段客户端超时，尚未到睡眠/出口交互；保留 `evidence/native-debc-login-timeout/` 原始角色日志及失败标记，不计为通过 |
+| 03b7a32 / a7170e2 | 协作方后续提交 | 保留交互距离修正、磁盘上的测试服务器配置、返回位置诊断及5 tick稳定等待，没有回退或覆盖协作成果 |
+| fabebb34 | [Eternal Night Validation](https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38139059463/job/114468932506) | **156/156 Forge、666325规则、1470 Wings规则、87原资源/6表、生产JAR、两个真实原生客户端全部PASS**；2026-10-11 12:27 UTC输出 `NIGHT_TWO_CLIENT_E2E_PASS` |
+| fabebb34 | 仓库全部8项CI | 12:37 UTC均SUCCESS；包括此前失败过的综合 `build-and-game-tests`，不能把旧提交失败描述为当前CI仍失败 |
+| fabebb34 | 开发机 `python3 tools/night-e2e.py` 第4轮 | 仍在登录阶段超时，未进入睡眠/开门；失败日志保留，测试进程已退出。与同代码的标准Ubuntu CI通过结果分开记录，不武断归因为游戏逻辑或机器性能；该主机适配/负载问题仍待定位 |
+
+### 本轮原生客户端证据
+
+- 被验证提交：`fabebb34d7287529d787efbc4aad8550c97373ba`。
+- 构建/全量回归：`bash ./gradlew --no-daemon --max-workers=2 -PnightE2E checkNightRules verifyCityAssets build writeNightTestClasspath runGameTestServer`。
+- 原生交互：`python3 tools/night-e2e.py`，独立回环服务端及两个真正的Minecraft客户端，`xdotool`点床、点门、按W穿门。
+- 冷世界入城最大服务端tick间隔 **152ms**；两个客户端都实际经历深睡阈值后进入城市，没有调用测试直达入城替代原生睡眠。
+- Owner白面正/负对照：白像素 **24401 / 6553**，最大连续白正方形面积 **5776 / 289**；Observer为 **15524 / 4701**、**2209 / 225**。两人均实际渲染共享白面，粒子本身不构成通过证据。
+- 服务端与两个客户端共5个非空PASS标记齐全，正常停服退出，最终输出 `NIGHT_TWO_CLIENT_E2E_PASS`。
+- [原始日志、PNG与JAR归档](https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38139059463/artifacts/11701344208)，GitHub保留7天。
+- 永久证据位于 [`docs/evidence/eternal-night-20261011`](evidence/eternal-night-20261011)：原始服务端/客户端日志、5项PASS标记、PNG及SHA清单。已目视核验两个客户端的白面/粒子负对照与返回主世界帧；返床距离另由服务端坐标断言，不仅凭截图判断。
+- 该CI生产JAR SHA256：`7dec2de8e4369e464635d35c0eae08c90b632567162c18e4123f1315e2ccf1f5`。
+- 已检查交付JAR，不包含 `gametest/` 或 `nighttest/` 类。
+- 开发机原生失败也随证据保留在 `host-fabebb34-login-timeout/`；不影响上述真实CI通过事实，但不能声称两个执行环境均已通过。
+- 测试边界：原生场景为Creative、入城概率固定100%、预置99条门历史后真实打开第100门；不是100次手工开门或默认2%概率的统计验收。Forge回归另含Survival玩家与实际死亡/掉落。真实磁盘进程重启仍未覆盖，不以NBT读写冒充。
 
 运行修复与证据边界：`CityEntryQueue` 显式绕过 Forge `getChunkFuture` 的主线程 `managedBlock` 分支。验证代码属于 `-PnightE2E` 的独立 source set，不进入交付JAR。测试通过原生 `xdotool` 点击床/开门、按W过门；仅将入城概率设为100%、预置99条门历史以确定性覆盖边界，不替代实际交互。白面截图同时渲染“只有粒子、隐藏白面”的负对照，不能用粒子白点冒充完整出口。无声设备使用空音频后端，不声称听觉验收完成。
 
@@ -92,7 +118,7 @@ python3 tools/verify_city_art.py
 
 ## 完整验收仍需
 
-1. 原生双客户端修复后重跑结果与截图写回本页；完整Forge复测确认重复世界/随机地形fixture稳定。
+1. 本轮客户端与回归已取得通过证据，仍需下一阶段两名不同Agent独立Review以及对照Notion的功能性验收；实现者自查不充数。
 2. 实际进程重启恢复、全建筑可达性、所有特殊原版交互及怪物分布/附着视觉仍需专门验收；NBT读写测试不冒充进程重启证据。
 3. PR #18 经独立流程准备就绪后的三怪联调；本PR不合并它。
 4. 32字形与专用医院/警局/消防外观需要补齐经授权原资源；现有原包仅4字形及README允许的通用建筑，不自造补齐。
