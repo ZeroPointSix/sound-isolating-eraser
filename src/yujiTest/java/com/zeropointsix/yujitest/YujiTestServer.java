@@ -134,7 +134,9 @@ public final class YujiTestServer {
         for (BlockPos p : walls) player.serverLevel().setBlockAndUpdate(p, Blocks.AIR.defaultBlockState());
         walls.clear();
         for (var item : player.serverLevel().getEntitiesOfClass(ItemEntity.class, player.getBoundingBox().inflate(64))) item.discard();
+        for (var projectile : player.serverLevel().getEntitiesOfClass(BoneSpike.class, player.getBoundingBox().inflate(128))) projectile.discard();
         player.removeAllEffects();
+        player.setDeltaMovement(Vec3.ZERO); player.hurtMarked = true;
         player.setGameMode(GameType.CREATIVE);
         player.getAbilities().flying = true; player.onUpdateAbilities();
         player.getInventory().clearContent();
@@ -143,7 +145,7 @@ public final class YujiTestServer {
             spike = YujiContent.BONE_SPIKE.get().create(player.serverLevel());
             spike.setNoGravity(true); spike.moveTo(.5, 66, .5, 0, 0);
             player.serverLevel().addFreshEntity(spike);
-            player.teleportTo(player.serverLevel(), 3.5, 65, 3.5, 135, 8.3F);
+            player.teleportTo(player.serverLevel(), 1.5, 65, 1.5, 135, 23.7F);
             mode = "bone-gallery"; signal(player, "bone_spike"); return;
         }
         YujiKind kind = YujiKind.values()[index];

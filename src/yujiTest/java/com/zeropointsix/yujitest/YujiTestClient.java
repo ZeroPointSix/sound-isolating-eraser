@@ -48,6 +48,8 @@ public final class YujiTestClient {
     private static int hiddenAt;
     private static String pendingEvidence;
     private static final Map<String, SoundInstance> deathSounds = new HashMap<>();
+    private static final Map<String, SoundInstance> observedSounds = new HashMap<>();
+    private static final java.util.Set<String> playedSounds = new HashSet<>();
     private static boolean audioDone;
 
     private static void require(boolean condition, String message) { if (!condition) throw new AssertionError(message); }
@@ -67,6 +69,7 @@ public final class YujiTestClient {
         String text = event.getMessage().getString();
         if (!text.startsWith("YUJI_QA:")) return;
         phase = text.substring(8); ticks = 0; frames = 0; captured = false; audioDone = false; poses.clear();
+        if (!phase.startsWith("ai-") && !phase.startsWith("audio-")) { observedSounds.clear(); playedSounds.clear(); }
         event.setCanceled(true);
     }
     @SubscribeEvent(priority = EventPriority.LOWEST) public static void sound(PlaySoundEvent event) {
@@ -76,6 +79,7 @@ public final class YujiTestClient {
         if (sound instanceof TickableSoundInstance loop && (path.contains("qiyu.flute") || path.contains("shifotou_battle"))) loops.add(loop);
         if (phase.equals("qiyu") && path.equals("entity.zombie.ambient")) masked = sound;
         if (sound.getLocation().getNamespace().equals("qihai") && path.endsWith(".death")) deathSounds.put(path, sound);
+        if (sound.getLocation().getNamespace().equals("qihai") || phase.equals("ai-wangyu")) observedSounds.put(sound.getLocation().toString(), sound);
     }
     @SubscribeEvent public static void tick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END || failed || phase.isEmpty()) return;
@@ -84,6 +88,19 @@ public final class YujiTestClient {
         if (mc.level == null || mc.player == null) return;
         try {
             ticks++;
+            String profile = phase.replaceFirst("^(ai-|audio-)", "");
+            for (var entry : observedSounds.entrySet()) {
+                var sound = entry.getValue();
+                if (!playedSounds.contains(entry.getKey()) && sound.getSound() != null && mc.getSoundManager().isActive(sound)) {
+                    playedSounds.add(entry.getKey());
+                    String record = "phase=" + phase + ", tick=" + ticks + ", event=" + entry.getKey()
+                            + ", decoded=" + sound.getSound().getLocation() + ", active=true, volume=" + sound.getVolume()
+                            + ", pitch=" + sound.getPitch() + ", position=" + sound.getX() + "," + sound.getY() + "," + sound.getZ()
+                            + ", backend=OpenAL-null\n";
+                    Files.writeString(RESULTS.resolve("audio-events-" + profile + ".log"), record,
+                            java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND);
+                }
+            }
             if (ticks == 1) { mc.setScreen(null); mc.mouseHandler.grabMouse(); }
             if (phase.equals("ai-chennu") && ticks == 5) {
                 for (var entity : mc.level.entitiesForRendering()) if (entity instanceof YujiMonster monster && monster.kind() == YujiKind.CHENNU) {
@@ -96,8 +113,16 @@ public final class YujiTestClient {
                 String kind = phase.substring(6);
                 var sound = deathSounds.get("entity.qihai." + kind + ".death");
                 if (sound != null && sound.getSound() != null && mc.getSoundManager().isActive(sound)) {
+                    String skill = switch (kind) {
+                        case "yuchi" -> "step"; case "shasheng" -> "chop"; case "toudao" -> "steal";
+                        case "ekou" -> "curse"; case "liangshe" -> "whisper"; case "xieyin" -> "lure";
+                        case "qiyu" -> "flute"; case "tanyu" -> "bite"; case "chennu" -> "stomp";
+                        case "shifotou" -> "gaze"; default -> "";
+                    };
+                    if (kind.equals("wangyu")) require(playedSounds.stream().anyMatch(name -> name.startsWith("minecraft:")), "real targeted false voice played");
+                    else require(playedSounds.contains("qihai:entity.qihai." + kind + "." + skill), "real locomotion/skill audio played: " + kind + "." + skill);
                     pass(phase, "event=" + sound.getLocation() + ", decoded=" + sound.getSound().getLocation()
-                            + ", active=true, volume=" + sound.getVolume() + ", backend=OpenAL-null");
+                            + ", active=true, volume=" + sound.getVolume() + ", backend=OpenAL-null, observed=" + playedSounds);
                     audioDone = true;
                 } else require(ticks < 120, "real audio playback not active: " + kind);
             }
