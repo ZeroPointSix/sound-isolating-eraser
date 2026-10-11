@@ -49,10 +49,16 @@ public final class CitySpawns {
                 int x = player.getBlockX() + level.random.nextInt(81) - 40;
                 int z = player.getBlockZ() + level.random.nextInt(81) - 40;
                 if (!level.hasChunkAt(new BlockPos(x, player.getBlockY(), z))) continue;
-                int y = player.getY() < 56 ? CityChunkGenerator.SUBWAY_Y + 2
-                        : level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
+                boolean underground = player.getY() < 56;
+                int y = underground ? CityChunkGenerator.SUBWAY_Y + 1 : player.getBlockY() + level.random.nextInt(17) - 8;
+                // Check nearby occupied floors, not just the roof heightmap: wall lights live below rooftops.
+                if (!level.getBlockState(new BlockPos(x, y - 1, z)).isSolid()) {
+                    if (underground) continue;
+                    y = level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
+                }
                 BlockPos feet = new BlockPos(x, y, z);
-                if (!level.hasChunkAt(feet) || level.getNearestPlayer(x, y, z, 16, false) != null) continue;
+                if (!withinCountedRange(player, feet) || !level.hasChunkAt(feet)
+                        || level.getNearestPlayer(x, y, z, 16, false) != null) continue;
                 CityLayout.District district = CityLayout.district(x, z);
                 int light = level.getMaxLocalRawBrightness(feet);
                 boolean wall = adjacentWall(level, feet);
@@ -61,11 +67,13 @@ public final class CitySpawns {
                     int group = Math.min(2 + level.random.nextInt(4), NightConfig.SHADOW_CAP.get() - shadowCount);
                     for (int n = 0; n < group; n++) {
                         BlockPos member = feet.offset(n % 2, 0, n / 2);
-                        if (level.getMaxLocalRawBrightness(member) <= 4 && adjacentWall(level, member)
+                        if (withinCountedRange(player, member) && level.getNearestPlayer(member.getX(), member.getY(), member.getZ(), 16, false) == null
+                                && level.getMaxLocalRawBrightness(member) <= 4 && adjacentWall(level, member)
                                 && spawn(level, shadowType, member, -1, false) != null) shadowCount++;
                     }
                 }
-                if (neonCount < NightConfig.NEON_CAP.get() && district == CityLayout.District.COMMERCIAL && light >= 12 && wall) {
+                if (neonCount < NightConfig.NEON_CAP.get() && district == CityLayout.District.COMMERCIAL
+                        && attachmentLight(level, feet) >= 12 && wall) {
                     int blockX = Math.floorDiv(x, 64) * 64, blockZ = Math.floorDiv(z, 64) * 64;
                     long large = level.getEntitiesOfClass(NeonTumorEntity.class,
                             new AABB(blockX, level.getMinBuildHeight(), blockZ, blockX + 64, level.getMaxBuildHeight(), blockZ + 64),
@@ -88,6 +96,22 @@ public final class CitySpawns {
 
     public static EntityType<?> shadowType() {
         return ForgeRegistries.ENTITY_TYPES.containsKey(SHADOW) ? ForgeRegistries.ENTITY_TYPES.getValue(SHADOW) : null;
+    }
+
+    public static boolean withinCountedRange(ServerPlayer player, BlockPos feet) {
+        return player.getBoundingBox().inflate(64).contains(feet.getX() + 0.5, feet.getY(), feet.getZ() + 0.5)
+                && (player.getY() >= 56 || feet.getY() < 56);
+    }
+
+    public static int attachmentLight(ServerLevel level, BlockPos feet) {
+        int light = level.getMaxLocalRawBrightness(feet);
+        for (Direction direction : Direction.Plane.HORIZONTAL) {
+            BlockPos anchor = feet.relative(direction);
+            BlockState state = level.getBlockState(anchor);
+            if (state.isFaceSturdy(level, anchor, direction.getOpposite()))
+                light = Math.max(light, state.getLightEmission(level, anchor));
+        }
+        return light;
     }
 
     private static boolean adjacentWall(ServerLevel level, BlockPos feet) {

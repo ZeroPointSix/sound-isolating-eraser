@@ -168,6 +168,7 @@ public final class NightEvents {
             if (!CityLayout.street(x, z)) continue;
             city.getChunkAt(new BlockPos(x, 0, z));
             int top = city.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
+            if (top > CityLayout.surface(x, z) + 2) continue;
             BlockPos feet = new BlockPos(x, top, z);
             AABB box = new AABB(x + 0.2, top, z + 0.2, x + 0.8, top + 1.8, z + 0.8);
             if (!city.getWorldBorder().isWithinBounds(feet) || !city.getBlockState(feet.below()).isSolid()
@@ -211,6 +212,9 @@ public final class NightEvents {
     @SubscribeEvent public static void tree(SaplingGrowTreeEvent event) {
         if (event.getLevel() instanceof Level level && EternalNightContent.isCity(level) && NightConfig.DISABLE_GROWTH.get())
             event.setResult(Event.Result.DENY);
+    }
+    @SubscribeEvent public static void bonemeal(net.minecraftforge.event.entity.player.BonemealEvent event) {
+        if (EternalNightContent.isCity(event.getLevel()) && NightConfig.DISABLE_GROWTH.get()) event.setCanceled(true);
     }
     @SubscribeEvent public static void death(LivingDeathEvent event) {
         if (event.isCanceled() || !(event.getEntity().level() instanceof ServerLevel level) || !EternalNightContent.isCity(level)) return;

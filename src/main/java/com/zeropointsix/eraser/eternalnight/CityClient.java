@@ -10,6 +10,10 @@ import net.minecraftforge.fml.common.Mod;
 
 @Mod.EventBusSubscriber(modid = ModMain.MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
 public final class CityClient {
+    @SubscribeEvent public static void setup(net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent event) {
+        event.enqueueWork(() -> net.minecraft.client.renderer.ItemBlockRenderTypes.setRenderLayer(
+                EternalNightContent.NEON_SIGN.get(), net.minecraft.client.renderer.RenderType.cutout()));
+    }
     @SubscribeEvent public static void dimensionEffects(RegisterDimensionSpecialEffectsEvent event) {
         event.register(EternalNightContent.ID, new DimensionSpecialEffects(Float.NaN, false,
                 DimensionSpecialEffects.SkyType.NONE, false, false) {

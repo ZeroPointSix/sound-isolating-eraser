@@ -28,12 +28,19 @@ public final class EternalNightContent {
     public static final ResourceKey<Level> LEVEL = ResourceKey.create(Registries.DIMENSION, ID);
     // Retain the supplied namespace so the original NBT palettes and blockstate JSON remain byte-identical.
     public static final DeferredRegister<Block> ART_BLOCKS = DeferredRegister.create(ForgeRegistries.BLOCKS, "qihai");
+    private static final DeferredRegister<net.minecraft.world.item.Item> ART_ITEMS = DeferredRegister.create(ForgeRegistries.ITEMS, "qihai");
     public static final RegistryObject<Block> NEON_SIGN = ART_BLOCKS.register("neon_sign", NeonSignBlock::new);
     public static final RegistryObject<Block> EMERGENCY_LIGHT = ART_BLOCKS.register("emergency_light",
             () -> new Block(BlockBehaviour.Properties.of().strength(1.5F).lightLevel(state -> 4)));
+    static {
+        // Use the supplied pink item model rather than introduce an unprovided icon.
+        ART_ITEMS.register("neon_sign_pink", () -> new net.minecraft.world.item.BlockItem(NEON_SIGN.get(), new net.minecraft.world.item.Item.Properties()));
+        ART_ITEMS.register("emergency_light", () -> new net.minecraft.world.item.BlockItem(EMERGENCY_LIGHT.get(), new net.minecraft.world.item.Item.Properties()));
+    }
 
     public static void register(IEventBus bus) {
         ART_BLOCKS.register(bus);
+        ART_ITEMS.register(bus);
         BIOME_SOURCES.register(bus);
         CHUNK_GENERATORS.register(bus);
         ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER, NightConfig.SPEC, "eternal-night-server.toml");

@@ -30,35 +30,54 @@ public final class CityTemplates {
         int tx = chunk.getPos().x, tz = chunk.getPos().z;
         int x = tx * 16, z = tz * 16;
         int lx = Math.floorMod(tx, 4), lz = Math.floorMod(tz, 4);
+        int bx = Math.floorDiv(tx, 4), bz = Math.floorDiv(tz, 4);
+        boolean station = lx == 3 && lz == 3 && hasStation(region.getSeed(), bx, bz);
         BoundingBox clip = new BoundingBox(x, region.getMinBuildHeight(), z, x + 15, region.getMaxBuildHeight() - 1, z + 15);
         String district = CityLayout.district(x, z) == CityLayout.District.COMMERCIAL ? "com" : "res";
+        // The supplied split has openings on all four edges; overlapping two straights seals one line.
+        if (lx == 0 && (lz == 0 || lz == 3)) {
+            placeOne(region, "subway/tunnel_split", new BlockPos(x, CityChunkGenerator.SUBWAY_Y, z), clip, false, null);
+        } else if (lx == 0 || lz == 0 || lz == 3) {
+            placeOne(region, station ? "subway/station_platform_stairs" : "subway/tunnel_straight",
+                    new BlockPos(x, CityChunkGenerator.SUBWAY_Y, z), clip, false, null,
+                    lx == 0 ? Rotation.CLOCKWISE_90 : Rotation.NONE);
+        }
         if (lx == 0 || lz == 0) {
             String street = lx == 0 && lz == 0 ? "street_cross_" : lx == 0 ? "street_straight_ns_" : "street_straight_";
             placeOne(region, "streets/" + street + district, new BlockPos(x, CityLayout.surface(x, z) - 1, z), clip, true, null);
-            placeOne(region, "subway/tunnel_straight", new BlockPos(x, CityChunkGenerator.SUBWAY_Y, z), clip, false, null,
-                    lx == 0 ? Rotation.CLOCKWISE_90 : Rotation.NONE);
-            // A cross intersection is assembled from two supplied straight tunnel pieces.
-            if (lx == 0 && lz == 0) placeOne(region, "subway/tunnel_straight", new BlockPos(x, CityChunkGenerator.SUBWAY_Y, z),
-                    clip, false, null, Rotation.NONE);
         } else {
-            int bx = Math.floorDiv(tx, 4), bz = Math.floorDiv(tz, 4);
             boolean large = Math.floorMod(CityLayout.hash(region.getSeed(), bx, bz), 4) == 0;
             if (large && lx <= 2 && lz <= 2) {
                 String[] choices = {"mall", "civic_center", "townhall", "library"};
                 String name = choices[(int) Math.floorMod(CityLayout.hash(region.getSeed() + 1, bx, bz), choices.length)];
                 placeOne(region, "buildings/" + name, new BlockPos((bx * 4 + 1) * 16, CityLayout.plateau(bx, bz), (bz * 4 + 1) * 16),
                         clip, false, loot(name));
-            } else if (lx == 3 && lz == 3 && Math.floorMod(CityLayout.hash(region.getSeed() + 2, bx, bz), 6) == 0) {
+            } else if (station) {
                 int top = CityLayout.plateau(bx, bz);
-                placeOne(region, "subway/station_platform_stairs", new BlockPos(x, CityChunkGenerator.SUBWAY_Y, z), clip, false, null);
-                for (int y = CityChunkGenerator.SUBWAY_Y + 6; y < top - 5; y += 6)
-                    placeOne(region, "subway/station_shaft", new BlockPos(x, y, z), clip, false, null);
-                placeOne(region, "subway/station_entrance", new BlockPos(x, top, z), clip, false, null);
+                BoundingBox underground = new BoundingBox(x, CityChunkGenerator.SUBWAY_Y + 6, z, x + 15, top - 1, z + 15);
+                for (int y = CityChunkGenerator.SUBWAY_Y + 6; y < top; y += 6)
+                    placeOne(region, "subway/station_shaft", new BlockPos(x, y, z), underground, false, null);
+                placeOne(region, "plazas/plaza_station", new BlockPos(x, top - 1, z), clip, false, null);
+                // The kit README explicitly permits a ladder to bridge its discontinuous stair pieces.
+                for (int y = CityChunkGenerator.SUBWAY_Y + 2; y <= top; y++) {
+                    region.setBlock(new BlockPos(x + 3, y, z + 13), Blocks.STONE_BRICKS.defaultBlockState(), 2 | 16);
+                    region.setBlock(new BlockPos(x + 4, y, z + 13), Blocks.LADDER.defaultBlockState()
+                            .setValue(LadderBlock.FACING, net.minecraft.core.Direction.EAST), 2 | 16);
+                    region.setBlock(new BlockPos(x + 5, y, z + 13), Blocks.AIR.defaultBlockState(), 2 | 16);
+                }
+            } else if (lx == 3 && lz == 1 && Math.floorMod(CityLayout.hash(region.getSeed() + 3, bx, bz), 4) == 0) {
+                String plaza = Math.floorMod(CityLayout.hash(region.getSeed() + 4, bx, bz), 2) == 0
+                        ? "plaza_parking" : "plaza_fountain" + (district.equals("com") ? "_com" : "");
+                placeOne(region, "plazas/" + plaza, new BlockPos(x, CityLayout.plateau(bx, bz) - 1, z), clip, false, null);
             } else {
                 String name = CityLayout.building(region.getSeed(), tx, tz);
                 placeOne(region, "buildings/" + name, new BlockPos(x, CityLayout.plateau(bx, bz), z), clip, false, loot(name));
             }
         }
+    }
+
+    public static boolean hasStation(long seed, int blockX, int blockZ) {
+        return Math.floorMod(CityLayout.hash(seed + 2, blockX, blockZ), 6) == 0;
     }
 
     private static String loot(String name) {

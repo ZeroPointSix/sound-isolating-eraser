@@ -16,13 +16,15 @@ import net.minecraftforge.gametest.GameTestHolder;
 import net.minecraftforge.gametest.PrefixGameTestTemplate;
 import java.util.UUID;
 
-@GameTestHolder(ModMain.MOD_ID)
+@GameTestHolder("eternal_night_tests")
 @PrefixGameTestTemplate(false)
 public final class EternalNightGameTests {
     @GameTest(template = "empty", batch = "eternal_night", timeoutTicks = 200)
     public static void cityRealPlayerDoorInteractions(GameTestHelper h) {
         ServerLevel city = h.getLevel().getServer().getLevel(EternalNightContent.LEVEL);
         net.minecraft.server.level.ServerPlayer player = h.makeMockServerPlayerInLevel();
+        io.netty.channel.embedded.EmbeddedChannel channel = new io.netty.channel.embedded.EmbeddedChannel(player.connection.connection);
+        player.connection.connection.setProtocol(net.minecraft.network.ConnectionProtocol.PLAY);
         BlockPos first = new BlockPos(2048, 120, 2048);
         try {
             player.teleportTo(city, first.getX() + 0.5, first.getY(), first.getZ() - 2, 0, 0);
@@ -59,6 +61,7 @@ public final class EternalNightGameTests {
             h.succeed();
         } finally {
             h.getLevel().getServer().getPlayerList().remove(player);
+            channel.finishAndReleaseAll();
         }
     }
 
@@ -69,6 +72,7 @@ public final class EternalNightGameTests {
     }
 
     private static void use(net.minecraft.server.level.ServerPlayer player, BlockPos pos) {
+        player.connection.teleport(pos.getX() + 0.5, pos.getY(), pos.getZ() - 1.5, 0, 0);
         player.gameMode.useItemOn(player, player.serverLevel(), net.minecraft.world.item.ItemStack.EMPTY,
                 net.minecraft.world.InteractionHand.MAIN_HAND,
                 new net.minecraft.world.phys.BlockHitResult(Vec3.atCenterOf(pos), Direction.NORTH, pos, false));
