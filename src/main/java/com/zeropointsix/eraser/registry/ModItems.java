@@ -8,6 +8,7 @@ import com.zeropointsix.eraser.item.ThunderFeatherItem;
 import com.zeropointsix.eraser.item.EnhancementPillPackItem;
 import com.zeropointsix.eraser.item.ShaxiadaoItem;
 import net.minecraft.world.item.Item;
+import net.minecraftforge.common.ForgeSpawnEggItem;
 import net.minecraft.world.item.Rarity;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -50,4 +51,8 @@ public final class ModItems {
 
     private ModItems() {
     }
+
+    public static final RegistryObject<Item> NEON_TUMOR_SPAWN_EGG =
+            ITEMS.register("neon_tumor_spawn_egg", () -> new ForgeSpawnEggItem(
+                    ModEntities.NEON_TUMOR, 0xFFFFFF, 0xFFFFFF, new Item.Properties()));
 }

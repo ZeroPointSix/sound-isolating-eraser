@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "sound_isolating_eraser:item/neon_tumor_spawn_egg"
+  }
+}

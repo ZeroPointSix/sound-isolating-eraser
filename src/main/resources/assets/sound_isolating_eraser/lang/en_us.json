@@ -49,5 +49,10 @@
   "sound_isolating_eraser.tier.1": "Cruise",
   "sound_isolating_eraser.tier.2": "Gale",
   "sound_isolating_eraser.tier.3": "Tempest",
-  "message.sound_isolating_eraser.speed_cap": "Speed exceeds wing limit — throttled"
+  "message.sound_isolating_eraser.speed_cap": "Speed exceeds wing limit — throttled",
+  "entity.sound_isolating_eraser.neon_tumor": "Neon Tumor",
+  "item.sound_isolating_eraser.neon_tumor_spawn_egg": "Neon Tumor Spawn Egg",
+  "effect.sound_isolating_eraser.corroded": "Corroded",
+  "death.attack.sound_isolating_eraser.corrosion": "%1$s was dissolved by corrosion",
+  "death.attack.sound_isolating_eraser.corrosion.player": "%1$s was dissolved by corrosion while fighting %2$s"
 }

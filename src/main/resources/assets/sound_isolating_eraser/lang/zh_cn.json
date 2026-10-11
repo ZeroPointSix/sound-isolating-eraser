@@ -49,5 +49,10 @@
   "sound_isolating_eraser.tier.1": "巡航",
   "sound_isolating_eraser.tier.2": "疾风",
   "sound_isolating_eraser.tier.3": "神霄",
-  "message.sound_isolating_eraser.speed_cap": "速度超过风雷翅当前档位上限，已被拉回"
+  "message.sound_isolating_eraser.speed_cap": "速度超过风雷翅当前档位上限，已被拉回",
+  "entity.sound_isolating_eraser.neon_tumor": "霓虹瘤",
+  "item.sound_isolating_eraser.neon_tumor_spawn_egg": "霓虹瘤刷怪蛋",
+  "effect.sound_isolating_eraser.corroded": "腐蚀",
+  "death.attack.sound_isolating_eraser.corrosion": "%1$s 被腐蚀殆尽",
+  "death.attack.sound_isolating_eraser.corrosion.player": "%1$s 在与 %2$s 战斗时被腐蚀殆尽"
 }

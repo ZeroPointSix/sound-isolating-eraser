@@ -1,0 +1,562 @@
+{
+  "format_version": "1.12.0",
+  "minecraft:geometry": [
+    {
+      "description": {
+        "identifier": "geometry.neon_tumor",
+        "texture_width": 128,
+        "texture_height": 64,
+        "visible_bounds_width": 3,
+        "visible_bounds_height": 2.5,
+        "visible_bounds_offset": [
+          0,
+          0.75,
+          0
+        ]
+      },
+      "bones": [
+        {
+          "name": "root",
+          "pivot": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "base",
+          "parent": "root",
+          "pivot": [
+            0,
+            0,
+            0
+          ],
+          "cubes": [
+            {
+              "origin": [
+                -8,
+                0,
+                -7
+              ],
+              "size": [
+                16,
+                2,
+                14
+              ],
+              "uv": [
+                46,
+                0
+              ]
+            },
+            {
+              "origin": [
+                -10,
+                0,
+                -3
+              ],
+              "size": [
+                3,
+                1,
+                6
+              ],
+              "uv": [
+                0,
+                45
+              ]
+            },
+            {
+              "origin": [
+                6,
+                0,
+                -9
+              ],
+              "size": [
+                4,
+                1,
+                4
+              ],
+              "uv": [
+                42,
+                45
+              ]
+            }
+          ]
+        },
+        {
+          "name": "cluster",
+          "parent": "root",
+          "pivot": [
+            0,
+            2,
+            0
+          ]
+        },
+        {
+          "name": "bubble_01",
+          "parent": "cluster",
+          "pivot": [
+            0,
+            6,
+            0
+          ],
+          "cubes": [
+            {
+              "origin": [
+                -6.0,
+                2.0,
+                -5.5
+              ],
+              "size": [
+                12,
+                8,
+                11
+              ],
+              "uv": [
+                0,
+                0
+              ]
+            }
+          ]
+        },
+        {
+          "name": "bubble_02",
+          "parent": "cluster",
+          "pivot": [
+            -4,
+            9.5,
+            3
+          ],
+          "cubes": [
+            {
+              "origin": [
+                -8.0,
+                6.0,
+                -0.5
+              ],
+              "size": [
+                8,
+                7,
+                7
+              ],
+              "pivot": [
+                -4,
+                9.5,
+                3
+              ],
+              "rotation": [
+                0,
+                15,
+                8
+              ],
+              "uv": [
+                32,
+                19
+              ]
+            }
+          ]
+        },
+        {
+          "name": "bubble_03",
+          "parent": "cluster",
+          "pivot": [
+            4,
+            10,
+            -2
+          ],
+          "cubes": [
+            {
+              "origin": [
+                0.0,
+                6.5,
+                -6.0
+              ],
+              "size": [
+                8,
+                7,
+                8
+              ],
+              "pivot": [
+                4,
+                10,
+                -2
+              ],
+              "rotation": [
+                5,
+                -12,
+                0
+              ],
+              "uv": [
+                0,
+                19
+              ]
+            }
+          ]
+        },
+        {
+          "name": "bubble_04",
+          "parent": "cluster",
+          "pivot": [
+            0,
+            13,
+            1
+          ],
+          "cubes": [
+            {
+              "origin": [
+                -3.5,
+                10.0,
+                -2.5
+              ],
+              "size": [
+                7,
+                6,
+                7
+              ],
+              "uv": [
+                62,
+                19
+              ]
+            }
+          ]
+        },
+        {
+          "name": "bubble_05",
+          "parent": "cluster",
+          "pivot": [
+            -6,
+            5,
+            -4
+          ],
+          "cubes": [
+            {
+              "origin": [
+                -9.0,
+                2.0,
+                -7.0
+              ],
+              "size": [
+                6,
+                6,
+                6
+              ],
+              "uv": [
+                90,
+                19
+              ]
+            }
+          ]
+        },
+        {
+          "name": "bubble_06",
+          "parent": "cluster",
+          "pivot": [
+            6,
+            4.5,
+            4
+          ],
+          "cubes": [
+            {
+              "origin": [
+                3.0,
+                2.0,
+                1.0
+              ],
+              "size": [
+                6,
+                5,
+                6
+              ],
+              "uv": [
+                0,
+                34
+              ]
+            }
+          ]
+        },
+        {
+          "name": "bubble_07",
+          "parent": "cluster",
+          "pivot": [
+            3,
+            15,
+            -3
+          ],
+          "cubes": [
+            {
+              "origin": [
+                1.0,
+                13.0,
+                -5.0
+              ],
+              "size": [
+                4,
+                4,
+                4
+              ],
+              "uv": [
+                42,
+                34
+              ]
+            }
+          ]
+        },
+        {
+          "name": "bubble_08",
+          "parent": "cluster",
+          "pivot": [
+            -3,
+            15,
+            -1
+          ],
+          "cubes": [
+            {
+              "origin": [
+                -5.0,
+                13.0,
+                -3.0
+              ],
+              "size": [
+                4,
+                4,
+                4
+              ],
+              "uv": [
+                58,
+                34
+              ]
+            }
+          ]
+        },
+        {
+          "name": "bubble_09",
+          "parent": "cluster",
+          "pivot": [
+            7,
+            8.5,
+            1
+          ],
+          "cubes": [
+            {
+              "origin": [
+                5.0,
+                6.0,
+                -1.5
+              ],
+              "size": [
+                4,
+                5,
+                5
+              ],
+              "pivot": [
+                7,
+                8.5,
+                1
+              ],
+              "rotation": [
+                0,
+                20,
+                -10
+              ],
+              "uv": [
+                24,
+                34
+              ]
+            }
+          ]
+        },
+        {
+          "name": "bubble_10",
+          "parent": "cluster",
+          "pivot": [
+            -7.5,
+            9,
+            0
+          ],
+          "cubes": [
+            {
+              "origin": [
+                -9.5,
+                7.0,
+                -2.0
+              ],
+              "size": [
+                4,
+                4,
+                4
+              ],
+              "pivot": [
+                -7.5,
+                9,
+                0
+              ],
+              "rotation": [
+                0,
+                -25,
+                12
+              ],
+              "uv": [
+                74,
+                34
+              ]
+            }
+          ]
+        },
+        {
+          "name": "bubble_11",
+          "parent": "cluster",
+          "pivot": [
+            1,
+            7,
+            -6.5
+          ],
+          "cubes": [
+            {
+              "origin": [
+                -1.5,
+                4.5,
+                -8.0
+              ],
+              "size": [
+                5,
+                5,
+                3
+              ],
+              "uv": [
+                90,
+                34
+              ]
+            }
+          ]
+        },
+        {
+          "name": "bubble_12",
+          "parent": "cluster",
+          "pivot": [
+            -2,
+            17.5,
+            2
+          ],
+          "cubes": [
+            {
+              "origin": [
+                -3.5,
+                16.0,
+                0.5
+              ],
+              "size": [
+                3,
+                3,
+                3
+              ],
+              "pivot": [
+                -2,
+                17.5,
+                2
+              ],
+              "rotation": [
+                20,
+                30,
+                0
+              ],
+              "uv": [
+                18,
+                45
+              ]
+            }
+          ]
+        },
+        {
+          "name": "pod_1",
+          "parent": "cluster",
+          "pivot": [
+            1.5,
+            9,
+            -5
+          ],
+          "cubes": [
+            {
+              "origin": [
+                0,
+                7.5,
+                -10
+              ],
+              "size": [
+                3,
+                3,
+                5
+              ],
+              "uv": [
+                106,
+                34
+              ]
+            }
+          ]
+        },
+        {
+          "name": "pod_2",
+          "parent": "pod_1",
+          "pivot": [
+            1.5,
+            9,
+            -10
+          ],
+          "cubes": [
+            {
+              "origin": [
+                0.5,
+                8,
+                -14
+              ],
+              "size": [
+                2,
+                2,
+                4
+              ],
+              "uv": [
+                30,
+                45
+              ]
+            }
+          ]
+        },
+        {
+          "name": "pod_3",
+          "parent": "pod_2",
+          "pivot": [
+            1.5,
+            9,
+            -14
+          ],
+          "cubes": [
+            {
+              "origin": [
+                0.5,
+                8,
+                -17
+              ],
+              "size": [
+                2,
+                2,
+                3
+              ],
+              "inflate": -0.3,
+              "uv": [
+                58,
+                45
+              ]
+            }
+          ]
+        },
+        {
+          "name": "steam",
+          "parent": "cluster",
+          "pivot": [
+            0,
+            19,
+            0
+          ]
+        }
+      ]
+    }
+  ]
+}
