@@ -52,7 +52,7 @@ public final class EternalNightGameTests {
         player.getInventory().setItem(0, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIAMOND, 7));
         player.getStats().setValue(player, net.minecraft.stats.Stats.CUSTOM.get(net.minecraft.stats.Stats.TIME_SINCE_REST), 96000);
         var result = player.startSleepInBed(bed.north());
-        h.assertTrue(result.right().isPresent(), "real valid bed sleep starts");
+        h.assertTrue(result.right().isPresent(), "real valid bed sleep starts: " + result);
         BlockPos savedBed = player.getRespawnPosition();
         h.runAfterDelay(160, () -> {
             try {
@@ -127,6 +127,7 @@ public final class EternalNightGameTests {
         var player = new net.minecraft.server.level.ServerPlayer(h.getLevel().getServer(), h.getLevel(),
                 new com.mojang.authlib.GameProfile(uuid, "City" + uuid.toString().substring(0, 8)));
         h.getLevel().getServer().getPlayerList().placeNewPlayer(connection, player);
+        player.setGameMode(net.minecraft.world.level.GameType.SURVIVAL);
         return new TestSession(player, channel);
     }
 
@@ -153,7 +154,8 @@ public final class EternalNightGameTests {
             use(player, first);
             use(player, first.east(3));
             h.assertTrue(NightEvents.playerData(player).getLongArray("Doors").length == 2,
-                    "actual upper/lower/repeated interactions and two doors in one tick count exactly twice");
+                    "actual upper/lower/repeated interactions count twice; got "
+                            + NightEvents.playerData(player).getLongArray("Doors").length);
 
             BlockPos iron = first.south(4);
             installDoor(city, iron, Blocks.IRON_DOOR);
