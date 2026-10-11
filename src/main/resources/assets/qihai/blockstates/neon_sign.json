@@ -1,0 +1,304 @@
+{
+  "variants": {
+    "color=pink,facing=north,glyph=0": {
+      "model": "qihai:block/neon_sign_pink_0"
+    },
+    "color=pink,facing=east,glyph=0": {
+      "model": "qihai:block/neon_sign_pink_0",
+      "y": 90
+    },
+    "color=pink,facing=south,glyph=0": {
+      "model": "qihai:block/neon_sign_pink_0",
+      "y": 180
+    },
+    "color=pink,facing=west,glyph=0": {
+      "model": "qihai:block/neon_sign_pink_0",
+      "y": 270
+    },
+    "color=pink,facing=north,glyph=1": {
+      "model": "qihai:block/neon_sign_pink_1"
+    },
+    "color=pink,facing=east,glyph=1": {
+      "model": "qihai:block/neon_sign_pink_1",
+      "y": 90
+    },
+    "color=pink,facing=south,glyph=1": {
+      "model": "qihai:block/neon_sign_pink_1",
+      "y": 180
+    },
+    "color=pink,facing=west,glyph=1": {
+      "model": "qihai:block/neon_sign_pink_1",
+      "y": 270
+    },
+    "color=pink,facing=north,glyph=2": {
+      "model": "qihai:block/neon_sign_pink_2"
+    },
+    "color=pink,facing=east,glyph=2": {
+      "model": "qihai:block/neon_sign_pink_2",
+      "y": 90
+    },
+    "color=pink,facing=south,glyph=2": {
+      "model": "qihai:block/neon_sign_pink_2",
+      "y": 180
+    },
+    "color=pink,facing=west,glyph=2": {
+      "model": "qihai:block/neon_sign_pink_2",
+      "y": 270
+    },
+    "color=pink,facing=north,glyph=3": {
+      "model": "qihai:block/neon_sign_pink_3"
+    },
+    "color=pink,facing=east,glyph=3": {
+      "model": "qihai:block/neon_sign_pink_3",
+      "y": 90
+    },
+    "color=pink,facing=south,glyph=3": {
+      "model": "qihai:block/neon_sign_pink_3",
+      "y": 180
+    },
+    "color=pink,facing=west,glyph=3": {
+      "model": "qihai:block/neon_sign_pink_3",
+      "y": 270
+    },
+    "color=cyan,facing=north,glyph=0": {
+      "model": "qihai:block/neon_sign_cyan_0"
+    },
+    "color=cyan,facing=east,glyph=0": {
+      "model": "qihai:block/neon_sign_cyan_0",
+      "y": 90
+    },
+    "color=cyan,facing=south,glyph=0": {
+      "model": "qihai:block/neon_sign_cyan_0",
+      "y": 180
+    },
+    "color=cyan,facing=west,glyph=0": {
+      "model": "qihai:block/neon_sign_cyan_0",
+      "y": 270
+    },
+    "color=cyan,facing=north,glyph=1": {
+      "model": "qihai:block/neon_sign_cyan_1"
+    },
+    "color=cyan,facing=east,glyph=1": {
+      "model": "qihai:block/neon_sign_cyan_1",
+      "y": 90
+    },
+    "color=cyan,facing=south,glyph=1": {
+      "model": "qihai:block/neon_sign_cyan_1",
+      "y": 180
+    },
+    "color=cyan,facing=west,glyph=1": {
+      "model": "qihai:block/neon_sign_cyan_1",
+      "y": 270
+    },
+    "color=cyan,facing=north,glyph=2": {
+      "model": "qihai:block/neon_sign_cyan_2"
+    },
+    "color=cyan,facing=east,glyph=2": {
+      "model": "qihai:block/neon_sign_cyan_2",
+      "y": 90
+    },
+    "color=cyan,facing=south,glyph=2": {
+      "model": "qihai:block/neon_sign_cyan_2",
+      "y": 180
+    },
+    "color=cyan,facing=west,glyph=2": {
+      "model": "qihai:block/neon_sign_cyan_2",
+      "y": 270
+    },
+    "color=cyan,facing=north,glyph=3": {
+      "model": "qihai:block/neon_sign_cyan_3"
+    },
+    "color=cyan,facing=east,glyph=3": {
+      "model": "qihai:block/neon_sign_cyan_3",
+      "y": 90
+    },
+    "color=cyan,facing=south,glyph=3": {
+      "model": "qihai:block/neon_sign_cyan_3",
+      "y": 180
+    },
+    "color=cyan,facing=west,glyph=3": {
+      "model": "qihai:block/neon_sign_cyan_3",
+      "y": 270
+    },
+    "color=purple,facing=north,glyph=0": {
+      "model": "qihai:block/neon_sign_purple_0"
+    },
+    "color=purple,facing=east,glyph=0": {
+      "model": "qihai:block/neon_sign_purple_0",
+      "y": 90
+    },
+    "color=purple,facing=south,glyph=0": {
+      "model": "qihai:block/neon_sign_purple_0",
+      "y": 180
+    },
+    "color=purple,facing=west,glyph=0": {
+      "model": "qihai:block/neon_sign_purple_0",
+      "y": 270
+    },
+    "color=purple,facing=north,glyph=1": {
+      "model": "qihai:block/neon_sign_purple_1"
+    },
+    "color=purple,facing=east,glyph=1": {
+      "model": "qihai:block/neon_sign_purple_1",
+      "y": 90
+    },
+    "color=purple,facing=south,glyph=1": {
+      "model": "qihai:block/neon_sign_purple_1",
+      "y": 180
+    },
+    "color=purple,facing=west,glyph=1": {
+      "model": "qihai:block/neon_sign_purple_1",
+      "y": 270
+    },
+    "color=purple,facing=north,glyph=2": {
+      "model": "qihai:block/neon_sign_purple_2"
+    },
+    "color=purple,facing=east,glyph=2": {
+      "model": "qihai:block/neon_sign_purple_2",
+      "y": 90
+    },
+    "color=purple,facing=south,glyph=2": {
+      "model": "qihai:block/neon_sign_purple_2",
+      "y": 180
+    },
+    "color=purple,facing=west,glyph=2": {
+      "model": "qihai:block/neon_sign_purple_2",
+      "y": 270
+    },
+    "color=purple,facing=north,glyph=3": {
+      "model": "qihai:block/neon_sign_purple_3"
+    },
+    "color=purple,facing=east,glyph=3": {
+      "model": "qihai:block/neon_sign_purple_3",
+      "y": 90
+    },
+    "color=purple,facing=south,glyph=3": {
+      "model": "qihai:block/neon_sign_purple_3",
+      "y": 180
+    },
+    "color=purple,facing=west,glyph=3": {
+      "model": "qihai:block/neon_sign_purple_3",
+      "y": 270
+    },
+    "color=red,facing=north,glyph=0": {
+      "model": "qihai:block/neon_sign_red_0"
+    },
+    "color=red,facing=east,glyph=0": {
+      "model": "qihai:block/neon_sign_red_0",
+      "y": 90
+    },
+    "color=red,facing=south,glyph=0": {
+      "model": "qihai:block/neon_sign_red_0",
+      "y": 180
+    },
+    "color=red,facing=west,glyph=0": {
+      "model": "qihai:block/neon_sign_red_0",
+      "y": 270
+    },
+    "color=red,facing=north,glyph=1": {
+      "model": "qihai:block/neon_sign_red_1"
+    },
+    "color=red,facing=east,glyph=1": {
+      "model": "qihai:block/neon_sign_red_1",
+      "y": 90
+    },
+    "color=red,facing=south,glyph=1": {
+      "model": "qihai:block/neon_sign_red_1",
+      "y": 180
+    },
+    "color=red,facing=west,glyph=1": {
+      "model": "qihai:block/neon_sign_red_1",
+      "y": 270
+    },
+    "color=red,facing=north,glyph=2": {
+      "model": "qihai:block/neon_sign_red_2"
+    },
+    "color=red,facing=east,glyph=2": {
+      "model": "qihai:block/neon_sign_red_2",
+      "y": 90
+    },
+    "color=red,facing=south,glyph=2": {
+      "model": "qihai:block/neon_sign_red_2",
+      "y": 180
+    },
+    "color=red,facing=west,glyph=2": {
+      "model": "qihai:block/neon_sign_red_2",
+      "y": 270
+    },
+    "color=red,facing=north,glyph=3": {
+      "model": "qihai:block/neon_sign_red_3"
+    },
+    "color=red,facing=east,glyph=3": {
+      "model": "qihai:block/neon_sign_red_3",
+      "y": 90
+    },
+    "color=red,facing=south,glyph=3": {
+      "model": "qihai:block/neon_sign_red_3",
+      "y": 180
+    },
+    "color=red,facing=west,glyph=3": {
+      "model": "qihai:block/neon_sign_red_3",
+      "y": 270
+    },
+    "color=green,facing=north,glyph=0": {
+      "model": "qihai:block/neon_sign_green_0"
+    },
+    "color=green,facing=east,glyph=0": {
+      "model": "qihai:block/neon_sign_green_0",
+      "y": 90
+    },
+    "color=green,facing=south,glyph=0": {
+      "model": "qihai:block/neon_sign_green_0",
+      "y": 180
+    },
+    "color=green,facing=west,glyph=0": {
+      "model": "qihai:block/neon_sign_green_0",
+      "y": 270
+    },
+    "color=green,facing=north,glyph=1": {
+      "model": "qihai:block/neon_sign_green_1"
+    },
+    "color=green,facing=east,glyph=1": {
+      "model": "qihai:block/neon_sign_green_1",
+      "y": 90
+    },
+    "color=green,facing=south,glyph=1": {
+      "model": "qihai:block/neon_sign_green_1",
+      "y": 180
+    },
+    "color=green,facing=west,glyph=1": {
+      "model": "qihai:block/neon_sign_green_1",
+      "y": 270
+    },
+    "color=green,facing=north,glyph=2": {
+      "model": "qihai:block/neon_sign_green_2"
+    },
+    "color=green,facing=east,glyph=2": {
+      "model": "qihai:block/neon_sign_green_2",
+      "y": 90
+    },
+    "color=green,facing=south,glyph=2": {
+      "model": "qihai:block/neon_sign_green_2",
+      "y": 180
+    },
+    "color=green,facing=west,glyph=2": {
+      "model": "qihai:block/neon_sign_green_2",
+      "y": 270
+    },
+    "color=green,facing=north,glyph=3": {
+      "model": "qihai:block/neon_sign_green_3"
+    },
+    "color=green,facing=east,glyph=3": {
+      "model": "qihai:block/neon_sign_green_3",
+      "y": 90
+    },
+    "color=green,facing=south,glyph=3": {
+      "model": "qihai:block/neon_sign_green_3",
+      "y": 180
+    },
+    "color=green,facing=west,glyph=3": {
+      "model": "qihai:block/neon_sign_green_3",
+      "y": 270
+    }
+  }
+}
