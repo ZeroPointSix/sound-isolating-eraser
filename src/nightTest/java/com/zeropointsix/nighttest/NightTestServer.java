@@ -56,8 +56,11 @@ public final class NightTestServer {
                 server.getPlayerList().setViewDistance(2);
                 server.overworld().setDayTime(18000);
                 prepareBed(owner, -8); prepareBed(observer, 8);
-                require(NightEvents.enter(owner) && NightEvents.enter(observer), "both real clients enter with original templates");
-                require(owner.position().distanceTo(observer.position()) <= 64, "same-night cohort remains within 64 blocks");
+                require(NightEvents.enter(owner) && NightEvents.enter(observer), "both real clients queue original city entry");
+                require(CityEntryQueue.pending(owner) && CityEntryQueue.pending(observer), "entry is nonblocking");
+                phase = -1;
+            } else if (phase == -1 && EternalNightContent.isCity(owner.level()) && EternalNightContent.isCity(observer.level())) {
+                require(owner.position().distanceTo(observer.position()) <= 48, "same-night cohort remains within 48 blocks");
                 setupInteractionFixture(owner.serverLevel(), owner.blockPosition());
                 say(owner, "READY"); say(observer, "READY");
                 phase = 1;
@@ -77,7 +80,7 @@ public final class NightTestServer {
                 assertHome(observer);
                 var city = owner.server.getLevel(EternalNightContent.LEVEL);
                 require(CitySavedData.get(city).active(door, city.getGameTime()), "exit remains shared after both returns");
-                Files.writeString(RESULTS.resolve("server-cycle.pass"), "PASS: same-night entry, native 100th door, shared exit, distinct beds, inventory and counter reset\n");
+                Files.writeString(RESULTS.resolve("server-cycle.pass"), "PASS: asynchronous cold-world same-night entry, native 100th door, shared exit, distinct beds, inventory and counter reset\n");
                 phase = 99;
             }
         } catch (Throwable error) {

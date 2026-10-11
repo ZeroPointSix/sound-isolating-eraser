@@ -141,12 +141,10 @@ public final class NightEvents {
     }
 
     public static boolean enter(ServerPlayer player) {
-        ServerLevel city = player.server.getLevel(EternalNightContent.LEVEL);
-        if (city == null || !CityTemplates.available(city)) return false;
-        long night = Math.floorDiv(player.server.overworld().getDayTime(), NightRules.DAY_TICKS);
-        long hash = CityLayout.hash(city.getSeed(), (int) night, (int) (night >>> 32));
-        int x = Math.floorMod((int) hash, 256) * 64;
-        int z = Math.floorMod((int) (hash >>> 32), 256) * 64;
+        return CityEntryQueue.request(player);
+    }
+
+    static boolean finishEntry(ServerPlayer player, ServerLevel city, int x, int z) {
         Optional<Vec3> destination = safeStreet(city, x, z);
         if (destination.isEmpty()) return false;
         CompoundTag data = playerData(player);
@@ -163,10 +161,9 @@ public final class NightEvents {
 
     private static Optional<Vec3> safeStreet(ServerLevel city, int centerX, int centerZ) {
         for (int attempt = 0; attempt < 128; attempt++) {
-            int x = centerX - 24 + city.random.nextInt(49), z = centerZ - 24 + city.random.nextInt(49);
-            if ((x - centerX) * (x - centerX) + (z - centerZ) * (z - centerZ) > 24 * 24) continue;
+            int x = centerX - 15 + city.random.nextInt(31), z = centerZ - 15 + city.random.nextInt(31);
             if (!CityLayout.street(x, z)) continue;
-            city.getChunkAt(new BlockPos(x, 0, z));
+            if (city.getChunkSource().getChunkNow(x >> 4, z >> 4) == null) continue;
             int top = city.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
             if (top > CityLayout.surface(x, z) + 2) continue;
             BlockPos feet = new BlockPos(x, top, z);
@@ -248,10 +245,18 @@ public final class NightEvents {
     }
     @SubscribeEvent public static void logout(PlayerEvent.PlayerLoggedOutEvent event) {
         UUID id = event.getEntity().getUUID();
+        CityEntryQueue.cancel(id);
         SLEEP.remove(id); PREVIOUS_POSITION.remove(id);
+    }
+    @SubscribeEvent public static void serverStopping(net.minecraftforge.event.server.ServerStoppingEvent event) {
+        CityEntryQueue.clear();
     }
     @SubscribeEvent public static void serverStopped(net.minecraftforge.event.server.ServerStoppedEvent event) {
         SLEEP.clear(); PREVIOUS_POSITION.clear(); CityDoorActions.clear();
+    }
+
+    @SubscribeEvent public static void serverTick(TickEvent.ServerTickEvent event) {
+        if (event.phase == TickEvent.Phase.END) CityEntryQueue.tick(event.getServer());
     }
 
     @SubscribeEvent public static void levelTick(TickEvent.LevelTickEvent event) {

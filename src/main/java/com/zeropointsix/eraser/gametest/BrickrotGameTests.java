@@ -363,12 +363,20 @@ public final class BrickrotGameTests {
         BrickrotWallEntity wall = wall(h);
         var target = h.spawn(EntityType.VILLAGER, new BlockPos(32, 4, 28));
         target.setNoAi(true);
-        wall.setNoAi(false);
-        h.runAfterDelay(54, () -> near(h, target.getHealth(), 20, "bite does not hit before windup"));
-        h.runAfterDelay(60, () -> {
+        target.setNoGravity(true);
+        try {
+            h.assertTrue(wall.findQuarry() == target, "bite fixture selects its own target");
+            wall.setNoAi(false);
+            // Like the sweep test, advance only this encounter rather than neighboring fixtures.
+            for (int i = 0; i < 54; i++) wall.tick();
+            h.assertTrue(wall.action() == BrickrotWallEntity.Action.BITE, "bite telegraph starts");
+            near(h, target.getHealth(), 20, "bite does not hit before windup");
+            for (int i = 0; i < 6; i++) wall.tick();
             near(h, target.getHealth(), 8, "bite hits for twelve");
             h.succeed();
-        });
+        } finally {
+            wall.discard(); target.discard();
+        }
     }
 
     @GameTest(template = "brickrot_empty", timeoutTicks = 100)
@@ -414,13 +422,21 @@ public final class BrickrotGameTests {
         light.setDeltaMovement(Vec3.ZERO);
         light.setPickUpDelay(32767);
         h.getLevel().addFreshEntity(light);
-        wall.setNoAi(false);
-        h.runAfterDelay(80, () -> {
-            h.assertTrue(light.isAlive() && wall.distanceTo(light) <= 4, "stationary lure fixture remains nearby");
-            h.assertTrue(wall.action() == BrickrotWallEntity.Action.TRACK,
-                    "nearby lure holds attention without scan loops: " + wall.action());
+        try {
+            h.assertTrue(wall.findQuarry() == light, "lure fixture selects its own light");
+            wall.setNoAi(false);
+            for (int i = 0; i < 50; i++) wall.tick();
+            for (int i = 0; i < 30; i++) {
+                wall.tick();
+                h.assertTrue(light.isAlive() && wall.distanceTo(light) <= 4, "stationary lure fixture remains nearby");
+                h.assertTrue(wall.findQuarry() == light, "fixture keeps its own light");
+                h.assertTrue(wall.action() == BrickrotWallEntity.Action.TRACK,
+                        "nearby lure holds attention without scan loops: " + wall.action());
+            }
             h.succeed();
-        });
+        } finally {
+            wall.discard(); light.discard();
+        }
     }
 
     @GameTest(template = "brickrot_empty")

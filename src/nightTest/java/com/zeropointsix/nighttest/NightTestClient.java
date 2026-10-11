@@ -48,8 +48,10 @@ public final class NightTestClient {
     @SubscribeEvent public static void tick(TickEvent.ClientTickEvent event) {
         if (ROLE == null || "server".equals(ROLE) || finished || event.phase != TickEvent.Phase.END) return;
         var client = Minecraft.getInstance();
-        if (client.player == null || client.level == null) return;
         try {
+            require(!(client.screen instanceof net.minecraft.client.gui.screens.DisconnectedScreen),
+                    "native client disconnected before scenario completion");
+            if (client.player == null || client.level == null) return;
             ticks++;
             if (phase.equals("READY") && ticks == 80) {
                 require(EternalNightContent.isCity(client.level), "client actually loaded the city dimension");

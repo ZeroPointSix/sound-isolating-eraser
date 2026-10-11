@@ -34,17 +34,19 @@ def launch(role, display=None):
             f"online-mode=false\nserver-ip=127.0.0.1\nserver-port={PORT}\n"
             "enforce-secure-profile=false\nspawn-protection=0\nview-distance=2\n"
             "simulation-distance=2\nlevel-type=minecraft:flat\nmax-tick-time=0\n"
+            'generator-settings={"layers":[{"block":"minecraft:bedrock","height":1},{"block":"minecraft:stone","height":63},{"block":"minecraft:grass_block","height":1}],"biome":"minecraft:plains"}\n'
             "generate-structures=false\nspawn-monsters=false\ngamemode=creative\n")
     else:
         (directory / "config").mkdir(exist_ok=True)
         (directory / "config/fml.toml").write_text("earlyWindowControl = false\n")
         (directory / "options.txt").write_text(
-            "lang:zh_cn\nrenderDistance:3\nsimulationDistance:3\nguiScale:2\nmaxFps:20\n"
+            "lang:zh_cn\nrenderDistance:3\nsimulationDistance:5\nguiScale:2\nmaxFps:20\n"
             "enableVsync:false\npauseOnLostFocus:false\nonboardAccessibility:false\n"
             "showAutosaveIndicator:false\nrenderClouds:false\nnarrator:0\ntutorialStep:none\n")
     env = os.environ.copy()
     env.update({key: expand(value) for key, value in config["env"].items()})
     env["LIBGL_ALWAYS_SOFTWARE"] = "1"
+    env["ALSOFT_DRIVERS"] = "null"
     args = shlex.split(expand(config["args"]))
     if display:
         env["DISPLAY"] = display
