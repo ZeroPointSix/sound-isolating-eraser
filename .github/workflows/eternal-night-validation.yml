@@ -63,6 +63,8 @@ jobs:
             build/night-native-validation.log
             build/night-e2e/*.pass
             build/night-e2e/*.failed
+            build/night-e2e/*.complete
+            build/night-e2e/city-survey.json
             build/night-e2e/restart-expected.nbt
             build/night-e2e/server/world/level.dat
             build/night-e2e/server/world/playerdata/*.dat

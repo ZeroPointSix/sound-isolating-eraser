@@ -118,7 +118,7 @@ def wait_server(server):
             time.sleep(1)
 
 
-def wait_evidence(server, clients, required):
+def wait_evidence(server, clients, required, suffix=".pass"):
     deadline = time.monotonic() + int(os.environ.get("NIGHT_QA_TIMEOUT_SECONDS", "1200"))
     while True:
         failures = list(RESULTS.glob("*.failed"))
@@ -126,8 +126,8 @@ def wait_evidence(server, clients, required):
             raise AssertionError("; ".join(path.read_text() for path in failures))
         if any(process.poll() is not None for process in [server, *clients]):
             raise RuntimeError("Minecraft exited before evidence completed; see role logs")
-        if all((RESULTS / (name + ".pass")).exists()
-               and (RESULTS / (name + ".pass")).read_text().strip() for name in required):
+        if all((RESULTS / (name + suffix)).exists()
+               and (RESULTS / (name + suffix)).read_text().strip() for name in required):
             return
         if time.monotonic() > deadline:
             raise TimeoutError("Native-client scenario timed out; see role logs and screenshots")
@@ -143,7 +143,7 @@ def save_and_stop(server):
 
 try:
     stamp = str(time.time_ns())
-    for path in list(RESULTS.glob("*.pass")) + list(RESULTS.glob("*.failed")):
+    for path in list(RESULTS.glob("*.pass")) + list(RESULTS.glob("*.failed")) + list(RESULTS.glob("*.complete")):
         path.rename(path.with_suffix(path.suffix + ".previous-" + stamp))
     world = RESULTS / "server/world"
     if world.exists():
@@ -178,6 +178,8 @@ try:
                              "server-cycle", "owner-return", "observer-return",
                              "server-death", "owner-death"]
     wait_evidence(server, clients, required)
+    wait_evidence(server, clients, ["server-survey", "owner-survey"], ".complete")
+    print((RESULTS / "server-survey.complete").read_text().strip(), flush=True)
     for name in required:
         print((RESULTS / (name + ".pass")).read_text().strip(), flush=True)
     save_and_stop(server)

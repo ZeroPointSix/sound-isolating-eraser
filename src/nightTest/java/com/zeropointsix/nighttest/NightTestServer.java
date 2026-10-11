@@ -57,6 +57,12 @@ public final class NightTestServer {
                     deathStarted = true;
                     player.hurt(player.damageSources().genericKill(), Float.MAX_VALUE);
                     return 1;
+                }))
+                .then(LiteralArgumentBuilder.<CommandSourceStack>literal("survey-ready").executes(context -> {
+                    NightCitySurvey.ready(); return 1;
+                }))
+                .then(LiteralArgumentBuilder.<CommandSourceStack>literal("survey-captured").executes(context -> {
+                    NightCitySurvey.captured(); return 1;
                 })));
     }
 
@@ -181,13 +187,18 @@ public final class NightTestServer {
                 phase = 9;
             } else if (phase == 9) {
                 var respawned = server.getPlayerList().getPlayer(owner.getUUID());
-                if (respawned == null || !respawned.isAlive() || respawned.level().dimension() != Level.OVERWORLD
+                if (respawned == null || !respawned.isAlive() || !respawned.level().dimension().equals(Level.OVERWORLD)
                         || !Files.exists(RESULTS.resolve("owner-death.pass"))) return;
                 require(respawned.blockPosition().distSqr(BEDS.get(respawned.getUUID())) < 25, "native respawn returns beside original bed");
                 require(NightEvents.playerData(respawned).isEmpty(), "real respawn clears pre-death door history");
                 require(respawned.getInventory().countItem(Items.DIAMOND) == 0, "real death does not duplicate dropped inventory");
                 Files.writeString(RESULTS.resolve("server-death.pass"), "PASS real client death screen and native respawn: seven visible dropped diamonds, zero retained diamonds, original bed and cleared history\n");
-                phase = 99;
+                owner = respawned;
+                NightCitySurvey.start(owner);
+                phase = 10;
+            } else if (phase == 10) {
+                NightCitySurvey.tick(server);
+                if (NightCitySurvey.finished()) phase = 99;
             }
         } catch (Throwable error) {
             error.printStackTrace();

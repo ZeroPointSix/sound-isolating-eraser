@@ -23,6 +23,7 @@ public final class NightTestClient {
     private static int ticks, hiddenFrames, homeFrames;
     private static boolean finished, walking, hidePlane, returning;
     private static boolean restarting, respawnClicked;
+    private static boolean surveyWalking;
     private static int respawnFrames;
     private static java.util.List<net.minecraft.core.BlockPos> savedExits;
     private static Pixels negativeControl;
@@ -149,6 +150,30 @@ public final class NightTestClient {
                         "native respawn loads a living player without duplicated diamonds");
                 capture(client, "death-respawn");
                 Files.writeString(RESULTS.resolve("owner-death.pass"), "PASS real DeathScreen, native Respawn-button click and rendered living overworld player with no diamonds\n");
+                respawnClicked = false; phase = "HOME"; ticks = 0;
+            }
+            if (phase.startsWith("SURVEY_READY:") && ticks == 80) {
+                require(EternalNightContent.isCity(client.level), "survey loads the actual city");
+                client.setScreen(null);
+                org.lwjgl.glfw.GLFW.glfwFocusWindow(client.getWindow().getWindow());
+                client.mouseHandler.grabMouse();
+                capture(client, "entrance-before-" + phase.substring(13));
+                nativeInput("click", "3");
+                client.player.connection.sendCommand("nightqa survey-ready");
+            }
+            if (phase.startsWith("SURVEY_WALK:") && !surveyWalking) {
+                nativeInput("keydown", "w"); surveyWalking = true;
+            }
+            if (phase.startsWith("SURVEY_STOP:") && ticks == 1) {
+                nativeInput("keyup", "w"); surveyWalking = false;
+                capture(client, "entrance-after-" + phase.substring(12));
+            }
+            if (phase.startsWith("SURVEY_CAPTURE:") && ticks == 60) {
+                capture(client, "natural-mobs-" + phase.substring(15));
+                client.player.connection.sendCommand("nightqa survey-captured");
+            }
+            if (phase.equals("SURVEY_DONE")) {
+                Files.writeString(RESULTS.resolve("owner-survey.complete"), "COLLECTED native generated-building and natural-entity screenshots; see server observations for failures\n");
                 finished = true;
             }
             if (walking && ticks > 300) throw new AssertionError("Native walk did not cross the exit");
