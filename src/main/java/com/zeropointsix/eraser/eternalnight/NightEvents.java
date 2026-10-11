@@ -77,7 +77,7 @@ public final class NightEvents {
         ServerLevel level = player.serverLevel();
         Vec3 previous = PREVIOUS_POSITION.put(player.getUUID(), player.position());
         if (previous != null && previous.distanceToSqr(player.position()) < 16) {
-            for (long packed : CitySavedData.get(level).activeExits(level.getGameTime()).keySet()) {
+            for (long packed : CitySavedData.get(level).activeExits(level, level.getGameTime()).keySet()) {
                 BlockPos pos = BlockPos.of(packed);
                 if (pos.distToCenterSqr(player.position()) > 25 || !level.hasChunkAt(pos)) continue;
                 BlockState state = level.getBlockState(pos);
@@ -271,7 +271,7 @@ public final class NightEvents {
                 || !EternalNightContent.isCity(level)) return;
         if (level.getGameTime() % 20 == 0) {
             CityExitNetwork.sync(level);
-            for (long packed : CitySavedData.get(level).activeExits(level.getGameTime()).keySet()) {
+            for (long packed : CitySavedData.get(level).activeExits(level, level.getGameTime()).keySet()) {
                 BlockPos pos = BlockPos.of(packed);
                 if (!level.hasChunkAt(pos)) continue;
                 level.sendParticles(ParticleTypes.END_ROD, pos.getX() + 0.5, pos.getY() + 1, pos.getZ() + 0.5,

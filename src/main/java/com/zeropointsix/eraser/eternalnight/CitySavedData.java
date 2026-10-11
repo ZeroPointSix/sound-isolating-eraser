@@ -44,7 +44,39 @@ public final class CitySavedData extends SavedData {
     }
 
     public Map<Long, Long> activeExits(long now) {
-        if (exits.values().removeIf(until -> until <= now)) setDirty();
+        return activeExits(null, now);
+    }
+
+    /**
+     * Prunes exits whose window ended. When a level is supplied the expired exit's
+     * door is also closed, giving players a perceivable signal that the shared
+     * exit is gone (previously an expired door still stood open and crossing it
+     * did nothing).
+     */
+    public Map<Long, Long> activeExits(net.minecraft.server.level.ServerLevel level, long now) {
+        boolean[] removed = {false};
+        exits.entrySet().removeIf(entry -> {
+            if (entry.getValue() > now) return false;
+            removed[0] = true;
+            if (level != null) {
+                net.minecraft.core.BlockPos pos = net.minecraft.core.BlockPos.of(entry.getKey());
+                if (level.isLoaded(pos)) {
+                    net.minecraft.world.level.block.state.BlockState state = level.getBlockState(pos);
+                    if (state.getBlock() instanceof net.minecraft.world.level.block.DoorBlock
+                            && state.getValue(net.minecraft.world.level.block.DoorBlock.OPEN)) {
+                        level.setBlock(pos, state.setValue(net.minecraft.world.level.block.DoorBlock.OPEN, false), 3);
+                        net.minecraft.core.BlockPos up = pos.above();
+                        net.minecraft.world.level.block.state.BlockState upper = level.getBlockState(up);
+                        if (upper.getBlock() == state.getBlock()
+                                && upper.getValue(net.minecraft.world.level.block.DoorBlock.HALF)
+                                        == net.minecraft.world.level.block.state.properties.DoubleBlockHalf.UPPER)
+                            level.setBlock(up, upper.setValue(net.minecraft.world.level.block.DoorBlock.OPEN, false), 3);
+                    }
+                }
+            }
+            return true;
+        });
+        if (removed[0]) setDirty();
         return Map.copyOf(exits);
     }
 

@@ -1,7 +1,10 @@
 package com.zeropointsix.eraser.mixin;
 
 import com.zeropointsix.eraser.eternalnight.CityDoorActions;
+import com.zeropointsix.eraser.eternalnight.CitySavedData;
+import com.zeropointsix.eraser.eternalnight.NightEvents;
 import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.DoorBlock;
 import net.minecraft.world.level.block.state.BlockState;
@@ -31,6 +34,12 @@ public abstract class CityDoorMixin {
     private static boolean observe(Level level, BlockPos pos, BlockState state, int flags) {
         // DoorBlock.use overwrites its state parameter, so RETURN cannot observe the closed state.
         BlockState before = level.getBlockState(pos);
+        // An active shared exit must stay open for its whole window: block every close
+        // (player click, button/lever re-press, redstone) until the exit expires.
+        if (before.getBlock() instanceof DoorBlock && before.getValue(DoorBlock.OPEN)
+                && !state.getValue(DoorBlock.OPEN) && level instanceof ServerLevel server
+                && CitySavedData.get(server).active(NightEvents.lowerDoor(pos, before), server.getGameTime()))
+            return false;
         boolean changed = level.setBlock(pos, state, flags);
         if (changed) CityDoorActions.opened(level, pos, before);
         return changed;

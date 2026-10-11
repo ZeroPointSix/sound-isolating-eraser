@@ -620,4 +620,39 @@ public final class EternalNightGameTests {
         h.assertTrue(spawn.isSpawnCancelled(), "vanilla natural spawn denied in city");
         h.succeed();
     }
+
+    /** A live shared exit cannot be closed (click/lever/redstone); its door shuts on expiry. */
+    @GameTest(template = "empty", batch = "eternal_night", timeoutTicks = 120)
+    public static void cityExitDoorStaysOpenUntilExpiry(GameTestHelper h) {
+        ServerLevel city = h.getLevel().getServer().getLevel(EternalNightContent.LEVEL);
+        BlockPos pos = new BlockPos(4, 70, 4);
+        installDoor(city, pos, Blocks.OAK_DOOR);
+        var player = login(h).player();
+        player.teleportTo(city, pos.getX() + 0.5, pos.getY(), pos.getZ() + 2.5, 0, 0);
+        CitySavedData data = CitySavedData.get(city);
+        long now = city.getGameTime();
+        data.open(pos, now + 100);
+
+        city.setBlock(pos, city.getBlockState(pos).setValue(DoorBlock.OPEN, true), 3);
+        city.setBlock(pos.above(), city.getBlockState(pos.above()).setValue(DoorBlock.OPEN, true), 3);
+        var state = city.getBlockState(pos);
+        h.assertTrue(state.getValue(DoorBlock.OPEN), "door installed open");
+        state.use(city, player, net.minecraft.world.InteractionHand.MAIN_HAND,
+                new net.minecraft.world.phys.BlockHitResult(Vec3.atCenterOf(pos), Direction.NORTH, pos, false));
+        h.assertTrue(city.getBlockState(pos).getValue(DoorBlock.OPEN),
+                "active shared exit cannot be closed by click");
+        h.assertTrue(data.active(pos, now), "exit remains active after blocked close");
+
+        // After expiry the door is closed so players get a perceivable signal.
+        BlockPos expired = pos.east(4);
+        installDoor(city, expired, Blocks.OAK_DOOR);
+        city.setBlock(expired, city.getBlockState(expired).setValue(DoorBlock.OPEN, true), 3);
+        data.open(expired, now - 1);
+        data.activeExits(city, now);
+        h.assertTrue(!city.getBlockState(expired).getValue(DoorBlock.OPEN),
+                "expired exit door closes as feedback");
+        h.assertTrue(city.getBlockState(pos).getValue(DoorBlock.OPEN),
+                "live exit door unaffected by other door's expiry");
+        h.succeed();
+    }
 }
