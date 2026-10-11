@@ -396,6 +396,107 @@ public final class EternalNightGameTests {
         }
     }
 
+    @GameTest(template = "empty", batch = "eternal_night", timeoutTicks = 1400)
+    public static void cityBuildingsReachableAcrossDistricts(GameTestHelper h) {
+        ServerLevel city = h.getLevel().getServer().getLevel(EternalNightContent.LEVEL);
+        long seed = city.getSeed();
+        java.util.EnumMap<CityLayout.District, long[]> blocks = new java.util.EnumMap<>(CityLayout.District.class);
+        for (int i = 0; i < 400 && blocks.size() < CityLayout.District.values().length; i++) {
+            int bx = i % 20, bz = i / 20;
+            blocks.computeIfAbsent(CityLayout.district(bx * 64 + 32, bz * 64 + 32), k -> new long[]{bx, bz});
+        }
+        h.assertTrue(blocks.size() == CityLayout.District.values().length,
+                "sampled area contains every district: " + blocks.keySet());
+        int checked = 0;
+        for (var entry : blocks.entrySet()) {
+            int bx = (int) entry.getValue()[0], bz = (int) entry.getValue()[1];
+            // Replicate CityTemplates.place's per-tile routing to find every placed building.
+            boolean large = Math.floorMod(CityLayout.hash(seed, bx, bz), 4) == 0;
+            java.util.List<String> placements = new java.util.ArrayList<>();
+            if (large) {
+                String name = new String[]{"mall", "civic_center", "townhall", "library"}[
+                        (int) Math.floorMod(CityLayout.hash(seed + 1, bx, bz), 4)];
+                placements.add(name + "@" + ((bx * 4 + 1) * 16) + "," + CityLayout.plateau(bx, bz) + "," + ((bz * 4 + 1) * 16));
+            }
+            for (int lx = 1; lx <= 3; lx++) for (int lz = 1; lz <= 3; lz++) {
+                boolean coveredByLarge = large && lx <= 2 && lz <= 2;
+                int tx = bx * 4 + lx, tz = bz * 4 + lz;
+                boolean station = lx == 3 && lz == 3 && CityTemplates.hasStation(seed, bx, bz);
+                boolean plaza = lx == 3 && lz == 1 && Math.floorMod(CityLayout.hash(seed + 3, bx, bz), 4) == 0;
+                if (!coveredByLarge && !station && !plaza)
+                    placements.add(CityLayout.building(seed, tx, tz) + "@" + tx * 16 + "," + CityLayout.plateau(bx, bz) + "," + tz * 16);
+            }
+            for (String spec : placements) {
+                String name = spec.split("@")[0];
+                BlockPos origin = new BlockPos(Integer.parseInt(spec.split("@")[1].split(",")[0]),
+                        Integer.parseInt(spec.split("@")[1].split(",")[1]),
+                        Integer.parseInt(spec.split("@")[1].split(",")[2]));
+                var template = city.getStructureManager()
+                        .get(CityTemplates.id("buildings/" + name)).orElseThrow();
+                var settings = new net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings();
+                java.util.List<net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate.StructureBlockInfo> doors
+                        = new java.util.ArrayList<>();
+                for (var block : net.minecraftforge.registries.ForgeRegistries.BLOCKS.getValues())
+                    if (block instanceof DoorBlock)
+                        for (var info : template.filterBlocks(origin, settings, block))
+                            if (info.state().getValue(DoorBlock.HALF) == DoubleBlockHalf.LOWER)
+                                doors.add(info);
+                h.assertTrue(!doors.isEmpty(), entry.getKey() + " building " + name
+                        + " at " + origin + " template declares a door");
+                boolean reached = false;
+                for (var door : doors) {
+                    Direction facing = door.state().getValue(DoorBlock.FACING);
+                    for (Direction side : new Direction[]{facing, facing.getOpposite()}) {
+                        BlockPos outside = door.pos().relative(side);
+                        if (reachedStreet(city, outside)) { reached = true; break; }
+                    }
+                    if (reached) break;
+                }
+                h.assertTrue(reached, entry.getKey() + " building " + name + " at " + origin
+                        + " has a door that walks to a street");
+                System.out.println("CITY_REACH district=" + entry.getKey() + " building=" + name
+                        + " origin=" + origin + " doors=" + doors.size());
+                checked++;
+            }
+        }
+        h.assertTrue(checked >= blocks.size(), "at least one building verified per district");
+        h.succeed();
+    }
+
+    /** Feet level a walker stands at in column (x,z), nearest the given y within a one-block step. */
+    private static int floorNear(ServerLevel level, int x, int z, int y) {
+        for (int dy = 1; dy >= -4; dy--) {
+            int feet = y + dy;
+            BlockPos below = new BlockPos(x, feet - 1, z);
+            if (feet - 1 < level.getMinBuildHeight() || feet + 1 >= level.getMaxBuildHeight()) continue;
+            if (level.getBlockState(below).isSolidRender(level, below)
+                    && !level.getBlockState(below.above()).isSolidRender(level, below.above())
+                    && !level.getBlockState(below.above(2)).isSolidRender(level, below.above(2)))
+                return feet;
+        }
+        return Integer.MIN_VALUE;
+    }
+
+    /** Breadth-first walk over open, step-up-or-down-at-most-one ground to a street tile. */
+    private static boolean reachedStreet(ServerLevel level, BlockPos start) {
+        java.util.ArrayDeque<BlockPos> queue = new java.util.ArrayDeque<>();
+        java.util.Set<Long> seen = new java.util.HashSet<>();
+        queue.add(start);
+        int budget = 12000;
+        while (!queue.isEmpty() && budget-- > 0) {
+            BlockPos pos = queue.poll();
+            if (!seen.add(pos.asLong())) continue;
+            if (CityLayout.street(pos.getX(), pos.getZ())) return true;
+            for (Direction direction : Direction.Plane.HORIZONTAL) {
+                BlockPos next = pos.relative(direction);
+                int nextY = floorNear(level, next.getX(), next.getZ(), pos.getY());
+                if (nextY == Integer.MIN_VALUE || Math.abs(nextY - pos.getY()) > 1) continue;
+                queue.add(new BlockPos(next.getX(), nextY, next.getZ()));
+            }
+        }
+        return false;
+    }
+
     @GameTest(template = "empty", batch = "eternal_night")
     public static void cityMissingShadowNeverUsesRegistryDefault(GameTestHelper h) {
         net.minecraft.resources.ResourceLocation id = new net.minecraft.resources.ResourceLocation(ModMain.MOD_ID, "shadow_tangler");
