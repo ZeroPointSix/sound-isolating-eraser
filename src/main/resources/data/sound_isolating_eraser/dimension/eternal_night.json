@@ -1,0 +1,12 @@
+{
+  "type": "sound_isolating_eraser:eternal_night",
+  "generator": {
+    "type": "sound_isolating_eraser:eternal_night",
+    "biome_source": {
+      "type": "sound_isolating_eraser:eternal_night",
+      "residential": "sound_isolating_eraser:eternal_night_residential",
+      "commercial": "sound_isolating_eraser:eternal_night_commercial",
+      "industrial": "sound_isolating_eraser:eternal_night_industrial"
+    }
+  }
+}

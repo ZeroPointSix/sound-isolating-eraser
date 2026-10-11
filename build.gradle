@@ -254,6 +254,19 @@ def checkWingsMotion = tasks.register('checkWingsMotion', JavaExec) {
     mainClass = 'WingsMotionCheck'
 }
 tasks.named('check').configure { dependsOn checkWingsMotion }
+
+def compileNightRulesCheck = tasks.register('compileNightRulesCheck', JavaCompile) {
+    source = files('src/main/java/com/zeropointsix/eraser/eternalnight/NightRules.java',
+            'src/main/java/com/zeropointsix/eraser/eternalnight/CityLayout.java', 'tools/NightRulesCheck.java')
+    classpath = files()
+    destinationDirectory = layout.buildDirectory.dir('night-rules-check')
+}
+def checkNightRules = tasks.register('checkNightRules', JavaExec) {
+    dependsOn compileNightRulesCheck
+    classpath = files(compileNightRulesCheck.flatMap { it.destinationDirectory })
+    mainClass = 'NightRulesCheck'
+}
+tasks.named('check').configure { dependsOn checkNightRules }
 if (project.hasProperty('pillE2E')) {
     apply from: 'gradle/pill-e2e.gradle'
 }

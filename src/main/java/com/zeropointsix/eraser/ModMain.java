@@ -30,6 +30,8 @@ public final class ModMain {
     public static final int MAX_HEIGHT = 5;
 
     public ModMain() {
+        com.zeropointsix.eraser.eternalnight.EternalNightContent.register(
+                FMLJavaModLoadingContext.get().getModEventBus());
         IEventBus bus = FMLJavaModLoadingContext.get().getModEventBus();
         com.zeropointsix.eraser.brickrot.BrickrotContent.register(bus);
         com.zeropointsix.eraser.fertilizer.FertilizerContent.register(bus);
