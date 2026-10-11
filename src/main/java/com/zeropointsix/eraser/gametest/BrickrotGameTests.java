@@ -216,6 +216,13 @@ public final class BrickrotGameTests {
         var villager = h.spawn(EntityType.VILLAGER, new BlockPos(32, 100, 31));
         villager.setNoAi(true);
         villager.setNoGravity(true);
+        var baseline = h.getLevel().clip(new net.minecraft.world.level.ClipContext(wall.getEyePosition(),
+                villager.getEyePosition(), net.minecraft.world.level.ClipContext.Block.COLLIDER,
+                net.minecraft.world.level.ClipContext.Fluid.NONE, wall));
+        System.out.println("BRICKROT_LURE_BASELINE_HIT " + baseline.getType() + " at=" + baseline.getBlockPos()
+                + " block=" + h.getLevel().getBlockState(baseline.getBlockPos()));
+        for (int x = -2; x <= 2; x++) for (int y = 0; y <= 5; y++) for (int z = -1; z <= 8; z++)
+            h.getLevel().setBlock(wall.blockPosition().offset(x, y, z), Blocks.AIR.defaultBlockState(), 3);
         var light = new ItemEntity(h.getLevel(), wall.getX() + 20, wall.getY(), wall.getZ(), new ItemStack(Items.TORCH));
         light.setNoGravity(true);
         light.setDeltaMovement(Vec3.ZERO);
@@ -226,7 +233,8 @@ public final class BrickrotGameTests {
         light.discard();
         var selected = wall.findQuarry();
         System.out.println("BRICKROT_LURE_SELECTED actual=" + selected + " expected=" + villager
-                + " detectable=" + wall.detectable(villager) + " distance=" + wall.distanceTo(villager));
+                + " detectable=" + wall.detectable(villager) + " distance=" + wall.distanceTo(villager)
+                + " alive=" + villager.isAlive() + " eyes=" + wall.getEyePosition() + "/" + villager.getEyePosition());
         h.assertTrue(selected == villager, "living target is acquired without lure: " + selected);
         for (int x = -2; x <= 2; x++) for (int y = 0; y <= 4; y++)
             h.getLevel().setBlock(wall.blockPosition().offset(x, y, 3), Blocks.STONE.defaultBlockState(), 3);

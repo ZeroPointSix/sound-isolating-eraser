@@ -116,11 +116,14 @@ final class NightCitySurvey {
             current.addProperty("observationTicks", ticks);
             current.addProperty("shadowRegistered", CitySpawns.shadowType() != null);
             if (!mobs.isEmpty()) {
-                var mob = mobs.get(0);
-                double dx = mob.getX() - player.getX(), dz = mob.getZ() - player.getZ();
-                float yaw = (float) Math.toDegrees(Math.atan2(-dx, dz));
-                float pitch = (float) -Math.toDegrees(Math.atan2(mob.getEyeY() - player.getEyeY(), Math.hypot(dx, dz)));
-                player.connection.teleport(player.getX(), player.getY(), player.getZ(), yaw, pitch);
+                var mob = mobs.stream().min(Comparator.comparingDouble(player::distanceToSqr)).orElseThrow();
+                current.addProperty("visualTarget", mob.getUUID().toString());
+                current.addProperty("clearCameraVantage", positionForObservation(mob));
+                if (mob instanceof com.zeropointsix.eraser.neon.NeonTumorEntity neon) {
+                    current.addProperty("neonSize", neon.getSizeIndex());
+                    current.addProperty("neonLightTier", neon.getLightTier().toString());
+                    current.addProperty("neonOnGround", neon.onGround());
+                }
             }
             signal("SURVEY_CAPTURE:" + target.name());
             phase = 4; ticks = 0;
@@ -159,7 +162,7 @@ final class NightCitySurvey {
         for (var block : ForgeRegistries.BLOCKS) if (block instanceof DoorBlock)
             candidates.addAll(template.filterBlocks(target.origin(), new StructurePlaceSettings(), block));
         candidates.sort(Comparator.comparingInt(info -> info.pos().getY()));
-        for (var info : candidates) {
+        for (boolean streetApproach : new boolean[] {true, false}) for (var info : candidates) {
             if (info.state().getValue(DoorBlock.HALF) != DoubleBlockHalf.LOWER) continue;
             BlockPos local = info.pos().subtract(target.origin());
             int[] distances = {local.getZ(), template.getSize().getZ() - 1 - local.getZ(),
@@ -168,15 +171,45 @@ final class NightCitySurvey {
             int nearest = 0;
             for (int n = 1; n < distances.length; n++) if (distances[n] < distances[nearest]) nearest = n;
             if (distances[nearest] > 1) continue;
-            BlockPos approach = info.pos().relative(outward[nearest], 3);
-            AABB body = new AABB(approach.getX() + .2, approach.getY(), approach.getZ() + .2,
-                    approach.getX() + .8, approach.getY() + 1.8, approach.getZ() + .8);
-            if (!city.getBlockState(approach.below()).isSolid() || !city.noCollision(body)
-                    || !(city.getBlockState(info.pos()).getBlock() instanceof DoorBlock)) continue;
-            door = info.pos(); inward = outward[nearest].getOpposite();
-            current.addProperty("door", door.toShortString());
-            current.addProperty("approach", approach.toShortString());
-            player.teleportTo(city, approach.getX() + .5, approach.getY(), approach.getZ() + .5, inward.toYRot(), 12);
+            for (int distance = 3; distance >= 1; distance--) {
+                BlockPos approach = info.pos().relative(outward[nearest], distance);
+                if (CityLayout.street(approach.getX(), approach.getZ()) != streetApproach) continue;
+                AABB body = new AABB(approach.getX() + .2, approach.getY(), approach.getZ() + .2,
+                        approach.getX() + .8, approach.getY() + 1.8, approach.getZ() + .8);
+                if (!city.getBlockState(approach.below()).isSolid() || !city.noCollision(body)
+                        || !(city.getBlockState(info.pos()).getBlock() instanceof DoorBlock)) continue;
+                door = info.pos(); inward = outward[nearest].getOpposite();
+                current.addProperty("door", door.toShortString());
+                current.addProperty("approach", approach.toShortString());
+                current.addProperty("approachDistance", distance);
+                current.addProperty("approachIsStreet", streetApproach);
+                player.getAbilities().flying = false;
+                player.onUpdateAbilities();
+                player.teleportTo(city, approach.getX() + .5, approach.getY(), approach.getZ() + .5, inward.toYRot(), 12);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean positionForObservation(Mob mob) {
+        var targetEye = mob.getEyePosition();
+        for (int radius : new int[] {4, 7, 10}) for (int angle = 0; angle < 8; angle++) {
+            double theta = angle * Math.PI / 4;
+            double x = mob.getX() + radius * Math.cos(theta), z = mob.getZ() + radius * Math.sin(theta);
+            double y = mob.getY() + 1;
+            var eye = new net.minecraft.world.phys.Vec3(x, y + player.getEyeHeight(), z);
+            if (!city.noCollision(new AABB(x - .3, y, z - .3, x + .3, y + 1.8, z + .3))) continue;
+            var obstruction = city.clip(new net.minecraft.world.level.ClipContext(eye, targetEye,
+                    net.minecraft.world.level.ClipContext.Block.COLLIDER,
+                    net.minecraft.world.level.ClipContext.Fluid.NONE, player));
+            if (obstruction.getType() != net.minecraft.world.phys.HitResult.Type.MISS) continue;
+            float yaw = (float) Math.toDegrees(Math.atan2(x - mob.getX(), mob.getZ() - z));
+            float pitch = (float) -Math.toDegrees(Math.atan2(targetEye.y - eye.y, radius));
+            player.getAbilities().flying = true;
+            player.onUpdateAbilities();
+            player.connection.teleport(x, y, z, yaw, pitch);
+            current.addProperty("observationCamera", x + "," + y + "," + z);
             return true;
         }
         return false;
@@ -192,7 +225,7 @@ final class NightCitySurvey {
             liveConfig.close();
             JsonObject report = new JsonObject();
             report.addProperty("scope", "one generated entrance per original building template; natural entities observed for 220 ticks per accessible sample");
-            report.addProperty("surveyConfiguration", "Creative viewer, city spawning enabled, random door exits disabled only during the entrance survey");
+            report.addProperty("surveyConfiguration", "Creative viewer, city spawning enabled, random door exits disabled during entrance survey; camera-only flight to unobstructed vantage after natural entity sampling");
             report.addProperty("templatesLocated", targets.size()); report.addProperty("nativeEntrancesPassed", walked);
             report.addProperty("allFloorsVerified", false);
             report.addProperty("threeMonsterIntegrationVerified", false);
