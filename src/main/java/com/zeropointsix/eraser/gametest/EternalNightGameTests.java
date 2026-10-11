@@ -54,6 +54,10 @@ public final class EternalNightGameTests {
         player.getStats().setValue(player, net.minecraft.stats.Stats.CUSTOM.get(net.minecraft.stats.Stats.TIME_SINCE_REST), 96000);
         var result = player.startSleepInBed(bed.north());
         h.assertTrue(result.right().isPresent(), "real valid bed sleep starts: " + result);
+        // An embedded channel is not in ServerConnectionListener, which normally calls doTick.
+        h.onEachTick(() -> {
+            if (player.server.getPlayerList().getPlayer(player.getUUID()) == player) player.doTick();
+        });
         BlockPos savedBed = player.getRespawnPosition();
         h.runAfterDelay(160, () -> {
             try {
