@@ -36,6 +36,27 @@ def launch(role, display=None):
             "simulation-distance=2\nlevel-type=minecraft:flat\nmax-tick-time=0\n"
             'generator-settings={"layers":[{"block":"minecraft:bedrock","height":1},{"block":"minecraft:stone","height":63},{"block":"minecraft:grass_block","height":1}],"biome":"minecraft:plains"}\n'
             "generate-structures=false\nspawn-monsters=false\ngamemode=creative\n")
+        # Pin the server config before boot: in-memory ModConfig.set() calls race
+        # the Forge file watcher, which can reload the just-written defaults and
+        # silently revert values (observed: entryBase reverted to 0.02 so the
+        # second sleeper lost the entry roll). Writing the file removes the race.
+        server_config = directory / "world/serverconfig"
+        server_config.mkdir(parents=True, exist_ok=True)
+        (server_config / "eternal-night-server.toml").write_text(
+            "[eternalNight]\n"
+            "enabled = true\n"
+            'entryDimensions = ["minecraft:overworld"]\n'
+            "entryBase = 1.0\n"
+            "entryPerSleeplessDay = 0.08\n"
+            "entryCap = 1.0\n"
+            "newDoorExitChance = 0.01\n"
+            "doorGuarantee = 100\n"
+            "sharedExitSeconds = 300\n"
+            "spawnCityMonsters = false\n"
+            "nearbyShadowCap = 10\n"
+            "nearbyNeonCap = 12\n"
+            "returnAndResetOnDeath = true\n"
+            "disablePlantGrowth = true\n")
     else:
         (directory / "config").mkdir(exist_ok=True)
         (directory / "config/fml.toml").write_text("earlyWindowControl = false\n")

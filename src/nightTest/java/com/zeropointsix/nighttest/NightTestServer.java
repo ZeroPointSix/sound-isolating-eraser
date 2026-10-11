@@ -35,7 +35,7 @@ public final class NightTestServer {
     private static BlockPos door;
     private static int phase;
     private static long lastEntryTick, longestEntryTick;
-    private static int entryTicks;
+    private static int entryTicks, homeWait;
 
     @SubscribeEvent public static void commands(RegisterCommandsEvent event) {
         if (!ENABLED) return;
@@ -46,6 +46,12 @@ public final class NightTestServer {
                 .then(LiteralArgumentBuilder.<CommandSourceStack>literal("captured").executes(context -> {
                     CAPTURED.add(context.getSource().getPlayerOrException().getUUID()); return 1;
                 })));
+    }
+
+    @SubscribeEvent public static void dimensionChange(net.minecraftforge.event.entity.player.PlayerEvent.PlayerChangedDimensionEvent event) {
+        if (ENABLED && event.getEntity() instanceof ServerPlayer p)
+            System.out.println("NIGHT_DIMCHANGE " + p.getGameProfile().getName() + " " + event.getFrom().location()
+                    + "->" + event.getTo().location() + " at " + p.blockPosition() + " respawn=" + p.getRespawnPosition());
     }
 
     @SubscribeEvent(priority = net.minecraftforge.eventbus.api.EventPriority.HIGHEST)
@@ -61,6 +67,10 @@ public final class NightTestServer {
         if (!ENABLED || event.phase != TickEvent.Phase.END || phase == 99) return;
         try {
             var server = event.getServer();
+            if (owner != null && phase >= 3 && phase <= 5)
+                System.out.println("NIGHT_POS p=" + phase + " owner=" + owner.blockPosition()
+                        + "/" + owner.level().dimension().location() + " obs=" + observer.blockPosition()
+                        + "/" + observer.level().dimension().location());
             if (phase == -2 || phase == -1) {
                 long gap = System.nanoTime() - lastEntryTick;
                 longestEntryTick = Math.max(longestEntryTick, gap);
@@ -105,10 +115,14 @@ public final class NightTestServer {
             } else if (phase == 3 && CAPTURED.size() == 2) {
                 say(owner, "WALK"); phase = 4;
             } else if (phase == 4 && owner.level().dimension().equals(Level.OVERWORLD)) {
+                // Allow a few ticks for the post-teleport position to settle before asserting:
+                // a stale movement packet can briefly report the pre-teleport coordinates.
+                if (homeWait++ < 5) return;
                 assertHome(owner);
                 observer.teleportTo(observer.serverLevel(), door.getX() + 0.5, door.getY(), door.getZ() - 2.5, 0, 12);
-                say(observer, "WALK"); phase = 5;
+                say(observer, "WALK"); homeWait = 0; phase = 5;
             } else if (phase == 5 && observer.level().dimension().equals(Level.OVERWORLD)) {
+                if (homeWait++ < 5) return;
                 assertHome(observer);
                 var city = owner.server.getLevel(EternalNightContent.LEVEL);
                 require(CitySavedData.get(city).active(door, city.getGameTime()), "exit remains shared after both returns");
@@ -162,7 +176,9 @@ public final class NightTestServer {
         observer.teleportTo(city, base.getX() + 2.5, base.getY(), base.getZ() + 0.5, 33.7F, 10);
     }
     private static void assertHome(ServerPlayer player) {
-        require(player.blockPosition().distSqr(BEDS.get(player.getUUID())) < 25, "returns to personal bed");
+        require(player.blockPosition().distSqr(BEDS.get(player.getUUID())) < 25,
+                "returns to personal bed: at " + player.blockPosition() + " expected near " + BEDS.get(player.getUUID())
+                        + " respawn=" + player.getRespawnPosition() + " dim=" + player.level().dimension().location());
         require(NightEvents.playerData(player).isEmpty(), "return clears personal door history");
         require(player.getInventory().getItem(0).is(Items.DIAMOND) && player.getInventory().getItem(0).getCount() == 7, "inventory preserved");
     }
