@@ -20,6 +20,13 @@ import java.util.UUID;
 @PrefixGameTestTemplate(false)
 public final class EternalNightGameTests {
     @GameTest(template = "empty", batch = "eternal_night")
+    public static void cityMissingShadowNeverUsesRegistryDefault(GameTestHelper h) {
+        net.minecraft.resources.ResourceLocation id = new net.minecraft.resources.ResourceLocation(ModMain.MOD_ID, "shadow_tangler");
+        boolean registered = net.minecraftforge.registries.ForgeRegistries.ENTITY_TYPES.containsKey(id);
+        h.assertTrue(registered == (CitySpawns.shadowType() != null), "missing PR18 must skip spawn, never use default pig");
+        h.succeed();
+    }
+    @GameTest(template = "empty", batch = "eternal_night")
     public static void citySaveRoundtripAndExitExpiry(GameTestHelper h) {
         CitySavedData data = new CitySavedData();
         BlockPos door = new BlockPos(-32, 70, -17);

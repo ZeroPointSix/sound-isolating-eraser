@@ -5,7 +5,11 @@
   "minVersion": "0.8",
   "refmap": "mixins.sound_isolating_eraser.refmap.json",
   "mixins": [
-    "LivingEntityWallVisibilityMixin"
+    "LivingEntityWallVisibilityMixin",
+    "CityPlayerInteractionMixin",
+    "CityDoorMixin",
+    "CityScheduledTickMixin",
+    "CityBlockTickMixin"
   ],
   "injectors": {
     "defaultRequire": 1

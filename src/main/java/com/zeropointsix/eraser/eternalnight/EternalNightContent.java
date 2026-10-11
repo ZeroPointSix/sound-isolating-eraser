@@ -36,7 +36,7 @@ public final class EternalNightContent {
         ART_BLOCKS.register(bus);
         BIOME_SOURCES.register(bus);
         CHUNK_GENERATORS.register(bus);
-        ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER, NightConfig.SPEC);
+        ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER, NightConfig.SPEC, "eternal-night-server.toml");
         MinecraftForge.EVENT_BUS.register(NightEvents.class);
         MinecraftForge.EVENT_BUS.register(CitySpawns.class);
     }

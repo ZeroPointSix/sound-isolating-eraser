@@ -40,11 +40,8 @@ import java.util.*;
 public final class NightEvents {
     public static final String PLAYER_TAG = "EternalNightCity";
     private static final Map<UUID, SleepAttempt> SLEEP = new HashMap<>();
-    private static final Map<UUID, PendingDoors> PENDING = new HashMap<>();
     private static final Map<UUID, Vec3> PREVIOUS_POSITION = new HashMap<>();
-    private static final Set<UUID> RETURN_AFTER_DEATH = new HashSet<>();
     private record SleepAttempt(long restTicks, boolean attempted) { }
-    private record PendingDoors(ServerLevel level, Set<BlockPos> closed, long until) { }
 
     private NightEvents() { }
 
@@ -74,32 +71,15 @@ public final class NightEvents {
             }
         }
         if (!EternalNightContent.isCity(player.level())) {
-            PENDING.remove(player.getUUID());
             PREVIOUS_POSITION.remove(player.getUUID());
             return;
         }
         ServerLevel level = player.serverLevel();
-        PendingDoors pending = PENDING.get(player.getUUID());
-        if (pending != null) {
-            if (pending.level != level || pending.until < level.getGameTime()) PENDING.remove(player.getUUID());
-            else {
-                Iterator<BlockPos> iterator = pending.closed.iterator();
-                while (iterator.hasNext()) {
-                    BlockPos pos = iterator.next();
-                    BlockState state = level.getBlockState(pos);
-                    if (!(state.getBlock() instanceof DoorBlock)) iterator.remove();
-                    else if (state.getValue(DoorBlock.OPEN)) {
-                        onDoorOpened(player, pos);
-                        iterator.remove();
-                    }
-                }
-                if (pending.closed.isEmpty()) PENDING.remove(player.getUUID());
-            }
-        }
         Vec3 previous = PREVIOUS_POSITION.put(player.getUUID(), player.position());
         if (previous != null && previous.distanceToSqr(player.position()) < 16) {
             for (long packed : CitySavedData.get(level).activeExits(level.getGameTime()).keySet()) {
                 BlockPos pos = BlockPos.of(packed);
+                if (pos.distToCenterSqr(player.position()) > 25 || !level.hasChunkAt(pos)) continue;
                 BlockState state = level.getBlockState(pos);
                 if (!(state.getBlock() instanceof DoorBlock) || !state.getValue(DoorBlock.OPEN)) continue;
                 if (crossedDoor(previous, player.position(), pos, state.getValue(DoorBlock.FACING))) {
@@ -115,8 +95,10 @@ public final class NightEvents {
         if (current.y < lower.getY() - 0.1 || current.y > lower.getY() + 2.1) return false;
         double before = (previous.x - center.x) * facing.getStepX() + (previous.z - center.z) * facing.getStepZ();
         double after = (current.x - center.x) * facing.getStepX() + (current.z - center.z) * facing.getStepZ();
-        double lateral = Math.abs((current.x - center.x) * facing.getStepZ() - (current.z - center.z) * facing.getStepX());
-        return before * after <= 0 && Math.abs(before - after) > 0.001 && lateral <= 0.8;
+        if (before * after > 0 || Math.abs(before - after) <= 0.001) return false;
+        Vec3 crossing = previous.lerp(current, before / (before - after));
+        double lateral = Math.abs((crossing.x - center.x) * facing.getStepZ() - (crossing.z - center.z) * facing.getStepX());
+        return lateral <= 0.8 && crossing.y >= lower.getY() && crossing.y <= lower.getY() + 2;
     }
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
@@ -129,29 +111,6 @@ public final class NightEvents {
             event.setCancellationResult(InteractionResult.SUCCESS);
             return;
         }
-        if (!(event.getEntity() instanceof ServerPlayer player) || event.isCanceled()
-                || event.getUseBlock() == Event.Result.DENY || event.getHand() != InteractionHand.MAIN_HAND) return;
-        Set<BlockPos> closed = new HashSet<>();
-        if (state.getBlock() instanceof DoorBlock && !state.is(Blocks.IRON_DOOR)) {
-            BlockPos lower = lowerDoor(event.getPos(), state);
-            if (!state.getValue(DoorBlock.OPEN)) closed.add(lower);
-        } else if (state.getBlock() instanceof ButtonBlock || state.getBlock() instanceof LeverBlock) {
-            // Only immediate, physically connected controls are attributed to a player.
-            // Delayed/remote redstone is intentionally not guessed from a nearby click.
-            for (BlockPos candidate : BlockPos.betweenClosed(event.getPos().offset(-2, -2, -2), event.getPos().offset(2, 2, 2))) {
-                BlockState door = event.getLevel().getBlockState(candidate);
-                if (door.is(Blocks.IRON_DOOR) && !door.getValue(DoorBlock.OPEN)) {
-                    BlockPos lower = lowerDoor(candidate, door);
-                    if (directlyConnected(event.getPos(), lower)) closed.add(lower.immutable());
-                }
-            }
-        }
-        if (!closed.isEmpty()) PENDING.put(player.getUUID(), new PendingDoors(player.serverLevel(), closed,
-                player.level().getGameTime() + 1));
-    }
-
-    private static boolean directlyConnected(BlockPos control, BlockPos door) {
-        return control.distManhattan(door) <= 2 || control.distManhattan(door.above()) <= 2;
     }
 
     public static BlockPos lowerDoor(BlockPos pos, BlockState state) {
@@ -205,6 +164,7 @@ public final class NightEvents {
     private static Optional<Vec3> safeStreet(ServerLevel city, int centerX, int centerZ) {
         for (int attempt = 0; attempt < 128; attempt++) {
             int x = centerX - 24 + city.random.nextInt(49), z = centerZ - 24 + city.random.nextInt(49);
+            if ((x - centerX) * (x - centerX) + (z - centerZ) * (z - centerZ) > 24 * 24) continue;
             if (!CityLayout.street(x, z)) continue;
             city.getChunkAt(new BlockPos(x, 0, z));
             int top = city.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
@@ -235,7 +195,6 @@ public final class NightEvents {
         player.teleportTo(overworld, target.x, target.y, target.z, player.getRespawnAngle(), 0);
         player.fallDistance = 0;
         player.getPersistentData().remove(PLAYER_TAG);
-        PENDING.remove(player.getUUID());
         PREVIOUS_POSITION.remove(player.getUUID());
     }
 
@@ -256,22 +215,25 @@ public final class NightEvents {
     @SubscribeEvent public static void death(LivingDeathEvent event) {
         if (event.isCanceled() || !(event.getEntity().level() instanceof ServerLevel level) || !EternalNightContent.isCity(level)) return;
         CitySavedData.get(level).releaseBoss(event.getEntity().getUUID());
-        if (event.getEntity() instanceof ServerPlayer player && NightConfig.RESET_ON_DEATH.get()) RETURN_AFTER_DEATH.add(player.getUUID());
-    }
-    @SubscribeEvent public static void clonePlayer(PlayerEvent.Clone event) {
-        if (!event.isWasDeath() || !RETURN_AFTER_DEATH.contains(event.getEntity().getUUID())) {
-            event.getEntity().getPersistentData().put(PLAYER_TAG, playerData(event.getOriginal()).copy());
+        if (event.getEntity() instanceof ServerPlayer player && NightConfig.RESET_ON_DEATH.get()) {
+            CompoundTag data = playerData(player);
+            data.putBoolean("ReturnAfterDeath", true);
+            data.remove("Doors");
+            player.getPersistentData().put(PLAYER_TAG, data);
         }
     }
+    @SubscribeEvent public static void clonePlayer(PlayerEvent.Clone event) {
+        event.getEntity().getPersistentData().put(PLAYER_TAG, playerData(event.getOriginal()).copy());
+    }
     @SubscribeEvent public static void respawn(PlayerEvent.PlayerRespawnEvent event) {
-        if (event.getEntity() instanceof ServerPlayer player && RETURN_AFTER_DEATH.remove(player.getUUID())) returnHome(player);
+        if (event.getEntity() instanceof ServerPlayer player && playerData(player).getBoolean("ReturnAfterDeath")) returnHome(player);
     }
     @SubscribeEvent public static void logout(PlayerEvent.PlayerLoggedOutEvent event) {
         UUID id = event.getEntity().getUUID();
-        SLEEP.remove(id); PENDING.remove(id); PREVIOUS_POSITION.remove(id);
+        SLEEP.remove(id); PREVIOUS_POSITION.remove(id);
     }
     @SubscribeEvent public static void serverStopped(net.minecraftforge.event.server.ServerStoppedEvent event) {
-        SLEEP.clear(); PENDING.clear(); PREVIOUS_POSITION.clear(); RETURN_AFTER_DEATH.clear();
+        SLEEP.clear(); PREVIOUS_POSITION.clear(); CityDoorActions.clear();
     }
 
     @SubscribeEvent public static void levelTick(TickEvent.LevelTickEvent event) {

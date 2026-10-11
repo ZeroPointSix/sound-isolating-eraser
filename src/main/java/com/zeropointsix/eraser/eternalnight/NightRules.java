@@ -42,7 +42,6 @@ public final class NightRules {
         private final Set<Long> opened = new LinkedHashSet<>();
 
         public Doors(long[] persisted) {
-            if (persisted.length > 10000) throw new IllegalArgumentException("Door history too large");
             for (long door : persisted) opened.add(door);
         }
 

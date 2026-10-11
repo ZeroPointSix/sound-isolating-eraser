@@ -29,6 +29,16 @@ public final class NightRulesCheck {
         check(new NightRules.Doors(new long[]{2, 2, 3}).count() == 2, "corrupt duplicate data");
         check(new NightRules.Doors(new long[0]).count() == 0, "visit reset");
         check(new NightRules.Doors(new long[0]).open(2, 100, .01, 0).exit(), "early random exit");
+        NightRules.Doors largeHistory = new NightRules.Doors(new long[0]);
+        for (int i = 0; i < 10001; i++) largeHistory.open(i, 100, 0, .5);
+        check(new NightRules.Doors(largeHistory.save()).count() == 10001, "written histories are always readable");
+        int beforeInvalid = largeHistory.count();
+        try {
+            largeHistory.open(20000, 100, .01, Double.NaN);
+            throw new AssertionError("invalid sample accepted");
+        } catch (IllegalArgumentException expectedFailure) {
+            check(largeHistory.count() == beforeInvalid, "invalid input cannot mutate history");
+        }
         for (int count = 0; count <= 110; count++) {
             check((NightRules.milestone(count) != 0) == Arrays.asList(25, 50, 75, 90).contains(count), "milestone");
         }

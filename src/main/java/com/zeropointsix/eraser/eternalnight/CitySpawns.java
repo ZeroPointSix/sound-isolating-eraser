@@ -38,7 +38,7 @@ public final class CitySpawns {
 
     public static void tick(ServerLevel level) {
         if (!NightConfig.SPAWNING.get() || level.getDifficulty() == Difficulty.PEACEFUL || level.getGameTime() % 100 != 0) return;
-        EntityType<?> shadowType = ForgeRegistries.ENTITY_TYPES.getValue(SHADOW);
+        EntityType<?> shadowType = shadowType();
         for (ServerPlayer player : level.players()) {
             if (player.isSpectator() || !player.isAlive()) continue;
             AABB nearby = player.getBoundingBox().inflate(64);
@@ -48,6 +48,7 @@ public final class CitySpawns {
             for (int attempt = 0; attempt < 16; attempt++) {
                 int x = player.getBlockX() + level.random.nextInt(81) - 40;
                 int z = player.getBlockZ() + level.random.nextInt(81) - 40;
+                if (!level.hasChunkAt(new BlockPos(x, player.getBlockY(), z))) continue;
                 int y = player.getY() < 56 ? CityChunkGenerator.SUBWAY_Y + 2
                         : level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
                 BlockPos feet = new BlockPos(x, y, z);
@@ -65,9 +66,10 @@ public final class CitySpawns {
                     }
                 }
                 if (neonCount < NightConfig.NEON_CAP.get() && district == CityLayout.District.COMMERCIAL && light >= 12 && wall) {
-                    long large = mobs.stream().filter(mob -> mob instanceof NeonTumorEntity tumor && tumor.isLarge()
-                            && Math.floorDiv(mob.getBlockX(), 64) == Math.floorDiv(x, 64)
-                            && Math.floorDiv(mob.getBlockZ(), 64) == Math.floorDiv(z, 64)).count();
+                    int blockX = Math.floorDiv(x, 64) * 64, blockZ = Math.floorDiv(z, 64) * 64;
+                    long large = level.getEntitiesOfClass(NeonTumorEntity.class,
+                            new AABB(blockX, level.getMinBuildHeight(), blockZ, blockX + 64, level.getMaxBuildHeight(), blockZ + 64),
+                            NeonTumorEntity::isLarge).size();
                     int size = large < 2 && level.random.nextInt(5) == 0 ? 2 : level.random.nextInt(2);
                     Mob mob = spawn(level, ModEntities.NEON_TUMOR.get(), feet, size, false);
                     if (mob != null) { neonCount++; mobs.add(mob); }
@@ -82,6 +84,10 @@ public final class CitySpawns {
                 }
             }
         }
+    }
+
+    public static EntityType<?> shadowType() {
+        return ForgeRegistries.ENTITY_TYPES.containsKey(SHADOW) ? ForgeRegistries.ENTITY_TYPES.getValue(SHADOW) : null;
     }
 
     private static boolean adjacentWall(ServerLevel level, BlockPos feet) {
