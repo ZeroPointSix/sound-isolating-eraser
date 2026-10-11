@@ -1,0 +1,1 @@
+event=qihai:entity.qihai.xieyin.death, decoded=qihai:xieyin/death, active=true, volume=1.0, backend=OpenAL-null, observed=[qihai:entity.qihai.xieyin.death, qihai:entity.qihai.xieyin.pull, qihai:entity.qihai.xieyin.lure]

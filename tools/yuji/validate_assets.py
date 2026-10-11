@@ -46,8 +46,14 @@ def main():
             require(path.read_bytes()[:4] == b"OggS", f"Invalid Ogg: {key}")
             audio_files.add(path)
     languages = [read(ASSETS / "lang" / name) for name in ("zh_cn.json", "en_us.json")]
+    for key, sound in sounds.items():
+        if "subtitle" in sound:
+            for lang in languages:
+                require(sound["subtitle"] in lang, f"Missing sound subtitle: {key}")
     cues = read(ASSETS / "yuji_cues.json")
     for kind, expected in stats.items():
+        for lang in languages:
+            require(f"entity.qihai.{kind}" in lang, f"Missing entity translation: {kind}")
         geo = read(ASSETS / "geo" / f"{kind}.geo.json")["minecraft:geometry"][0]
         bones = {bone["name"]: bone for bone in geo["bones"]}
         require(len(bones) == expected["bones"], f"Bone count: {kind}")
@@ -81,7 +87,7 @@ def main():
             for reference in model["textures"].values():
                 texture(reference)
             for lang in languages:
-                require(f"entity.qihai.{kind}" in lang and f"item.qihai.{kind}_spawn_egg" in lang, f"Missing translation: {kind}")
+                require(f"item.qihai.{kind}_spawn_egg" in lang, f"Missing egg translation: {kind}")
     for effect in ("cursed", "betrayed", "enthralled"):
         texture(f"qihai:mob_effect/{effect}")
         for lang in languages:
