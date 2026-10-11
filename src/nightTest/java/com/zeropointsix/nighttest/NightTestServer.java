@@ -6,6 +6,8 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtIo;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.Items;
@@ -26,6 +28,7 @@ import java.util.*;
 public final class NightTestServer {
     private static final boolean ENABLED = "server".equals(System.getProperty("night.qa.role"));
     private static final Path RESULTS = Path.of(System.getProperty("night.qa.results", "build/night-e2e"));
+    private static final boolean RELOADED = "reload".equals(System.getProperty("night.qa.session"));
     private static final Set<UUID> CAPTURED = new HashSet<>();
     private static final Set<UUID> READY = new HashSet<>();
     private static final Set<UUID> SLEPT = new HashSet<>();
@@ -36,6 +39,8 @@ public final class NightTestServer {
     private static int phase;
     private static long lastEntryTick, longestEntryTick;
     private static int entryTicks, homeWait;
+    private static final List<net.minecraft.world.entity.item.ItemEntity> DEATH_DROPS = new ArrayList<>();
+    private static boolean deathStarted;
 
     @SubscribeEvent public static void commands(RegisterCommandsEvent event) {
         if (!ENABLED) return;
@@ -45,7 +50,18 @@ public final class NightTestServer {
                 }))
                 .then(LiteralArgumentBuilder.<CommandSourceStack>literal("captured").executes(context -> {
                     CAPTURED.add(context.getSource().getPlayerOrException().getUUID()); return 1;
+                }))
+                .then(LiteralArgumentBuilder.<CommandSourceStack>literal("die").executes(context -> {
+                    var player = context.getSource().getPlayerOrException();
+                    require(phase == 8 && player == owner && !deathStarted, "death command belongs to the live owner scenario");
+                    deathStarted = true;
+                    player.hurt(player.damageSources().genericKill(), Float.MAX_VALUE);
+                    return 1;
                 })));
+    }
+
+    @SubscribeEvent public static void drops(net.minecraftforge.event.entity.living.LivingDropsEvent event) {
+        if (ENABLED && phase == 8 && event.getEntity() == owner) DEATH_DROPS.addAll(event.getDrops());
     }
 
     @SubscribeEvent public static void dimensionChange(net.minecraftforge.event.entity.player.PlayerEvent.PlayerChangedDimensionEvent event) {
@@ -82,6 +98,12 @@ public final class NightTestServer {
                 owner = server.getPlayerList().getPlayers().stream().filter(p -> p.getGameProfile().getName().equals("NightOwner")).findFirst().orElse(null);
                 observer = server.getPlayerList().getPlayers().stream().filter(p -> p.getGameProfile().getName().equals("NightObserver")).findFirst().orElse(null);
                 if (owner == null || observer == null) return;
+                if (RELOADED) {
+                    verifyReload();
+                    say(owner, "READY"); say(observer, "READY");
+                    phase = 1;
+                    return;
+                }
                 NightConfig.SPAWNING.set(false);
                 NightConfig.ENTRY_BASE.set(1.0);
                 NightConfig.ENTRY_CAP.set(1.0);
@@ -107,13 +129,18 @@ public final class NightTestServer {
                 say(owner, "READY"); say(observer, "READY");
                 phase = 1;
             } else if (phase == 1 && READY.size() == 2) {
-                say(owner, "OPEN"); phase = 2;
+                if (RELOADED) {
+                    say(owner, "WHITE"); say(observer, "WHITE"); phase = 3;
+                } else { say(owner, "OPEN"); phase = 2; }
             } else if (phase == 2 && CitySavedData.get(owner.server.getLevel(EternalNightContent.LEVEL)).active(door, owner.serverLevel().getGameTime())) {
                 require(NightEvents.playerData(owner).getLongArray("Doors").length == 100, "native right click opens 100th unique door");
                 say(owner, "WHITE"); say(observer, "WHITE");
                 phase = 3;
             } else if (phase == 3 && CAPTURED.size() == 2) {
-                say(owner, "WALK"); phase = 4;
+                if (!RELOADED) {
+                    writeCheckpoint();
+                    say(owner, "RESTART"); say(observer, "RESTART"); phase = 98;
+                } else { say(owner, "WALK"); phase = 4; }
             } else if (phase == 4 && owner.level().dimension().equals(Level.OVERWORLD)) {
                 // Allow a few ticks for the post-teleport position to settle before asserting:
                 // a stale movement packet can briefly report the pre-teleport coordinates.
@@ -127,6 +154,39 @@ public final class NightTestServer {
                 var city = owner.server.getLevel(EternalNightContent.LEVEL);
                 require(CitySavedData.get(city).active(door, city.getGameTime()), "exit remains shared after both returns");
                 Files.writeString(RESULTS.resolve("server-cycle.pass"), "PASS: native bed clicks and deep sleep, responsive cold-world same-night entry, native 100th door, shared exit, distinct beds, inventory and counter reset; max entry tick gap " + longestEntryTick / 1_000_000 + " ms\n");
+                phase = 6;
+            } else if (phase == 6 && Files.exists(RESULTS.resolve("owner-return.pass"))
+                    && Files.exists(RESULTS.resolve("observer-return.pass"))) {
+                var city = server.getLevel(EternalNightContent.LEVEL);
+                city.getGameRules().getRule(net.minecraft.world.level.GameRules.RULE_KEEPINVENTORY).set(false, server);
+                city.setChunkForced(door.getX() >> 4, door.getZ() >> 4, true);
+                var state = city.getBlockState(door).setValue(DoorBlock.OPEN, false);
+                city.setBlock(door, state, 3);
+                city.setBlock(door.above(), state.setValue(DoorBlock.HALF, DoubleBlockHalf.UPPER), 3);
+                owner.teleportTo(city, door.getX() + 0.5, door.getY(), door.getZ() - 2.5, 0, 12);
+                owner.setGameMode(GameType.SURVIVAL);
+                owner.setHealth(20);
+                say(owner, "DEATH_OPEN"); phase = 7;
+            } else if (phase == 7 && NightEvents.playerData(owner).getLongArray("Doors").length == 1) {
+                require(owner.getInventory().countItem(Items.DIAMOND) == 7, "death starts with seven real inventory diamonds");
+                say(owner, "DIE"); phase = 8;
+            } else if (phase == 8 && deathStarted && !DEATH_DROPS.isEmpty()) {
+                var city = server.getLevel(EternalNightContent.LEVEL);
+                int diamonds = DEATH_DROPS.stream().filter(item -> item.getItem().is(Items.DIAMOND))
+                        .mapToInt(item -> item.getItem().getCount()).sum();
+                require(diamonds == 7, "real native-client death drops exactly seven diamonds");
+                require(DEATH_DROPS.stream().allMatch(item -> !item.isRemoved() && city.getEntity(item.getUUID()) == item),
+                        "death drops are actual visible world entities");
+                System.out.println("NIGHT_NATIVE_DEATH diamonds=" + diamonds + " worldEntities=" + DEATH_DROPS.size());
+                phase = 9;
+            } else if (phase == 9) {
+                var respawned = server.getPlayerList().getPlayer(owner.getUUID());
+                if (respawned == null || !respawned.isAlive() || respawned.level().dimension() != Level.OVERWORLD
+                        || !Files.exists(RESULTS.resolve("owner-death.pass"))) return;
+                require(respawned.blockPosition().distSqr(BEDS.get(respawned.getUUID())) < 25, "native respawn returns beside original bed");
+                require(NightEvents.playerData(respawned).isEmpty(), "real respawn clears pre-death door history");
+                require(respawned.getInventory().countItem(Items.DIAMOND) == 0, "real death does not duplicate dropped inventory");
+                Files.writeString(RESULTS.resolve("server-death.pass"), "PASS real client death screen and native respawn: seven visible dropped diamonds, zero retained diamonds, original bed and cleared history\n");
                 phase = 99;
             }
         } catch (Throwable error) {
@@ -134,6 +194,54 @@ public final class NightTestServer {
             try { Files.writeString(RESULTS.resolve("server.failed"), error.toString()); } catch (Exception ignored) { }
             phase = 99;
         }
+    }
+
+    private static void writeCheckpoint() throws Exception {
+        var city = owner.server.getLevel(EternalNightContent.LEVEL);
+        var expected = new CompoundTag();
+        expected.putLong("Seed", city.getSeed());
+        expected.putLong("Door", door.asLong());
+        expected.putLong("Until", CitySavedData.get(city).activeExits(city.getGameTime()).get(door.asLong()));
+        expected.putLong("GameTime", city.getGameTime());
+        expected.putLong("MaxGap", longestEntryTick);
+        for (var player : List.of(owner, observer)) {
+            String role = player == owner ? "Owner" : "Observer";
+            expected.putUUID(role + "UUID", player.getUUID());
+            expected.putLong(role + "Bed", BEDS.get(player.getUUID()).asLong());
+            expected.put(role + "Data", NightEvents.playerData(player).copy());
+        }
+        // Expected values only. The next JVM must load world/player data through Minecraft itself.
+        NbtIo.writeCompressed(expected, RESULTS.resolve("restart-expected.nbt").toFile());
+        Files.writeString(RESULTS.resolve("server-checkpoint.pass"), "PASS checkpoint before restart: owner doors=100, two visiting players, shared exit until="
+                + expected.getLong("Until") + ", gameTime=" + city.getGameTime() + "\n");
+    }
+
+    private static void verifyReload() throws Exception {
+        var expected = NbtIo.readCompressed(RESULTS.resolve("restart-expected.nbt").toFile());
+        require(expected != null, "expected checkpoint exists in the new process");
+        var city = owner.server.getLevel(EternalNightContent.LEVEL);
+        door = BlockPos.of(expected.getLong("Door"));
+        require(city.getSeed() == expected.getLong("Seed"), "same saved world seed after process restart");
+        require(city.getGameTime() >= expected.getLong("GameTime"), "world clock was loaded, not regenerated");
+        require(Objects.equals(CitySavedData.get(city).activeExits(city.getGameTime()).get(door.asLong()), expected.getLong("Until")),
+                "shared exit and exact expiry loaded from SavedData after real restart");
+        require(city.getBlockState(door).getBlock() instanceof DoorBlock && city.getBlockState(door).getValue(DoorBlock.OPEN),
+                "original open exit door loaded from region storage");
+        longestEntryTick = expected.getLong("MaxGap");
+        for (var player : List.of(owner, observer)) {
+            String role = player == owner ? "Owner" : "Observer";
+            require(player.getUUID().equals(expected.getUUID(role + "UUID")), "same native player identity reconnects");
+            require(EternalNightContent.isCity(player.level()), "reconnected player loads saved city dimension");
+            require(NightEvents.playerData(player).equals(expected.getCompound(role + "Data")), "complete persistent player compound loads unchanged");
+            var bed = BlockPos.of(expected.getLong(role + "Bed"));
+            BEDS.put(player.getUUID(), bed);
+            require(bed.equals(player.getRespawnPosition()), "saved personal bed survives restart");
+            require(player.getInventory().countItem(Items.DIAMOND) == 7, "saved inventory survives restart");
+            System.out.println("NIGHT_RELOAD " + role + " doors=" + NightEvents.playerData(player).getLongArray("Doors").length
+                    + " visiting=" + NightEvents.playerData(player).getBoolean("Visiting") + " bed=" + bed);
+        }
+        require(NightEvents.playerData(owner).getLongArray("Doors").length == 100, "real hundredth door is present after load");
+        Files.writeString(RESULTS.resolve("server-reload.pass"), "PASS new server process loaded same world, exact shared expiry, two player compounds, owner 100 doors, both original beds and inventories\n");
     }
 
     private static void prepareBed(ServerPlayer player, int x) {

@@ -24,7 +24,7 @@ def expand(value):
     return value.replace("${workspaceFolder}", str(ROOT))
 
 
-def launch(role, display=None):
+def launch(role, display=None, session="initial"):
     config = CONFIGS["runServer" if role == "server" else "runClient"]
     directory = RESULTS / role
     directory.mkdir(exist_ok=True)
@@ -79,14 +79,16 @@ def launch(role, display=None):
         args += ["--username", "NightOwner" if role == "owner" else "NightObserver",
                  "--width", "960", "--height", "540", "--quickPlayMultiplayer", f"127.0.0.1:{PORT}"]
     command = ["java", "-Xmx1536M" if role == "server" else "-Xmx1280M",
-               f"-Dnight.qa.results={RESULTS}", f"-Dnight.qa.role={role}"]
+               f"-Dnight.qa.results={RESULTS}", f"-Dnight.qa.role={role}",
+               f"-Dnight.qa.session={session}"]
     command += shlex.split(expand(config["vmArgs"]))
     if display:
         natives = directory / "lwjgl-natives"
         natives.mkdir(exist_ok=True)
         command += [f"-Dorg.lwjgl.system.SharedLibraryExtractPath={natives}"]
     command += ["-cp", CLASSPATH, config["mainClass"], *args]
-    log = (RESULTS / f"{role}.log").open("w")
+    suffix = "" if session == "initial" else "-" + session
+    log = (RESULTS / f"{role}{suffix}.log").open("w")
     logs.append(log)
     process = subprocess.Popen(command, cwd=directory, env=env, stdin=subprocess.PIPE,
                                stdout=log, stderr=subprocess.STDOUT, text=True)
@@ -102,6 +104,41 @@ def stop(process):
         except subprocess.TimeoutExpired:
             process.kill()
             process.wait()
+
+
+def wait_server(server):
+    deadline = time.monotonic() + 600
+    while True:
+        if server.poll() is not None or time.monotonic() > deadline:
+            raise RuntimeError("Isolated Forge server did not become ready; see role logs")
+        try:
+            with socket.create_connection(("127.0.0.1", PORT), timeout=1):
+                return
+        except OSError:
+            time.sleep(1)
+
+
+def wait_evidence(server, clients, required):
+    deadline = time.monotonic() + int(os.environ.get("NIGHT_QA_TIMEOUT_SECONDS", "1200"))
+    while True:
+        failures = list(RESULTS.glob("*.failed"))
+        if failures:
+            raise AssertionError("; ".join(path.read_text() for path in failures))
+        if any(process.poll() is not None for process in [server, *clients]):
+            raise RuntimeError("Minecraft exited before evidence completed; see role logs")
+        if all((RESULTS / (name + ".pass")).exists()
+               and (RESULTS / (name + ".pass")).read_text().strip() for name in required):
+            return
+        if time.monotonic() > deadline:
+            raise TimeoutError("Native-client scenario timed out; see role logs and screenshots")
+        time.sleep(1)
+
+
+def save_and_stop(server):
+    server.stdin.write("save-all flush\nstop\n")
+    server.stdin.flush()
+    if server.wait(timeout=90) != 0:
+        raise RuntimeError("Minecraft server failed during normal save/shutdown")
 
 
 try:
@@ -120,42 +157,37 @@ try:
         processes.append(xvfb)
         displays.append(":" + xvfb.stdout.readline().strip())
     server = launch("server")
-    deadline = time.monotonic() + 600
-    while True:
-        if server.poll() is not None or time.monotonic() > deadline:
-            raise RuntimeError("Isolated Forge server did not become ready; see server.log")
-        try:
-            with socket.create_connection(("127.0.0.1", PORT), timeout=1):
-                break
-        except OSError:
-            time.sleep(1)
+    wait_server(server)
     clients = [launch("owner", displays[0]), launch("observer", displays[1])]
-    required = ["server-cycle", "owner-white", "observer-white", "owner-return", "observer-return"]
-    deadline = time.monotonic() + int(os.environ.get("NIGHT_QA_TIMEOUT_SECONDS", "1200"))
-    while True:
-        failures = list(RESULTS.glob("*.failed"))
-        if failures:
-            raise AssertionError("; ".join(path.read_text() for path in failures))
-        if any(process.poll() is not None for process in [server, *clients]):
-            raise RuntimeError("Minecraft exited before evidence completed; see role logs")
-        if all((RESULTS / (name + ".pass")).exists()
-               and (RESULTS / (name + ".pass")).read_text().strip() for name in required):
-            break
-        if time.monotonic() > deadline:
-            raise TimeoutError("Native-client scenario timed out; see role logs and screenshots")
-        time.sleep(1)
+    checkpoint = ["server-checkpoint", "owner-white", "observer-white",
+                  "owner-restart-ready", "observer-restart-ready"]
+    wait_evidence(server, clients, checkpoint)
+    original_pid = server.pid
+    save_and_stop(server)
+    for client in clients:
+        stop(client)
+    if not (world / "level.dat").is_file():
+        raise AssertionError("Original world was not saved before restart")
+    server = launch("server", session="reload")
+    if server.pid == original_pid:
+        raise AssertionError("Restart did not create a new server process")
+    print(f"NIGHT_REAL_RESTART old_pid={original_pid} new_pid={server.pid} world={world}", flush=True)
+    wait_server(server)
+    clients = [launch("owner", displays[0], "reload"), launch("observer", displays[1], "reload")]
+    required = checkpoint + ["server-reload", "owner-reload-white", "observer-reload-white",
+                             "server-cycle", "owner-return", "observer-return",
+                             "server-death", "owner-death"]
+    wait_evidence(server, clients, required)
     for name in required:
         print((RESULTS / (name + ".pass")).read_text().strip(), flush=True)
-    server.stdin.write("stop\n")
-    server.stdin.flush()
-    if server.wait(timeout=90) != 0:
-        raise RuntimeError("Minecraft server failed during shutdown; see server.log")
+    save_and_stop(server)
     failures = list(RESULTS.glob("*.failed"))
     if failures:
         raise AssertionError("; ".join(path.read_text() for path in failures))
     if not all((RESULTS / (name + ".pass")).read_text().strip() for name in required):
         raise AssertionError("Empty evidence marker after shutdown")
     print("NIGHT_TWO_CLIENT_E2E_PASS", flush=True)
+    print("NIGHT_RESTART_AND_REAL_CLIENT_DEATH_PASS", flush=True)
 finally:
     for process in reversed(processes):
         stop(process)

@@ -63,6 +63,10 @@ jobs:
             build/night-native-validation.log
             build/night-e2e/*.pass
             build/night-e2e/*.failed
+            build/night-e2e/restart-expected.nbt
+            build/night-e2e/server/world/level.dat
+            build/night-e2e/server/world/playerdata/*.dat
+            build/night-e2e/server/world/dimensions/sound_isolating_eraser/eternal_night/data/*.dat
             build/night-e2e/*.log
             build/night-e2e/*.png
             run/logs/latest.log
