@@ -1,0 +1,70 @@
+name: Eternal Night Validation
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '**/eternalnight/**'
+      - '**/nightTest/**'
+      - '**/EternalNightGameTests.java'
+      - 'tools/night-e2e.py'
+      - 'tools/*city_art.py'
+      - 'src/main/resources/assets/qihai/**'
+      - 'src/main/resources/data/qihai/**'
+      - 'gradle/night-e2e.gradle'
+      - build.gradle
+      - .github/workflows/eternal-night-validation.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+concurrency:
+  group: eternal-night-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  night-native-and-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build, verify original art and run the complete Forge suite
+        run: |
+          mkdir -p build
+          bash ./gradlew --no-daemon --max-workers=2 -PnightE2E checkNightRules verifyCityAssets build writeNightTestClasspath runGameTestServer | tee build/night-validation.log
+          sha256sum build/libs/*.jar | tee build/night-jar-sha256.txt
+      - name: Install native input and software-rendering support
+        run: sudo apt-get update && sudo apt-get install -y xvfb xdotool libgl1-mesa-dri
+      - name: Real two-client sleep, shared exit and personal return
+        env:
+          NIGHT_QA_TIMEOUT_SECONDS: '900'
+        run: python3 tools/night-e2e.py | tee build/night-native-validation.log
+      - name: Retain success and failure evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eternal-night-native-evidence
+          retention-days: 7
+          if-no-files-found: warn
+          path: |
+            build/libs/*.jar
+            build/night-validation.log
+            build/night-jar-sha256.txt
+            build/night-native-validation.log
+            build/night-e2e/*.pass
+            build/night-e2e/*.failed
+            build/night-e2e/*.log
+            build/night-e2e/*.png
+            run/logs/latest.log
+            run/logs/debug.log
+            build/reports/
