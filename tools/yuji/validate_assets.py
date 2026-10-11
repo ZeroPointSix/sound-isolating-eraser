@@ -75,6 +75,8 @@ def main():
                 if "sound" in event:
                     require(f"entity.qihai.{kind}.{event['sound']}" in sounds, f"Cue sound: {kind}/{action}")
         if kind != "bone_spike":
+            loot = read(ROOT / "src/main/resources/data/qihai/loot_tables/entities" / f"{kind}.json")
+            require(loot.get("type") == "minecraft:entity" and loot.get("pools") == [], f"Explicit unspecified-loot policy: {kind}")
             model = read(ASSETS / "models/item" / f"{kind}_spawn_egg.json")
             for reference in model["textures"].values():
                 texture(reference)
@@ -87,7 +89,7 @@ def main():
     require("loot" in {bone["name"] for bone in read(ASSETS / "geo/toudao.geo.json")["minecraft:geometry"][0]["bones"]}, "Missing loot attachment")
     layers = {bone["name"] for bone in read(ASSETS / "geo/tanyu.geo.json")["minecraft:geometry"][0]["bones"]}
     require({f"layer_{i}" for i in range(1, 7)} <= layers, "Missing six facial layers")
-    print(f"PASS: 12 models/animations, 11 eggs, 3 effects, 19 particles, {len(sounds)} sounds/{len(audio_files)} Ogg files; all references resolved")
+    print(f"PASS: 12 models/animations, 11 eggs/loot tables, 3 effects, 19 particles, {len(sounds)} sounds/{len(audio_files)} Ogg files; all references resolved")
 
 
 if __name__ == "__main__":

@@ -5,6 +5,7 @@ import com.mojang.blaze3d.platform.NativeImage;
 import com.zeropointsix.eraser.yuji.YujiContent;
 import com.zeropointsix.eraser.yuji.YujiKind;
 import com.zeropointsix.eraser.yuji.YujiMonster;
+import com.zeropointsix.eraser.yuji.BoneSpike;
 import com.zeropointsix.eraser.yuji.client.YujiModel;
 import com.zeropointsix.eraser.yuji.client.YujiRenderer;
 import java.nio.file.Files;
@@ -42,10 +43,12 @@ public final class YujiTestClient {
     private static boolean failed, captured;
     private static SoundInstance masked;
     private static NativeImage visible;
-    private static YujiMonster hidden;
+    private static net.minecraft.world.entity.Entity hidden;
     private static net.minecraft.world.phys.Vec3 visiblePosition;
     private static int hiddenAt;
     private static String pendingEvidence;
+    private static final Map<String, SoundInstance> deathSounds = new HashMap<>();
+    private static boolean audioDone;
 
     private static void require(boolean condition, String message) { if (!condition) throw new AssertionError(message); }
     private static void pass(String name, String text) throws Exception {
@@ -63,7 +66,7 @@ public final class YujiTestClient {
     @SubscribeEvent public static void message(ClientChatReceivedEvent event) {
         String text = event.getMessage().getString();
         if (!text.startsWith("YUJI_QA:")) return;
-        phase = text.substring(8); ticks = 0; frames = 0; captured = false; poses.clear();
+        phase = text.substring(8); ticks = 0; frames = 0; captured = false; audioDone = false; poses.clear();
         event.setCanceled(true);
     }
     @SubscribeEvent(priority = EventPriority.LOWEST) public static void sound(PlaySoundEvent event) {
@@ -72,6 +75,7 @@ public final class YujiTestClient {
         String path = sound.getLocation().getPath();
         if (sound instanceof TickableSoundInstance loop && (path.contains("qiyu.flute") || path.contains("shifotou_battle"))) loops.add(loop);
         if (phase.equals("qiyu") && path.equals("entity.zombie.ambient")) masked = sound;
+        if (sound.getLocation().getNamespace().equals("qihai") && path.endsWith(".death")) deathSounds.put(path, sound);
     }
     @SubscribeEvent public static void tick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END || failed || phase.isEmpty()) return;
@@ -81,6 +85,22 @@ public final class YujiTestClient {
         try {
             ticks++;
             if (ticks == 1) { mc.setScreen(null); mc.mouseHandler.grabMouse(); }
+            if (phase.equals("ai-chennu") && ticks == 5) {
+                for (var entity : mc.level.entitiesForRendering()) if (entity instanceof YujiMonster monster && monster.kind() == YujiKind.CHENNU) {
+                    mc.gameMode.attack(mc.player, monster);
+                    mc.player.swing(net.minecraft.world.InteractionHand.MAIN_HAND);
+                    break;
+                }
+            }
+            if (phase.startsWith("audio-") && !audioDone) {
+                String kind = phase.substring(6);
+                var sound = deathSounds.get("entity.qihai." + kind + ".death");
+                if (sound != null && sound.getSound() != null && mc.getSoundManager().isActive(sound)) {
+                    pass(phase, "event=" + sound.getLocation() + ", decoded=" + sound.getSound().getLocation()
+                            + ", active=true, volume=" + sound.getVolume() + ", backend=OpenAL-null");
+                    audioDone = true;
+                } else require(ticks < 120, "real audio playback not active: " + kind);
+            }
             if (phase.equals("ready") && ticks == 60) {
                 for (var sound : YujiContent.SOUND.values()) {
                     require(mc.getSoundManager().getSoundEvent(sound.getId()) != null, "sound event resolves: " + sound.getId());
@@ -92,7 +112,7 @@ public final class YujiTestClient {
             } else if (phase.equals("cleanup") && ticks == 40) {
                 require(loops.size() >= 2, "flute and boss music actually played");
                 require(loops.stream().allMatch(TickableSoundInstance::isStopped), "removed entities stop audio loops");
-                pass("gallery", "All 11 profiles rendered; flute and boss loops stopped after entity removal.");
+                pass("gallery", "All 11 profiles and bone spike rendered; 11 death sounds played; flute and boss loops stopped after removal.");
                 phase = "";
             }
         } catch (Throwable failure) { fail(failure); }
@@ -110,6 +130,7 @@ public final class YujiTestClient {
         return names.get(kind);
     }
     @SubscribeEvent public static void model(GeoRenderEvent.Entity.Post event) {
+        if (!failed && !captured && ticks >= 20 && phase.equals("bone_spike") && event.getEntity() instanceof BoneSpike) { frames++; return; }
         if (failed || captured || ticks < 20 || !(event.getEntity() instanceof YujiMonster monster) || !monster.kind().id().equals(phase)) return;
         try {
             frames++;
@@ -126,7 +147,8 @@ public final class YujiTestClient {
         } catch (Throwable failure) { fail(failure); }
     }
     @SubscribeEvent public static void render(TickEvent.RenderTickEvent event) {
-        if (event.phase != TickEvent.Phase.END || failed || captured || ticks < 110 || phase.equals("ready") || phase.equals("cleanup") || phase.isEmpty()) return;
+        if (event.phase != TickEvent.Phase.END || failed || captured || ticks < 110 || phase.equals("ready") || phase.equals("cleanup")
+                || phase.startsWith("ai-") || phase.startsWith("audio-") || phase.isEmpty()) return;
         var mc = Minecraft.getInstance();
         if (mc.player == null || mc.level == null || mc.screen != null) return;
         try {
@@ -156,6 +178,19 @@ public final class YujiTestClient {
                     hidden.setPos(visiblePosition); hidden = null; visible.close(); visible = null;
                 }
                 captured = true;
+                return;
+            }
+            if (phase.equals("bone_spike")) {
+                BoneSpike spike = null;
+                for (var entity : mc.level.entitiesForRendering()) if (entity instanceof BoneSpike candidate) spike = candidate;
+                require(spike != null && frames > 10, "real projectile rendered: frames=" + frames);
+                for (String asset : new String[]{"geo/bone_spike.geo.json", "textures/entity/bone_spike.png", "animations/bone_spike.animation.json"}) {
+                    mc.getResourceManager().getResourceOrThrow(YujiContent.id(asset));
+                }
+                visible = Screenshot.takeScreenshot(mc.getMainRenderTarget());
+                visible.writeToFile(RESULTS.resolve("bone_spike.png"));
+                pendingEvidence = "real projectile frames=" + frames + ", ownAudio=none (source pack has no projectile sound)";
+                hidden = spike; hiddenAt = ticks; visiblePosition = spike.position(); hidden.setPos(visiblePosition.add(1000, 0, 0));
                 return;
             }
             YujiMonster monster = null;

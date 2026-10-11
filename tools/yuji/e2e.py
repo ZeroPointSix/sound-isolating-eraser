@@ -111,13 +111,13 @@ try:
     wait_for(ready, [server], "dedicated server startup", 600)
     client = launch("client")
     wait_for(lambda: all((RESULTS / (name + ".pass")).exists() for name in ["server-gallery", "client-gallery"]),
-             [server, client], "eleven rendered profiles and sound cleanup", 900)
+             [server, client], "eleven rendered profiles, real-player AI, collisions, audio and projectile", 900)
     stop(client)
     server.stdin.write("stop\n")
     server.stdin.flush()
     if server.wait(timeout=180) != 0:
         raise RuntimeError("Dedicated server did not shut down cleanly")
-    print("YUJI_REAL_CLIENT_RENDER_AND_AUDIO_SMOKE_PASSED", flush=True)
+    print("YUJI_REAL_CLIENT_AI_COLLISION_AND_AUDIO_ACCEPTANCE_PASSED", flush=True)
 finally:
     for process in reversed(processes):
         stop(process)
@@ -126,3 +126,5 @@ finally:
     for path in RESULTS.glob("*.log"):
         print(f"--- {path.name} ---")
         print("\n".join(path.read_text(errors="replace").splitlines()[-20:]))
+    for path in sorted(RESULTS.glob("*.pass")):
+        print(f"{path.name}: {path.read_text().strip()}")
