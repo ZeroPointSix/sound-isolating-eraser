@@ -19,6 +19,61 @@ import java.util.UUID;
 @GameTestHolder(ModMain.MOD_ID)
 @PrefixGameTestTemplate(false)
 public final class EternalNightGameTests {
+    @GameTest(template = "empty", batch = "eternal_night", timeoutTicks = 200)
+    public static void cityRealPlayerDoorInteractions(GameTestHelper h) {
+        ServerLevel city = h.getLevel().getServer().getLevel(EternalNightContent.LEVEL);
+        net.minecraft.server.level.ServerPlayer player = h.makeMockServerPlayerInLevel();
+        BlockPos first = new BlockPos(2048, 120, 2048);
+        try {
+            player.teleportTo(city, first.getX() + 0.5, first.getY(), first.getZ() - 2, 0, 0);
+            player.getPersistentData().remove(NightEvents.PLAYER_TAG);
+            installDoor(city, first, Blocks.OAK_DOOR);
+            installDoor(city, first.east(3), Blocks.BIRCH_DOOR);
+            use(player, first.above());
+            use(player, first);
+            use(player, first);
+            use(player, first.east(3));
+            h.assertTrue(NightEvents.playerData(player).getLongArray("Doors").length == 2,
+                    "actual upper/lower/repeated interactions and two doors in one tick count exactly twice");
+
+            BlockPos iron = first.south(4);
+            installDoor(city, iron, Blocks.IRON_DOOR);
+            BlockPos lever = iron.east();
+            city.setBlock(lever.below(), Blocks.STONE_BRICKS.defaultBlockState(), 2);
+            city.setBlock(lever, Blocks.LEVER.defaultBlockState().setValue(net.minecraft.world.level.block.LeverBlock.FACE,
+                    net.minecraft.world.level.block.state.properties.AttachFace.FLOOR), 3);
+            use(player, lever);
+            h.assertTrue(city.getBlockState(iron).getValue(DoorBlock.OPEN), "real lever opens iron door");
+            h.assertTrue(NightEvents.playerData(player).getLongArray("Doors").length == 3, "lever has causal player credit");
+
+            BlockPos uncredited = first.south(8);
+            installDoor(city, uncredited, Blocks.IRON_DOOR);
+            player.setShiftKeyDown(true);
+            net.minecraft.world.item.ItemStack redstone = new net.minecraft.world.item.ItemStack(Blocks.REDSTONE_BLOCK);
+            player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, redstone);
+            player.gameMode.useItemOn(player, city, redstone, net.minecraft.world.InteractionHand.MAIN_HAND,
+                    new net.minecraft.world.phys.BlockHitResult(Vec3.atCenterOf(uncredited), Direction.EAST, uncredited, false));
+            h.assertTrue(city.getBlockState(uncredited).getValue(DoorBlock.OPEN), "placed redstone powers test door");
+            h.assertTrue(NightEvents.playerData(player).getLongArray("Doors").length == 3,
+                    "item placement is not attributed as a button or lever action");
+            h.succeed();
+        } finally {
+            h.getLevel().getServer().getPlayerList().remove(player);
+        }
+    }
+
+    private static void installDoor(ServerLevel level, BlockPos pos, net.minecraft.world.level.block.Block door) {
+        level.setBlock(pos.below(), Blocks.STONE_BRICKS.defaultBlockState(), 2);
+        level.setBlock(pos, door.defaultBlockState().setValue(DoorBlock.HALF, DoubleBlockHalf.LOWER), 2);
+        level.setBlock(pos.above(), door.defaultBlockState().setValue(DoorBlock.HALF, DoubleBlockHalf.UPPER), 2);
+    }
+
+    private static void use(net.minecraft.server.level.ServerPlayer player, BlockPos pos) {
+        player.gameMode.useItemOn(player, player.serverLevel(), net.minecraft.world.item.ItemStack.EMPTY,
+                net.minecraft.world.InteractionHand.MAIN_HAND,
+                new net.minecraft.world.phys.BlockHitResult(Vec3.atCenterOf(pos), Direction.NORTH, pos, false));
+    }
+
     @GameTest(template = "empty", batch = "eternal_night")
     public static void cityMissingShadowNeverUsesRegistryDefault(GameTestHelper h) {
         net.minecraft.resources.ResourceLocation id = new net.minecraft.resources.ResourceLocation(ModMain.MOD_ID, "shadow_tangler");
