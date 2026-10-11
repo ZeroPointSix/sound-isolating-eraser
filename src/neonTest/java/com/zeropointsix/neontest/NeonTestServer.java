@@ -93,8 +93,13 @@ public final class NeonTestServer {
     }
 
     @SubscribeEvent public static void damage(LivingHurtEvent event) {
-        if (stage == 2 && event.getEntity() instanceof ServerPlayer
-                && event.getSource().getEntity() == captor) digestionHits++;
+        if (stage != 2 || !(event.getEntity() instanceof ServerPlayer player)
+                || event.getSource().getEntity() != captor) return;
+        // Contact damage after ejection uses the same mobAttack source as digestion.
+        boolean captured = player.getVehicle() == captor && captor.isEngulfing();
+        if (captured) digestionHits++;
+        System.out.println("NEON_QA_DAMAGE captured=" + captured + " amount=" + event.getAmount()
+                + " digestionHits=" + digestionHits + " elapsed=" + elapsed);
     }
 
     @SubscribeEvent public static void login(PlayerEvent.PlayerLoggedInEvent event) {
