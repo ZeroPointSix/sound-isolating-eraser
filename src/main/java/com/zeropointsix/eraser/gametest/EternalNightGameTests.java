@@ -200,6 +200,104 @@ public final class EternalNightGameTests {
     }
 
     @GameTest(template = "empty", batch = "eternal_night")
+    public static void cityGeneratedContainersAreLazyAndNeverRefill(GameTestHelper h) {
+        ServerLevel city = h.getLevel().getServer().getLevel(EternalNightContent.LEVEL);
+        int bx = 64;
+        while (Math.floorMod(CityLayout.hash(city.getSeed(), bx, 0), 4) != 0) bx++;
+        var containers = new java.util.ArrayList<net.minecraft.world.level.block.entity.RandomizableContainerBlockEntity>();
+        for (int dx = 1; dx <= 2; dx++) for (int dz = 1; dz <= 2; dz++) {
+            var chunk = city.getChunk(bx * 4 + dx, dz);
+            for (BlockPos pos : chunk.getBlockEntitiesPos()) {
+                var entity = city.getBlockEntity(pos);
+                if (entity instanceof net.minecraft.world.level.block.entity.RandomizableContainerBlockEntity container)
+                    containers.add(container);
+            }
+        }
+        h.assertTrue(containers.size() >= 1 && containers.size() <= 4,
+                "one generated large building has 1..4 containers across its four chunks; got " + containers.size());
+        for (var container : containers) {
+            CompoundTag before = container.saveWithFullMetadata();
+            try {
+            h.assertTrue(before.getString("LootTable").startsWith(ModMain.MOD_ID + ":chests/eternal_night/"),
+                    "generated container still has deferred city loot before first opening");
+            h.assertTrue(!before.contains("Items"), "generator does not prefill inventory");
+            container.unpackLootTable(null);
+            h.assertTrue(!container.isEmpty(), "actual server loot table produces equipment");
+            for (int slot = 0; slot < container.getContainerSize(); slot++) {
+                var stack = container.getItem(slot);
+                h.assertTrue(!stack.isEdible() && !(stack.getItem() instanceof net.minecraft.world.item.PotionItem)
+                        && !stack.is(net.minecraft.world.item.Items.WATER_BUCKET), "no food, potion or water in actual loot");
+            }
+            container.clearContent();
+            container.unpackLootTable(null);
+            h.assertTrue(container.isEmpty(), "empty container never refills");
+            CompoundTag emptied = container.saveWithFullMetadata();
+            h.assertTrue(!emptied.contains("LootTable"), "consumed loot marker is removed from saved NBT");
+            var restored = net.minecraft.world.level.block.entity.BlockEntity.loadStatic(
+                    container.getBlockPos(), container.getBlockState(), emptied);
+            h.assertTrue(restored instanceof net.minecraft.world.Container c && c.isEmpty(), "empty inventory survives NBT reload");
+            } finally {
+                container.load(before);
+                container.setChanged();
+            }
+        }
+        h.succeed();
+    }
+
+    @GameTest(template = "empty", batch = "eternal_night")
+    public static void cityDeathDropsAndRespawnsAtOwnBed(GameTestHelper h) {
+        var session = login(h);
+        var player = session.player();
+        var server = h.getLevel().getServer();
+        ServerLevel city = server.getLevel(EternalNightContent.LEVEL);
+        boolean keepInventory = city.getGameRules().getBoolean(net.minecraft.world.level.GameRules.RULE_KEEPINVENTORY);
+        boolean reset = NightConfig.RESET_ON_DEATH.get();
+        try {
+            city.getGameRules().getRule(net.minecraft.world.level.GameRules.RULE_KEEPINVENTORY).set(false, server);
+            NightConfig.RESET_ON_DEATH.set(true);
+            BlockPos bed = new BlockPos(-128, 90, -128);
+            for (int dx = -2; dx <= 2; dx++) for (int dz = -2; dz <= 2; dz++)
+                h.getLevel().setBlock(bed.offset(dx, -1, dz), Blocks.STONE_BRICKS.defaultBlockState(), 2);
+            var bedState = Blocks.RED_BED.defaultBlockState().setValue(net.minecraft.world.level.block.BedBlock.FACING, Direction.NORTH);
+            h.getLevel().setBlock(bed, bedState.setValue(net.minecraft.world.level.block.BedBlock.PART,
+                    net.minecraft.world.level.block.state.properties.BedPart.FOOT), 2);
+            h.getLevel().setBlock(bed.north(), bedState.setValue(net.minecraft.world.level.block.BedBlock.PART,
+                    net.minecraft.world.level.block.state.properties.BedPart.HEAD), 2);
+            player.setRespawnPosition(net.minecraft.world.level.Level.OVERWORLD, bed.north(), 0, false, false);
+            BlockPos death = new BlockPos(4096, 120, 4096);
+            city.setBlock(death.below(), Blocks.STONE_BRICKS.defaultBlockState(), 2);
+            player.teleportTo(city, death.getX() + 0.5, death.getY(), death.getZ() + 0.5, 0, 0);
+            player.getInventory().clearContent();
+            player.getInventory().setItem(0, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIAMOND, 7));
+            CompoundTag data = new CompoundTag();
+            data.putLongArray("Doors", new long[]{12, 34}); data.putBoolean("Visiting", true);
+            player.getPersistentData().put(NightEvents.PLAYER_TAG, data);
+            var dropArea = new net.minecraft.world.phys.AABB(death).inflate(3);
+            int priorDrops = city.getEntitiesOfClass(net.minecraft.world.entity.item.ItemEntity.class, dropArea,
+                    item -> item.getItem().is(net.minecraft.world.item.Items.DIAMOND))
+                    .stream().mapToInt(item -> item.getItem().getCount()).sum();
+            h.assertTrue(player.hurt(player.damageSources().genericKill(), Float.MAX_VALUE) && !player.isAlive(), "real damage causes death");
+            h.assertTrue(NightEvents.playerData(player).getBoolean("ReturnAfterDeath"), "death return marker is persisted before respawn");
+            h.assertTrue(NightEvents.playerData(player).getLongArray("Doors").length == 0, "death clears prior door history");
+            h.assertTrue(city.getEntitiesOfClass(net.minecraft.world.entity.item.ItemEntity.class,
+                    dropArea, item -> item.getItem().is(net.minecraft.world.item.Items.DIAMOND))
+                    .stream().mapToInt(item -> item.getItem().getCount()).sum() == priorDrops + 7, "vanilla death drops inventory exactly once");
+            var respawned = server.getPlayerList().respawn(player, false);
+            h.assertTrue(respawned.serverLevel() == h.getLevel() && respawned.blockPosition().distSqr(bed) < 25,
+                    "real respawn returns to the original overworld bed");
+            h.assertTrue(NightEvents.playerData(respawned).isEmpty(), "respawn clears visit and death marker");
+            h.assertTrue(respawned.getInventory().isEmpty(), "death return does not duplicate dropped items");
+            h.succeed();
+        } finally {
+            city.getGameRules().getRule(net.minecraft.world.level.GameRules.RULE_KEEPINVENTORY).set(keepInventory, server);
+            NightConfig.RESET_ON_DEATH.set(reset);
+            var current = server.getPlayerList().getPlayer(player.getUUID());
+            if (current != null) server.getPlayerList().remove(current);
+            session.channel().finishAndReleaseAll();
+        }
+    }
+
+    @GameTest(template = "empty", batch = "eternal_night")
     public static void cityMissingShadowNeverUsesRegistryDefault(GameTestHelper h) {
         net.minecraft.resources.ResourceLocation id = new net.minecraft.resources.ResourceLocation(ModMain.MOD_ID, "shadow_tangler");
         boolean registered = net.minecraftforge.registries.ForgeRegistries.ENTITY_TYPES.containsKey(id);
