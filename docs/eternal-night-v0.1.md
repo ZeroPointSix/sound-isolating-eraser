@@ -84,6 +84,7 @@ python3 tools/verify_city_art.py
 | 8917fe7 | `python3 tools/night-e2e.py` | 两个真实客户端首次进入均超时；服务端落后66888ms。原始失败日志已保留，促成非阻塞入城修复 |
 | 3858fa5 | GitHub Actions `server-regression` | [155/155通过](https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38134243150/job/114454791007)，含异步入城；另一流水线出现随机地形遮挡测试床位，已补清理与前置断言 |
 | 3858fa5 | 开发机同上构建/聚焦测试命令 | 规则、美术、编译及构建通过；9/10城市测试通过；复用世界中的旧红石块影响物品放置fixture，已补重置；深睡异步入城通过 |
+| a7170e2 | `python3 tools/night-e2e.py`（双原生客户端，serverconfig 预置后） | **五项证据全过**：双深睡同夜入城（Observer→14601,88,12088；Owner→14590,85,12103）、共享白门、双回各自床边（-7,65,-1 / 9,65,-1）；server-cycle/owner-white/observer-white/owner-return/observer-return 全 .pass |
 
 运行修复与证据边界：`CityEntryQueue` 显式绕过 Forge `getChunkFuture` 的主线程 `managedBlock` 分支。验证代码属于 `-PnightE2E` 的独立 source set，不进入交付JAR。测试通过原生 `xdotool` 点击床/开门、按W过门；仅将入城概率设为100%、预置99条门历史以确定性覆盖边界，不替代实际交互。白面截图同时渲染“只有粒子、隐藏白面”的负对照，不能用粒子白点冒充完整出口。无声设备使用空音频后端，不声称听觉验收完成。
 
