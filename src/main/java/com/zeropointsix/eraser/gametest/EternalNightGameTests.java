@@ -214,6 +214,10 @@ public final class EternalNightGameTests {
 
             BlockPos uncredited = first.south(8);
             installDoor(city, uncredited, Blocks.IRON_DOOR);
+            // Move within the ~6-block interaction reach and clear the target cell so the
+            // placement deterministically lands (city generation can occupy it).
+            player.connection.teleport(uncredited.getX() + 0.5, uncredited.getY(), uncredited.getZ() - 1.5, 0, 0);
+            city.setBlock(uncredited.east(), Blocks.AIR.defaultBlockState(), 3);
             player.setShiftKeyDown(true);
             net.minecraft.world.item.ItemStack redstone = new net.minecraft.world.item.ItemStack(Blocks.REDSTONE_BLOCK);
             player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, redstone);
