@@ -1,0 +1,1 @@
+event=qihai:entity.qihai.chennu.death, decoded=qihai:chennu/death, active=true, volume=1.0, backend=OpenAL-null, observed=[qihai:entity.qihai.chennu.roar, qihai:entity.qihai.chennu.death, qihai:entity.qihai.chennu.stomp, qihai:entity.qihai.chennu.step]

@@ -49,8 +49,10 @@
 OpenAL null 不向扬声器输出可听录音。本轮证据证明游戏音频引擎确实接收、解析和播放声音，不能宣称经过人的听觉音质验收。GameTest 中的边界单元用例与真实客户端验收分层报告，不把 GameTest 的测试玩家当作真实玩家证据。
 
 ```bash
+set -o pipefail
+mkdir -p build
 python3 tools/yuji/validate_assets.py
-bash ./gradlew build runGameTestServer --no-daemon --stacktrace
+bash ./gradlew build runGameTestServer --no-daemon --stacktrace 2>&1 | tee build/yuji-gametest.log
 python3 tools/yuji/verify_gametest_log.py build/yuji-gametest.log
 bash ./gradlew -PyujiE2E writeYujiTestClasspath --no-daemon
 python3 tools/yuji/e2e.py
@@ -66,6 +68,12 @@ python3 tools/yuji/e2e.py
 
 新增客户端探针不是声音/视角隔离验收，不扩大该项覆盖声明。新版结果与历史证据分开归档，原 76 份证据不覆盖或重写。修复结果以新增提交的 CI 和证据记录为准。
 
+- 修复验证源提交 `6e5eea409c8ffae913134b99bf94800cd470176c`：[Yuji CI 38169852787](https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38169852787)通过资源、构建、192/192 全仓库 GameTests（含 35 个 Yuji）以及原逐怪和新增双真实客户端测试。
+- [三项问题对照、6 张专项截图及完整日志](validation/yuji/6e5eea4/README.md)，另含本版本重跑的 12 张逐怪截图及同相机对照、AI/碰撞与声音记录，共 108 份原始证据；[来源和哈希](validation/yuji/6e5eea4/provenance.json)。
+- 原独立验收的三项失败均有正式边界回归和真实客户端修复侧证据；仍等待独立复验。最终归档 HEAD 的跨模块 CI 以 PR 当前 checks 和最新验收评论为准，不用旧运行替代。
+
+### 历史基线
+
 - 已核验基线 `a80926069cb15b396a2a1975c9dd13607bf758bd`：[CI run 38156839592](https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38156839592)，182/182 required GameTests（含 25 个 Yuji）通过。
 - 基线渲染/动画/循环音频：[客户端日志](https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38156839592/job/114521453228)、[11 怪截图制品](https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38156839592/artifacts/11708766148)、[构建及全量回归制品](https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38156839592/artifacts/11709570140)。基线不包含新增逐怪玩家 AI/死亡播放验收。
 - 新增真实玩家验收版本 `814a6a21c22d9980cdc606640af2f2535b83401b`：[CI run 38159095483](https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38159095483)，资源/构建/全量 GameTest 和真实客户端两项任务均通过；[客户端完整日志](https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38159095483/job/114528062139)。
@@ -73,6 +81,6 @@ python3 tools/yuji/e2e.py
 - 对应官方制品：[客户端证据](https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38159095483/artifacts/11709818266)、[构建/回归日志](https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38159095483/artifacts/11709833127)。固定证据未经修图、拼造日志或修改结果。
 - 失败回溯：`c1bf645` 已通过 11 怪的交互/死亡音频，但骨刺在截图中太小，整体运行失败。`814a6a2` 只调整测试相机，使其前景面积达到 899 像素、包围框 100 x 43，并补充真实技能声音断言；没有降低原截图门槛。
 
-本轮要求的逐怪真实客户端验收已通过；表中明确列出的双玩家隔离、人工听音、特定地形和全部原版中立物种穷举仍未执行，不将此报告表述为全部游戏场景 100% 覆盖。
+历史逐怪场景与本次三项修复的实现侧自动验收已分别通过；独立复验尚待执行。表中明确列出的双玩家声音/视角隔离、人工听音、特定地形和全部原版中立物种穷举仍未执行，不将此报告表述为全功能或全部游戏场景 100% 覆盖。
 
 CI 截图和日志会被保留到 PR 内的证据目录；GitHub Actions 制品链接可能到期，固定提交内的证据才是长期复核入口。

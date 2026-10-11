@@ -1,0 +1,3 @@
+phase=ai-xieyin, tick=25, event=qihai:entity.qihai.xieyin.lure, decoded=qihai:xieyin/lure, active=true, volume=1.0, pitch=1.0, position=0.5,65.0,0.5, backend=OpenAL-null
+phase=ai-xieyin, tick=31, event=qihai:entity.qihai.xieyin.pull, decoded=qihai:xieyin/pull, active=true, volume=1.0, pitch=1.0, position=0.5606825086805556,65.0,0.4396158854166667, backend=OpenAL-null
+phase=audio-xieyin, tick=11, event=qihai:entity.qihai.xieyin.death, decoded=qihai:xieyin/death, active=true, volume=1.0, pitch=0.9348461, position=0.5,65.0,-9.875, backend=OpenAL-null

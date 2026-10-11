@@ -1,0 +1,30 @@
+playerAttack stage=grudge-first player=YujiTester uuid=e2b10060-b568-3058-a037-b909b67bdc60 damage=0.42000002
+grudge stage=grudge-first saved=e2b10060-b568-3058-a037-b909b67bdc60 target=e2b10060-b568-3058-a037-b909b67bdc60 distance=4.0 mobPos=(0.0, 65.0, 0.0) playerPos=(0.0, 65.0, 4.0) firstHits=1 secondHits=0
+playerAttack stage=grudge-second player=YujiWitness uuid=82056727-80fc-35e5-b2f5-c6c33a3f7acf damage=0.42000002
+grudge stage=grudge-second saved=e2b10060-b568-3058-a037-b909b67bdc60 target=e2b10060-b568-3058-a037-b909b67bdc60 distance=4.0 mobPos=(0.0, 65.0, 0.0) playerPos=(0.0, 65.0, 4.0) firstHits=1 secondHits=1
+PASS grudge-two-clients first=e2b10060-b568-3058-a037-b909b67bdc60, second=82056727-80fc-35e5-b2f5-c6c33a3f7acf, original retained after accepted second hit
+playerAttack stage=grudge-reload player=YujiWitness uuid=82056727-80fc-35e5-b2f5-c6c33a3f7acf damage=0.42000002
+grudge stage=grudge-reload saved=e2b10060-b568-3058-a037-b909b67bdc60 target=e2b10060-b568-3058-a037-b909b67bdc60 distance=4.0 mobPos=(0.0, 65.0, 0.0) playerPos=(0.0, 65.0, 4.0) firstHits=1 secondHits=1
+PASS grudge-reload NBT round-trip retains first UUID and target after second connected client attacks
+playerAttack stage=grudge-128 player=YujiWitness uuid=82056727-80fc-35e5-b2f5-c6c33a3f7acf damage=0.42000002
+grudge stage=grudge-128 saved=e2b10060-b568-3058-a037-b909b67bdc60 target=e2b10060-b568-3058-a037-b909b67bdc60 distance=128.0 mobPos=(0.0, 65.0, 0.0) playerPos=(128.0, 65.0, 0.0) firstHits=1 secondHits=1
+PASS grudge-128 original target remains valid at exactly 128 blocks
+playerAttack stage=grudge-release player=YujiWitness uuid=82056727-80fc-35e5-b2f5-c6c33a3f7acf damage=0.42000002
+grudge stage=grudge-release saved=82056727-80fc-35e5-b2f5-c6c33a3f7acf target=82056727-80fc-35e5-b2f5-c6c33a3f7acf distance=4.771056 mobPos=(0.0, 65.0, 0.0) playerPos=(4.0, 67.60057262626465, 0.0) firstHits=1 secondHits=1
+PASS grudge-release new attacker accepted after original player leaves 128 blocks
+actualDamage stage=slash contact=n/a tick=28 amount=3.9 attackAttribute=3.9 intersects=false player=e2b10060-b568-3058-a037-b909b67bdc60
+actualDamage stage=slash contact=n/a tick=34 amount=3.9 attackAttribute=3.9 intersects=false player=e2b10060-b568-3058-a037-b909b67bdc60
+PASS betrayal-double-slash damage=[3.9, 3.9], ticks=[28, 34], actualHealthLoss=7.799988
+contactSetup name=side player=e2b10060-b568-3058-a037-b909b67bdc60 bossBody=AABB[-3.0, 65.0, -3.0] -> [3.0, 73.0, 3.0]
+actualDamage stage=contact contact=side tick=20 amount=10.0 attackAttribute=50.0 intersects=true player=e2b10060-b568-3058-a037-b909b67bdc60
+actualDamage stage=contact contact=side tick=40 amount=10.0 attackAttribute=50.0 intersects=true player=e2b10060-b568-3058-a037-b909b67bdc60
+PASS boss-side offset=3.2,0.0, intersects=true, damage=[10.0, 10.0], ticks=[20, 40], healthLoss=20.0
+contactSetup name=upper player=e2b10060-b568-3058-a037-b909b67bdc60 bossBody=AABB[-3.0, 65.0, -3.0] -> [3.0, 73.0, 3.0]
+actualDamage stage=contact contact=upper tick=20 amount=10.0 attackAttribute=50.0 intersects=true player=e2b10060-b568-3058-a037-b909b67bdc60
+actualDamage stage=contact contact=upper tick=40 amount=10.0 attackAttribute=50.0 intersects=true player=e2b10060-b568-3058-a037-b909b67bdc60
+PASS boss-upper offset=0.0,7.8, intersects=true, damage=[10.0, 10.0], ticks=[20, 40], healthLoss=20.0
+contactSetup name=outside-side player=e2b10060-b568-3058-a037-b909b67bdc60 bossBody=AABB[-3.0, 65.0, -3.0] -> [3.0, 73.0, 3.0]
+PASS boss-outside-side offset=3.31,0.0, intersects=false, damage=[], ticks=[], healthLoss=0.0
+contactSetup name=above player=e2b10060-b568-3058-a037-b909b67bdc60 bossBody=AABB[-3.0, 65.0, -3.0] -> [3.0, 73.0, 3.0]
+PASS boss-above offset=0.0,8.01, intersects=false, damage=[], ticks=[], healthLoss=0.0
+PASS boundaries All three independent findings passed targeted two-real-client probes; not sound/camera isolation coverage.

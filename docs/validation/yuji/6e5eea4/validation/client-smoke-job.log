@@ -1,0 +1,655 @@
+﻿2026-10-11T19:52:42.1392310Z Current runner version: '2.337.0'
+2026-10-11T19:52:42.1416855Z ##[group]Runner Image Provisioner
+2026-10-11T19:52:42.1417858Z Hosted Compute Agent
+2026-10-11T19:52:42.1418462Z Version: 20261002.596
+2026-10-11T19:52:42.1419134Z Commit: c3d12f3313a95f25162a1503be624f3b0617f8c0
+2026-10-11T19:52:42.1419879Z Build Date: 2026-10-02T22:28:27Z
+2026-10-11T19:52:42.1420628Z Worker ID: {96bbe365-e06a-4ea2-8de3-25a676f1bae5}
+2026-10-11T19:52:42.1421405Z Region: westus2
+2026-10-11T19:52:42.1421953Z Cloud: Azure
+2026-10-11T19:52:42.1422526Z ##[endgroup]
+2026-10-11T19:52:42.1424386Z ##[group]Operating System
+2026-10-11T19:52:42.1425066Z Ubuntu
+2026-10-11T19:52:42.1425678Z 24.04.5
+2026-10-11T19:52:42.1426191Z LTS
+2026-10-11T19:52:42.1426909Z ##[endgroup]
+2026-10-11T19:52:42.1427536Z ##[group]Runner Image
+2026-10-11T19:52:42.1428205Z Image: ubuntu-24.04
+2026-10-11T19:52:42.1428818Z Version: 20261004.327.1
+2026-10-11T19:52:42.1430085Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20261004.327/images/ubuntu/Ubuntu2404-Readme.md
+2026-10-11T19:52:42.1431680Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20261004.327
+2026-10-11T19:52:42.1432680Z ##[endgroup]
+2026-10-11T19:52:42.1433874Z ##[group]GITHUB_TOKEN Permissions
+2026-10-11T19:52:42.1436025Z Contents: read
+2026-10-11T19:52:42.1436970Z Metadata: read
+2026-10-11T19:52:42.1437585Z ##[endgroup]
+2026-10-11T19:52:42.1439630Z Secret source: Actions
+2026-10-11T19:52:42.1440685Z Cache mode: write
+2026-10-11T19:52:42.1441620Z Prepare workflow directory
+2026-10-11T19:52:42.1812639Z Prepare all required actions
+2026-10-11T19:52:42.1874083Z Getting action download info
+2026-10-11T19:52:42.5673024Z Download action repository 'actions/checkout@v4' (SHA:11d5960a326750d5838078e36cf38b85af677262)
+2026-10-11T19:52:42.6624087Z Download action repository 'actions/setup-java@v4' (SHA:cf277c60eb25467037889841efdb72551f06f6c3)
+2026-10-11T19:52:43.0397593Z Download action repository 'gradle/actions@v4' (SHA:ed408507eac070d1f99cc633dbcf757c94c7933a)
+2026-10-11T19:52:43.8753013Z Download action repository 'actions/setup-python@v5' (SHA:a26af69be951a213d495a4c3e4e4022e16d87065)
+2026-10-11T19:52:43.9527555Z Download action repository 'actions/upload-artifact@v4' (SHA:ea165f8d65b6e75b540449e92b4886f43607fa02)
+2026-10-11T19:52:44.1927993Z Complete job name: client-smoke
+2026-10-11T19:52:44.2843935Z ##[group]Run actions/checkout@v4
+2026-10-11T19:52:44.2844622Z with:
+2026-10-11T19:52:44.2844956Z   repository: ZeroPointSix/sound-isolating-eraser
+2026-10-11T19:52:44.2847899Z   token: ***
+2026-10-11T19:52:44.2848171Z   ssh-strict: true
+2026-10-11T19:52:44.2848434Z   ssh-user: git
+2026-10-11T19:52:44.2848705Z   persist-credentials: true
+2026-10-11T19:52:44.2849000Z   clean: true
+2026-10-11T19:52:44.2849269Z   sparse-checkout-cone-mode: true
+2026-10-11T19:52:44.2849582Z   fetch-depth: 1
+2026-10-11T19:52:44.2849851Z   fetch-tags: false
+2026-10-11T19:52:44.2850127Z   show-progress: true
+2026-10-11T19:52:44.2850405Z   lfs: false
+2026-10-11T19:52:44.2850646Z   submodules: false
+2026-10-11T19:52:44.2850933Z   set-safe-directory: true
+2026-10-11T19:52:44.2851245Z   allow-unsafe-pr-checkout: false
+2026-10-11T19:52:44.2851810Z ##[endgroup]
+2026-10-11T19:52:44.3905568Z Syncing repository: ZeroPointSix/sound-isolating-eraser
+2026-10-11T19:52:44.3908001Z ##[group]Getting Git version info
+2026-10-11T19:52:44.3909033Z Working directory is '/home/runner/work/sound-isolating-eraser/sound-isolating-eraser'
+2026-10-11T19:52:44.3910312Z [command]/usr/bin/git version
+2026-10-11T19:52:44.3971213Z git version 2.55.0
+2026-10-11T19:52:44.3995160Z ##[endgroup]
+2026-10-11T19:52:44.4013396Z Temporarily overriding HOME='/home/runner/work/_temp/e3fb579d-1613-407d-b35f-f22346a96e6a' before making global git config changes
+2026-10-11T19:52:44.4014622Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-11T19:52:44.4020853Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/sound-isolating-eraser/sound-isolating-eraser
+2026-10-11T19:52:44.4079950Z Deleting the contents of '/home/runner/work/sound-isolating-eraser/sound-isolating-eraser'
+2026-10-11T19:52:44.4097407Z ##[group]Initializing the repository
+2026-10-11T19:52:44.4099087Z [command]/usr/bin/git init /home/runner/work/sound-isolating-eraser/sound-isolating-eraser
+2026-10-11T19:52:44.4237567Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-10-11T19:52:44.4238881Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-10-11T19:52:44.4240040Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-10-11T19:52:44.4240942Z hint: call:
+2026-10-11T19:52:44.4241696Z hint:
+2026-10-11T19:52:44.4242299Z hint: 	git config --global init.defaultBranch <name>
+2026-10-11T19:52:44.4242756Z hint:
+2026-10-11T19:52:44.4243433Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-10-11T19:52:44.4244459Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-10-11T19:52:44.4245114Z hint:
+2026-10-11T19:52:44.4245625Z hint: 	git branch -m <name>
+2026-10-11T19:52:44.4246226Z hint:
+2026-10-11T19:52:44.4247017Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-10-11T19:52:44.4248188Z Initialized empty Git repository in /home/runner/work/sound-isolating-eraser/sound-isolating-eraser/.git/
+2026-10-11T19:52:44.4255180Z [command]/usr/bin/git remote add origin https://github.com/ZeroPointSix/sound-isolating-eraser
+2026-10-11T19:52:44.4326178Z ##[endgroup]
+2026-10-11T19:52:44.4327670Z ##[group]Disabling automatic garbage collection
+2026-10-11T19:52:44.4331894Z [command]/usr/bin/git config --local gc.auto 0
+2026-10-11T19:52:44.4370121Z ##[endgroup]
+2026-10-11T19:52:44.4371581Z ##[group]Setting up auth
+2026-10-11T19:52:44.4378702Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-11T19:52:44.4414994Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-11T19:52:44.4861568Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-11T19:52:44.4897875Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-11T19:52:44.5122403Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-11T19:52:44.5159020Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-11T19:52:44.5386077Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-10-11T19:52:44.5427727Z ##[endgroup]
+2026-10-11T19:52:44.5428968Z ##[group]Fetching the repository
+2026-10-11T19:52:44.5437622Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +9ee982ebb65b2822c63dc353ff803732d996749c:refs/remotes/pull/21/merge
+2026-10-11T19:52:45.3451118Z From https://github.com/ZeroPointSix/sound-isolating-eraser
+2026-10-11T19:52:45.3451903Z  * [new ref]         9ee982ebb65b2822c63dc353ff803732d996749c -> pull/21/merge
+2026-10-11T19:52:45.3455442Z ##[endgroup]
+2026-10-11T19:52:45.3456086Z ##[group]Determining the checkout info
+2026-10-11T19:52:45.3457934Z ##[endgroup]
+2026-10-11T19:52:45.3463194Z [command]/usr/bin/git sparse-checkout disable
+2026-10-11T19:52:45.3520614Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-10-11T19:52:45.3553648Z ##[group]Checking out the ref
+2026-10-11T19:52:45.3557263Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/21/merge
+2026-10-11T19:52:45.5709658Z Note: switching to 'refs/remotes/pull/21/merge'.
+2026-10-11T19:52:45.5710204Z 
+2026-10-11T19:52:45.5710625Z You are in 'detached HEAD' state. You can look around, make experimental
+2026-10-11T19:52:45.5711927Z changes and commit them, and you can discard any commits you make in this
+2026-10-11T19:52:45.5712945Z state without impacting any branches by switching back to a branch.
+2026-10-11T19:52:45.5713287Z 
+2026-10-11T19:52:45.5713539Z If you want to create a new branch to retain commits you create, you may
+2026-10-11T19:52:45.5714067Z do so (now or later) by using -c with the switch command. Example:
+2026-10-11T19:52:45.5714364Z 
+2026-10-11T19:52:45.5714507Z   git switch -c <new-branch-name>
+2026-10-11T19:52:45.5714725Z 
+2026-10-11T19:52:45.5714861Z Or undo this operation with:
+2026-10-11T19:52:45.5715049Z 
+2026-10-11T19:52:45.5715225Z   git switch -
+2026-10-11T19:52:45.5715396Z 
+2026-10-11T19:52:45.5715648Z Turn off this advice by setting config variable advice.detachedHead to false
+2026-10-11T19:52:45.5716008Z 
+2026-10-11T19:52:45.5716684Z HEAD is now at 9ee982e Merge 6e5eea409c8ffae913134b99bf94800cd470176c into 9c1928b27b1a1f3818307de38cf8a7097988c245
+2026-10-11T19:52:45.5735666Z ##[endgroup]
+2026-10-11T19:52:45.5784439Z [command]/usr/bin/git log -1 --format=%H
+2026-10-11T19:52:45.5812196Z 9ee982ebb65b2822c63dc353ff803732d996749c
+2026-10-11T19:52:45.6122556Z ##[group]Run actions/setup-java@v4
+2026-10-11T19:52:45.6122933Z with:
+2026-10-11T19:52:45.6123197Z   distribution: temurin
+2026-10-11T19:52:45.6123477Z   java-version: 17
+2026-10-11T19:52:45.6123736Z   java-package: jdk
+2026-10-11T19:52:45.6123999Z   check-latest: false
+2026-10-11T19:52:45.6124260Z   server-id: github
+2026-10-11T19:52:45.6124526Z   server-username: GITHUB_ACTOR
+2026-10-11T19:52:45.6124837Z   server-password: GITHUB_TOKEN
+2026-10-11T19:52:45.6125136Z   overwrite-settings: true
+2026-10-11T19:52:45.6125413Z   job-status: success
+2026-10-11T19:52:45.6128175Z   token: ***
+2026-10-11T19:52:45.6128437Z ##[endgroup]
+2026-10-11T19:52:45.7837841Z ##[warning]setup-java v4 is deprecated and will no longer receive updates. Please migrate to actions/setup-java@v5.
+2026-10-11T19:52:45.7845022Z ##[group]Installed distributions
+2026-10-11T19:52:45.7979687Z Resolved Java 17.0.20+1 from tool-cache
+2026-10-11T19:52:45.7991405Z (node:2295) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-10-11T19:52:45.7992767Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-10-11T19:52:45.7993615Z Setting Java 17.0.20+1 as the default
+2026-10-11T19:52:45.7994845Z Creating toolchains.xml for JDK version 17 from temurin
+2026-10-11T19:52:45.8073445Z Writing to /home/runner/.m2/toolchains.xml
+2026-10-11T19:52:45.8073960Z 
+2026-10-11T19:52:45.8074623Z Java configuration:
+2026-10-11T19:52:45.8075146Z   Distribution: temurin
+2026-10-11T19:52:45.8075650Z   Version: 17.0.20+1
+2026-10-11T19:52:45.8076559Z   Path: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.20-1/x64
+2026-10-11T19:52:45.8077147Z 
+2026-10-11T19:52:45.8077814Z ##[endgroup]
+2026-10-11T19:52:45.8096809Z Creating settings.xml with server-id: github
+2026-10-11T19:52:45.8122276Z Writing to /home/runner/.m2/settings.xml
+2026-10-11T19:52:45.8543734Z ##[group]Run gradle/actions/setup-gradle@v4
+2026-10-11T19:52:45.8544141Z with:
+2026-10-11T19:52:45.8544398Z   cache-disabled: false
+2026-10-11T19:52:45.8544683Z   cache-read-only: true
+2026-10-11T19:52:45.8544977Z   cache-write-only: false
+2026-10-11T19:52:45.8545298Z   cache-overwrite-existing: false
+2026-10-11T19:52:45.8545629Z   cache-cleanup: on-success
+2026-10-11T19:52:45.8546142Z   gradle-home-cache-includes: caches
+notifications
+
+2026-10-11T19:52:45.8546816Z   add-job-summary: always
+2026-10-11T19:52:45.8547132Z   add-job-summary-as-pr-comment: never
+2026-10-11T19:52:45.8547467Z   dependency-graph: disabled
+2026-10-11T19:52:45.8547829Z   dependency-graph-report-dir: dependency-graph-reports
+2026-10-11T19:52:45.8548256Z   dependency-graph-continue-on-failure: true
+2026-10-11T19:52:45.8548612Z   build-scan-publish: false
+2026-10-11T19:52:45.8548911Z   validate-wrappers: true
+2026-10-11T19:52:45.8549207Z   allow-snapshot-wrappers: false
+2026-10-11T19:52:45.8549780Z   gradle-home-cache-strict-match: false
+2026-10-11T19:52:45.8550124Z   workflow-job-context: null
+2026-10-11T19:52:45.8552707Z   github-token: ***
+2026-10-11T19:52:45.8552977Z env:
+2026-10-11T19:52:45.8553327Z   JAVA_HOME: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.20-1/x64
+2026-10-11T19:52:45.8553896Z   JAVA_HOME_17_X64: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.20-1/x64
+2026-10-11T19:52:45.8554340Z ##[endgroup]
+2026-10-11T19:52:47.0599822Z Merged default JDK locations into /home/runner/.m2/toolchains.xml
+2026-10-11T19:52:47.0602404Z ##[group]Restore Gradle state from cache
+2026-10-11T19:52:47.3049328Z Cache hit for restore-key: gradle-home-v1|Linux-X64|release[3f21e901e01b69bcf1d5629cb4e6b97e]-9c1928b27b1a1f3818307de38cf8a7097988c245
+2026-10-11T19:52:48.5943717Z Received 0 of 917322373 (0.0%), 0.0 MBs/sec
+2026-10-11T19:52:49.5978322Z Received 130023424 of 917322373 (14.2%), 61.9 MBs/sec
+2026-10-11T19:52:50.5968276Z Received 264241152 of 917322373 (28.8%), 84.0 MBs/sec
+2026-10-11T19:52:51.5961150Z Received 423624704 of 917322373 (46.2%), 100.9 MBs/sec
+2026-10-11T19:52:52.5962474Z Received 599785472 of 917322373 (65.4%), 114.3 MBs/sec
+2026-10-11T19:52:53.6001007Z Received 775946240 of 917322373 (84.6%), 123.3 MBs/sec
+2026-10-11T19:52:54.5976909Z Received 913128069 of 917322373 (99.5%), 124.3 MBs/sec
+2026-10-11T19:52:54.7421736Z Received 917322373 of 917322373 (100.0%), 122.4 MBs/sec
+2026-10-11T19:52:54.7424833Z Cache Size: ~875 MB (917322373 B)
+2026-10-11T19:52:54.7503683Z [command]/usr/bin/tar -xf /home/runner/work/_temp/778e4fde-559d-4e07-b044-ebef5f192b49/cache.tzst -P -C /home/runner/work/sound-isolating-eraser/sound-isolating-eraser --use-compress-program unzstd
+2026-10-11T19:52:56.4130974Z Cache restored successfully
+2026-10-11T19:52:56.6041751Z Restored cache entry with key gradle-home-v1|Linux-X64|client-smoke[bce2a9239928d8333bf39a8dae6b21f4]-9ee982ebb65b2822c63dc353ff803732d996749c to /home/runner/.gradle/caches,/home/runner/.gradle/notifications,/home/runner/.gradle/.setup-gradle in 9542ms
+2026-10-11T19:52:56.8568487Z Cache hit for: gradle-groovy-dsl-v1-fca2feb6c146078e6a46b80fe761cb0d
+2026-10-11T19:52:56.8581275Z Cache hit for: gradle-wrapper-zips-v1-afd0375446f1253bae891db7b1ab4e7b
+2026-10-11T19:52:56.8654390Z Cache hit for: gradle-instrumented-jars-v1-101de37f513d514811e4a825d0fe7f5d
+2026-10-11T19:52:56.8659208Z Cache hit for: gradle-dependencies-v1-5687a3ffa8d93d1d44765079daaebf6d
+2026-10-11T19:52:57.5820552Z Received 91598 of 91598 (100.0%), 0.2 MBs/sec
+2026-10-11T19:52:57.5823317Z Cache Size: ~0 MB (91598 B)
+2026-10-11T19:52:57.5977259Z [command]/usr/bin/tar -xf /home/runner/work/_temp/63b2c762-79fb-4ef9-adcf-d2386a5f742a/cache.tzst -P -C /home/runner/work/sound-isolating-eraser/sound-isolating-eraser --use-compress-program unzstd
+2026-10-11T19:52:57.6175386Z Cache restored successfully
+2026-10-11T19:52:57.6182017Z Restored cache entry with key gradle-groovy-dsl-v1-fca2feb6c146078e6a46b80fe761cb0d to /home/runner/.gradle/caches/*/groovy-dsl/*/ in 1011ms
+2026-10-11T19:52:57.8380314Z Received 84479753 of 84479753 (100.0%), 89.5 MBs/sec
+2026-10-11T19:52:57.8380983Z Cache Size: ~81 MB (84479753 B)
+2026-10-11T19:52:57.8447644Z [command]/usr/bin/tar -xf /home/runner/work/_temp/1dfb5e17-14d5-44a0-accb-a07f2c979b00/cache.tzst -P -C /home/runner/work/sound-isolating-eraser/sound-isolating-eraser --use-compress-program unzstd
+2026-10-11T19:52:58.0062116Z Cache restored successfully
+2026-10-11T19:52:58.0154957Z Restored cache entry with key gradle-dependencies-v1-5687a3ffa8d93d1d44765079daaebf6d to /home/runner/.gradle/caches/modules-*/files-*/*/*/*/* in 1408ms
+2026-10-11T19:52:58.1366657Z Received 0 of 124110567 (0.0%), 0.0 MBs/sec
+2026-10-11T19:52:58.1637138Z Received 0 of 12016978 (0.0%), 0.0 MBs/sec
+2026-10-11T19:52:58.4562432Z Received 12016978 of 12016978 (100.0%), 8.9 MBs/sec
+2026-10-11T19:52:58.4563125Z Cache Size: ~11 MB (12016978 B)
+2026-10-11T19:52:58.4750152Z [command]/usr/bin/tar -xf /home/runner/work/_temp/52c0a194-bc80-4b0a-8f01-4e5928e85564/cache.tzst -P -C /home/runner/work/sound-isolating-eraser/sound-isolating-eraser --use-compress-program unzstd
+2026-10-11T19:52:58.6127594Z Cache restored successfully
+2026-10-11T19:52:58.6157922Z Restored cache entry with key gradle-instrumented-jars-v1-101de37f513d514811e4a825d0fe7f5d to /home/runner/.gradle/caches/jars-*/*/ in 2006ms
+2026-10-11T19:52:59.1076582Z Received 124110567 of 124110567 (100.0%), 60.0 MBs/sec
+2026-10-11T19:52:59.1079808Z Cache Size: ~118 MB (124110567 B)
+2026-10-11T19:52:59.1108753Z [command]/usr/bin/tar -xf /home/runner/work/_temp/01ad817e-363f-4f86-bdad-53ba65f1d843/cache.tzst -P -C /home/runner/work/sound-isolating-eraser/sound-isolating-eraser --use-compress-program unzstd
+2026-10-11T19:52:59.2737800Z Cache restored successfully
+2026-10-11T19:52:59.2790855Z Restored cache entry with key gradle-wrapper-zips-v1-afd0375446f1253bae891db7b1ab4e7b to /home/runner/.gradle/wrapper/dists/gradle-8.1.1-bin/9wiye5v2saajue4irfo8ybqfp in 2673ms
+2026-10-11T19:52:59.2877479Z ##[endgroup]
+2026-10-11T19:52:59.3073688Z ##[group]All Gradle Wrapper jars are valid
+2026-10-11T19:52:59.3075048Z ✓ Found known Gradle Wrapper JAR files:
+2026-10-11T19:52:59.3076071Z   c5a643cf80162e665cc228f7b16f343fef868e47d3a4836f62e18b7e17ac018a gradle/wrapper/gradle-wrapper.jar
+2026-10-11T19:52:59.3077669Z ##[endgroup]
+2026-10-11T19:52:59.3302060Z ##[group]Run actions/setup-python@v5
+2026-10-11T19:52:59.3302407Z with:
+2026-10-11T19:52:59.3302641Z   python-version: 3.12
+2026-10-11T19:52:59.3302913Z   check-latest: false
+2026-10-11T19:52:59.3305419Z   token: ***
+2026-10-11T19:52:59.3305681Z   update-environment: true
+2026-10-11T19:52:59.3305965Z   allow-prereleases: false
+2026-10-11T19:52:59.3306474Z   freethreaded: false
+2026-10-11T19:52:59.3306791Z env:
+2026-10-11T19:52:59.3307143Z   JAVA_HOME: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.20-1/x64
+2026-10-11T19:52:59.3307684Z   JAVA_HOME_17_X64: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.20-1/x64
+2026-10-11T19:52:59.3308152Z   GRADLE_ACTION_ID: gradle/actions/setup-gradle
+2026-10-11T19:52:59.3308527Z   GRADLE_USER_HOME: /home/runner/.gradle
+2026-10-11T19:52:59.3308863Z   GRADLE_BUILD_ACTION_SETUP_COMPLETED: true
+2026-10-11T19:52:59.3309209Z   GRADLE_BUILD_ACTION_CACHE_RESTORED: true
+2026-10-11T19:52:59.3309727Z   DEVELOCITY_INJECTION_INIT_SCRIPT_NAME: gradle-actions.inject-develocity.init.gradle
+2026-10-11T19:52:59.3310251Z   DEVELOCITY_INJECTION_CUSTOM_VALUE: gradle-actions
+2026-10-11T19:52:59.3310626Z   GITHUB_DEPENDENCY_GRAPH_ENABLED: false
+2026-10-11T19:52:59.3310937Z ##[endgroup]
+2026-10-11T19:52:59.4615272Z ##[group]Installed versions
+2026-10-11T19:52:59.4739228Z (node:2388) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-10-11T19:52:59.4740555Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-10-11T19:52:59.4741343Z Successfully set up CPython (3.12.15)
+2026-10-11T19:52:59.4742188Z ##[endgroup]
+2026-10-11T19:52:59.4901226Z ##[group]Run bash ./gradlew -PyujiE2E writeYujiTestClasspath --no-daemon
+2026-10-11T19:52:59.4901901Z [36;1mbash ./gradlew -PyujiE2E writeYujiTestClasspath --no-daemon[0m
+2026-10-11T19:52:59.5243731Z shell: /usr/bin/bash -e {0}
+2026-10-11T19:52:59.5244060Z env:
+2026-10-11T19:52:59.5244428Z   JAVA_HOME: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.20-1/x64
+2026-10-11T19:52:59.5244999Z   JAVA_HOME_17_X64: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.20-1/x64
+2026-10-11T19:52:59.5245471Z   GRADLE_ACTION_ID: gradle/actions/setup-gradle
+2026-10-11T19:52:59.5245822Z   GRADLE_USER_HOME: /home/runner/.gradle
+2026-10-11T19:52:59.5246146Z   GRADLE_BUILD_ACTION_SETUP_COMPLETED: true
+2026-10-11T19:52:59.5246694Z   GRADLE_BUILD_ACTION_CACHE_RESTORED: true
+2026-10-11T19:52:59.5247189Z   DEVELOCITY_INJECTION_INIT_SCRIPT_NAME: gradle-actions.inject-develocity.init.gradle
+2026-10-11T19:52:59.5247724Z   DEVELOCITY_INJECTION_CUSTOM_VALUE: gradle-actions
+2026-10-11T19:52:59.5248133Z   GITHUB_DEPENDENCY_GRAPH_ENABLED: false
+2026-10-11T19:52:59.5248524Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-11T19:52:59.5249286Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib/pkgconfig
+2026-10-11T19:52:59.5249758Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-11T19:52:59.5250197Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-11T19:52:59.5250627Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-11T19:52:59.5251056Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib
+2026-10-11T19:52:59.5251418Z ##[endgroup]
+2026-10-11T19:53:00.7017533Z To honour the JVM settings for this build a single-use Daemon process will be forked. See https://docs.gradle.org/8.1.1/userguide/gradle_daemon.html#sec:disabling_the_daemon.
+2026-10-11T19:53:02.0004747Z Daemon will be stopped at the end of the build 
+2026-10-11T19:53:09.9026008Z 
+2026-10-11T19:53:09.9037940Z > Configure project :
+2026-10-11T19:53:09.9045004Z Java: 17.0.20.1, JVM: 17.0.20.1+1 (Eclipse Adoptium), Arch: amd64
+2026-10-11T19:53:21.3002899Z 
+2026-10-11T19:53:21.3017608Z > Task :compileJava
+2026-10-11T19:53:21.3023145Z Note: Some input files use or override a deprecated API.
+2026-10-11T19:53:21.3038646Z Note: Recompile with -Xlint:deprecation for details.
+2026-10-11T19:53:21.8003722Z 
+2026-10-11T19:53:21.8005005Z > Task :generateBrickrotTestTemplate
+2026-10-11T19:53:22.6004751Z > Task :generateFertilizerResources
+2026-10-11T19:53:22.8005986Z > Task :generateGravityTexture
+2026-10-11T19:53:23.2020320Z > Task :processResources
+2026-10-11T19:53:23.2021679Z > Task :classes
+2026-10-11T19:53:23.2022421Z > Task :downloadMcpConfig
+2026-10-11T19:53:24.9004508Z > Task :extractSrg
+2026-10-11T19:53:26.4004022Z > Task :createSrgToMcp
+2026-10-11T19:53:26.5007562Z > Task :downloadMCMeta
+2026-10-11T19:53:27.6016887Z > Task :downloadAssets
+2026-10-11T19:53:27.6020718Z > Task :extractNatives
+2026-10-11T19:53:27.6021603Z > Task :makeSrcDirs
+2026-10-11T19:53:27.6022430Z > Task :prepareRuns
+2026-10-11T19:53:27.8014297Z > Task :genVSCodeRuns
+2026-10-11T19:53:28.5008115Z > Task :compileYujiTestJava
+2026-10-11T19:53:28.5027317Z > Task :processYujiTestResources
+2026-10-11T19:53:28.5057089Z > Task :yujiTestClasses
+2026-10-11T19:53:28.5797135Z > Task :writeYujiTestClasspath
+2026-10-11T19:53:28.5818123Z gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run-1791748384376.json
+2026-10-11T19:53:28.5821751Z 
+2026-10-11T19:53:28.5822619Z Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+2026-10-11T19:53:28.5825058Z 
+2026-10-11T19:53:28.5826074Z You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+2026-10-11T19:53:28.5827623Z 
+2026-10-11T19:53:28.5828430Z See https://docs.gradle.org/8.1.1/userguide/command_line_interface.html#sec:command_line_warnings
+2026-10-11T19:53:28.5829446Z 
+2026-10-11T19:53:28.5830179Z BUILD SUCCESSFUL in 28s
+2026-10-11T19:53:28.5830897Z 16 actionable tasks: 16 executed
+2026-10-11T19:53:28.9097403Z ##[group]Run python tools/yuji/e2e.py
+2026-10-11T19:53:28.9097818Z [36;1mpython tools/yuji/e2e.py[0m
+2026-10-11T19:53:28.9162874Z shell: /usr/bin/bash -e {0}
+2026-10-11T19:53:28.9163167Z env:
+2026-10-11T19:53:28.9163516Z   JAVA_HOME: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.20-1/x64
+2026-10-11T19:53:28.9164070Z   JAVA_HOME_17_X64: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.20-1/x64
+2026-10-11T19:53:28.9164538Z   GRADLE_ACTION_ID: gradle/actions/setup-gradle
+2026-10-11T19:53:28.9164885Z   GRADLE_USER_HOME: /home/runner/.gradle
+2026-10-11T19:53:28.9165199Z   GRADLE_BUILD_ACTION_SETUP_COMPLETED: true
+2026-10-11T19:53:28.9165528Z   GRADLE_BUILD_ACTION_CACHE_RESTORED: true
+2026-10-11T19:53:28.9166008Z   DEVELOCITY_INJECTION_INIT_SCRIPT_NAME: gradle-actions.inject-develocity.init.gradle
+2026-10-11T19:53:28.9166792Z   DEVELOCITY_INJECTION_CUSTOM_VALUE: gradle-actions
+2026-10-11T19:53:28.9167148Z   GITHUB_DEPENDENCY_GRAPH_ENABLED: false
+2026-10-11T19:53:28.9167558Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-11T19:53:28.9168250Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib/pkgconfig
+2026-10-11T19:53:28.9181353Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-11T19:53:28.9181876Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-11T19:53:28.9182326Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-11T19:53:28.9182772Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib
+2026-10-11T19:53:28.9183163Z ##[endgroup]
+2026-10-11T19:53:29.0087714Z YUJI_QA_RESULTS=/home/runner/work/sound-isolating-eraser/sound-isolating-eraser/build/yuji-e2e-1791748409007902986
+2026-10-11T19:57:25.7533532Z YUJI_REAL_CLIENT_AI_COLLISION_AND_AUDIO_ACCEPTANCE_PASSED
+2026-10-11T19:57:25.7579244Z --- audio-events-shifotou.log ---
+2026-10-11T19:57:25.7580663Z phase=shifotou, tick=2, event=qihai:music.qihai.shifotou_battle, decoded=qihai:shifotou/music_battle, active=true, volume=1.0, pitch=1.0, position=0.5,65.0,0.5, backend=OpenAL-null
+2026-10-11T19:57:25.7582932Z phase=shifotou, tick=24, event=qihai:entity.qihai.shifotou.grind, decoded=qihai:shifotou/grind, active=true, volume=1.0, pitch=0.9983564, position=0.5,65.0,0.5, backend=OpenAL-null
+2026-10-11T19:57:25.7585335Z phase=ai-shifotou, tick=35, event=qihai:entity.qihai.shifotou.gaze, decoded=qihai:shifotou/gaze, active=true, volume=1.0, pitch=1.0, position=2.630698468990308,65.0,4.554962618348107, backend=OpenAL-null
+2026-10-11T19:57:25.7587377Z phase=audio-shifotou, tick=11, event=qihai:entity.qihai.shifotou.death, decoded=qihai:shifotou/death, active=true, volume=1.0, pitch=0.99368215, position=4.875,65.0,13.875, backend=OpenAL-null
+2026-10-11T19:57:25.7588333Z --- client.log ---
+2026-10-11T19:57:25.7589067Z YUJI_QA_PASS toudao: frames=135, animatedBoneDelta=0.7819074988365173, texture/model/animation loaded, foregroundPixels=1319, bounds=465,234,495,293
+2026-10-11T19:57:25.7590783Z YUJI_QA_PASS audio-toudao: event=qihai:entity.qihai.toudao.death, decoded=qihai:toudao/death, active=true, volume=1.0, backend=OpenAL-null, observed=[qihai:entity.qihai.toudao.ambient, qihai:entity.qihai.toudao.steal, qihai:entity.qihai.toudao.death]
+2026-10-11T19:57:25.7592485Z YUJI_QA_PASS ekou: frames=135, animatedBoneDelta=0.34704625606536865, texture/model/animation loaded, foregroundPixels=4482, bounds=448,207,503,331
+2026-10-11T19:57:25.7593973Z YUJI_QA_PASS audio-ekou: event=qihai:entity.qihai.ekou.death, decoded=qihai:ekou/death, active=true, volume=1.0, backend=OpenAL-null, observed=[qihai:entity.qihai.ekou.curse, qihai:entity.qihai.ekou.volley, qihai:entity.qihai.ekou.death]
+2026-10-11T19:57:25.7595310Z YUJI_QA_PASS wangyu: frames=136, animatedBoneDelta=0.31206485629081726, texture/model/animation loaded, foregroundPixels=4667, bounds=452,204,504,336
+2026-10-11T19:57:25.7598095Z YUJI_QA_PASS audio-wangyu: event=qihai:entity.qihai.wangyu.death, decoded=qihai:wangyu/death, active=true, volume=1.0, backend=OpenAL-null, observed=[qihai:entity.qihai.wangyu.death, minecraft:entity.player.hurt, qihai:entity.qihai.wangyu.ambient]
+2026-10-11T19:57:25.7599570Z YUJI_QA_PASS liangshe: frames=135, animatedBoneDelta=0.5547005534172058, texture/model/animation loaded, foregroundPixels=4526, bounds=451,201,504,320
+2026-10-11T19:57:25.7601129Z YUJI_QA_PASS audio-liangshe: event=qihai:entity.qihai.liangshe.death, decoded=qihai:liangshe/death, active=true, volume=1.0, backend=OpenAL-null, observed=[qihai:entity.qihai.liangshe.whisper, qihai:entity.qihai.liangshe.betray, qihai:entity.qihai.liangshe.death]
+2026-10-11T19:57:25.7603131Z YUJI_QA_PASS xieyin: frames=136, animatedBoneDelta=0.06915866956114769, texture/model/animation loaded, foregroundPixels=3191, bounds=463,203,493,336
+2026-10-11T19:57:25.7604510Z YUJI_QA_PASS audio-xieyin: event=qihai:entity.qihai.xieyin.death, decoded=qihai:xieyin/death, active=true, volume=1.0, backend=OpenAL-null, observed=[qihai:entity.qihai.xieyin.death, qihai:entity.qihai.xieyin.pull, qihai:entity.qihai.xieyin.lure]
+2026-10-11T19:57:25.7605942Z YUJI_QA_PASS qiyu: frames=135, animatedBoneDelta=0.2076592817902565, texture/model/animation loaded, maskedVolume=0.3, foregroundPixels=5569, bounds=451,195,503,342
+2026-10-11T19:57:25.7607814Z YUJI_QA_PASS audio-qiyu: event=qihai:entity.qihai.qiyu.death, decoded=qihai:qiyu/death, active=true, volume=0.3, backend=OpenAL-null, observed=[qihai:entity.qihai.qiyu.death, qihai:entity.qihai.qiyu.flute]
+2026-10-11T19:57:25.7609031Z YUJI_QA_PASS tanyu: frames=135, animatedBoneDelta=0.3810402899980545, texture/model/animation loaded, foregroundPixels=13984, bounds=426,171,528,358
+2026-10-11T19:57:25.7610407Z YUJI_QA_PASS audio-tanyu: event=qihai:entity.qihai.tanyu.death, decoded=qihai:tanyu/death, active=true, volume=1.0, backend=OpenAL-null, observed=[qihai:entity.qihai.tanyu.death, qihai:entity.qihai.tanyu.bite, qihai:entity.qihai.tanyu.ambient]
+2026-10-11T19:57:25.7611757Z YUJI_QA_PASS chennu: frames=135, animatedBoneDelta=0.9959999918937683, texture/model/animation loaded, foregroundPixels=19990, bounds=353,153,606,389
+2026-10-11T19:57:25.7613256Z YUJI_QA_PASS audio-chennu: event=qihai:entity.qihai.chennu.death, decoded=qihai:chennu/death, active=true, volume=1.0, backend=OpenAL-null, observed=[qihai:entity.qihai.chennu.roar, qihai:entity.qihai.chennu.death, qihai:entity.qihai.chennu.stomp, qihai:entity.qihai.chennu.step]
+2026-10-11T19:57:25.7614748Z YUJI_QA_PASS shifotou: frames=135, animatedBoneDelta=1.4932500123977661, texture/model/animation loaded, foregroundPixels=26083, bounds=358,185,603,389
+2026-10-11T19:57:25.7616541Z YUJI_QA_PASS audio-shifotou: event=qihai:entity.qihai.shifotou.death, decoded=qihai:shifotou/death, active=true, volume=1.0, backend=OpenAL-null, observed=[qihai:entity.qihai.shifotou.death, qihai:entity.qihai.shifotou.grind, qihai:music.qihai.shifotou_battle, qihai:entity.qihai.shifotou.gaze]
+2026-10-11T19:57:25.7618175Z YUJI_QA_PASS bone_spike: real projectile frames=135, ownAudio=none (source pack has no projectile sound), foregroundPixels=1280, bounds=441,232,537,274
+2026-10-11T19:57:25.7619135Z YUJI_QA_PASS gallery: All 11 profiles and bone spike rendered; 11 death sounds played; flute and boss loops stopped after removal.
+2026-10-11T19:57:25.7619754Z --- audio-events-toudao.log ---
+2026-10-11T19:57:25.7620515Z phase=toudao, tick=20, event=qihai:entity.qihai.toudao.ambient, decoded=qihai:toudao/ambient, active=true, volume=1.0, pitch=0.96909875, position=0.5,65.0,0.5, backend=OpenAL-null
+2026-10-11T19:57:25.7621734Z phase=ai-toudao, tick=34, event=qihai:entity.qihai.toudao.steal, decoded=qihai:toudao/steal, active=true, volume=1.0, pitch=1.0, position=0.5,65.0,7.585402860909496, backend=OpenAL-null
+2026-10-11T19:57:25.7622979Z phase=audio-toudao, tick=11, event=qihai:entity.qihai.toudao.death, decoded=qihai:toudao/death, active=true, volume=1.0, pitch=1.1447444, position=0.375,65.0,-15.75, backend=OpenAL-null
+2026-10-11T19:57:25.7623768Z --- audio-events-ekou.log ---
+2026-10-11T19:57:25.7624666Z phase=ai-ekou, tick=29, event=qihai:entity.qihai.ekou.curse, decoded=qihai:ekou/curse, active=true, volume=1.0, pitch=1.0, position=0.5,65.0,2.9011902194359545, backend=OpenAL-null
+2026-10-11T19:57:25.7625859Z phase=ai-ekou, tick=74, event=qihai:entity.qihai.ekou.volley, decoded=qihai:ekou/volley, active=true, volume=1.0, pitch=1.0, position=0.5,65.0,9.297115940414177, backend=OpenAL-null
+2026-10-11T19:57:25.7627377Z phase=audio-ekou, tick=11, event=qihai:entity.qihai.ekou.death, decoded=qihai:ekou/death, active=true, volume=1.0, pitch=1.1494464, position=0.5,65.0,15.5, backend=OpenAL-null
+2026-10-11T19:57:25.7628126Z --- audio-events-chennu.log ---
+2026-10-11T19:57:25.7628823Z phase=ai-chennu, tick=15, event=qihai:entity.qihai.chennu.roar, decoded=qihai:chennu/roar, active=true, volume=1.0, pitch=1.0, position=0.5,65.0,0.5, backend=OpenAL-null
+2026-10-11T19:57:25.7629944Z phase=ai-chennu, tick=22, event=qihai:entity.qihai.chennu.step, decoded=qihai:chennu/step, active=true, volume=0.5, pitch=1.0, position=1.5,65.0,1.75, backend=OpenAL-null
+2026-10-11T19:57:25.7631176Z phase=ai-chennu, tick=50, event=qihai:entity.qihai.chennu.stomp, decoded=qihai:chennu/stomp, active=true, volume=1.0, pitch=1.0, position=2.9250012503775067,65.0,5.121444151463462, backend=OpenAL-null
+2026-10-11T19:57:25.7632661Z phase=audio-chennu, tick=11, event=qihai:entity.qihai.chennu.death, decoded=qihai:chennu/death, active=true, volume=1.0, pitch=0.924404, position=2.625,65.0,7.875, backend=OpenAL-null
+2026-10-11T19:57:25.7633439Z --- audio-events-shasheng.log ---
+2026-10-11T19:57:25.7634210Z phase=shasheng, tick=64, event=qihai:entity.qihai.shasheng.ambient, decoded=qihai:shasheng/ambient, active=true, volume=1.0, pitch=1.0161548, position=0.5,65.0,0.5, backend=OpenAL-null
+2026-10-11T19:57:25.7635459Z phase=ai-shasheng, tick=48, event=qihai:entity.qihai.shasheng.chop, decoded=qihai:shasheng/chop, active=true, volume=1.0, pitch=1.0, position=0.5,65.0,7.4567085067321175, backend=OpenAL-null
+2026-10-11T19:57:25.7637033Z phase=audio-shasheng, tick=11, event=qihai:entity.qihai.shasheng.death, decoded=qihai:shasheng/death, active=true, volume=1.0, pitch=0.97161806, position=0.5,65.0,17.375, backend=OpenAL-null
+2026-10-11T19:57:25.7638040Z --- audio-events-yuchi.log ---
+2026-10-11T19:57:25.7638774Z phase=yuchi, tick=47, event=qihai:entity.qihai.yuchi.ambient, decoded=qihai:yuchi/ambient, active=true, volume=1.0, pitch=1.1618882, position=0.5,65.0,0.5, backend=OpenAL-null
+2026-10-11T19:57:25.7639923Z phase=ai-yuchi, tick=31, event=qihai:entity.qihai.yuchi.step, decoded=qihai:yuchi/step, active=true, volume=0.5, pitch=1.0, position=0.5,65.0,2.125, backend=OpenAL-null
+2026-10-11T19:57:25.7641072Z phase=audio-yuchi, tick=10, event=qihai:entity.qihai.yuchi.death, decoded=qihai:yuchi/death, active=true, volume=1.0, pitch=1.0123218, position=0.5,65.0,2.875, backend=OpenAL-null
+2026-10-11T19:57:25.7641922Z --- audio-events-tanyu.log ---
+2026-10-11T19:57:25.7642650Z phase=tanyu, tick=58, event=qihai:entity.qihai.tanyu.ambient, decoded=qihai:tanyu/ambient, active=true, volume=1.0, pitch=1.0169345, position=0.5,65.0,0.5, backend=OpenAL-null
+2026-10-11T19:57:25.7643875Z phase=ai-tanyu, tick=50, event=qihai:entity.qihai.tanyu.bite, decoded=qihai:tanyu/bite, active=true, volume=1.0, pitch=1.0, position=0.7669726666690482,65.0,7.648392722009132, backend=OpenAL-null
+2026-10-11T19:57:25.7645148Z phase=audio-tanyu, tick=11, event=qihai:entity.qihai.tanyu.death, decoded=qihai:tanyu/death, active=true, volume=1.0, pitch=0.8524614, position=-0.125,65.0,11.5, backend=OpenAL-null
+2026-10-11T19:57:25.7645912Z --- audio-events-qiyu.log ---
+2026-10-11T19:57:25.7646857Z phase=qiyu, tick=2, event=qihai:entity.qihai.qiyu.flute, decoded=qihai:qiyu/flute, active=true, volume=1.0, pitch=1.0, position=0.5,65.0,0.5, backend=OpenAL-null
+2026-10-11T19:57:25.7647982Z phase=audio-qiyu, tick=11, event=qihai:entity.qihai.qiyu.death, decoded=qihai:qiyu/death, active=true, volume=0.3, pitch=1.0575396, position=0.5,65.0,11.5, backend=OpenAL-null
+2026-10-11T19:57:25.7648732Z --- audio-events-liangshe.log ---
+2026-10-11T19:57:25.7649644Z phase=ai-liangshe, tick=28, event=qihai:entity.qihai.liangshe.whisper, decoded=qihai:liangshe/whisper, active=true, volume=1.0, pitch=1.0, position=0.5,65.0,0.5, backend=OpenAL-null
+2026-10-11T19:57:25.7650880Z phase=ai-liangshe, tick=40, event=qihai:entity.qihai.liangshe.betray, decoded=qihai:liangshe/betray, active=true, volume=1.0, pitch=1.0, position=0.5,65.0,0.5, backend=OpenAL-null
+2026-10-11T19:57:25.7652118Z phase=audio-liangshe, tick=11, event=qihai:entity.qihai.liangshe.death, decoded=qihai:liangshe/death, active=true, volume=1.0, pitch=1.0076588, position=0.5,65.0,0.5, backend=OpenAL-null
+2026-10-11T19:57:25.7652914Z --- audio-events-wangyu.log ---
+2026-10-11T19:57:25.7653645Z phase=wangyu, tick=53, event=qihai:entity.qihai.wangyu.ambient, decoded=qihai:wangyu/ambient, active=true, volume=1.0, pitch=1.0124168, position=0.5,65.0,0.5, backend=OpenAL-null
+2026-10-11T19:57:25.7654824Z phase=ai-wangyu, tick=21, event=minecraft:entity.player.hurt, decoded=minecraft:damage/hit2, active=true, volume=1.0, pitch=1.0, position=6.25,66.0,6.375, backend=OpenAL-null
+2026-10-11T19:57:25.7656149Z phase=audio-wangyu, tick=11, event=qihai:entity.qihai.wangyu.death, decoded=qihai:wangyu/death, active=true, volume=1.0, pitch=0.9975936, position=0.5,65.0,0.5, backend=OpenAL-null
+2026-10-11T19:57:25.7657063Z --- audio-events-xieyin.log ---
+2026-10-11T19:57:25.7657754Z phase=ai-xieyin, tick=25, event=qihai:entity.qihai.xieyin.lure, decoded=qihai:xieyin/lure, active=true, volume=1.0, pitch=1.0, position=0.5,65.0,0.5, backend=OpenAL-null
+2026-10-11T19:57:25.7659049Z phase=ai-xieyin, tick=31, event=qihai:entity.qihai.xieyin.pull, decoded=qihai:xieyin/pull, active=true, volume=1.0, pitch=1.0, position=0.5606825086805556,65.0,0.4396158854166667, backend=OpenAL-null
+2026-10-11T19:57:25.7660353Z phase=audio-xieyin, tick=11, event=qihai:entity.qihai.xieyin.death, decoded=qihai:xieyin/death, active=true, volume=1.0, pitch=0.9348461, position=0.5,65.0,-9.875, backend=OpenAL-null
+2026-10-11T19:57:25.7661113Z --- server.log ---
+2026-10-11T19:57:25.7661627Z YUJI_QA_PASS bone_spike: Real rendered projectile collided with wall and expired; no independent audio in source pack.
+2026-10-11T19:57:25.7662389Z YUJI_QA_PASS gallery: 11 real-player AI/collision/audio probes and rendered projectile completed.
+2026-10-11T19:57:25.7663148Z [19:57:23] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: YujiTester lost connection: Disconnected
+2026-10-11T19:57:25.7663828Z [19:57:23] [Server thread/INFO] [minecraft/MinecraftServer]: YujiTester left the game
+2026-10-11T19:57:25.7664379Z [19:57:23] [Server thread/INFO] [minecraft/MinecraftServer]: Stopping the server
+2026-10-11T19:57:25.7664898Z [19:57:23] [Server thread/INFO] [minecraft/MinecraftServer]: Stopping server
+2026-10-11T19:57:25.7665404Z [19:57:23] [Server thread/INFO] [minecraft/MinecraftServer]: Saving players
+2026-10-11T19:57:25.7665893Z [19:57:23] [Server thread/INFO] [minecraft/MinecraftServer]: Saving worlds
+2026-10-11T19:57:25.7666938Z [19:57:24] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[world]'/minecraft:overworld
+2026-10-11T19:57:25.7667826Z [19:57:25] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_end
+2026-10-11T19:57:25.7668742Z [19:57:25] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[world]'/sound_isolating_eraser:eternal_night
+2026-10-11T19:57:25.7669643Z [19:57:25] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_nether
+2026-10-11T19:57:25.7670507Z [19:57:25] [Server thread/DEBUG] [ne.mi.co.ForgeHooks/WP]: Gathering id map for writing to world save world
+2026-10-11T19:57:25.7671159Z [19:57:25] [Server thread/DEBUG] [ne.mi.co.ForgeHooks/WP]: ID Map collection complete world
+2026-10-11T19:57:25.7671860Z [19:57:25] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (world): All chunks are saved
+2026-10-11T19:57:25.7672853Z [19:57:25] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (DIM1): All chunks are saved
+2026-10-11T19:57:25.7673718Z [19:57:25] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (eternal_night): All chunks are saved
+2026-10-11T19:57:25.7674576Z [19:57:25] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (DIM-1): All chunks are saved
+2026-10-11T19:57:25.7675352Z [19:57:25] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage: All dimensions are saved
+2026-10-11T19:57:25.7676062Z [19:57:25] [Server thread/DEBUG] [ne.mi.fm.co.ConfigTracker/CONFIG]: Unloading configs type SERVER
+2026-10-11T19:57:25.7677657Z client-audio-chennu.pass: event=qihai:entity.qihai.chennu.death, decoded=qihai:chennu/death, active=true, volume=1.0, backend=OpenAL-null, observed=[qihai:entity.qihai.chennu.roar, qihai:entity.qihai.chennu.death, qihai:entity.qihai.chennu.stomp, qihai:entity.qihai.chennu.step]
+2026-10-11T19:57:25.7680334Z client-audio-ekou.pass: event=qihai:entity.qihai.ekou.death, decoded=qihai:ekou/death, active=true, volume=1.0, backend=OpenAL-null, observed=[qihai:entity.qihai.ekou.curse, qihai:entity.qihai.ekou.volley, qihai:entity.qihai.ekou.death]
+2026-10-11T19:57:25.7683636Z client-audio-liangshe.pass: event=qihai:entity.qihai.liangshe.death, decoded=qihai:liangshe/death, active=true, volume=1.0, backend=OpenAL-null, observed=[qihai:entity.qihai.liangshe.whisper, qihai:entity.qihai.liangshe.betray, qihai:entity.qihai.liangshe.death]
+2026-10-11T19:57:25.7685350Z client-audio-qiyu.pass: event=qihai:entity.qihai.qiyu.death, decoded=qihai:qiyu/death, active=true, volume=0.3, backend=OpenAL-null, observed=[qihai:entity.qihai.qiyu.death, qihai:entity.qihai.qiyu.flute]
+2026-10-11T19:57:25.7687342Z client-audio-shasheng.pass: event=qihai:entity.qihai.shasheng.death, decoded=qihai:shasheng/death, active=true, volume=1.0, backend=OpenAL-null, observed=[qihai:entity.qihai.shasheng.death, qihai:entity.qihai.shasheng.chop, qihai:entity.qihai.shasheng.ambient]
+2026-10-11T19:57:25.7689368Z client-audio-shifotou.pass: event=qihai:entity.qihai.shifotou.death, decoded=qihai:shifotou/death, active=true, volume=1.0, backend=OpenAL-null, observed=[qihai:entity.qihai.shifotou.death, qihai:entity.qihai.shifotou.grind, qihai:music.qihai.shifotou_battle, qihai:entity.qihai.shifotou.gaze]
+2026-10-11T19:57:25.7691293Z client-audio-tanyu.pass: event=qihai:entity.qihai.tanyu.death, decoded=qihai:tanyu/death, active=true, volume=1.0, backend=OpenAL-null, observed=[qihai:entity.qihai.tanyu.death, qihai:entity.qihai.tanyu.bite, qihai:entity.qihai.tanyu.ambient]
+2026-10-11T19:57:25.7693049Z client-audio-toudao.pass: event=qihai:entity.qihai.toudao.death, decoded=qihai:toudao/death, active=true, volume=1.0, backend=OpenAL-null, observed=[qihai:entity.qihai.toudao.ambient, qihai:entity.qihai.toudao.steal, qihai:entity.qihai.toudao.death]
+2026-10-11T19:57:25.7694830Z client-audio-wangyu.pass: event=qihai:entity.qihai.wangyu.death, decoded=qihai:wangyu/death, active=true, volume=1.0, backend=OpenAL-null, observed=[qihai:entity.qihai.wangyu.death, minecraft:entity.player.hurt, qihai:entity.qihai.wangyu.ambient]
+2026-10-11T19:57:25.7696865Z client-audio-xieyin.pass: event=qihai:entity.qihai.xieyin.death, decoded=qihai:xieyin/death, active=true, volume=1.0, backend=OpenAL-null, observed=[qihai:entity.qihai.xieyin.death, qihai:entity.qihai.xieyin.pull, qihai:entity.qihai.xieyin.lure]
+2026-10-11T19:57:25.7698617Z client-audio-yuchi.pass: event=qihai:entity.qihai.yuchi.death, decoded=qihai:yuchi/death, active=true, volume=1.0, backend=OpenAL-null, observed=[qihai:entity.qihai.yuchi.step, qihai:entity.qihai.yuchi.ambient, qihai:entity.qihai.yuchi.death]
+2026-10-11T19:57:25.7700002Z client-bone_spike.pass: real projectile frames=135, ownAudio=none (source pack has no projectile sound), foregroundPixels=1280, bounds=441,232,537,274
+2026-10-11T19:57:25.7701040Z client-chennu.pass: frames=135, animatedBoneDelta=0.9959999918937683, texture/model/animation loaded, foregroundPixels=19990, bounds=353,153,606,389
+2026-10-11T19:57:25.7702227Z client-ekou.pass: frames=135, animatedBoneDelta=0.34704625606536865, texture/model/animation loaded, foregroundPixels=4482, bounds=448,207,503,331
+2026-10-11T19:57:25.7703211Z client-gallery.pass: All 11 profiles and bone spike rendered; 11 death sounds played; flute and boss loops stopped after removal.
+2026-10-11T19:57:25.7704184Z client-liangshe.pass: frames=135, animatedBoneDelta=0.5547005534172058, texture/model/animation loaded, foregroundPixels=4526, bounds=451,201,504,320
+2026-10-11T19:57:25.7705275Z client-qiyu.pass: frames=135, animatedBoneDelta=0.2076592817902565, texture/model/animation loaded, maskedVolume=0.3, foregroundPixels=5569, bounds=451,195,503,342
+2026-10-11T19:57:25.7706079Z client-ready.pass: Real client joined, 47 sound events loaded.
+2026-10-11T19:57:25.7707110Z client-shasheng.pass: frames=136, animatedBoneDelta=0.31415925920009613, texture/model/animation loaded, foregroundPixels=4984, bounds=446,209,504,338
+2026-10-11T19:57:25.7708167Z client-shifotou.pass: frames=135, animatedBoneDelta=1.4932500123977661, texture/model/animation loaded, foregroundPixels=26083, bounds=358,185,603,389
+2026-10-11T19:57:25.7709355Z client-tanyu.pass: frames=135, animatedBoneDelta=0.3810402899980545, texture/model/animation loaded, foregroundPixels=13984, bounds=426,171,528,358
+2026-10-11T19:57:25.7710373Z client-toudao.pass: frames=135, animatedBoneDelta=0.7819074988365173, texture/model/animation loaded, foregroundPixels=1319, bounds=465,234,495,293
+2026-10-11T19:57:25.7711400Z client-wangyu.pass: frames=136, animatedBoneDelta=0.31206485629081726, texture/model/animation loaded, foregroundPixels=4667, bounds=452,204,504,336
+2026-10-11T19:57:25.7712419Z client-xieyin.pass: frames=136, animatedBoneDelta=0.06915866956114769, texture/model/animation loaded, foregroundPixels=3191, bounds=463,203,493,336
+2026-10-11T19:57:25.7713447Z client-yuchi.pass: frames=135, animatedBoneDelta=0.17415476590394974, texture/model/animation loaded, foregroundPixels=5585, bounds=447,200,512,331
+2026-10-11T19:57:25.7714645Z server-ai-chennu.pass: realPlayer=e2b10060-b568-3058-a037-b909b67bdc60, floorCollision=true, aiTarget=true, moved=7.752215329512004, playerDamageEvents=2, hitsByPlayer=1, statusObserved=false
+2026-10-11T19:57:25.7715992Z server-ai-ekou.pass: realPlayer=e2b10060-b568-3058-a037-b909b67bdc60, floorCollision=true, aiTarget=true, moved=15.004261193298365, playerDamageEvents=5, hitsByPlayer=0, statusObserved=true
+2026-10-11T19:57:25.7717591Z server-ai-liangshe.pass: realPlayer=e2b10060-b568-3058-a037-b909b67bdc60, floorCollision=true, aiTarget=true, moved=0.0, playerDamageEvents=0, hitsByPlayer=0, statusObserved=true
+2026-10-11T19:57:25.7718888Z server-ai-qiyu.pass: realPlayer=e2b10060-b568-3058-a037-b909b67bdc60, floorCollision=true, aiTarget=true, moved=11.041475561596304, playerDamageEvents=4, hitsByPlayer=0, statusObserved=false
+2026-10-11T19:57:25.7720248Z server-ai-shasheng.pass: realPlayer=e2b10060-b568-3058-a037-b909b67bdc60, floorCollision=true, aiTarget=true, moved=16.923575421357782, playerDamageEvents=10, hitsByPlayer=0, statusObserved=false
+2026-10-11T19:57:25.7721610Z server-ai-shifotou.pass: realPlayer=e2b10060-b568-3058-a037-b909b67bdc60, floorCollision=true, aiTarget=true, moved=14.17151535552502, playerDamageEvents=1, hitsByPlayer=0, statusObserved=true
+2026-10-11T19:57:25.7722959Z server-ai-tanyu.pass: realPlayer=e2b10060-b568-3058-a037-b909b67bdc60, floorCollision=true, aiTarget=true, moved=11.101219623065761, playerDamageEvents=5, hitsByPlayer=0, statusObserved=false
+2026-10-11T19:57:25.7724289Z server-ai-toudao.pass: realPlayer=e2b10060-b568-3058-a037-b909b67bdc60, floorCollision=true, aiTarget=true, moved=16.2641351541515, playerDamageEvents=1, hitsByPlayer=0, statusObserved=false
+2026-10-11T19:57:25.7725574Z server-ai-wangyu.pass: realPlayer=e2b10060-b568-3058-a037-b909b67bdc60, floorCollision=true, aiTarget=true, moved=0.0, playerDamageEvents=0, hitsByPlayer=0, statusObserved=true
+2026-10-11T19:57:25.7727287Z server-ai-xieyin.pass: realPlayer=e2b10060-b568-3058-a037-b909b67bdc60, floorCollision=true, aiTarget=true, moved=10.399810655103526, playerDamageEvents=0, hitsByPlayer=0, statusObserved=true
+2026-10-11T19:57:25.7728642Z server-ai-yuchi.pass: realPlayer=e2b10060-b568-3058-a037-b909b67bdc60, floorCollision=true, aiTarget=true, moved=2.4668804177754344, playerDamageEvents=0, hitsByPlayer=0, statusObserved=false
+2026-10-11T19:57:25.7729729Z server-bone_spike.pass: Real rendered projectile collided with wall and expired; no independent audio in source pack.
+2026-10-11T19:57:25.7730497Z server-gallery.pass: 11 real-player AI/collision/audio probes and rendered projectile completed.
+2026-10-11T19:57:25.7763385Z ##[group]Run YUJI_QA_BOUNDARIES=1 python tools/yuji/e2e.py
+2026-10-11T19:57:25.7763872Z [36;1mYUJI_QA_BOUNDARIES=1 python tools/yuji/e2e.py[0m
+2026-10-11T19:57:25.7826993Z shell: /usr/bin/bash -e {0}
+2026-10-11T19:57:25.7827277Z env:
+2026-10-11T19:57:25.7827615Z   JAVA_HOME: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.20-1/x64
+2026-10-11T19:57:25.7828170Z   JAVA_HOME_17_X64: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.20-1/x64
+2026-10-11T19:57:25.7828805Z   GRADLE_ACTION_ID: gradle/actions/setup-gradle
+2026-10-11T19:57:25.7829143Z   GRADLE_USER_HOME: /home/runner/.gradle
+2026-10-11T19:57:25.7829464Z   GRADLE_BUILD_ACTION_SETUP_COMPLETED: true
+2026-10-11T19:57:25.7829782Z   GRADLE_BUILD_ACTION_CACHE_RESTORED: true
+2026-10-11T19:57:25.7830253Z   DEVELOCITY_INJECTION_INIT_SCRIPT_NAME: gradle-actions.inject-develocity.init.gradle
+2026-10-11T19:57:25.7830769Z   DEVELOCITY_INJECTION_CUSTOM_VALUE: gradle-actions
+2026-10-11T19:57:25.7831144Z   GITHUB_DEPENDENCY_GRAPH_ENABLED: false
+2026-10-11T19:57:25.7831554Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-11T19:57:25.7831999Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib/pkgconfig
+2026-10-11T19:57:25.7832451Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-11T19:57:25.7832865Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-11T19:57:25.7833277Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-11T19:57:25.7833699Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib
+2026-10-11T19:57:25.7834046Z ##[endgroup]
+2026-10-11T19:57:25.8234281Z YUJI_QA_RESULTS=/home/runner/work/sound-isolating-eraser/sound-isolating-eraser/build/yuji-boundaries-1791748645822955699
+2026-10-11T19:58:59.6563562Z YUJI_TWO_REAL_CLIENT_BOUNDARIES_PASSED
+2026-10-11T19:58:59.6614180Z --- client.log ---
+2026-10-11T19:58:59.6615236Z [19:58:28] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.HandshakeHandler/FMLHANDSHAKE]: Received config sync from server
+2026-10-11T19:58:59.6617005Z [19:58:28] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Dispatching wrapped packet reply for channel fml:handshake with index 26
+2026-10-11T19:58:59.6619088Z [19:58:28] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Recieved login wrapper packet event for channel fml:handshake with index 27
+2026-10-11T19:58:59.6620874Z [19:58:28] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.HandshakeHandler/FMLHANDSHAKE]: Received config sync from server
+2026-10-11T19:58:59.6622116Z [19:58:28] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Dispatching wrapped packet reply for channel fml:handshake with index 27
+2026-10-11T19:58:59.6623437Z [19:58:28] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Recieved login wrapper packet event for channel fml:handshake with index 28
+2026-10-11T19:58:59.6624625Z [19:58:28] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.HandshakeHandler/FMLHANDSHAKE]: Received config sync from server
+2026-10-11T19:58:59.6625915Z [19:58:28] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Dispatching wrapped packet reply for channel fml:handshake with index 28
+2026-10-11T19:58:59.6627494Z [19:58:28] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Recieved login wrapper packet event for channel fml:handshake with index 29
+2026-10-11T19:58:59.6628580Z [19:58:28] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.HandshakeHandler/FMLHANDSHAKE]: Received config sync from server
+2026-10-11T19:58:59.6629552Z [19:58:28] [Netty Epoll Client IO #0/DEBUG] [ne.mi.co.ForgeConfig/FORGEMOD]: Forge config just got changed on the file system!
+2026-10-11T19:58:59.6630652Z [19:58:28] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Dispatching wrapped packet reply for channel fml:handshake with index 29
+2026-10-11T19:58:59.6631625Z [19:58:28] [Netty Epoll Client IO #0/INFO] [ne.mi.ne.NetworkHooks/]: Connected to a modded server.
+2026-10-11T19:58:59.6633170Z [19:58:30] [Render thread/DEBUG] [ne.mi.ne.fi.NetworkFilters/]: Injected net.minecraftforge.network.filters.ForgeConnectionNetworkFilter@3fd6dfbc into net.minecraft.network.Connection@4023d23f
+2026-10-11T19:58:59.6634177Z [19:58:31] [Render thread/INFO] [minecraft/AdvancementList]: Loaded 2 advancements
+2026-10-11T19:58:59.6634835Z YUJI_BOUNDARY_CLIENT ready YujiTester real TCP-connected client UUID=e2b10060-b568-3058-a037-b909b67bdc60
+2026-10-11T19:58:59.6635722Z YUJI_BOUNDARY_CLIENT sent attack packet entity=3 player=e2b10060-b568-3058-a037-b909b67bdc60
+2026-10-11T19:58:59.6636798Z YUJI_BOUNDARY_CLIENT grudge-two-clients YujiTester actual framebuffer; colors=3144, player=e2b10060-b568-3058-a037-b909b67bdc60
+2026-10-11T19:58:59.6637716Z YUJI_BOUNDARY_CLIENT betrayal-double-slash YujiTester actual framebuffer; colors=561, player=e2b10060-b568-3058-a037-b909b67bdc60
+2026-10-11T19:58:59.6638469Z YUJI_BOUNDARY_CLIENT boundaries YujiTester real-client boundary sequence completed
+2026-10-11T19:58:59.6638927Z --- witness.log ---
+2026-10-11T19:58:59.6639420Z [19:58:28] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.HandshakeHandler/FMLHANDSHAKE]: Received config sync from server
+2026-10-11T19:58:59.6640356Z [19:58:28] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Dispatching wrapped packet reply for channel fml:handshake with index 28
+2026-10-11T19:58:59.6641396Z [19:58:28] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Recieved login wrapper packet event for channel fml:handshake with index 29
+2026-10-11T19:58:59.6642299Z [19:58:28] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.HandshakeHandler/FMLHANDSHAKE]: Received config sync from server
+2026-10-11T19:58:59.6643094Z [19:58:28] [Netty Epoll Client IO #0/DEBUG] [ne.mi.co.ForgeConfig/FORGEMOD]: Forge config just got changed on the file system!
+2026-10-11T19:58:59.6643996Z [19:58:28] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Dispatching wrapped packet reply for channel fml:handshake with index 29
+2026-10-11T19:58:59.6644815Z [19:58:28] [Netty Epoll Client IO #0/INFO] [ne.mi.ne.NetworkHooks/]: Connected to a modded server.
+2026-10-11T19:58:59.6645832Z [19:58:29] [Render thread/DEBUG] [ne.mi.ne.fi.NetworkFilters/]: Injected net.minecraftforge.network.filters.ForgeConnectionNetworkFilter@13866865 into net.minecraft.network.Connection@4891d727
+2026-10-11T19:58:59.6647042Z [19:58:31] [Render thread/INFO] [minecraft/AdvancementList]: Loaded 2 advancements
+2026-10-11T19:58:59.6647900Z [19:58:31] [Render thread/INFO] [minecraft/ChatComponent]: [System] [CHAT] YujiTester加入了游戏
+2026-10-11T19:58:59.6650666Z YUJI_BOUNDARY_CLIENT ready YujiWitness real TCP-connected client UUID=82056727-80fc-35e5-b2f5-c6c33a3f7acf
+2026-10-11T19:58:59.6651893Z YUJI_BOUNDARY_CLIENT sent attack packet entity=3 player=82056727-80fc-35e5-b2f5-c6c33a3f7acf
+2026-10-11T19:58:59.6653056Z YUJI_BOUNDARY_CLIENT sent attack packet entity=4 player=82056727-80fc-35e5-b2f5-c6c33a3f7acf
+2026-10-11T19:58:59.6654347Z YUJI_BOUNDARY_CLIENT sent attack packet entity=4 player=82056727-80fc-35e5-b2f5-c6c33a3f7acf
+2026-10-11T19:58:59.6655519Z YUJI_BOUNDARY_CLIENT sent attack packet entity=4 player=82056727-80fc-35e5-b2f5-c6c33a3f7acf
+2026-10-11T19:58:59.6657245Z YUJI_BOUNDARY_CLIENT boss-side YujiWitness actual framebuffer; colors=1323, player=82056727-80fc-35e5-b2f5-c6c33a3f7acf
+2026-10-11T19:58:59.6658794Z YUJI_BOUNDARY_CLIENT boss-upper YujiWitness actual framebuffer; colors=1269, player=82056727-80fc-35e5-b2f5-c6c33a3f7acf
+2026-10-11T19:58:59.6660417Z YUJI_BOUNDARY_CLIENT boss-outside-side YujiWitness actual framebuffer; colors=1272, player=82056727-80fc-35e5-b2f5-c6c33a3f7acf
+2026-10-11T19:58:59.6661978Z YUJI_BOUNDARY_CLIENT boss-above YujiWitness actual framebuffer; colors=1246, player=82056727-80fc-35e5-b2f5-c6c33a3f7acf
+2026-10-11T19:58:59.6663390Z YUJI_BOUNDARY_CLIENT boundaries YujiWitness real-client boundary sequence completed
+2026-10-11T19:58:59.6664330Z --- boundary-events.log ---
+2026-10-11T19:58:59.6665249Z PASS grudge-128 original target remains valid at exactly 128 blocks
+2026-10-11T19:58:59.6665927Z playerAttack stage=grudge-release player=YujiWitness uuid=82056727-80fc-35e5-b2f5-c6c33a3f7acf damage=0.42000002
+2026-10-11T19:58:59.6667397Z grudge stage=grudge-release saved=82056727-80fc-35e5-b2f5-c6c33a3f7acf target=82056727-80fc-35e5-b2f5-c6c33a3f7acf distance=4.771056 mobPos=(0.0, 65.0, 0.0) playerPos=(4.0, 67.60057262626465, 0.0) firstHits=1 secondHits=1
+2026-10-11T19:58:59.6668443Z PASS grudge-release new attacker accepted after original player leaves 128 blocks
+2026-10-11T19:58:59.6669377Z actualDamage stage=slash contact=n/a tick=28 amount=3.9 attackAttribute=3.9 intersects=false player=e2b10060-b568-3058-a037-b909b67bdc60
+2026-10-11T19:58:59.6670313Z actualDamage stage=slash contact=n/a tick=34 amount=3.9 attackAttribute=3.9 intersects=false player=e2b10060-b568-3058-a037-b909b67bdc60
+2026-10-11T19:58:59.6671086Z PASS betrayal-double-slash damage=[3.9, 3.9], ticks=[28, 34], actualHealthLoss=7.799988
+2026-10-11T19:58:59.6671864Z contactSetup name=side player=e2b10060-b568-3058-a037-b909b67bdc60 bossBody=AABB[-3.0, 65.0, -3.0] -> [3.0, 73.0, 3.0]
+2026-10-11T19:58:59.6672764Z actualDamage stage=contact contact=side tick=20 amount=10.0 attackAttribute=50.0 intersects=true player=e2b10060-b568-3058-a037-b909b67bdc60
+2026-10-11T19:58:59.6673730Z actualDamage stage=contact contact=side tick=40 amount=10.0 attackAttribute=50.0 intersects=true player=e2b10060-b568-3058-a037-b909b67bdc60
+2026-10-11T19:58:59.6674533Z PASS boss-side offset=3.2,0.0, intersects=true, damage=[10.0, 10.0], ticks=[20, 40], healthLoss=20.0
+2026-10-11T19:58:59.6675284Z contactSetup name=upper player=e2b10060-b568-3058-a037-b909b67bdc60 bossBody=AABB[-3.0, 65.0, -3.0] -> [3.0, 73.0, 3.0]
+2026-10-11T19:58:59.6676178Z actualDamage stage=contact contact=upper tick=20 amount=10.0 attackAttribute=50.0 intersects=true player=e2b10060-b568-3058-a037-b909b67bdc60
+2026-10-11T19:58:59.6677406Z actualDamage stage=contact contact=upper tick=40 amount=10.0 attackAttribute=50.0 intersects=true player=e2b10060-b568-3058-a037-b909b67bdc60
+2026-10-11T19:58:59.6678215Z PASS boss-upper offset=0.0,7.8, intersects=true, damage=[10.0, 10.0], ticks=[20, 40], healthLoss=20.0
+2026-10-11T19:58:59.6679023Z contactSetup name=outside-side player=e2b10060-b568-3058-a037-b909b67bdc60 bossBody=AABB[-3.0, 65.0, -3.0] -> [3.0, 73.0, 3.0]
+2026-10-11T19:58:59.6679778Z PASS boss-outside-side offset=3.31,0.0, intersects=false, damage=[], ticks=[], healthLoss=0.0
+2026-10-11T19:58:59.6680504Z contactSetup name=above player=e2b10060-b568-3058-a037-b909b67bdc60 bossBody=AABB[-3.0, 65.0, -3.0] -> [3.0, 73.0, 3.0]
+2026-10-11T19:58:59.6681196Z PASS boss-above offset=0.0,8.01, intersects=false, damage=[], ticks=[], healthLoss=0.0
+2026-10-11T19:58:59.6681926Z PASS boundaries All three independent findings passed targeted two-real-client probes; not sound/camera isolation coverage.
+2026-10-11T19:58:59.6682508Z --- server.log ---
+2026-10-11T19:58:59.6683014Z [19:58:57] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: YujiWitness lost connection: Disconnected
+2026-10-11T19:58:59.6683772Z [19:58:57] [Server thread/INFO] [minecraft/MinecraftServer]: YujiWitness left the game
+2026-10-11T19:58:59.6685016Z [19:58:57] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: YujiTester lost connection: Disconnected
+2026-10-11T19:58:59.6686225Z [19:58:57] [Server thread/INFO] [minecraft/MinecraftServer]: YujiTester left the game
+2026-10-11T19:58:59.6687033Z [19:58:57] [Server thread/INFO] [minecraft/MinecraftServer]: Stopping the server
+2026-10-11T19:58:59.6687563Z [19:58:57] [Server thread/INFO] [minecraft/MinecraftServer]: Stopping server
+2026-10-11T19:58:59.6688069Z [19:58:57] [Server thread/INFO] [minecraft/MinecraftServer]: Saving players
+2026-10-11T19:58:59.6688563Z [19:58:57] [Server thread/INFO] [minecraft/MinecraftServer]: Saving worlds
+2026-10-11T19:58:59.6689227Z [19:58:58] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[world]'/minecraft:overworld
+2026-10-11T19:58:59.6690212Z [19:58:59] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_end
+2026-10-11T19:58:59.6691055Z [19:58:59] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_nether
+2026-10-11T19:58:59.6691956Z [19:58:59] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[world]'/sound_isolating_eraser:eternal_night
+2026-10-11T19:58:59.6692945Z [19:58:59] [Server thread/DEBUG] [ne.mi.co.ForgeHooks/WP]: Gathering id map for writing to world save world
+2026-10-11T19:58:59.6693598Z [19:58:59] [Server thread/DEBUG] [ne.mi.co.ForgeHooks/WP]: ID Map collection complete world
+2026-10-11T19:58:59.6694303Z [19:58:59] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (world): All chunks are saved
+2026-10-11T19:58:59.6695092Z [19:58:59] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (DIM1): All chunks are saved
+2026-10-11T19:58:59.6695880Z [19:58:59] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (DIM-1): All chunks are saved
+2026-10-11T19:58:59.6696953Z [19:58:59] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (eternal_night): All chunks are saved
+2026-10-11T19:58:59.6697766Z [19:58:59] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage: All dimensions are saved
+2026-10-11T19:58:59.6698476Z [19:58:59] [Server thread/DEBUG] [ne.mi.fm.co.ConfigTracker/CONFIG]: Unloading configs type SERVER
+2026-10-11T19:58:59.6699267Z client-betrayal-double-slash-YujiTester.pass: actual framebuffer; colors=561, player=e2b10060-b568-3058-a037-b909b67bdc60
+2026-10-11T19:58:59.6700127Z client-boss-above-YujiWitness.pass: actual framebuffer; colors=1246, player=82056727-80fc-35e5-b2f5-c6c33a3f7acf
+2026-10-11T19:58:59.6700967Z client-boss-outside-side-YujiWitness.pass: actual framebuffer; colors=1272, player=82056727-80fc-35e5-b2f5-c6c33a3f7acf
+2026-10-11T19:58:59.6701797Z client-boss-side-YujiWitness.pass: actual framebuffer; colors=1323, player=82056727-80fc-35e5-b2f5-c6c33a3f7acf
+2026-10-11T19:58:59.6702593Z client-boss-upper-YujiWitness.pass: actual framebuffer; colors=1269, player=82056727-80fc-35e5-b2f5-c6c33a3f7acf
+2026-10-11T19:58:59.6703290Z client-boundaries-YujiTester.pass: real-client boundary sequence completed
+2026-10-11T19:58:59.6703865Z client-boundaries-YujiWitness.pass: real-client boundary sequence completed
+2026-10-11T19:58:59.6704598Z client-grudge-two-clients-YujiTester.pass: actual framebuffer; colors=3144, player=e2b10060-b568-3058-a037-b909b67bdc60
+2026-10-11T19:58:59.6705384Z client-ready-YujiTester.pass: real TCP-connected client UUID=e2b10060-b568-3058-a037-b909b67bdc60
+2026-10-11T19:58:59.6706090Z client-ready-YujiWitness.pass: real TCP-connected client UUID=82056727-80fc-35e5-b2f5-c6c33a3f7acf
+2026-10-11T19:58:59.6707020Z server-betrayal-double-slash.pass: damage=[3.9, 3.9], ticks=[28, 34], actualHealthLoss=7.799988
+2026-10-11T19:58:59.6707698Z server-boss-above.pass: offset=0.0,8.01, intersects=false, damage=[], ticks=[], healthLoss=0.0
+2026-10-11T19:58:59.6708375Z server-boss-outside-side.pass: offset=3.31,0.0, intersects=false, damage=[], ticks=[], healthLoss=0.0
+2026-10-11T19:58:59.6709081Z server-boss-side.pass: offset=3.2,0.0, intersects=true, damage=[10.0, 10.0], ticks=[20, 40], healthLoss=20.0
+2026-10-11T19:58:59.6709798Z server-boss-upper.pass: offset=0.0,7.8, intersects=true, damage=[10.0, 10.0], ticks=[20, 40], healthLoss=20.0
+2026-10-11T19:58:59.6710642Z server-boundaries.pass: All three independent findings passed targeted two-real-client probes; not sound/camera isolation coverage.
+2026-10-11T19:58:59.6711393Z server-grudge-128.pass: original target remains valid at exactly 128 blocks
+2026-10-11T19:58:59.6711992Z server-grudge-release.pass: new attacker accepted after original player leaves 128 blocks
+2026-10-11T19:58:59.6712713Z server-grudge-reload.pass: NBT round-trip retains first UUID and target after second connected client attacks
+2026-10-11T19:58:59.6713839Z server-grudge-two-clients.pass: first=e2b10060-b568-3058-a037-b909b67bdc60, second=82056727-80fc-35e5-b2f5-c6c33a3f7acf, original retained after accepted second hit
+2026-10-11T19:58:59.6778659Z ##[group]Run actions/upload-artifact@v4
+2026-10-11T19:58:59.6778999Z with:
+2026-10-11T19:58:59.6779241Z   name: yuji-client-evidence
+2026-10-11T19:58:59.6780156Z   path: build/yuji-e2e-*/*.log
+build/yuji-e2e-*/*.pass
+build/yuji-e2e-*/*.failed
+build/yuji-e2e-*/*.png
+build/yuji-boundaries-*/*.log
+build/yuji-boundaries-*/*.pass
+build/yuji-boundaries-*/*.failed
+build/yuji-boundaries-*/*.png
+
+2026-10-11T19:58:59.6781238Z   if-no-files-found: warn
+2026-10-11T19:58:59.6781494Z   compression-level: 6
+2026-10-11T19:58:59.6781739Z   overwrite: false
+2026-10-11T19:58:59.6781981Z   include-hidden-files: false
+2026-10-11T19:58:59.6782237Z env:
+2026-10-11T19:58:59.6782558Z   JAVA_HOME: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.20-1/x64
+2026-10-11T19:58:59.6783090Z   JAVA_HOME_17_X64: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.20-1/x64
+2026-10-11T19:58:59.6783552Z   GRADLE_ACTION_ID: gradle/actions/setup-gradle
+2026-10-11T19:58:59.6783912Z   GRADLE_USER_HOME: /home/runner/.gradle
+2026-10-11T19:58:59.6784229Z   GRADLE_BUILD_ACTION_SETUP_COMPLETED: true
+2026-10-11T19:58:59.6784544Z   GRADLE_BUILD_ACTION_CACHE_RESTORED: true
+2026-10-11T19:58:59.6785028Z   DEVELOCITY_INJECTION_INIT_SCRIPT_NAME: gradle-actions.inject-develocity.init.gradle
+2026-10-11T19:58:59.6785543Z   DEVELOCITY_INJECTION_CUSTOM_VALUE: gradle-actions
+2026-10-11T19:58:59.6785887Z   GITHUB_DEPENDENCY_GRAPH_ENABLED: false
+2026-10-11T19:58:59.6786422Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-11T19:58:59.6786879Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib/pkgconfig
+2026-10-11T19:58:59.6787336Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-11T19:58:59.6787759Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-11T19:58:59.6788176Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+2026-10-11T19:58:59.6788605Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib
+2026-10-11T19:58:59.6788986Z ##[endgroup]
+2026-10-11T19:58:59.8537636Z (node:3211) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-10-11T19:58:59.8538405Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-10-11T19:58:59.8903874Z With the provided path, there will be 105 files uploaded
+2026-10-11T19:58:59.8904883Z Artifact name is valid!
+2026-10-11T19:58:59.8905403Z Root directory input is valid!
+2026-10-11T19:59:00.2603654Z Beginning upload of artifact content to blob storage
+2026-10-11T19:59:00.4660560Z (node:3211) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-10-11T19:59:01.3115100Z Uploaded bytes 2465124
+2026-10-11T19:59:01.3889908Z Finished uploading artifact content to blob storage!
+2026-10-11T19:59:01.3891296Z SHA256 digest of uploaded artifact zip is 97822195c6c86b44ab1aad3784560c944a441ab221eff2a5feeb09a01f4ae761
+2026-10-11T19:59:01.3892225Z Finalizing artifact upload
+2026-10-11T19:59:01.6538011Z Artifact yuji-client-evidence.zip successfully finalized. Artifact ID 11713887490
+2026-10-11T19:59:01.6540083Z Artifact yuji-client-evidence has been successfully uploaded! Final size is 2465124 bytes. Artifact ID is 11713887490
+2026-10-11T19:59:01.6541977Z Artifact download URL: https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38169852787/artifacts/11713887490
+2026-10-11T19:59:01.6726885Z Post job cleanup.
+2026-10-11T19:59:01.7935577Z (node:3223) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-10-11T19:59:01.7936722Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-10-11T19:59:01.8193452Z Post job cleanup.
+2026-10-11T19:59:02.0685324Z In post-action step
+2026-10-11T19:59:02.0695221Z Cache is read-only: will not save state for use in subsequent builds.
+2026-10-11T19:59:02.0702585Z Generating Job Summary
+2026-10-11T19:59:02.0721685Z Completed post-action step
+2026-10-11T19:59:02.0845614Z Post job cleanup.
+2026-10-11T19:59:02.2274182Z (node:3244) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-10-11T19:59:02.2275527Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-10-11T19:59:02.2483704Z Post job cleanup.
+2026-10-11T19:59:02.3380942Z [command]/usr/bin/git version
+2026-10-11T19:59:02.3428509Z git version 2.55.0
+2026-10-11T19:59:02.3470006Z Temporarily overriding HOME='/home/runner/work/_temp/829c5142-93d3-4f78-a0ae-e31156bfe230' before making global git config changes
+2026-10-11T19:59:02.3471456Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-11T19:59:02.3477701Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/sound-isolating-eraser/sound-isolating-eraser
+2026-10-11T19:59:02.3519491Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-11T19:59:02.3564123Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-11T19:59:02.3821767Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-11T19:59:02.3851456Z http.https://github.com/.extraheader
+2026-10-11T19:59:02.3870561Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+2026-10-11T19:59:02.3912228Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-11T19:59:02.4210380Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-11T19:59:02.4256005Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-11T19:59:02.4674063Z Cleaning up orphan processes
+2026-10-11T19:59:02.4983411Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4, actions/setup-java@v4, actions/setup-python@v5, actions/upload-artifact@v4, gradle/actions/setup-gradle@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
