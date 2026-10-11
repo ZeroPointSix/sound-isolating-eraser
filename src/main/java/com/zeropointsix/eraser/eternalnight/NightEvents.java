@@ -165,7 +165,7 @@ public final class NightEvents {
             if (!CityLayout.street(x, z)) continue;
             if (city.getChunkSource().getChunkNow(x >> 4, z >> 4) == null) continue;
             int top = city.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
-            if (top > CityLayout.surface(x, z) + 2) continue;
+            if (top < CityLayout.surface(x, z) || top > CityLayout.surface(x, z) + 2) continue;
             BlockPos feet = new BlockPos(x, top, z);
             AABB box = new AABB(x + 0.2, top, z + 0.2, x + 0.8, top + 1.8, z + 0.8);
             if (!city.getWorldBorder().isWithinBounds(feet) || !city.getBlockState(feet.below()).isSolid()

@@ -91,7 +91,11 @@ public final class CityEntryQueue {
             ChunkPos pos = new ChunkPos((entry.x >> 4) + dx, (entry.z >> 4) + dz);
             entry.city.getChunkSource().addRegionTicket(TICKET, pos, 0, entry.player.getUUID());
             entry.tickets.add(pos);
-            futures.add(entry.city.getChunkSource().getChunkFuture(pos.x, pos.z, ChunkStatus.FULL, true)
+            // Forge 1.20.1 getChunkFuture calls managedBlock when invoked ON the server thread.
+            // Its off-thread branch safely schedules the request without blocking the tick loop.
+            futures.add(CompletableFuture.supplyAsync(() -> entry.city.getChunkSource()
+                            .getChunkFuture(pos.x, pos.z, ChunkStatus.FULL, true), Util.backgroundExecutor())
+                    .thenCompose(future -> future)
                     .thenApply(result -> result.left().isPresent()));
         }
         entry.chunks = CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new))

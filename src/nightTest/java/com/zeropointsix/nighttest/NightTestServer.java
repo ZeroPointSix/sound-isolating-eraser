@@ -32,6 +32,8 @@ public final class NightTestServer {
     private static ServerPlayer owner, observer;
     private static BlockPos door;
     private static int phase;
+    private static long lastEntryTick, longestEntryTick;
+    private static int entryTicks;
 
     @SubscribeEvent public static void commands(RegisterCommandsEvent event) {
         if (!ENABLED) return;
@@ -48,6 +50,13 @@ public final class NightTestServer {
         if (!ENABLED || event.phase != TickEvent.Phase.END || phase == 99) return;
         try {
             var server = event.getServer();
+            if (phase == -1) {
+                long gap = System.nanoTime() - lastEntryTick;
+                longestEntryTick = Math.max(longestEntryTick, gap);
+                require(gap < 10_000_000_000L, "entry keeps server responsive: tick gap " + gap / 1_000_000 + " ms");
+                lastEntryTick = System.nanoTime();
+                entryTicks++;
+            }
             if (phase == 0) {
                 owner = server.getPlayerList().getPlayers().stream().filter(p -> p.getGameProfile().getName().equals("NightOwner")).findFirst().orElse(null);
                 observer = server.getPlayerList().getPlayers().stream().filter(p -> p.getGameProfile().getName().equals("NightObserver")).findFirst().orElse(null);
@@ -58,8 +67,11 @@ public final class NightTestServer {
                 prepareBed(owner, -8); prepareBed(observer, 8);
                 require(NightEvents.enter(owner) && NightEvents.enter(observer), "both real clients queue original city entry");
                 require(CityEntryQueue.pending(owner) && CityEntryQueue.pending(observer), "entry is nonblocking");
+                lastEntryTick = System.nanoTime();
                 phase = -1;
             } else if (phase == -1 && EternalNightContent.isCity(owner.level()) && EternalNightContent.isCity(observer.level())) {
+                require(entryTicks >= 2, "server advances while cold city prepares");
+                System.out.println("NIGHT_ENTRY_RESPONSIVE ticks=" + entryTicks + " maxGapMs=" + longestEntryTick / 1_000_000);
                 require(owner.position().distanceTo(observer.position()) <= 48, "same-night cohort remains within 48 blocks");
                 setupInteractionFixture(owner.serverLevel(), owner.blockPosition());
                 say(owner, "READY"); say(observer, "READY");
