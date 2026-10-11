@@ -92,6 +92,12 @@ final class NightCitySurvey {
                 current.addProperty("nativeEntranceWalkPassed", crossed);
                 current.addProperty("finalPosition", player.blockPosition().toShortString());
                 current.addProperty("doorState", city.getBlockState(door).toString());
+                var hit = city.clip(new net.minecraft.world.level.ClipContext(player.getEyePosition(),
+                        player.getEyePosition().add(player.getLookAngle().scale(5)),
+                        net.minecraft.world.level.ClipContext.Block.OUTLINE,
+                        net.minecraft.world.level.ClipContext.Fluid.NONE, player));
+                current.addProperty("forwardHit", hit.getBlockPos().toShortString());
+                current.addProperty("forwardBlock", city.getBlockState(hit.getBlockPos()).toString());
                 signal("SURVEY_STOP:" + target.name());
                 phase = 3; ticks = 0;
             }

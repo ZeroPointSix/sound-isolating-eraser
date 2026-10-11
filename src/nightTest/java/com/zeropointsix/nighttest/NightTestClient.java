@@ -169,6 +169,15 @@ public final class NightTestClient {
             if (phase.startsWith("SURVEY_WALK:") && !surveyWalking) {
                 nativeInput("keydown", "w"); surveyWalking = true;
             }
+            if (phase.startsWith("SURVEY_WALK:") && ticks % 10 == 0
+                    && client.hitResult instanceof net.minecraft.world.phys.BlockHitResult hit) {
+                var state = client.level.getBlockState(hit.getBlockPos());
+                if (state.getBlock() instanceof net.minecraft.world.level.block.DoorBlock
+                        && !state.getValue(net.minecraft.world.level.block.DoorBlock.OPEN)) {
+                    System.out.println("NIGHT_SURVEY_NATIVE_CLICK target=" + hit.getBlockPos() + " state=" + state);
+                    nativeInput("click", "3");
+                }
+            }
             if (phase.startsWith("SURVEY_STOP:") && ticks == 1) {
                 nativeInput("keyup", "w"); surveyWalking = false;
                 capture(client, "entrance-after-" + phase.substring(12));

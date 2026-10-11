@@ -210,8 +210,10 @@ public final class BrickrotGameTests {
 
     @GameTest(template = "brickrot_empty")
     public static void brickrotLightLureAndLineOfSight(GameTestHelper h) {
+        // The 40-block lure scan must not include another parallel fixture's dropped items.
         BrickrotWallEntity wall = wall(h);
-        var villager = h.spawn(EntityType.VILLAGER, new BlockPos(32, 4, 31));
+        wall.setPos(wall.getX(), wall.getY() + 96, wall.getZ());
+        var villager = h.spawn(EntityType.VILLAGER, new BlockPos(32, 100, 31));
         villager.setNoAi(true);
         villager.setNoGravity(true);
         var light = new ItemEntity(h.getLevel(), wall.getX() + 20, wall.getY(), wall.getZ(), new ItemStack(Items.TORCH));
@@ -222,10 +224,15 @@ public final class BrickrotGameTests {
         h.getLevel().setBlock(wall.blockPosition().offset(10, 1, 0), Blocks.STONE.defaultBlockState(), 3);
         h.assertTrue(wall.detectable(light), "dropped light can lure around obstacles");
         light.discard();
-        h.assertTrue(wall.findQuarry() == villager, "living target is acquired without lure");
+        var selected = wall.findQuarry();
+        System.out.println("BRICKROT_LURE_SELECTED actual=" + selected + " expected=" + villager
+                + " detectable=" + wall.detectable(villager) + " distance=" + wall.distanceTo(villager));
+        h.assertTrue(selected == villager, "living target is acquired without lure: " + selected);
         for (int x = -2; x <= 2; x++) for (int y = 0; y <= 4; y++)
             h.getLevel().setBlock(wall.blockPosition().offset(x, y, 3), Blocks.STONE.defaultBlockState(), 3);
         h.assertTrue(!wall.detectable(villager), "living target requires line of sight");
+        wall.discard();
+        villager.discard();
         h.succeed();
     }
 
