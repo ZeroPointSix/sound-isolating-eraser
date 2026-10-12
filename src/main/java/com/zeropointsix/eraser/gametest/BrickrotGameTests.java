@@ -6,6 +6,8 @@ import com.zeropointsix.eraser.brickrot.BrickrotEmergence;
 import com.zeropointsix.eraser.brickrot.BrickrotPart;
 import com.zeropointsix.eraser.brickrot.BrickrotTrail;
 import com.zeropointsix.eraser.brickrot.BrickrotWallEntity;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
@@ -29,6 +31,7 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.GameRules;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
@@ -39,6 +42,8 @@ import net.minecraftforge.common.ForgeSpawnEggItem;
 @GameTestHolder(ModMain.MOD_ID)
 @PrefixGameTestTemplate(false)
 public final class BrickrotGameTests {
+    private static final int TARGET_FIXTURE_Y = 100;
+
     private static BrickrotWallEntity wall(GameTestHelper h) {
         return wall(h, 4);
     }
@@ -51,6 +56,33 @@ public final class BrickrotGameTests {
         wall.setNoGravity(true);
         wall.setYRot(0);
         return wall;
+    }
+
+    private static BrickrotWallEntity targetFixtureWall(GameTestHelper h, Map<BlockPos, BlockState> savedBlocks) {
+        int floorY = h.absolutePos(new BlockPos(32, TARGET_FIXTURE_Y - 1, 25)).getY();
+        int topY = h.absolutePos(new BlockPos(32, TARGET_FIXTURE_Y + 8, 25)).getY();
+        h.assertTrue(floorY >= h.getLevel().getMinBuildHeight() && topY < h.getLevel().getMaxBuildHeight(),
+                "isolated target fixture must fit inside the world's build height");
+        for (int x = 29; x <= 35; x++) for (int z = 0; z < 63; z++) {
+            BlockPos pos = h.absolutePos(new BlockPos(x, TARGET_FIXTURE_Y - 1, z));
+            savedBlocks.putIfAbsent(pos, h.getLevel().getBlockState(pos));
+            // A raised relative Y can still be underground; keep bodies and attack rays unobstructed.
+            for (int y = 0; y <= 8; y++) {
+                setFixtureBlock(h, savedBlocks, h.absolutePos(new BlockPos(x, TARGET_FIXTURE_Y + y, z)),
+                        Blocks.AIR.defaultBlockState());
+            }
+        }
+        return wall(h, TARGET_FIXTURE_Y);
+    }
+
+    private static void setFixtureBlock(GameTestHelper h, Map<BlockPos, BlockState> savedBlocks,
+            BlockPos pos, BlockState state) {
+        savedBlocks.putIfAbsent(pos, h.getLevel().getBlockState(pos));
+        h.getLevel().setBlock(pos, state, 3);
+    }
+
+    private static void restoreFixtureBlocks(GameTestHelper h, Map<BlockPos, BlockState> savedBlocks) {
+        savedBlocks.forEach((pos, state) -> h.getLevel().setBlock(pos, state, 3));
     }
 
     private static DamageSource damage(GameTestHelper h, ResourceKey<DamageType> type) {
@@ -211,37 +243,40 @@ public final class BrickrotGameTests {
     @GameTest(template = "brickrot_empty")
     public static void brickrotLightLureAndLineOfSight(GameTestHelper h) {
         // The 40-block lure scan must not include another parallel fixture's dropped items.
-        BrickrotWallEntity wall = wall(h);
-        wall.setPos(wall.getX(), wall.getY() + 96, wall.getZ());
-        var villager = h.spawn(EntityType.VILLAGER, new BlockPos(32, 100, 31));
+        var savedBlocks = new LinkedHashMap<BlockPos, BlockState>();
+        BrickrotWallEntity wall = targetFixtureWall(h, savedBlocks);
+        var villager = h.spawn(EntityType.VILLAGER, new BlockPos(32, TARGET_FIXTURE_Y, 31));
         villager.setNoAi(true);
         villager.setNoGravity(true);
-        var baseline = h.getLevel().clip(new net.minecraft.world.level.ClipContext(wall.getEyePosition(),
-                villager.getEyePosition(), net.minecraft.world.level.ClipContext.Block.COLLIDER,
-                net.minecraft.world.level.ClipContext.Fluid.NONE, wall));
-        System.out.println("BRICKROT_LURE_BASELINE_HIT " + baseline.getType() + " at=" + baseline.getBlockPos()
-                + " block=" + h.getLevel().getBlockState(baseline.getBlockPos()));
-        for (int x = -2; x <= 2; x++) for (int y = 0; y <= 5; y++) for (int z = -1; z <= 8; z++)
-            h.getLevel().setBlock(wall.blockPosition().offset(x, y, z), Blocks.AIR.defaultBlockState(), 3);
         var light = new ItemEntity(h.getLevel(), wall.getX() + 20, wall.getY(), wall.getZ(), new ItemStack(Items.TORCH));
         light.setNoGravity(true);
         light.setDeltaMovement(Vec3.ZERO);
-        h.getLevel().addFreshEntity(light);
-        h.assertTrue(wall.findQuarry() == light, "dropped light outranks closer living target");
-        h.getLevel().setBlock(wall.blockPosition().offset(10, 1, 0), Blocks.STONE.defaultBlockState(), 3);
-        h.assertTrue(wall.detectable(light), "dropped light can lure around obstacles");
-        light.discard();
-        var selected = wall.findQuarry();
-        System.out.println("BRICKROT_LURE_SELECTED actual=" + selected + " expected=" + villager
-                + " detectable=" + wall.detectable(villager) + " distance=" + wall.distanceTo(villager)
-                + " alive=" + villager.isAlive() + " eyes=" + wall.getEyePosition() + "/" + villager.getEyePosition());
-        h.assertTrue(selected == villager, "living target is acquired without lure: " + selected);
-        for (int x = -2; x <= 2; x++) for (int y = 0; y <= 4; y++)
-            h.getLevel().setBlock(wall.blockPosition().offset(x, y, 3), Blocks.STONE.defaultBlockState(), 3);
-        h.assertTrue(!wall.detectable(villager), "living target requires line of sight");
-        wall.discard();
-        villager.discard();
-        h.succeed();
+        try {
+            var baseline = h.getLevel().clip(new net.minecraft.world.level.ClipContext(wall.getEyePosition(),
+                    villager.getEyePosition(), net.minecraft.world.level.ClipContext.Block.COLLIDER,
+                    net.minecraft.world.level.ClipContext.Fluid.NONE, wall));
+            System.out.println("BRICKROT_LURE_BASELINE_HIT " + baseline.getType() + " at=" + baseline.getBlockPos()
+                    + " block=" + h.getLevel().getBlockState(baseline.getBlockPos()));
+            for (int x = -2; x <= 2; x++) for (int y = 0; y <= 5; y++) for (int z = -1; z <= 8; z++)
+                setFixtureBlock(h, savedBlocks, wall.blockPosition().offset(x, y, z), Blocks.AIR.defaultBlockState());
+            h.getLevel().addFreshEntity(light);
+            h.assertTrue(wall.findQuarry() == light, "dropped light outranks closer living target");
+            setFixtureBlock(h, savedBlocks, wall.blockPosition().offset(10, 1, 0), Blocks.STONE.defaultBlockState());
+            h.assertTrue(wall.detectable(light), "dropped light can lure around obstacles");
+            light.discard();
+            var selected = wall.findQuarry();
+            System.out.println("BRICKROT_LURE_SELECTED actual=" + selected + " expected=" + villager
+                    + " detectable=" + wall.detectable(villager) + " distance=" + wall.distanceTo(villager)
+                    + " alive=" + villager.isAlive() + " eyes=" + wall.getEyePosition() + "/" + villager.getEyePosition());
+            h.assertTrue(selected == villager, "living target is acquired without lure: " + selected);
+            for (int x = -2; x <= 2; x++) for (int y = 0; y <= 4; y++)
+                setFixtureBlock(h, savedBlocks, wall.blockPosition().offset(x, y, 3), Blocks.STONE.defaultBlockState());
+            h.assertTrue(!wall.detectable(villager), "living target requires line of sight");
+            h.succeed();
+        } finally {
+            wall.discard(); villager.discard(); light.discard();
+            restoreFixtureBlocks(h, savedBlocks);
+        }
     }
 
     @GameTest(template = "brickrot_empty")
@@ -375,12 +410,22 @@ public final class BrickrotGameTests {
 
     @GameTest(template = "brickrot_empty", timeoutTicks = 100)
     public static void brickrotBiteHasWindupAndTwelveDamage(GameTestHelper h) {
-        BrickrotWallEntity wall = wall(h);
-        var target = h.spawn(EntityType.VILLAGER, new BlockPos(32, 4, 28));
+        // findQuarry scans the shared level, where luminous drops outrank even nearby villagers.
+        var savedBlocks = new LinkedHashMap<BlockPos, BlockState>();
+        BrickrotWallEntity wall = targetFixtureWall(h, savedBlocks);
+        var target = h.spawn(EntityType.VILLAGER, new BlockPos(32, TARGET_FIXTURE_Y, 28));
         target.setNoAi(true);
         target.setNoGravity(true);
+        var groundLure = new ItemEntity(h.getLevel(), wall.getX(),
+                h.absolutePos(new BlockPos(32, 4, 25)).getY(), wall.getZ(), new ItemStack(Items.TORCH));
+        groundLure.setNoGravity(true);
+        groundLure.setDeltaMovement(Vec3.ZERO);
+        h.getLevel().addFreshEntity(groundLure);
         try {
-            h.assertTrue(wall.findQuarry() == target, "bite fixture selects its own target");
+            h.assertTrue(groundLure.isAlive() && !wall.detectable(groundLure),
+                    "ground-level luminous drops stay outside the isolated encounter");
+            var selected = wall.findQuarry();
+            h.assertTrue(selected == target, "bite fixture selects its own target: " + selected);
             wall.setNoAi(false);
             // Like the sweep test, advance only this encounter rather than neighboring fixtures.
             for (int i = 0; i < 54; i++) wall.tick();
@@ -390,29 +435,38 @@ public final class BrickrotGameTests {
             near(h, target.getHealth(), 8, "bite hits for twelve");
             h.succeed();
         } finally {
-            wall.discard(); target.discard();
+            wall.discard(); target.discard(); groundLure.discard();
+            restoreFixtureBlocks(h, savedBlocks);
         }
     }
 
     @GameTest(template = "brickrot_empty", timeoutTicks = 100)
     public static void brickrotSweepHitsOnlyOnce(GameTestHelper h) {
-        BrickrotWallEntity wall = wall(h);
+        var savedBlocks = new LinkedHashMap<BlockPos, BlockState>();
+        BrickrotWallEntity wall = targetFixtureWall(h, savedBlocks);
         // Behind the head, inside the first red part's sweep radius, without a chase step.
-        var target = h.spawn(EntityType.VILLAGER, new BlockPos(33, 4, 22));
+        var target = h.spawn(EntityType.VILLAGER, new BlockPos(33, TARGET_FIXTURE_Y, 22));
         target.setNoAi(true);
         target.setNoGravity(true);
-        wall.tick();
-        h.assertTrue(wall.getParts()[3].distanceToSqr(target) < 36,
-                "fixture begins inside a red section's six-block sweep radius");
-        h.assertTrue(wall.findQuarry() == target, "fixture selects its own side target before advancing AI");
-        wall.setNoAi(false);
-        // Advance only this encounter so neighboring parallel tests cannot move the fixture.
-        for (int i = 0; i < 60; i++) wall.tick();
-        h.assertTrue(wall.action() == BrickrotWallEntity.Action.SWEEP, "side target selects sweep");
-        near(h, target.getHealth(), 20, "sweep telegraph precedes damage");
-        for (int i = 0; i < 10; i++) wall.tick();
-        near(h, target.getHealth(), 10, "four red sections apply a single ten-damage hit");
-        h.succeed();
+        try {
+            wall.tick();
+            h.assertTrue(wall.getParts()[3].distanceToSqr(target) < 36,
+                    "fixture begins inside a red section's six-block sweep radius");
+            var selected = wall.findQuarry();
+            h.assertTrue(selected == target,
+                    "fixture selects its own side target before advancing AI: " + selected);
+            wall.setNoAi(false);
+            // Advance only this encounter so neighboring parallel tests cannot move the fixture.
+            for (int i = 0; i < 60; i++) wall.tick();
+            h.assertTrue(wall.action() == BrickrotWallEntity.Action.SWEEP, "side target selects sweep");
+            near(h, target.getHealth(), 20, "sweep telegraph precedes damage");
+            for (int i = 0; i < 10; i++) wall.tick();
+            near(h, target.getHealth(), 10, "four red sections apply a single ten-damage hit");
+            h.succeed();
+        } finally {
+            wall.discard(); target.discard();
+            restoreFixtureBlocks(h, savedBlocks);
+        }
     }
 
     @GameTest(template = "brickrot_empty")
@@ -431,7 +485,8 @@ public final class BrickrotGameTests {
 
     @GameTest(template = "brickrot_empty", timeoutTicks = 100)
     public static void brickrotCloseLureDoesNotRestartScan(GameTestHelper h) {
-        BrickrotWallEntity wall = wall(h);
+        var savedBlocks = new LinkedHashMap<BlockPos, BlockState>();
+        BrickrotWallEntity wall = targetFixtureWall(h, savedBlocks);
         var light = new ItemEntity(h.getLevel(), wall.getX(), wall.getY(), wall.getZ() + 3, new ItemStack(Items.TORCH));
         light.setNoGravity(true);
         light.setDeltaMovement(Vec3.ZERO);
@@ -451,6 +506,7 @@ public final class BrickrotGameTests {
             h.succeed();
         } finally {
             wall.discard(); light.discard();
+            restoreFixtureBlocks(h, savedBlocks);
         }
     }
 
