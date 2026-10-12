@@ -176,7 +176,7 @@ tasks.named('processResources', ProcessResources).configure {
     from('src/main/resources/data/sound_isolating_eraser/structures/empty.nbt') {
         into 'data/eternal_night_tests/structures'
     }
-    from('src/main/resources/data/sound_isolating_eraser/structures/empty.nbt') {
+    from(layout.buildDirectory.file('generated/brickrot-test-resources/data/sound_isolating_eraser/structures/brickrot_empty.nbt')) {
         into 'data/wings_blink_tests/structures'
     }
     var replaceProperties = [
