@@ -469,8 +469,9 @@ public final class YujiGameTests {
         // Exercise every production action tick, independently of asynchronous chunk activation.
         for (int tick = 0; tick < 40; tick++) {
             boundaryStep(chanter);
-            h.assertTrue(chanter.actionSerial() == cast,
-                    "skill cooldown must not restart the active chant: " + chanter.actionSerial() + " != " + cast);
+            // On tick 39 the 40-tick cast has finished and a ready next cast is allowed.
+            h.assertTrue(chanter.actionSerial() == cast + (tick == 39 ? 1 : 0),
+                    "cast serial at action tick " + tick + ": " + chanter.actionSerial());
             close(h, cow.getHealth(), tick < 15 ? 40 : tick < 32 ? 34 : 28,
                     "exact chant damage at action tick " + tick);
             cow.tick(); // Advance the real hurt-immunity clock between the two pulses.

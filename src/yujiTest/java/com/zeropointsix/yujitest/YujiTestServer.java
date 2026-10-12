@@ -43,7 +43,7 @@ public final class YujiTestServer {
     private static String mode = "ready";
     private static int elapsed, mobHits, playerHits, summonsObserved;
     private static double chantRange;
-    private static boolean effectObserved, spikeStuck;
+    private static boolean effectObserved, spikeStuck, acquiredTarget;
     private static YujiMonster supportAlly;
     private static boolean supportBuffed, summonRefilled, golemTargeted;
     private static final HashSet<UUID> firstSummons = new HashSet<>();
@@ -96,6 +96,7 @@ public final class YujiTestServer {
                 case "gallery" -> { if (clientDone(current.kind().id())) startAi(player); }
                 case "ai" -> {
                     elapsed++;
+                    acquiredTarget |= current.getTarget() == player;
                     if (player.getHealth() < 100) player.setHealth(400);
                     effectObserved |= switch (current.kind()) {
                         case EKOU -> chantRange >= 3;
@@ -245,7 +246,7 @@ public final class YujiTestServer {
             supportBuffed = false; summonRefilled = false; firstSummons.clear();
         }
         if (current.kind() == YujiKind.CHENNU) require(current.getTarget() == null, "giant starts neutral before real player attack");
-        current.setNoAi(false); elapsed = 0; mobHits = 0; playerHits = 0; effectObserved = false; chantRange = 0; summonsObserved = 0;
+        current.setNoAi(false); elapsed = 0; mobHits = 0; playerHits = 0; effectObserved = false; chantRange = 0; summonsObserved = 0; acquiredTarget = false;
         mode = "ai"; signal(player, "ai-" + current.kind().id());
     }
 
@@ -264,7 +265,9 @@ public final class YujiTestServer {
 
     private static void finishAi(ServerPlayer player) throws Exception {
         double moved = current.position().distanceTo(initialPosition);
-        require(current.getTarget() == player, "AI naturally tracks connected survival player: " + current.kind()
+        // Theft deliberately ends with fleeing; escaping beyond aggro range must not fail the chase test.
+        require(acquiredTarget && (current.kind() == YujiKind.TOUDAO || current.getTarget() == player),
+                "AI naturally tracks connected survival player before an allowed escape: " + current.kind()
                 + ", mob=" + current.position() + ", player=" + player.position() + ", target=" + current.getTarget());
         switch (current.kind()) {
             case YUCHI -> require(moved > .3 && mobHits == 0, "passive follow without direct attack");
@@ -284,7 +287,8 @@ public final class YujiTestServer {
             }
             case SHIFOTOU -> require(effectObserved && mobHits > 0, "boss gaze and combat affect connected player");
         }
-        pass("ai-" + current.kind().id(), "realPlayer=" + player.getUUID() + ", floorCollision=true, aiTarget=true, moved=" + moved
+        pass("ai-" + current.kind().id(), "realPlayer=" + player.getUUID() + ", floorCollision=true, aiTargetObserved=" + acquiredTarget
+                + ", finalAiTarget=" + (current.getTarget() == player) + ", moved=" + moved
                 + ", playerDamageEvents=" + mobHits + ", hitsByPlayer=" + playerHits + ", statusObserved=" + effectObserved + ", chantRange=" + chantRange
                 + ", summons=" + summonsObserved + (current.kind() == YujiKind.QIYU ? ", allyFourBuffs=" + supportBuffed + ", replenished=" + summonRefilled : ""));
         for (YujiMonster summoned : player.serverLevel().getEntitiesOfClass(YujiMonster.class, current.getBoundingBox().inflate(64),
