@@ -194,7 +194,7 @@ public final class YujiIsolationServer {
                     if (current.horizontalCollision) contacts++;
                     if (current.verticalCollision && !current.onGround()) collisionTicks++;
                     highest = Math.max(highest, current.getY()); furthest = Math.max(furthest, current.getX());
-                    if (round < 2 && current.getY() > (round == 0 ? 86 : 81) && ticks % 20 == 0) {
+                    if (round < 2 && highest >= (round == 0 ? 86 : 81) && ticks % 20 == 0) {
                         // A moving connected target remains within aggro range while drawing the entire large body over the ledge.
                         int x = Math.min(65, (int) current.getX() + 42), z = round == 1 ? Math.min(65, (int) current.getZ() + 42) : 0;
                         fill(level, x - 1, 93, z - 1, x + 1, 93, z + 1);
@@ -269,8 +269,11 @@ public final class YujiIsolationServer {
     private static void beginDoor(ServerPlayer a, ServerPlayer b) {
         clear(a.serverLevel()); place(a, .5, 65, 13, 180); place(b, 8, 65, 8, 90);
         var level = a.serverLevel(); fill(level, -1, 65, 0, -1, 68, 16); fill(level, 1, 65, 0, 1, 68, 16);
+        // Seal both ends so a path around the side walls cannot be mistaken for crossing the door.
+        fill(level, -1, 65, -1, 1, 68, -1); fill(level, -1, 65, 17, 1, 68, 17);
         fill(level, 0, 67, 6, 0, 68, 6); door(level, true);
         current = spawn(level, YujiKind.YUCHI, .5, 65, 1, true);
+        require(level.noCollision(current) && level.noCollision(a), "door fixture starts with both bodies clear of walls");
         if (round == 1) current.setHealth(current.getMaxHealth() * .2F);
         current.setNoAi(false); item = "door-" + (round == 0 ? "standing" : "crawling"); next("door-acquire");
     }
