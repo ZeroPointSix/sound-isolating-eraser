@@ -43,6 +43,7 @@ import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.goal.FloatGoal;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.ai.goal.WaterAvoidingRandomStrollGoal;
+import net.minecraft.world.entity.animal.IronGolem;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.player.Player;
@@ -83,6 +84,7 @@ public final class YujiMonster extends Monster implements GeoEntity {
         xpReward = kind.giant() ? 50 : 5;
         if (kind == YujiKind.TANYU) setLayers(2, false);
         if (kind == YujiKind.SHIFOTOU) setHealth(getMaxHealth());
+        refreshDimensions();
     }
     @Override public double getAttributeValue(Attribute attribute) {
         if (kind != YujiKind.SHIFOTOU || attribute != Attributes.MAX_HEALTH) return super.getAttributeValue(attribute);
@@ -162,6 +164,15 @@ public final class YujiMonster extends Monster implements GeoEntity {
         if (kind == YujiKind.CHENNU) {
             Player player = grudgePlayer();
             setTarget(player != null && vulnerable(player) ? player : null);
+        } else if (kind == YujiKind.SHIFOTOU) {
+            if (getTarget() == null || !getTarget().isAlive() || distanceToSqr(getTarget()) > 64 * 64
+                    || getTarget() instanceof Player p && !vulnerable(p)) {
+                LivingEntity pick = nearbyPlayers(64).stream().filter(this::hasLineOfSight)
+                        .min(java.util.Comparator.comparingDouble(this::distanceToSqr)).orElse(null);
+                if (pick == null) pick = level().getEntitiesOfClass(IronGolem.class, getBoundingBox().inflate(64), g -> g.isAlive())
+                        .stream().min(java.util.Comparator.comparingDouble(this::distanceToSqr)).orElse(null);
+                setTarget(pick);
+            }
         } else if (getTarget() == null || !getTarget().isAlive() || distanceToSqr(getTarget()) > 40 * 40
                 || getTarget() instanceof Player p && !vulnerable(p)) {
             setTarget(nearbyPlayers(kind == YujiKind.WANGYU ? 24 : 32).stream()
@@ -234,10 +245,10 @@ public final class YujiMonster extends Monster implements GeoEntity {
         skillCooldown = 80;
         switch (kind) {
             case EKOU -> {
-                for (Player p : nearbyPlayers(12)) YujiAfflictions.apply(p, this, "cursed");
-                skillCooldown = 20;
-                if (tickCount % 160 < 20 && getTarget() != null && distanceToSqr(getTarget()) <= 256 && hasLineOfSight(getTarget())) begin("spike_volley", 28, getTarget());
-                else if (actionTicks == 0 && !nearbyPlayers(12).isEmpty()) begin("curse", 24, getTarget());
+                LivingEntity target = getTarget();
+                if (target != null && distanceToSqr(target) <= 24 * 24 && hasLineOfSight(target)) begin("chant", 40, target);
+                else if (target != null && distanceToSqr(target) <= 256 && hasLineOfSight(target)) begin("spike_volley", 28, target);
+                skillCooldown = 60;
             }
             case LIANGSHE -> {
                 for (Player p : nearbyPlayers(20)) YujiAfflictions.apply(p, this, "betrayed");
@@ -250,6 +261,7 @@ public final class YujiMonster extends Monster implements GeoEntity {
                 } else skillCooldown = 10;
             }
             case WANGYU -> { mimic(); skillCooldown = 120 + random.nextInt(81); }
+            case QIYU -> { if (actionTicks == 0) begin("bless", 30, null); skillCooldown = 240; }
             case CHENNU -> {
                 if (actionTicks == 0 && !nearbyPlayers(4).isEmpty()) { begin("stomp", 36, getTarget()); stompBurst = true; }
                 skillCooldown = 80;
@@ -285,8 +297,22 @@ public final class YujiMonster extends Monster implements GeoEntity {
                     target.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 60, 2));
                 }
             }
+            case "chant" -> {
+                if ((tick == 15 || tick == 32) && target != null && target.isAlive()
+                        && distanceToSqr(target) <= 26 * 26 && hasLineOfSight(target))
+                    target.hurt(damageSources().indirectMagic(this, this), 6);
+            }
+            case "bless" -> { if (tick == 15) blessAllies(); }
             default -> { }
         }
+    }
+    private void blessAllies() {
+        MobEffectInstance[] buffs = {new MobEffectInstance(MobEffects.DAMAGE_BOOST, 220, 0),
+                new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 220, 0),
+                new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, 220, 0),
+                new MobEffectInstance(MobEffects.REGENERATION, 220, 0)};
+        for (YujiMonster ally : level().getEntitiesOfClass(YujiMonster.class, getBoundingBox().inflate(16), y -> y != this))
+            for (MobEffectInstance buff : buffs) ally.addEffect(new MobEffectInstance(buff));
     }
     private boolean strike(@Nullable LivingEntity target, float damage, boolean secondHit) {
         if (target == null || !target.isAlive() || target instanceof Player p && !vulnerable(p)
@@ -352,7 +378,11 @@ public final class YujiMonster extends Monster implements GeoEntity {
         refreshDimensions();
     }
     public void absorb(int layers) { setLayers(layers() + layers, true); begin("absorb", 24, null); }
-    public float modelScale() { return kind == YujiKind.TANYU ? 1 + .02F * layers() : 1; }
+    public float modelScale() {
+        if (kind == YujiKind.SHIFOTOU) return 5;
+        if (kind == YujiKind.XIEYIN) return 3;
+        return kind == YujiKind.TANYU ? 1 + .02F * layers() : 1;
+    }
     @Override public EntityDimensions getDimensions(Pose pose) {
         if (kind == null) return super.getDimensions(pose);
         return EntityDimensions.scalable(kind.width * modelScale(), crawling() ? .6F : kind.height * modelScale());

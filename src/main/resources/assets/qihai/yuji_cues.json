@@ -136,6 +136,31 @@
     "spread": 4,
     "sound": "volley"
    }
+  ],
+  "chant": [
+   {
+    "t": 0.3,
+    "vfx": "curse_glyph",
+    "bone": "head",
+    "off": [
+     0,
+     4,
+     0
+    ],
+    "spread": 14,
+    "sound": "curse"
+   },
+   {
+    "t": 0.5,
+    "vfx": "curse_aura",
+    "bone": "torso",
+    "off": [
+     0,
+     4,
+     0
+    ],
+    "spread": 24
+   }
   ]
  },
  "wangyu": {
@@ -250,6 +275,37 @@
      0,
      -4,
      -6
+    ]
+   }
+  ],
+  "bless": [
+   {
+    "t": 0.4,
+    "vfx": "sweet_haze",
+    "bone": "torso",
+    "off": [
+     0,
+     4,
+     0
+    ],
+    "spread": 18,
+    "count": 8
+   },
+   {
+    "t": 0.75,
+    "vfx": "karma_wisp",
+    "bone": "flute",
+    "off": [
+     0,
+     -4,
+     -6
+    ],
+    "count": 6,
+    "speed": 30,
+    "dir": [
+     0,
+     1,
+     0
     ]
    }
   ]

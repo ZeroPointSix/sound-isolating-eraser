@@ -411,7 +411,8 @@ public final class YujiGameTests {
         try {
             server.setDifficulty(net.minecraft.world.Difficulty.NORMAL, true);
             h.assertTrue(boss.getBoundingBox().intersects(p.getBoundingBox()) == touching, "actual AABB contact control");
-            h.assertTrue(boss.nearbyPlayers(32).contains(p), "positive control: player is queryable");
+            h.assertTrue(h.getLevel().getEntitiesOfClass(Player.class, boss.getBoundingBox().inflate(64))
+                    .contains(p), "positive control: player is queryable");
             boss.tickCount = 19; boundaryStep(boss); close(h, p.getHealth(), 20, "no damage before interval");
             boss.tickCount = 20; boundaryStep(boss); close(h, p.getHealth(), touching ? 10 : 20, "R13 contact damage is ten");
             p.invulnerableTime = 0;
@@ -423,13 +424,13 @@ public final class YujiGameTests {
         } finally { p.discard(); server.setDifficulty(difficulty, true); }
     }
     @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
-    public static void yujiBossCrushesSideContact(GameTestHelper h) throws ReflectiveOperationException { bossContact(h, 3.2, 0, true); }
+    public static void yujiBossCrushesSideContact(GameTestHelper h) throws ReflectiveOperationException { bossContact(h, 15.2, 0, true); }
     @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
-    public static void yujiBossCrushesUpperContact(GameTestHelper h) throws ReflectiveOperationException { bossContact(h, 0, 7.8, true); }
+    public static void yujiBossCrushesUpperContact(GameTestHelper h) throws ReflectiveOperationException { bossContact(h, 0, 39.8, true); }
     @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
-    public static void yujiBossDoesNotCrushOutsideBody(GameTestHelper h) throws ReflectiveOperationException { bossContact(h, 3.31, 0, false); }
+    public static void yujiBossDoesNotCrushOutsideBody(GameTestHelper h) throws ReflectiveOperationException { bossContact(h, 15.31, 0, false); }
     @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
-    public static void yujiBossDoesNotCrushAboveBody(GameTestHelper h) throws ReflectiveOperationException { bossContact(h, 0, 8.01, false); }
+    public static void yujiBossDoesNotCrushAboveBody(GameTestHelper h) throws ReflectiveOperationException { bossContact(h, 0, 40.01, false); }
     @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji", timeoutTicks = 100)
     public static void yujiGiantDeathAnimationCompletes(GameTestHelper h) {
         YujiMonster boss = monster(h, YujiKind.SHIFOTOU);

@@ -82,6 +82,13 @@ public final class YujiRenderer extends GeoEntityRenderer<YujiMonster> {
                 @Override public ResourceLocation getAnimationResource(BoneSpike entity) { return YujiContent.id("animations/bone_spike.animation.json"); }
             });
         }
+        @Override public void preRender(PoseStack pose, BoneSpike entity, BakedGeoModel model, MultiBufferSource buffers,
+                                        VertexConsumer buffer, boolean reRender, float tick, int light, int overlay,
+                                        float red, float green, float blue, float alpha) {
+            scaleWidth = scaleHeight = entity.stuck() ? 1.7F : 1.4F;
+            shadowRadius = entity.getBbWidth() * .8F;
+            super.preRender(pose, entity, model, buffers, buffer, reRender, tick, light, overlay, red, green, blue, alpha);
+        }
         @Override protected void applyRotations(BoneSpike entity, PoseStack pose, float age, float yaw, float tick) {
             pose.mulPose(Axis.YP.rotationDegrees(entity.getYRot()));
             pose.mulPose(Axis.XP.rotationDegrees(-entity.getXRot()));
