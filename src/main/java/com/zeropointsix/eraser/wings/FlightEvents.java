@@ -9,7 +9,6 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.UUID;
 import java.util.WeakHashMap;
-import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -101,7 +100,7 @@ public final class FlightEvents {
     }
 
     public static void serverBlink(ServerPlayer p) {
-        if (!WingsState.deployed(p)) return;
+        if (!p.isAlive() || p.isSpectator() || !WingsState.wearing(p) || !WingsState.deployed(p)) return;
         ServerLevel level = p.serverLevel();
         long now = level.getGameTime();
         WingsConfig.Server cfg = WingsConfig.SERVER;
@@ -114,43 +113,35 @@ public final class FlightEvents {
         if (times.length == 0 || now - times[0] >= cfg.blinkChainWindowTicks.get()) {
             times = new long[0]; // 链窗已结束（或无链），整条作废
         }
-        if (times.length == 0) {
-            // 新链第一闪：走普通冷却，成功后锚定链窗
-            if (now < WingsState.blinkCooldownUntil(p)) return;
-            WingsState.setBlinkTimes(p, new long[]{now});
-        } else if (times.length >= cfg.blinkChainMax.get() - 1) {
+        if (times.length == 0 && now < WingsState.blinkCooldownUntil(p)) return;
+
+        var destination = BlinkDestination.find(p, cfg.blinkDistance.get());
+        if (destination.isEmpty()) return;
+        Vec3 target = destination.get();
+        Vec3 eye = p.getEyePosition();
+        Vec3 dir = p.getLookAngle().normalize();
+        Vec3 from = p.position();
+        p.teleportToWithTicket(target.x, target.y, target.z);
+        markTeleported(p);
+        WingsState.setHoverAnchor(p, target.y);
+        p.resetFallDistance();
+        p.setDeltaMovement(dir.scale(0.6));
+
+        // 只有安全落位后才结算连闪与消耗；上限为 1 时首闪即打满。
+        if (times.length + 1 >= cfg.blinkChainMax.get()) {
             // 链内第 N 闪补满：本次放行，随后进入长锁（窗口随之作废）
             WingsState.setBlinkLockUntil(p, now + cfg.blinkChainCooldownTicks.get());
+            WingsState.setBlinkCooldownUntil(p, now + cfg.blinkChainCooldownTicks.get());
             WingsState.setBlinkTimes(p, new long[0]);
         } else {
             long[] merged = Arrays.copyOf(times, times.length + 1);
             merged[times.length] = now;
             WingsState.setBlinkTimes(p, merged);
-        }
-        // 每次成功雷遁都刷新普通冷却：链内连闪不读它，但窗口结束后下一闪要等它
-        WingsState.setBlinkCooldownUntil(p, now + cfg.blinkCooldownTicks.get());
-
-        Vec3 eye = p.getEyePosition();
-        Vec3 dir = p.getLookAngle().normalize();
-        double dist = cfg.blinkDistance.get();
-        Vec3 end = eye.add(dir.scale(dist));
-        BlockHitResult hit = level.clip(new ClipContext(eye, end,
-                ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, p));
-        Vec3 target = hit.getType() == HitResult.Type.MISS
-                ? end
-                : hit.getLocation().subtract(dir.scale(1.0));
-        if (!level.getBlockState(BlockPos.containing(target)).isAir()) {
-            target = hit.getLocation().subtract(dir.scale(1.0));
+            WingsState.setBlinkCooldownUntil(p, now + cfg.blinkCooldownTicks.get());
         }
 
         // departure FX: silver arc + ring
         spawnBlinkFx(level, eye, target);
-        Vec3 from = p.position();
-        p.teleportToWithTicket(target.x, target.y, target.z);
-        // 雷瞬是服务端位移：标记授权传送，避免被超速治理/撞墙探测误判
-        markTeleported(p);
-        p.resetFallDistance();
-        p.setDeltaMovement(dir.scale(0.6));
 
         level.playSound(null, from.x, from.y, from.z,
                 SoundEvents.LIGHTNING_BOLT_THUNDER, SoundSource.PLAYERS, 0.6f, 1.3f);
