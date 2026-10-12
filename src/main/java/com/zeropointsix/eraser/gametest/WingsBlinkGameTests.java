@@ -137,6 +137,106 @@ public final class WingsBlinkGameTests {
     }
 
     @GameTest(template = "empty", timeoutTicks = 40)
+    public static void blinkSharedSegmentEndpointStopsAtWall(GameTestHelper h) {
+        assertSharedSegmentEndpoint(h, false);
+    }
+
+    @GameTest(template = "empty", timeoutTicks = 40)
+    public static void blinkReverseSharedSegmentEndpointStopsAtWall(GameTestHelper h) {
+        assertSharedSegmentEndpoint(h, true);
+    }
+
+    private static void assertSharedSegmentEndpoint(GameTestHelper h, boolean reverse) {
+        try (var saved = config()) {
+            WingsConfig.SERVER.blinkDistance.set(8.0);
+            BlinkPlayer p = player(h, new Vec3(2.5, 3, 2.5));
+            if (reverse) p.setYRot(p.getYRot() + 180);
+            Vec3 direction = p.getLookAngle().normalize();
+            boolean alongX = Math.abs(direction.x) > Math.abs(direction.z);
+            double component = alongX ? direction.x : direction.z;
+            double sign = Math.copySign(1, component);
+            BlockPos relativeWall = null;
+            // Pick an exactly representable shared endpoint despite world-coordinate rounding.
+            for (int z = 6; z <= 14; z++) {
+                BlockPos candidate = new BlockPos(2, 3, z);
+                BlockPos wall = h.absolutePos(candidate);
+                double face = (alongX ? wall.getX() : wall.getZ()) + (sign < 0 ? 1 : 0);
+                double entry = face - sign * p.getBbWidth() / 2.0 + sign * 1.0E-6;
+                double origin = entry - component * 4;
+                p.setPos(alongX ? origin : p.getX(), p.getY(), alongX ? p.getZ() : origin);
+                Vec3 feet = p.position();
+                Vec3 endpoint = feet.add(direction.scale(4));
+                double extent = alongX
+                        ? (sign > 0 ? p.getBoundingBox().maxX - feet.x : feet.x - p.getBoundingBox().minX)
+                        : (sign > 0 ? p.getBoundingBox().maxZ - feet.z : feet.z - p.getBoundingBox().minZ);
+                double actualEntry = face - sign * extent + sign * 1.0E-6;
+                if ((alongX ? endpoint.x : endpoint.z) == actualEntry) {
+                    relativeWall = candidate;
+                    break;
+                }
+            }
+            h.assertTrue(relativeWall != null,
+                    "fixture must align the collision entry with the shared sweep endpoint");
+            h.setBlock(relativeWall, Blocks.STONE);
+            Vec3 before = p.position();
+            FlightEvents.serverBlink(p);
+            double distance = p.position().distanceTo(before);
+            h.assertTrue(p.teleports == 1 && distance > 3.99 && distance < 4,
+                    "a shared segment endpoint must stop before the wall, not cross it: " + distance);
+            h.assertTrue(h.getLevel().noCollision(p, p.getBoundingBox()), "endpoint landing must fit");
+            h.succeed();
+        }
+    }
+
+    @GameTest(template = "empty", timeoutTicks = 40)
+    public static void blinkFullChainHonorsShortConfiguredCooldown(GameTestHelper h) {
+        try (var saved = config()) {
+            WingsConfig.SERVER.blinkChainMax.set(1);
+            WingsConfig.SERVER.blinkChainCooldownTicks.set(1);
+            WingsConfig.SERVER.blinkCooldownTicks.set(40);
+            BlinkPlayer p = player(h, new Vec3(2.5, 3, 2.5));
+            long now = h.getLevel().getGameTime();
+            FlightEvents.serverBlink(p);
+            h.assertTrue(p.teleports == 1, "the configured single-blink chain must succeed");
+            h.assertTrue(WingsState.blinkLockUntil(p) == now + 1
+                    && WingsState.blinkCooldownUntil(p) == now + 1,
+                    "ordinary cooldown must not override the configured full-chain cooldown");
+            h.succeed();
+        }
+    }
+
+    @GameTest(template = "empty", timeoutTicks = 40)
+    public static void blinkUsesFlyingPoseUnderLowCeiling(GameTestHelper h) {
+        try (var saved = config()) {
+            BlinkPlayer p = player(h, new Vec3(2.5, 3, 2.5));
+            p.setPose(Pose.FALL_FLYING);
+            p.refreshDimensions();
+            h.assertTrue(p.getBbHeight() < 1, "fixture must use the flying collision body");
+            h.setBlock(new BlockPos(2, 4, 4), Blocks.STONE);
+            Vec3 expected = p.position().add(p.getLookAngle().scale(4));
+            FlightEvents.serverBlink(p);
+            h.assertTrue(p.teleports == 1 && p.position().distanceTo(expected) < 0.001,
+                    "the actual flying body must fit under a ceiling that blocks standing players");
+            h.assertTrue(h.getLevel().noCollision(p, p.getBoundingBox()), "flying landing must fit");
+            h.succeed();
+        }
+    }
+
+    @GameTest(template = "empty", timeoutTicks = 40)
+    public static void blinkDefaultDistanceCrossesSixSweeps(GameTestHelper h) {
+        try (var saved = config()) {
+            WingsConfig.SERVER.blinkDistance.set(24.0);
+            BlinkPlayer p = player(h, new Vec3(2.5, 12, 2.5));
+            Vec3 expected = p.position().add(p.getLookAngle().scale(24));
+            FlightEvents.serverBlink(p);
+            h.assertTrue(p.teleports == 1 && p.position().distanceTo(expected) < 0.001,
+                    "the default blink must travel all 24 blocks across six continuous sweeps");
+            h.assertTrue(h.getLevel().noCollision(p, p.getBoundingBox()), "default-distance landing must fit");
+            h.succeed();
+        }
+    }
+
+    @GameTest(template = "empty", timeoutTicks = 40)
     public static void blinkBlockedDoesNotSpendChainOrHunger(GameTestHelper h) {
         try (var saved = config()) {
             BlinkPlayer p = player(h, new Vec3(2.5, 3, 2.6999));

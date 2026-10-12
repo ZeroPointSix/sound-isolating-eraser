@@ -75,9 +75,12 @@ final class BlinkDestination {
                         obstacle.maxX + (feet.x - body.minX),
                         obstacle.maxY + (feet.y - body.minY),
                         obstacle.maxZ + (feet.z - body.minZ));
-                // AABB.clip excludes a hit at the ray origin. A tiny inset makes
-                // flush-wall entry detectable while keeping tangential contact free.
-                Optional<Vec3> hit = expanded.deflate(1.0E-6).clip(start, end);
+                AABB interior = expanded.deflate(1.0E-6);
+                // Vanilla clip excludes both endpoints. Include the shared endpoint
+                // of adjacent sweeps while the inset keeps tangential contact free.
+                if (containsEndpoint(interior, start)) return 0;
+                Optional<Vec3> hit = interior.clip(start, end);
+                if (hit.isEmpty() && containsEndpoint(interior, end)) hit = Optional.of(end);
                 if (hit.isPresent()) {
                     allowed = Math.min(allowed, Math.max(0, start.distanceTo(hit.get()) - CLEARANCE));
                     if (allowed < CLEARANCE) return 0;
@@ -85,5 +88,11 @@ final class BlinkDestination {
             }
         }
         return allowed;
+    }
+
+    private static boolean containsEndpoint(AABB box, Vec3 point) {
+        return point.x >= box.minX && point.x <= box.maxX
+                && point.y >= box.minY && point.y <= box.maxY
+                && point.z >= box.minZ && point.z <= box.maxZ;
     }
 }

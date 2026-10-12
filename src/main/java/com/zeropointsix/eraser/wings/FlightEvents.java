@@ -131,14 +131,14 @@ public final class FlightEvents {
         if (times.length + 1 >= cfg.blinkChainMax.get()) {
             // 链内第 N 闪补满：本次放行，随后进入长锁（窗口随之作废）
             WingsState.setBlinkLockUntil(p, now + cfg.blinkChainCooldownTicks.get());
+            WingsState.setBlinkCooldownUntil(p, now + cfg.blinkChainCooldownTicks.get());
             WingsState.setBlinkTimes(p, new long[0]);
         } else {
             long[] merged = Arrays.copyOf(times, times.length + 1);
             merged[times.length] = now;
             WingsState.setBlinkTimes(p, merged);
+            WingsState.setBlinkCooldownUntil(p, now + cfg.blinkCooldownTicks.get());
         }
-        // 每次成功雷遁都刷新普通冷却：链内连闪不读它，但窗口结束后下一闪要等它
-        WingsState.setBlinkCooldownUntil(p, now + cfg.blinkCooldownTicks.get());
 
         // departure FX: silver arc + ring
         spawnBlinkFx(level, eye, target);

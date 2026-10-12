@@ -101,7 +101,8 @@ minecraft {
         // By default, the server will crash when no gametests are provided.
         // The gametest system is also enabled by default for other run configs under the /test command.
         gameTestServer {
-            property 'forge.enabledGameTestNamespaces', project.hasProperty('nightOnly') ? 'eternal_night_tests' : "${mod_id},eternal_night_tests"
+            property 'forge.enabledGameTestNamespaces', project.hasProperty('blinkOnly') ? 'wings_blink_tests' :
+                    project.hasProperty('nightOnly') ? 'eternal_night_tests' : "${mod_id},eternal_night_tests"
         }
 
         data {
@@ -175,6 +176,9 @@ tasks.named('processResources', ProcessResources).configure {
     from('src/main/resources/data/sound_isolating_eraser/structures/empty.nbt') {
         into 'data/eternal_night_tests/structures'
     }
+    from('src/main/resources/data/sound_isolating_eraser/structures/empty.nbt') {
+        into 'data/wings_blink_tests/structures'
+    }
     var replaceProperties = [
             minecraft_version: minecraft_version, minecraft_version_range: minecraft_version_range,
             forge_version: forge_version, forge_version_range: forge_version_range,
@@ -196,6 +200,7 @@ tasks.named('jar', Jar).configure {
     exclude 'data/sound_isolating_eraser/structures/empty.nbt'
     exclude 'data/sound_isolating_eraser/structures/shadow_arena.nbt'
     exclude 'data/eternal_night_tests/**'
+    exclude 'data/wings_blink_tests/**'
 
     manifest {
         attributes([
