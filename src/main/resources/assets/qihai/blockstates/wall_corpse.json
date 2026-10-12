@@ -1,0 +1,34 @@
+{
+ "variants": {
+  "facing=north,part=lower": {
+   "model": "qihai:block/wall_corpse_lower"
+  },
+  "facing=east,part=lower": {
+   "model": "qihai:block/wall_corpse_lower",
+   "y": 90
+  },
+  "facing=south,part=lower": {
+   "model": "qihai:block/wall_corpse_lower",
+   "y": 180
+  },
+  "facing=west,part=lower": {
+   "model": "qihai:block/wall_corpse_lower",
+   "y": 270
+  },
+  "facing=north,part=upper": {
+   "model": "qihai:block/wall_corpse_upper"
+  },
+  "facing=east,part=upper": {
+   "model": "qihai:block/wall_corpse_upper",
+   "y": 90
+  },
+  "facing=south,part=upper": {
+   "model": "qihai:block/wall_corpse_upper",
+   "y": 180
+  },
+  "facing=west,part=upper": {
+   "model": "qihai:block/wall_corpse_upper",
+   "y": 270
+  }
+ }
+}

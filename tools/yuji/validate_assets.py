@@ -31,7 +31,9 @@ def main():
     require(len(stats) == 12, "Expected 11 mobs and one projectile")
     sounds = read(ASSETS / "sounds.json")
     particles = {path.stem: read(path) for path in (ASSETS / "particles").glob("*.json")}
-    require(len(particles) == 19, "Expected nineteen particle definitions")
+    city_particles = {"black_splash", "holy_light"}
+    require(city_particles <= set(particles), "Missing city particles")
+    require(len(set(particles) - city_particles) == 19, "Expected nineteen monster particle definitions")
     for particle in particles.values():
         for reference in particle["textures"]:
             namespace, sprite = reference.split(":", 1)

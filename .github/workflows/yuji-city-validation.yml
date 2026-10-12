@@ -1,0 +1,59 @@
+name: Yuji City validation
+
+on:
+  pull_request:
+    paths:
+      - 'src/main/**'
+      - 'src/cityTest/**'
+      - 'tools/yuji/**'
+      - 'gradle/city-e2e.gradle'
+      - 'build.gradle'
+      - 'gradle.properties'
+      - '.github/workflows/yuji-city-validation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: yuji-city-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  city:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate both monster and city resources
+        run: |
+          python tools/yuji/validate_assets.py
+          python tools/yuji/verify_city.py
+      - name: Build and prove all city GameTests completed
+        run: |
+          set -o pipefail
+          mkdir -p build
+          bash ./gradlew build runGameTestServer -PyujiOnly --no-daemon --stacktrace 2>&1 | tee build/yuji-city-gametest.log
+          python tools/yuji/verify_city_gametest_log.py build/yuji-city-gametest.log
+      - name: Prepare opt-in real client
+        run: bash ./gradlew -PcityE2E writeCityTestClasspath --no-daemon
+      - name: Exercise hospital, rain, marks, bell and overworld return
+        run: python tools/yuji/city_e2e.py --skip-build
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: yuji-city-evidence
+          path: |
+            build/libs/*.jar
+            build/yuji-city-gametest.log
+            build/yuji-city-e2e-*/**/*.log
+            build/yuji-city-e2e-*/**/*.json
+            build/yuji-city-e2e-*/**/*.png
