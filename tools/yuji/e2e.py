@@ -41,7 +41,8 @@ def launch(role, username="YujiTester"):
         (directory / "config").mkdir()
         (directory / "config/fml.toml").write_text("earlyWindowControl = false\n")
         (directory / "options.txt").write_text(
-            "lang:zh_cn\nrenderDistance:3\nsimulationDistance:3\nguiScale:2\nmaxFps:30\n"
+            "lang:zh_cn\nrenderDistance:3\nsimulationDistance:3\nguiScale:2\n"
+            f"maxFps:{int(os.environ.get('YUJI_QA_CLIENT_FPS', '30'))}\n"
             "enableVsync:false\npauseOnLostFocus:false\nonboardAccessibility:false\n"
             "showAutosaveIndicator:false\nrenderClouds:false\nnarrator:0\ntutorialStep:none\n"
             "gamma:1.0\nfov:0.0\n")
@@ -127,6 +128,9 @@ try:
     wait_for(ready, [server], "dedicated server startup", 600)
     client = launch("client")
     if ISOLATION:
+        # Avoid simultaneous resource/renderer bootstrap starving the other client's login on small hosts.
+        wait_for(lambda: (RESULTS / "client-isolation-ready-YujiTester.pass").exists(),
+                 [server, client], "first real client fully joined", 600)
         witness = launch("witness", "YujiWitness")
         wait_for(lambda: all((RESULTS / (name + ".pass")).exists() for name in
                             ["server-isolation", "client-isolation-YujiTester", "client-isolation-YujiWitness"]),

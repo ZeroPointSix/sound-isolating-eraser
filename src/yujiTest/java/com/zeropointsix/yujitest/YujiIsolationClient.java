@@ -84,7 +84,11 @@ public final class YujiIsolationClient {
     }
     @SubscribeEvent public static void tick(TickEvent.ClientTickEvent event) {
         if (!enabled() || failed || event.phase != TickEvent.Phase.END) return;
-        var mc = Minecraft.getInstance(); if (mc.player == null || mc.level == null) return;
+        var mc = Minecraft.getInstance();
+        if (mc.screen instanceof net.minecraft.client.gui.screens.DisconnectedScreen screen) {
+            fail(new AssertionError(screen.getNarrationMessage().getString())); return;
+        }
+        if (mc.player == null || mc.level == null) return;
         try {
             ticks++;
             if (ticks == 1) { mc.setScreen(null); mc.mouseHandler.grabMouse(); }

@@ -65,6 +65,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Install real-mixer recording tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
       - name: Prepare real-client probe
         run: bash ./gradlew -PyujiE2E writeYujiTestClasspath --no-daemon
       - name: Render each profile and exercise sound pipeline

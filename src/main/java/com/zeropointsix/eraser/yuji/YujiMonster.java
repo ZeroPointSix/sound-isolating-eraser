@@ -95,6 +95,8 @@ public final class YujiMonster extends Monster implements GeoEntity {
             // Ground paths can reject tall walls before the boss ever reaches them.
             navigation = new net.minecraft.world.entity.ai.navigation.WallClimberNavigation(this, level);
         }
+        if (kind == YujiKind.YUCHI && navigation instanceof net.minecraft.world.entity.ai.navigation.GroundPathNavigation ground)
+            ground.setCanOpenDoors(false);
         refreshDimensions();
     }
     @Override public double getAttributeValue(Attribute attribute) {
