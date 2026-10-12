@@ -16,6 +16,7 @@ import java.util.Map;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.protocol.game.ServerboundClientCommandPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -27,6 +28,7 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.RespawnAnchorBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.AABB;
@@ -50,6 +52,8 @@ public final class RainCityQa {
     private YujiMonster target;
     private long targetTick;
     private int actualKills;
+    private long enteredBeforeRespawn;
+    private boolean netherRespawnVerified;
     private boolean finished;
 
     public RainCityQa() {
@@ -111,6 +115,22 @@ public final class RainCityQa {
                     QaFiles.require(city.noCollision(player), "Black-rain camera intersects city blocks");
                     if (!passed("black")) return;
                     QaFiles.require(state(data, player).getInt("Kills") == 0, "Unexpected initial kills");
+                    enteredBeforeRespawn = state(data, player).getLong("Entered");
+                    respawnThroughNetherAnchor(player, server);
+                    advance("respawn_entry");
+                }
+                case "respawn_entry" -> {
+                    if (!RainCityContent.isCity(player.level())) return;
+                    CompoundTag restored = state(data, player);
+                    verifyArrival(player, city, restored);
+                    QaFiles.require(restored.getLong("Entered") == enteredBeforeRespawn, "Respawn reset the original city entry time");
+                    QaFiles.require(restored.getInt("Kills") == 0 && restored.getInt("Marks") == 0,
+                            "Respawn fabricated kill or mark progress");
+                    QaFiles.require(new Vec3(restored.getDouble("HomeX"), restored.getDouble("HomeY"),
+                            restored.getDouble("HomeZ")).distanceToSqr(home) < .0001, "Respawn replaced the saved overworld home");
+                    netherRespawnVerified = true;
+                    QaFiles.write("nether-respawn-return.json", Map.of("passed", true, "dimension", player.level().dimension().location().toString(),
+                            "originalHomePreserved", true, "originalEntryTimePreserved", true));
                     camera(player, city, 96.5, 230, 120.5, 180, 0);
                     advance("kills");
                 }
@@ -164,9 +184,10 @@ public final class RainCityQa {
                 case "returned" -> {
                     if (!passed("returned")) return;
                     for (String shot : SHOTS) QaFiles.require(passed(shot), "Missing verified screenshot " + shot);
+                    QaFiles.require(netherRespawnVerified, "Real Nether-anchor respawn did not return to the hospital");
                     QaFiles.write("server-success.json", Map.of("passed", true, "actualKills", actualKills,
                             "physicalMarkKinds", pickedUp.size(), "homeRestored", true, "actualBellInteraction", true,
-                            "automaticBeamReturn", true, "screenshots", SHOTS, "ticks", ticks));
+                            "automaticBeamReturn", true, "netherAnchorRespawn", true, "screenshots", SHOTS, "ticks", ticks));
                     finished = true;
                 }
                 default -> throw new IllegalStateException("Unknown phase " + phase);
@@ -175,6 +196,26 @@ public final class RainCityQa {
             finished = true;
             QaFiles.failure("server", phase, failure);
         }
+    }
+
+    private void respawnThroughNetherAnchor(ServerPlayer player, MinecraftServer server) {
+        ServerLevel nether = server.getLevel(Level.NETHER);
+        QaFiles.require(nether != null, "Nether dimension did not load");
+        BlockPos anchor = new BlockPos(8, 132, 8);
+        nether.getChunkAt(anchor);
+        for (BlockPos pos : BlockPos.betweenClosed(anchor.offset(-2, -1, -2), anchor.offset(2, 3, 2)))
+            nether.setBlock(pos, (pos.getY() == anchor.getY() - 1 ? Blocks.OBSIDIAN : Blocks.AIR).defaultBlockState(), 3);
+        nether.setBlock(anchor, Blocks.RESPAWN_ANCHOR.defaultBlockState().setValue(RespawnAnchorBlock.CHARGE, 4), 3);
+        player.setRespawnPosition(Level.NETHER, anchor, 0, false, false);
+        player.hurt(player.damageSources().fellOutOfWorld(), Float.MAX_VALUE);
+        QaFiles.require(!player.isAlive(), "Actual city death did not occur");
+        player.connection.handleClientCommand(new ServerboundClientCommandPacket(ServerboundClientCommandPacket.Action.PERFORM_RESPAWN));
+        ServerPlayer restored = server.getPlayerList().getPlayer(player.getUUID());
+        QaFiles.require(restored != null && restored != player && restored.isAlive(), "Normal respawn did not replace the dead player");
+        QaFiles.require(restored.level().dimension().equals(Level.NETHER), "Respawn did not actually use the Nether anchor");
+        QaFiles.require(nether.getBlockState(anchor).getValue(RespawnAnchorBlock.CHARGE) == 3, "Respawn did not consume an anchor charge");
+        QaFiles.write("nether-respawn.json", Map.of("passed", true, "actualDeath", true, "anchorChargeConsumed", true,
+                "dimension", restored.level().dimension().location().toString()));
     }
 
     private void verifyArrival(ServerPlayer player, ServerLevel city, CompoundTag state) {

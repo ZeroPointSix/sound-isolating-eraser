@@ -17,10 +17,15 @@ import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BedBlock;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BedPart;
 import net.minecraft.world.level.storage.loot.LootTable;
+import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.gametest.GameTestHolder;
 import net.minecraftforge.gametest.PrefixGameTestTemplate;
 
@@ -121,6 +126,135 @@ public final class RainCityGameTests {
         for (int x = 5; x <= 6; x++) for (int z = 5; z <= 6; z++) city.getChunk(x, z);
         BlockPos arrival = RainCityEntry.arrival(city);
         h.assertTrue(arrival != null && arrival.getY() > 128 && arrival.getY() < 134, "safe first-floor hospital arrival"); h.succeed();
+    }
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji_city", timeoutTicks = 1200)
+    public static void cityHospitalArrivalSkipsFloodedBedside(GameTestHelper h) {
+        ServerLevel city = city(h);
+        for (int x = 5; x <= 6; x++) for (int z = 5; z <= 6; z++) city.getChunk(x, z);
+        BlockPos original = RainCityEntry.arrival(city);
+        h.assertTrue(original != null, "hospital begins with a safe arrival");
+        BlockState before = city.getBlockState(original);
+        try {
+            city.setBlock(original, Blocks.WATER.defaultBlockState(), 2);
+            BlockPos replacement = RainCityEntry.arrival(city);
+            h.assertTrue(replacement != null && !replacement.equals(original), "flooded first choice must be skipped");
+            h.assertTrue(RainCityPlacement.safe(city, Vec3.atBottomCenterOf(replacement)), "replacement must be safe for the full player");
+        } finally { city.setBlock(original, before, 2); }
+        h.succeed();
+    }
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji_city")
+    public static void citySafetyRejectsFeetHeadAndEdgeLiquids(GameTestHelper h) {
+        ServerLevel level = h.getLevel(); BlockPos feet = h.absolutePos(new BlockPos(2, 2, 2));
+        var saved = snapshot(level, feet.below(), feet, feet.above(), feet.east(), feet.east().above());
+        try {
+            level.setBlock(feet.below(), Blocks.STONE.defaultBlockState(), 2);
+            for (BlockPos pos : new BlockPos[]{feet, feet.above(), feet.east(), feet.east().above()})
+                level.setBlock(pos, Blocks.AIR.defaultBlockState(), 2);
+            Vec3 center = Vec3.atBottomCenterOf(feet);
+            h.assertTrue(RainCityPlacement.safe(level, center), "dry supported fixture is safe");
+            level.setBlock(feet, Blocks.WATER.defaultBlockState(), 2);
+            h.assertTrue(!RainCityPlacement.safe(level, center), "feet water must fail despite an empty collision shape");
+            level.setBlock(feet, Blocks.AIR.defaultBlockState(), 2);
+            level.setBlock(feet.above(), Blocks.LAVA.defaultBlockState(), 2);
+            h.assertTrue(!RainCityPlacement.safe(level, center), "head lava must fail");
+            level.setBlock(feet.above(), Blocks.AIR.defaultBlockState(), 2);
+            level.setBlock(feet.east(), Blocks.WATER.defaultBlockState(), 2);
+            h.assertTrue(!RainCityPlacement.safe(level, center.add(.45, 0, 0)), "fluid touching the body edge must fail");
+            level.setBlock(feet.east(), Blocks.AIR.defaultBlockState(), 2);
+            level.setBlock(feet.above(), Blocks.STONE.defaultBlockState(), 2);
+            h.assertTrue(!RainCityPlacement.safe(level, center), "head collision must fail");
+        } finally { restore(level, saved); }
+        h.succeed();
+    }
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji_city")
+    public static void citySafetyRequiresFullBorderAndBuildHeight(GameTestHelper h) {
+        ServerLevel level = h.getLevel(); var border = level.getWorldBorder();
+        Vec3 partial = new Vec3(border.getMinX() + .1, 100, border.getCenterZ());
+        h.assertTrue(!RainCityPlacement.safe(level, partial), "center inside the border is insufficient when the body crosses it");
+        h.assertTrue(!RainCityPlacement.safe(level, new Vec3(0, level.getMaxBuildHeight() - 1, 0)), "head must stay below the build ceiling");
+        h.assertTrue(!RainCityPlacement.safe(level, new Vec3(0, level.getMinBuildHeight() - 1, 0)), "feet must stay above the build floor");
+        h.assertTrue(!RainCityPlacement.safe(level, new Vec3(Double.NaN, 100, 0)), "invalid saved coordinates must be rejected");
+        h.succeed();
+    }
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji_city")
+    public static void cityReturnRejectsUnsafeFallbackAndFindsSafeReplacement(GameTestHelper h) {
+        ServerLevel level = h.getLevel(); BlockPos feet = h.absolutePos(new BlockPos(2, 2, 2));
+        BlockPos fallback = new BlockPos(feet.getX() + 2, level.getMaxBuildHeight() - 2, feet.getZ());
+        var saved = snapshot(level, feet.below(), feet, feet.above(), fallback.below(), fallback, fallback.above());
+        try {
+            level.setBlock(feet.below(), Blocks.STONE.defaultBlockState(), 2);
+            level.setBlock(feet, Blocks.WATER.defaultBlockState(), 2);
+            level.setBlock(feet.above(), Blocks.AIR.defaultBlockState(), 2);
+            Vec3 preferred = Vec3.atBottomCenterOf(feet);
+            BlockPos outside = new BlockPos((int) Math.ceil(level.getWorldBorder().getMaxX()) + 32, 100, 0);
+            h.assertTrue(RainCityPlacement.home(level, preferred, outside) == null, "no safe destination must remain a failure, not a forced teleport");
+            level.setBlock(fallback.below(), Blocks.STONE.defaultBlockState(), 2);
+            level.setBlock(fallback, Blocks.AIR.defaultBlockState(), 2);
+            level.setBlock(fallback.above(), Blocks.AIR.defaultBlockState(), 2);
+            Vec3 replacement = RainCityPlacement.home(level, preferred, fallback);
+            h.assertTrue(Vec3.atBottomCenterOf(fallback).equals(replacement), "invalid saved point must use the validated fallback");
+            h.assertTrue(RainCityPlacement.safe(level, replacement), "fallback receives the same complete safety checks");
+        } finally { restore(level, saved); }
+        h.succeed();
+    }
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji_city", timeoutTicks = 1200)
+    public static void cityDeathRecoveryFromNetherPreservesProgressAndCancelsCleanly(GameTestHelper h) {
+        ServerLevel city = city(h); RainCityData data = RainCityData.get(city);
+        ServerPlayer player = netherPlayer(h); CompoundTag state = recoveryState();
+        data.players.put(player.getUUID(), state);
+        try {
+            h.assertTrue(!RainCityEntry.request(player), "ordinary enter remains overworld-only");
+            state.putBoolean("Active", false);
+            h.assertTrue(!RainCityEntry.recoverAfterDeath(player), "death recovery needs an existing active run");
+            state.putBoolean("Active", true);
+            h.assertTrue(RainCityEntry.recoverAfterDeath(player), "an active Nether respawn may queue hospital recovery");
+            assertRecoveryProgress(h, data.players.get(player.getUUID()));
+            // FakePlayer is not in the connected player list: exercise asynchronous identity-loss cleanup.
+            RainCityEntry.tick(city.getServer());
+            h.assertTrue(!state.getBoolean("Active"), "an abandoned recovery must not hijack a later unrelated respawn");
+            assertRecoveryProgress(h, state);
+            h.assertTrue(!RainCityEntry.recoverAfterDeath(player), "cancelled recovery must not silently queue again");
+        } finally { RainCityEntry.cancel(player.getUUID()); data.players.remove(player.getUUID()); data.setDirty(); }
+        h.succeed();
+    }
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji_city")
+    public static void cityRejectedDeathRecoveryClearsActiveButKeepsProgress(GameTestHelper h) {
+        ServerLevel city = city(h); RainCityData data = RainCityData.get(city);
+        ServerPlayer player = netherPlayer(h); CompoundTag state = recoveryState(); long bell = data.bellAt;
+        data.players.put(player.getUUID(), state);
+        try {
+            data.bellAt = city.getGameTime();
+            h.assertTrue(!RainCityEntry.recoverAfterDeath(player), "entry is rejected while the bell scene is still running");
+            h.assertTrue(!state.getBoolean("Active"), "synchronous rejection must clear the active retry state");
+            assertRecoveryProgress(h, state);
+        } finally { RainCityEntry.cancel(player.getUUID()); data.players.remove(player.getUUID()); data.bellAt = bell; data.setDirty(); }
+        h.succeed();
+    }
+    private static ServerPlayer netherPlayer(GameTestHelper h) {
+        ServerLevel nether = h.getLevel().getServer().getLevel(Level.NETHER);
+        h.assertTrue(nether != null, "Nether dimension is available for respawn recovery");
+        return net.minecraftforge.common.util.FakePlayerFactory.get(nether,
+                new com.mojang.authlib.GameProfile(UUID.randomUUID(), "CityRecovery"));
+    }
+    private static CompoundTag recoveryState() {
+        CompoundTag state = new CompoundTag(); state.putBoolean("Active", true);
+        state.putInt("Kills", 37); state.putInt("Marks", 511); state.putLong("Entered", 1234);
+        state.putDouble("HomeX", 91.5); state.putDouble("HomeY", 72); state.putDouble("HomeZ", -34.5);
+        return state;
+    }
+    private static void assertRecoveryProgress(GameTestHelper h, CompoundTag state) {
+        h.assertTrue(state.getInt("Kills") == 37 && state.getInt("Marks") == 511 && state.getLong("Entered") == 1234,
+                "recovery keeps kills, personal marks and elapsed-time origin");
+        h.assertTrue(state.getDouble("HomeX") == 91.5 && state.getDouble("HomeY") == 72 && state.getDouble("HomeZ") == -34.5,
+                "recovery keeps the original overworld home, never the Nether respawn coordinates");
+    }
+    private static java.util.Map<BlockPos, BlockState> snapshot(ServerLevel level, BlockPos... positions) {
+        var saved = new java.util.LinkedHashMap<BlockPos, BlockState>();
+        for (BlockPos pos : positions) saved.put(pos, level.getBlockState(pos));
+        return saved;
+    }
+    private static void restore(ServerLevel level, java.util.Map<BlockPos, BlockState> saved) {
+        saved.forEach((pos, state) -> level.setBlock(pos, state, 2));
     }
     @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji_city", timeoutTicks = 1200)
     public static void cityHospitalBedsKeepTheirMatchingHeadAndFoot(GameTestHelper h) {
