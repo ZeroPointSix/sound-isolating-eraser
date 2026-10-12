@@ -36,7 +36,7 @@ public final class YujiIsolationServer {
     private static final Set<BlockPos> terrain = new HashSet<>();
     private static String stage = "waiting", item;
     private static int ticks, round, contacts, collisionTicks;
-    private static boolean failed, complete, ringBuilt;
+    private static boolean failed, complete, ringBuilt, voiceWeaknessObserved;
     private static YujiMonster current;
     private static Panda panda;
     private static float pandaDamage;
@@ -121,12 +121,14 @@ public final class YujiIsolationServer {
                 }
                 case "voice" -> {
                     require(current.getTarget() == null || current.getTarget() == victim, "natural voice target is intended nearest player");
+                    voiceWeaknessObserved |= victim.hasEffect(MobEffects.WEAKNESS);
+                    require(!witness.hasEffect(MobEffects.WEAKNESS), "adjacent witness never receives voice weakness");
                     if (current.getTarget() == victim && !ringBuilt) {
                         fill(level, -4, 65, 5, 4, 68, 5); fill(level, -4, 65, 13, 4, 68, 13);
                         fill(level, -4, 65, 6, -4, 68, 12); fill(level, 4, 65, 6, 4, 68, 12); ringBuilt = true;
                     }
                     if (ticks == 240) {
-                        require(victim.hasEffect(MobEffects.WEAKNESS) && !witness.hasEffect(MobEffects.WEAKNESS), "only natural sound target receives weakness");
+                        require(voiceWeaknessObserved, "natural sound target actually received weakness during the observation window");
                         current.setNoAi(true); signalBoth(a, b, "check"); next("voice-proof");
                     }
                 }
@@ -251,7 +253,7 @@ public final class YujiIsolationServer {
     }
     private static void beginVoice(ServerPlayer victim, ServerPlayer witness) {
         clear(victim.serverLevel()); place(victim, 0, 65, 9, 0); place(witness, 2, 65, 9, 0);
-        current = spawn(victim.serverLevel(), YujiKind.WANGYU, 0, 65, 0, false); ringBuilt = false;
+        current = spawn(victim.serverLevel(), YujiKind.WANGYU, 0, 65, 0, false); ringBuilt = false; voiceWeaknessObserved = false;
         item = "voice-" + round; signalBoth(victim, witness, "start:" + item + ":" + victim.getGameProfile().getName()); next("voice-arm");
     }
     private static void beginCamera(ServerPlayer victim, ServerPlayer witness) {
