@@ -145,7 +145,8 @@ public final class YujiClient {
                         origin.y, origin.z + (Math.random() - .5) * spread, direction.x + (Math.random() - .5) * speed,
                         direction.y + .03, direction.z + (Math.random() - .5) * speed);
             }
-            if (cue.has("sound") && monster.kind() != YujiKind.WANGYU && monster.kind() != YujiKind.QIYU && !action.equals("death")) {
+            if (cue.has("sound") && monster.kind() != YujiKind.WANGYU && monster.kind() != YujiKind.QIYU
+                    && !(monster.kind() == YujiKind.TANYU && action.equals("grab_bite")) && !action.equals("death")) {
                 SoundEvent sound = YujiContent.sound("entity.qihai." + monster.kind().id() + "." + cue.get("sound").getAsString());
                 if (sound != null) monster.level().playLocalSound(monster.getX(), monster.getY(), monster.getZ(), sound, SoundSource.HOSTILE, 1, 1, false);
             }

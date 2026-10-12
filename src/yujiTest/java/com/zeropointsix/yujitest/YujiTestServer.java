@@ -36,6 +36,11 @@ import net.minecraftforge.registries.ForgeRegistries;
 @Mod.EventBusSubscriber(modid = "yuji_qa")
 public final class YujiTestServer {
     private static final Path RESULTS = Path.of(System.getProperty("yuji.qa.results"));
+    private static final String PROFILES = System.getProperty("yuji.qa.profiles", "");
+    private static final YujiKind[] KINDS = PROFILES.isEmpty() ? YujiKind.values()
+            : java.util.Arrays.stream(PROFILES.split(",")).map(id -> java.util.Arrays.stream(YujiKind.values())
+                    .filter(kind -> kind.id().equals(id)).findFirst().orElseThrow(() -> new IllegalArgumentException(id)))
+                    .toArray(YujiKind[]::new);
     private static int index = -1;
     private static boolean failed, complete;
     private static YujiMonster current;
@@ -197,8 +202,12 @@ public final class YujiTestServer {
         player.setNoGravity(true);
         player.getAbilities().flying = true; player.onUpdateAbilities();
         player.getInventory().clearContent();
-        if (++index == YujiKind.values().length) {
+        if (++index == KINDS.length) {
             current = null;
+            if (!PROFILES.isEmpty()) {
+                pass("gallery", "Focused real-client profiles=" + PROFILES + "; projectile not selected.");
+                complete = true; signal(player, "cleanup"); return;
+            }
             spike = YujiContent.BONE_SPIKE.get().create(player.serverLevel());
             spike.setNoGravity(true); spike.moveTo(.5, 66, .5, 0, 0);
             player.serverLevel().addFreshEntity(spike);
@@ -206,7 +215,7 @@ public final class YujiTestServer {
             player.teleportTo(player.serverLevel(), 2.5, 65, 2.5, 135, 12.4F);
             mode = "bone-gallery"; signal(player, "bone_spike"); return;
         }
-        YujiKind kind = YujiKind.values()[index];
+        YujiKind kind = KINDS[index];
         current = YujiContent.MOBS.get(kind).get().create(player.serverLevel());
         current.setNoAi(true); current.setPersistenceRequired(); current.moveTo(.5, 65, .5, 0, 0); current.setYBodyRot(0);
         player.serverLevel().addFreshEntity(current);

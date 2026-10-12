@@ -42,6 +42,12 @@ jobs:
           mkdir -p build
           bash ./gradlew build runGameTestServer --no-daemon --stacktrace 2>&1 | tee build/yuji-gametest.log
           python tools/yuji/verify_gametest_log.py build/yuji-gametest.log
+      - name: Repeat all Forge GameTests in a clean world
+        run: |
+          set -o pipefail
+          rm -rf run/world
+          bash ./gradlew runGameTestServer --no-daemon --stacktrace 2>&1 | tee build/yuji-gametest-repeat.log
+          python tools/yuji/verify_gametest_log.py build/yuji-gametest-repeat.log
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -50,7 +56,7 @@ jobs:
             build/libs/*.jar
             build/reports/
             run/logs/latest.log
-            build/yuji-gametest.log
+            build/yuji-gametest*.log
 
   client-smoke:
     runs-on: ubuntu-latest
@@ -73,6 +79,13 @@ jobs:
         run: bash ./gradlew -PyujiE2E writeYujiTestClasspath --no-daemon
       - name: Render each profile and exercise sound pipeline
         run: YUJI_QA_RECORD_AUDIO=1 python tools/yuji/e2e.py
+      - name: Repeat slow-render and stalled-bite regressions with a real client
+        run: |
+          for attempt in 1 2; do
+            echo "Yuji timing regression attempt ${attempt}"
+            YUJI_QA_PROFILES=yuchi,tanyu YUJI_QA_CLIENT_FPS=10 YUJI_QA_FRAME_DELAY_MS=700 \
+              YUJI_QA_STALL_BITE=1 YUJI_QA_RECORD_AUDIO=1 python tools/yuji/e2e.py
+          done
       - name: Exercise grudge, buffed slashes and body contact with two real clients
         run: YUJI_QA_BOUNDARIES=1 python tools/yuji/e2e.py
       - name: Verify targeted audio, camera isolation, doors, climbing and Panda with two real clients

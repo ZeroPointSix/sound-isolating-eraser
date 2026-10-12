@@ -306,8 +306,15 @@ public final class YujiMonster extends Monster implements GeoEntity {
         LivingEntity target = actionTarget == null ? null : ((ServerLevel) level()).getEntity(actionTarget) instanceof LivingEntity l ? l : null;
         switch (action()) {
             case "chop" -> { if (tick == 6 || tick == 12) strike(target, (float) getAttributeValue(Attributes.ATTACK_DAMAGE), tick == 12); }
-            case "snatch", "claw", "scratch", "strike", "grab_bite" -> {
-                if (tick == (kind == YujiKind.TANYU ? 12 : 6) && strike(target, (float) getAttributeValue(Attributes.ATTACK_DAMAGE), false)
+            case "grab_bite" -> {
+                if (tick == 12) {
+                    // A lagging client can skip an entire action serial; send the bite at the authoritative hit tick.
+                    playSound(sound("bite"), 1, 1);
+                    strike(target, (float) getAttributeValue(Attributes.ATTACK_DAMAGE), false);
+                }
+            }
+            case "snatch", "claw", "scratch", "strike" -> {
+                if (tick == 6 && strike(target, (float) getAttributeValue(Attributes.ATTACK_DAMAGE), false)
                         && kind == YujiKind.TOUDAO && target instanceof Player p) steal(p);
             }
             case "spike_volley" -> { if (tick == 11 && target != null) volley(target, false); }

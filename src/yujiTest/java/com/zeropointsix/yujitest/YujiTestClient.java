@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
 import net.minecraft.client.gui.screens.DisconnectedScreen;
@@ -26,6 +27,7 @@ import net.minecraft.util.RandomSource;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.ClientChatReceivedEvent;
 import net.minecraftforge.client.event.sound.PlaySoundEvent;
+import net.minecraftforge.client.event.sound.SoundEvent.SoundSourceEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -38,8 +40,9 @@ public final class YujiTestClient {
     private static final Map<String, double[]> poses = new HashMap<>();
     private static final Map<String, String[]> names = new HashMap<>();
     private static final ArrayList<TickableSoundInstance> loops = new ArrayList<>();
-    private static String phase = "";
-    private static int ticks, frames;
+    private static volatile String phase = "";
+    private static volatile int ticks;
+    private static int frames;
     private static boolean failed, captured;
     private static SoundInstance masked;
     private static NativeImage visible;
@@ -51,6 +54,10 @@ public final class YujiTestClient {
     private static final Map<String, SoundInstance> observedSounds = new HashMap<>();
     private static final java.util.Set<String> playedSounds = new HashSet<>();
     private static boolean audioDone;
+    private static String lastTanyuAction = "";
+    private static int stalledSerial = -1;
+    private record Playback(String profile, String sound, String evidence) {}
+    private static final ConcurrentLinkedQueue<Playback> startedSounds = new ConcurrentLinkedQueue<>();
 
     private static void require(boolean condition, String message) { if (!condition) throw new AssertionError(message); }
     private static void pass(String name, String text) throws Exception {
@@ -79,11 +86,28 @@ public final class YujiTestClient {
         var sound = event.getSound();
         if (sound == null) return;
         String path = sound.getLocation().getPath();
+        if (path.startsWith("entity.qihai.tanyu."))
+            System.out.println("YUJI_SOUND_REQUEST phase=" + phase + ", tick=" + ticks + ", event=" + sound.getLocation()
+                    + ", instance=" + sound.getClass().getSimpleName());
         if (sound instanceof TickableSoundInstance loop && (path.contains("qiyu.flute") || path.contains("shifotou_battle"))) loops.add(loop);
         if (phase.equals("qiyu") && path.equals("entity.zombie.ambient")) masked = sound;
         if (sound.getLocation().getNamespace().equals("qihai") && path.endsWith(".death")) deathSounds.put(path, sound);
         if (sound.getLocation().getNamespace().equals("qihai") || phase.equals("ai-wangyu") || phase.equals("bone_spike_stuck"))
             observedSounds.put(sound.getLocation().toString(), sound);
+    }
+    @SubscribeEvent public static void started(SoundSourceEvent event) {
+        var sound = event.getSound();
+        String currentPhase = phase;
+        if (currentPhase.isEmpty() || !(sound.getLocation().getNamespace().equals("qihai")
+                || currentPhase.equals("ai-wangyu") || currentPhase.equals("bone_spike_stuck"))) return;
+        // This callback runs on the sound thread after Channel.play(), even when the render thread stalls.
+        if (sound.getSound() == null || !event.getChannel().playing()) return;
+        String profile = currentPhase.replaceFirst("^(ai-|audio-)", "");
+        String record = "phase=" + currentPhase + ", tick=" + ticks + ", event=" + sound.getLocation()
+                + ", decoded=" + sound.getSound().getLocation() + ", channelPlaying=true, volume=" + sound.getVolume()
+                + ", pitch=" + sound.getPitch() + ", position=" + sound.getX() + "," + sound.getY() + "," + sound.getZ()
+                + ", backend=" + System.getProperty("yuji.qa.audio", "OpenAL-null") + "\n";
+        startedSounds.add(new Playback(profile, sound.getLocation().toString(), record));
     }
     @SubscribeEvent public static void tick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END || failed || phase.isEmpty()) return;
@@ -92,7 +116,26 @@ public final class YujiTestClient {
         if (mc.level == null || mc.player == null) return;
         try {
             ticks++;
+            if (phase.equals("ai-tanyu")) for (var entity : mc.level.entitiesForRendering()) {
+                if (!(entity instanceof YujiMonster monster) || monster.kind() != YujiKind.TANYU) continue;
+                String action = monster.action() + ":" + monster.actionSerial();
+                if (!action.equals(lastTanyuAction) || ticks % 10 == 0)
+                    System.out.println("YUJI_ACTION_DIAGNOSTIC phase=" + phase + ", tick=" + ticks + ", entityTick=" + monster.tickCount
+                            + ", action=" + action + ", position=" + monster.position() + ", player=" + mc.player.position());
+                lastTanyuAction = action;
+                if (Boolean.getBoolean("yuji.qa.stallBite") && monster.action().equals("grab_bite")
+                        && monster.actionSerial() != stalledSerial) {
+                    stalledSerial = monster.actionSerial();
+                    System.out.println("YUJI_CLIENT_STALL biteSerial=" + stalledSerial + ", milliseconds=1600");
+                    Thread.sleep(1600);
+                }
+            }
             String profile = phase.replaceFirst("^(ai-|audio-)", "");
+            for (Playback playback; (playback = startedSounds.poll()) != null;) {
+                if (playback.profile().equals(profile)) playedSounds.add(playback.sound());
+                Files.writeString(RESULTS.resolve("audio-events-" + playback.profile() + ".log"), playback.evidence(),
+                        java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND);
+            }
             for (var entry : observedSounds.entrySet()) {
                 var sound = entry.getValue();
                 if (!playedSounds.contains(entry.getKey()) && sound.getSound() != null && mc.getSoundManager().isActive(sound)) {
@@ -124,7 +167,8 @@ public final class YujiTestClient {
                         case "shifotou" -> "gaze"; default -> "";
                     };
                     if (kind.equals("wangyu")) require(playedSounds.stream().anyMatch(name -> name.startsWith("minecraft:")), "real targeted false voice played");
-                    else require(playedSounds.contains("qihai:entity.qihai." + kind + "." + skill), "real locomotion/skill audio played: " + kind + "." + skill);
+                    else require(playedSounds.contains("qihai:entity.qihai." + kind + "." + skill), "real locomotion/skill audio played: " + kind + "." + skill
+                            + ", requested=" + observedSounds.keySet() + ", active=" + playedSounds);
                     pass(phase, "event=" + sound.getLocation() + ", decoded=" + sound.getSound().getLocation()
                             + ", active=true, volume=" + sound.getVolume() + ", backend=" + System.getProperty("yuji.qa.audio", "OpenAL-null") + ", observed=" + playedSounds);
                     audioDone = true;
@@ -139,9 +183,14 @@ public final class YujiTestClient {
                 mc.getSoundManager().play(new SimpleSoundInstance(SoundEvents.ZOMBIE_AMBIENT, SoundSource.HOSTILE,
                         1, 1, RandomSource.create(), mc.player.getX(), mc.player.getY(), mc.player.getZ()));
             } else if (phase.equals("cleanup") && ticks == 40) {
-                require(loops.size() >= 2, "flute and boss music actually played");
+                String profiles = System.getProperty("yuji.qa.profiles", "");
+                long expectedLoops = profiles.isEmpty() ? 2 : java.util.Arrays.stream(profiles.split(","))
+                        .filter(kind -> kind.equals("qiyu") || kind.equals("shifotou")).count();
+                require(loops.size() >= expectedLoops, "selected flute and boss music actually played");
                 require(loops.stream().allMatch(TickableSoundInstance::isStopped), "removed entities stop audio loops");
-                pass("gallery", "All 11 profiles and bone spike rendered; 11 death sounds played; flute and boss loops stopped after removal.");
+                pass("gallery", profiles.isEmpty()
+                        ? "All 11 profiles and bone spike rendered; 11 death sounds played; flute and boss loops stopped after removal."
+                        : "Focused real-client profiles=" + profiles + "; selected rendering/AI/audio assertions passed.");
                 phase = "";
             }
         } catch (Throwable failure) { fail(failure); }
@@ -176,6 +225,13 @@ public final class YujiTestClient {
         } catch (Throwable failure) { fail(failure); }
     }
     @SubscribeEvent public static void render(TickEvent.RenderTickEvent event) {
+        if (event.phase == TickEvent.Phase.START && !captured && !phase.isEmpty()
+                && !phase.startsWith("ai-") && !phase.startsWith("audio-") && !phase.equals("ready") && !phase.equals("cleanup")) {
+            int delay = Integer.getInteger("yuji.qa.frameDelayMs", 0);
+            if (delay > 0) try { Thread.sleep(delay); } catch (InterruptedException failure) {
+                Thread.currentThread().interrupt(); fail(failure);
+            }
+        }
         if (event.phase != TickEvent.Phase.END || failed || captured || ticks < 110 || phase.equals("ready") || phase.equals("cleanup")
                 || phase.startsWith("ai-") || phase.startsWith("audio-") || phase.isEmpty()) return;
         var mc = Minecraft.getInstance();
@@ -183,6 +239,7 @@ public final class YujiTestClient {
         try {
             // Slow software rendering can lag behind client ticks; require the same real frame count within a bounded window.
             if (visible == null && frames <= 10) {
+                System.out.println("YUJI_RENDER_WAIT phase=" + phase + ", frames=" + frames + ", ticks=" + ticks);
                 require(ticks < 310, "real render readiness timed out: phase=" + phase + ", frames=" + frames + ", ticks=" + ticks);
                 return;
             }
@@ -259,6 +316,7 @@ public final class YujiTestClient {
                 shot.writeToFile(RESULTS.resolve(phase + ".png"));
             }
             pendingEvidence = "frames=" + frames + ", animatedBoneDelta=" + movement + ", texture/model/animation loaded"
+                    + ", fpsLimit=" + mc.options.framerateLimit().get() + ", frameDelayMs=" + Integer.getInteger("yuji.qa.frameDelayMs", 0)
                     + (phase.equals("qiyu") ? ", maskedVolume=" + masked.getVolume() : "");
             visible = Screenshot.takeScreenshot(mc.getMainRenderTarget());
             hidden = monster; hiddenAt = ticks; visiblePosition = monster.position();

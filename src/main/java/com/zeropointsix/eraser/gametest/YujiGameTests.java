@@ -360,6 +360,39 @@ public final class YujiGameTests {
         method.setAccessible(true);
         method.invoke(mob);
     }
+    private static void greedBiteSound(GameTestHelper h, boolean inReach) throws ReflectiveOperationException {
+        YujiMonster greed = monster(h, YujiKind.TANYU);
+        greed.moveTo(greed.position().add(0, 64, 0));
+        var cow = h.spawn(EntityType.COW, new BlockPos(2, 2, 2));
+        cow.setNoAi(true); cow.setNoGravity(true);
+        cow.moveTo(greed.position().add(inReach ? 1 : 8, 0, 0));
+        cow.getAttribute(Attributes.MAX_HEALTH).setBaseValue(20); cow.setHealth(20);
+        var heardAt = new java.util.ArrayList<Integer>();
+        int[] actionTick = {-1};
+        java.util.function.Consumer<net.minecraftforge.event.PlayLevelSoundEvent.AtPosition> listener = event -> {
+            if (event.getLevel() == h.getLevel() && event.getPosition().distanceToSqr(greed.position()) < .01
+                    && event.getSound() != null && event.getSound().value() == YujiContent.sound("entity.qihai.tanyu.bite")) {
+                h.assertTrue(event.getSource() == net.minecraft.sounds.SoundSource.HOSTILE && event.getNewVolume() > 0,
+                        "audible hostile bite sent through the real level sound event");
+                heardAt.add(actionTick[0]);
+            }
+        };
+        net.minecraftforge.common.MinecraftForge.EVENT_BUS.addListener(listener);
+        try {
+            greed.setTarget(cow); greed.begin("grab_bite", 24, cow);
+            for (int tick = 0; tick < 24; tick++) {
+                actionTick[0] = tick; boundaryStep(greed);
+                h.assertTrue(heardAt.size() == (tick < 12 ? 0 : 1), "bite emitted exactly once at action tick 12: " + heardAt);
+                close(h, 20 - cow.getHealth(), inReach && tick >= 12 ? 5 : 0, "bite damage timing and range at tick " + tick);
+            }
+            System.out.println("YUJI_GREED_BITE inReach=" + inReach + ", soundTicks=" + heardAt + ", damage=" + (20 - cow.getHealth()));
+            h.succeed();
+        } finally { net.minecraftforge.common.MinecraftForge.EVENT_BUS.unregister(listener); }
+    }
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
+    public static void yujiGreedBiteSoundMatchesHitTick(GameTestHelper h) throws ReflectiveOperationException { greedBiteSound(h, true); }
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
+    public static void yujiGreedMissStillPlaysBiteOnce(GameTestHelper h) throws ReflectiveOperationException { greedBiteSound(h, false); }
     private static void grudgeIs(GameTestHelper h, YujiMonster giant, Player expected) {
         CompoundTag data = new CompoundTag(); giant.addAdditionalSaveData(data);
         h.assertTrue(data.hasUUID("YujiGrudge") && data.getUUID("YujiGrudge").equals(expected.getUUID())

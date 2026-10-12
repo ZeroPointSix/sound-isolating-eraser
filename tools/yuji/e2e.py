@@ -12,6 +12,13 @@ ROOT = Path(__file__).resolve().parents[2]
 BOUNDARIES = os.environ.get("YUJI_QA_BOUNDARIES") == "1"
 ISOLATION = os.environ.get("YUJI_QA_ISOLATION") == "1"
 RECORD_AUDIO = os.environ.get("YUJI_QA_RECORD_AUDIO") == "1"
+PROFILES = os.environ.get("YUJI_QA_PROFILES", "")
+CLIENT_FPS = int(os.environ.get("YUJI_QA_CLIENT_FPS", "30"))
+FRAME_DELAY_MS = int(os.environ.get("YUJI_QA_FRAME_DELAY_MS", "0"))
+if not 10 <= CLIENT_FPS <= 260 or not 0 <= FRAME_DELAY_MS <= 2000:
+    raise ValueError("Client FPS must be 10..260; gallery frame delay must be 0..2000 ms")
+if PROFILES and (BOUNDARIES or ISOLATION):
+    raise ValueError("Focused profiles cannot replace multiplayer acceptance")
 RESULTS = ROOT / "build" / (("yuji-isolation-" if ISOLATION else "yuji-boundaries-" if BOUNDARIES else "yuji-e2e-") + str(time.time_ns()))
 RESULTS.mkdir(parents=True)
 CONFIGS = {c["name"]: c for c in json.loads((ROOT / ".vscode/launch.json").read_text())["configurations"]}
@@ -42,7 +49,7 @@ def launch(role, username="YujiTester"):
         (directory / "config/fml.toml").write_text("earlyWindowControl = false\n")
         (directory / "options.txt").write_text(
             "lang:zh_cn\nrenderDistance:3\nsimulationDistance:3\nguiScale:2\n"
-            f"maxFps:{int(os.environ.get('YUJI_QA_CLIENT_FPS', '30'))}\n"
+            f"maxFps:{CLIENT_FPS}\n"
             "enableVsync:false\npauseOnLostFocus:false\nonboardAccessibility:false\n"
             "showAutosaveIndicator:false\nrenderClouds:false\nnarrator:0\ntutorialStep:none\n"
             "gamma:1.0\nfov:0.0\n")
@@ -69,6 +76,11 @@ def launch(role, username="YujiTester"):
     if ISOLATION:
         command += ["-Dyuji.qa.isolation=true"]
     command += ["-Dyuji.qa.audio=" + ("OpenAL-wave" if RECORD_AUDIO else "OpenAL-null")]
+    if PROFILES:
+        command += ["-Dyuji.qa.profiles=" + PROFILES]
+    if os.environ.get("YUJI_QA_STALL_BITE") == "1":
+        command += ["-Dyuji.qa.stallBite=true"]
+    command += [f"-Dyuji.qa.frameDelayMs={FRAME_DELAY_MS}"]
     command += shlex.split(expand(config["vmArgs"]))
     if not server:
         natives = directory / "lwjgl-natives"
@@ -118,6 +130,8 @@ def ready():
 
 try:
     print(f"YUJI_QA_RESULTS={RESULTS}", flush=True)
+    print(f"YUJI_QA_CONFIG profiles={PROFILES or 'all'}, fps={CLIENT_FPS}, frameDelayMs={FRAME_DELAY_MS}, "
+          f"stallBite={os.environ.get('YUJI_QA_STALL_BITE') == '1'}, recordAudio={RECORD_AUDIO}", flush=True)
     with socket.socket() as probe:
         probe.bind(("127.0.0.1", PORT))
     xvfb = subprocess.Popen(["Xvfb", "-displayfd", "1", "-screen", "0", "1280x720x24", "-nolisten", "tcp"],
@@ -186,4 +200,6 @@ finally:
         print(f"{path.name}: {path.read_text().strip()}")
 
 print("YUJI_TWO_REAL_CLIENT_ISOLATION_AND_TERRAIN_PASSED" if ISOLATION else
-      "YUJI_TWO_REAL_CLIENT_BOUNDARIES_PASSED" if BOUNDARIES else "YUJI_REAL_CLIENT_AI_COLLISION_AND_AUDIO_ACCEPTANCE_PASSED", flush=True)
+      "YUJI_TWO_REAL_CLIENT_BOUNDARIES_PASSED" if BOUNDARIES else
+      "YUJI_FOCUSED_REAL_CLIENT_PASSED profiles=" + PROFILES if PROFILES else
+      "YUJI_REAL_CLIENT_AI_COLLISION_AND_AUDIO_ACCEPTANCE_PASSED", flush=True)
