@@ -31,6 +31,44 @@ import net.minecraftforge.gametest.PrefixGameTestTemplate;
 @GameTestHolder("yuji_tests")
 @PrefixGameTestTemplate(false)
 public final class YujiGameTests {
+    private static void greedPursuit(GameTestHelper h, boolean grow) {
+        YujiMonster greed = monster(h, YujiKind.TANYU);
+        greed.moveTo(greed.getX(), h.getLevel().getMaxBuildHeight() - 16, greed.getZ());
+        BlockPos origin = greed.blockPosition();
+        for (BlockPos pos : BlockPos.betweenClosed(origin.offset(-3, -1, -3), origin.offset(3, 4, 12)))
+            h.getLevel().setBlock(pos, pos.getY() < origin.getY() ? Blocks.SMOOTH_QUARTZ.defaultBlockState() : Blocks.AIR.defaultBlockState(), 2);
+        var cow = h.spawn(EntityType.COW, new BlockPos(2, 2, 2));
+        cow.setNoAi(true); cow.setNoGravity(true); cow.noPhysics = true;
+        cow.moveTo(greed.position().add(0, 0, 8));
+        cow.getAttribute(Attributes.MAX_HEALTH).setBaseValue(200); cow.setHealth(200);
+        greed.setNoGravity(false); greed.setNoAi(false); greed.setTarget(cow);
+        if (grow) {
+            ItemEntity item = new ItemEntity(h.getLevel(), greed.getX(), greed.getY(), greed.getZ(), new ItemStack(Items.ROTTEN_FLESH, 3));
+            item.setNoPickUpDelay(); item.setDeltaMovement(0, 0, 0); h.getLevel().addFreshEntity(item);
+        }
+        var start = greed.position();
+        for (int t = 10; t <= 180; t += 10) {
+            final int tick = t;
+            h.runAtTickTime(t, () -> {
+                var path = greed.getNavigation().getPath();
+                System.out.println("YUJI_PURSUIT grow=" + grow + " tick=" + tick + " position=" + greed.position()
+                        + " speed=" + greed.getSpeed() + " attribute=" + greed.getAttributeValue(Attributes.MOVEMENT_SPEED)
+                        + " next=" + (path == null || path.isDone() ? "none" : path.getNextEntityPos(greed))
+                        + " grounded=" + greed.onGround() + " control=" + greed.getMoveControl().hasWanted());
+            });
+        }
+        h.runAtTickTime(180, () -> {
+            h.assertTrue(greed.position().distanceTo(start) > 4, "native greed path makes forward progress");
+            h.assertTrue(cow.getHealth() < 200, "native pursuit reaches and damages its target");
+            if (grow) h.assertTrue(greed.layers() == 3, "growth occurs before pursuit completes");
+            cow.discard(); greed.discard(); h.succeed();
+        });
+    }
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji", timeoutTicks = 200)
+    public static void yujiGreedPursuesFromBlockCenter(GameTestHelper h) { greedPursuit(h, false); }
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji", timeoutTicks = 200)
+    public static void yujiGreedPursuesAfterGrowing(GameTestHelper h) { greedPursuit(h, true); }
+
     private static YujiMonster monster(GameTestHelper h, YujiKind kind) {
         YujiMonster mob = h.spawn(YujiContent.MOBS.get(kind).get(), new BlockPos(2, 2, 2));
         mob.setNoAi(true); mob.setNoGravity(true);

@@ -116,6 +116,16 @@ public final class YujiTestServer {
                         System.out.println("YUJI_TANYU_DIAGNOSTIC elapsed=" + elapsed + ", entityTick=" + current.tickCount
                                 + ", layers=" + current.layers() + ", hits=" + mobHits
                                 + ", mob=" + current.position() + ", player=" + player.position()
+                                + ", target=" + current.getTarget() + ", noAi=" + current.isNoAi()
+                                + ", navigationDone=" + current.getNavigation().isDone()
+                                + ", path=" + current.getNavigation().getPath()
+                                + ", lineOfSight=" + current.hasLineOfSight(player)
+                                + ", motion=" + current.getDeltaMovement()
+                                + ", speed=" + current.getSpeed() + ", attribute=" + current.getAttributeValue(Attributes.MOVEMENT_SPEED)
+                                + ", control=" + current.getMoveControl().hasWanted() + ", grounded=" + current.onGround()
+                                + ", next=" + (current.getNavigation().isDone() ? "none" : current.getNavigation().getPath().getNextEntityPos(current))
+                                + ", collision=" + current.horizontalCollision + "/" + current.verticalCollision
+                                + ", goals=" + current.goalSelector.getRunningGoals().map(goal -> goal.getGoal().getClass().getName()).toList()
                                 + ", food=" + player.serverLevel().getEntitiesOfClass(ItemEntity.class, current.getBoundingBox().inflate(16))
                                         .stream().map(item -> item.position() + ":" + item.getItem()).toList());
                     if (elapsed == (current.kind() == YujiKind.QIYU ? 500 : 180)) finishAi(player);
