@@ -534,6 +534,14 @@ public final class YujiGameTests {
             h.assertTrue(!qiyu.hasEffect(MobEffects.DAMAGE_BOOST), "aura buffs allies, not itself"); h.succeed();
         });
     }
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji", timeoutTicks = 120)
+    public static void yujiQiyuAuraRetriesWhileBusy(GameTestHelper h) {
+        YujiMonster qiyu = monster(h, YujiKind.QIYU), ally = monster(h, YujiKind.YUCHI);
+        qiyu.setNoAi(false); qiyu.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(0);
+        // Occupy it exactly when the first aura is due (skill cooldown 20): it must retry, not wait 240 ticks.
+        h.runAtTickTime(15, () -> qiyu.begin("strike", 24, null));
+        h.runAtTickTime(90, () -> { h.assertTrue(ally.hasEffect(MobEffects.DAMAGE_BOOST), "aura fires after a busy action ends"); h.succeed(); });
+    }
     @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji", timeoutTicks = 100)
     public static void yujiGiantDeathAnimationCompletes(GameTestHelper h) {
         YujiMonster boss = monster(h, YujiKind.SHIFOTOU);

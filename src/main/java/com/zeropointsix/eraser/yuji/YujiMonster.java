@@ -275,7 +275,10 @@ public final class YujiMonster extends Monster implements GeoEntity {
                 } else skillCooldown = 10;
             }
             case WANGYU -> { mimic(); skillCooldown = 120 + random.nextInt(81); }
-            case QIYU -> { if (actionTicks == 0) begin("bless", 30, null); skillCooldown = 240; }
+            case QIYU -> {
+                // Busy striking/summoning: retry shortly instead of silently skipping a whole aura cycle.
+                if (actionTicks == 0) { begin("bless", 30, null); skillCooldown = 240; } else skillCooldown = 10;
+            }
             case CHENNU -> {
                 if (actionTicks == 0 && !nearbyPlayers(4).isEmpty()) { begin("stomp", 36, getTarget()); stompBurst = true; }
                 skillCooldown = 80;
