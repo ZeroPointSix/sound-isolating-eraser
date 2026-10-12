@@ -12,9 +12,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.InputEvent;
 import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
-import net.minecraftforge.client.settings.IKeyConflictContext;
 import net.minecraftforge.client.settings.KeyConflictContext;
-import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.lwjgl.glfw.GLFW;
@@ -28,7 +26,6 @@ public final class WingsKeys {
     public static KeyMapping BLINK;
 
     private static long lastJumpPress = 0;
-    private static boolean inputContextsInstalled;
 
     @SubscribeEvent
     public static void register(RegisterKeyMappingsEvent event) {
@@ -48,29 +45,13 @@ public final class WingsKeys {
 
     @Mod.EventBusSubscriber(modid = "sound_isolating_eraser", value = Dist.CLIENT)
     public static final class InputHandler {
-        @SubscribeEvent
-        public static void installInputContexts(TickEvent.ClientTickEvent event) {
-            if (event.phase != TickEvent.Phase.END || inputContextsInstalled || CYCLE_TIER == null) return;
-            Minecraft mc = Minecraft.getInstance();
-            if (mc.options == null) return;
+        private static void consumeConflictingCuriosClick(Minecraft mc) {
             for (KeyMapping key : mc.options.keyMappings) {
-                if (!key.getName().equals("key.curios.open.desc")) continue;
-                IKeyConflictContext original = key.getKeyConflictContext();
-                // Filter before Forge queues clicks for both mappings. Keep saved keys
-                // and Curios behavior unchanged when wings do not own this binding.
-                key.setKeyConflictContext(new IKeyConflictContext() {
-                    @Override
-                    public boolean isActive() {
-                        return original.isActive() && !cycleOwnsBinding(mc, key);
-                    }
-
-                    @Override
-                    public boolean conflicts(IKeyConflictContext other) {
-                        return original.conflicts(other);
-                    }
-                });
+                if (!key.getName().equals("key.curios.open.desc") || !cycleOwnsBinding(mc, key)) continue;
+                // Forge 47.2 queues all same-key bindings regardless of conflict context.
+                // Consume only the wing-owned click before Curios handles its END tick.
+                while (key.consumeClick()) { }
             }
-            inputContextsInstalled = true;
         }
 
         private static boolean cycleOwnsBinding(Minecraft mc, KeyMapping other) {
@@ -89,6 +70,7 @@ public final class WingsKeys {
             if (mc.player == null || mc.screen != null) return;
             long now = System.currentTimeMillis();
             if (CYCLE_TIER.consumeClick()) {
+                consumeConflictingCuriosClick(mc);
                 WingsNet.CHANNEL.sendToServer(new CycleTierPacket());
             }
             if (HOVER_TOGGLE.consumeClick()) {
