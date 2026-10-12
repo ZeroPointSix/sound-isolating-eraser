@@ -134,7 +134,11 @@ public final class ShadowTestClient {
                 require(Math.abs(mob.getHealth() - 15.75F) < 0.01F, "health synchronized across save/restart");
             }
             if (negativeFrame == null) {
-                require(suppressedThisFrame, "negative control actually suppressed the visible entity");
+                // After a reconnect/restart the client can track the mob before its chunk section is
+                // compiled, so the first eligible frame may not draw it at all. Retry on later frames
+                // until the negative control is actually observed; the 100-tick capture timeout still
+                // fails the run if the entity is never rendered.
+                if (!suppressedThisFrame) return;
                 negativeFrame = Screenshot.takeScreenshot(mc.getMainRenderTarget());
                 negativeFrame.writeToFile(RESULTS.resolve(ROLE + "-" + phase + "-without-shadow.png"));
                 suppressShadow = false;
