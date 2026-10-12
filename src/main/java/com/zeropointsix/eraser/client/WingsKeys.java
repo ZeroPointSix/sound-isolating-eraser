@@ -1,5 +1,7 @@
 package com.zeropointsix.eraser.client;
 
+import com.mojang.blaze3d.platform.InputConstants;
+import com.zeropointsix.eraser.wings.WingsState;
 import com.zeropointsix.eraser.wings.net.BlinkPacket;
 import com.zeropointsix.eraser.wings.net.CycleTierPacket;
 import com.zeropointsix.eraser.wings.net.HoverTogglePacket;
@@ -10,6 +12,9 @@ import net.minecraft.client.Minecraft;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.InputEvent;
 import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
+import net.minecraftforge.client.settings.IKeyConflictContext;
+import net.minecraftforge.client.settings.KeyConflictContext;
+import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.lwjgl.glfw.GLFW;
@@ -23,14 +28,18 @@ public final class WingsKeys {
     public static KeyMapping BLINK;
 
     private static long lastJumpPress = 0;
+    private static boolean inputContextsInstalled;
 
     @SubscribeEvent
     public static void register(RegisterKeyMappingsEvent event) {
         CYCLE_TIER = new KeyMapping("key.sound_isolating_eraser.cycle_tier",
+                KeyConflictContext.IN_GAME, InputConstants.Type.KEYSYM,
                 GLFW.GLFW_KEY_G, "key.categories.sound_isolating_eraser");
         HOVER_TOGGLE = new KeyMapping("key.sound_isolating_eraser.hover",
+                KeyConflictContext.IN_GAME, InputConstants.Type.KEYSYM,
                 GLFW.GLFW_KEY_H, "key.categories.sound_isolating_eraser");
         BLINK = new KeyMapping("key.sound_isolating_eraser.blink",
+                KeyConflictContext.IN_GAME, InputConstants.Type.KEYSYM,
                 GLFW.GLFW_KEY_R, "key.categories.sound_isolating_eraser");
         event.register(CYCLE_TIER);
         event.register(HOVER_TOGGLE);
@@ -40,9 +49,44 @@ public final class WingsKeys {
     @Mod.EventBusSubscriber(modid = "sound_isolating_eraser", value = Dist.CLIENT)
     public static final class InputHandler {
         @SubscribeEvent
+        public static void installInputContexts(TickEvent.ClientTickEvent event) {
+            if (event.phase != TickEvent.Phase.END || inputContextsInstalled || CYCLE_TIER == null) return;
+            Minecraft mc = Minecraft.getInstance();
+            if (mc.options == null) return;
+            for (KeyMapping key : mc.options.keyMappings) {
+                if (!key.getName().equals("key.curios.open.desc")) continue;
+                IKeyConflictContext original = key.getKeyConflictContext();
+                // Filter before Forge queues clicks for both mappings. Keep saved keys
+                // and Curios behavior unchanged when wings do not own this binding.
+                key.setKeyConflictContext(new IKeyConflictContext() {
+                    @Override
+                    public boolean isActive() {
+                        return original.isActive() && !cycleOwnsBinding(mc, key);
+                    }
+
+                    @Override
+                    public boolean conflicts(IKeyConflictContext other) {
+                        return original.conflicts(other);
+                    }
+                });
+            }
+            inputContextsInstalled = true;
+        }
+
+        private static boolean cycleOwnsBinding(Minecraft mc, KeyMapping other) {
+            if (mc.player == null || mc.screen != null
+                    || !WingsState.wearing(mc.player)) return false;
+            WingsClientData.WingInfo info = WingsClientData.get(mc.player);
+            return info != null && info.deployed()
+                    && CYCLE_TIER.getKey().equals(other.getKey())
+                    && CYCLE_TIER.getKeyModifier() == other.getKeyModifier()
+                    && CYCLE_TIER.isActiveAndMatches(other.getKey());
+        }
+
+        @SubscribeEvent
         public static void onKey(InputEvent.Key event) {
             Minecraft mc = Minecraft.getInstance();
-            if (mc.player == null) return;
+            if (mc.player == null || mc.screen != null) return;
             long now = System.currentTimeMillis();
             if (CYCLE_TIER.consumeClick()) {
                 WingsNet.CHANNEL.sendToServer(new CycleTierPacket());
