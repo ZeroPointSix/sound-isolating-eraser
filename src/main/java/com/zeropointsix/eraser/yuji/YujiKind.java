@@ -16,7 +16,7 @@ public enum YujiKind {
     QIYU(20, 4, .25, 0, .6F, 2.3F, 0xCEC8C4, 0x141216),
     TANYU(38, 5, .25, 4, .9F, 2.7F, 0x84827E, 0x3A3634),
     CHENNU(500, 20, .38, 15, 4.5F, 6, 0x18161A, 0xD22818),
-    SHIFOTOU(6000, 150, .22, 40, 6, 8, 0x5C5C60, 0x3A1830);
+    SHIFOTOU(12000, 260, .24, 60, 6, 8, 0x5C5C60, 0x3A1830);
 
     public final double health, damage, speed, armor;
     public final float width, height;
@@ -32,6 +32,7 @@ public enum YujiKind {
         return Monster.createMonsterAttributes().add(Attributes.MAX_HEALTH, health)
                 .add(Attributes.ATTACK_DAMAGE, damage).add(Attributes.MOVEMENT_SPEED, speed)
                 .add(Attributes.ARMOR, armor).add(Attributes.FOLLOW_RANGE, giant() ? 96 : 32)
+                .add(Attributes.ARMOR_TOUGHNESS, this == SHIFOTOU ? 20 : 0)
                 .add(Attributes.KNOCKBACK_RESISTANCE, giant() ? 1 : this == SHASHENG ? .3 : 0).build();
     }
 }

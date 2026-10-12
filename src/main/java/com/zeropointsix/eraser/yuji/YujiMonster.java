@@ -77,6 +77,13 @@ public final class YujiMonster extends Monster implements GeoEntity {
     private Vec3 falseVoice;
     private int voiceWindow, missedVoices, deathAge, animationSerial = -1;
     private boolean stompBurst;
+    /** Qiyu summoning: cast interval, alive cap per summoner, scan radius. */
+    public static final int SUMMON_INTERVAL = 200, SUMMON_CAP = 4;
+    private static final double SUMMON_RANGE = 32;
+    private static final YujiKind[] SUMMONABLE = {YujiKind.YUCHI, YujiKind.SHASHENG, YujiKind.TOUDAO, YujiKind.EKOU,
+            YujiKind.WANGYU, YujiKind.LIANGSHE, YujiKind.XIEYIN, YujiKind.TANYU};
+    private int summonCooldown = 60;
+    @Nullable private UUID summoner;
 
     public YujiMonster(YujiKind kind, EntityType<? extends Monster> type, Level level) {
         super(type, level);
@@ -87,8 +94,9 @@ public final class YujiMonster extends Monster implements GeoEntity {
         refreshDimensions();
     }
     @Override public double getAttributeValue(Attribute attribute) {
-        if (kind != YujiKind.SHIFOTOU || attribute != Attributes.MAX_HEALTH) return super.getAttributeValue(attribute);
-        // Vanilla caps this shared attribute at 1024; only this boss needs 2000 HP.
+        if (kind != YujiKind.SHIFOTOU || attribute != Attributes.MAX_HEALTH && attribute != Attributes.ARMOR)
+            return super.getAttributeValue(attribute);
+        // Vanilla caps MAX_HEALTH at 1024 and ARMOR at 30; only this boss needs more.
         // Retain the normal modifier order without changing the global attribute range.
         var instance = getAttribute(attribute);
         double base = instance.getBaseValue();
@@ -199,6 +207,10 @@ public final class YujiMonster extends Monster implements GeoEntity {
             if (--actionTicks == 0) entityData.set(ACTION, "");
         }
         if (--skillCooldown <= 0) { useSkill(); }
+        if (kind == YujiKind.QIYU && --summonCooldown <= 0) {
+            if (actionTicks == 0 && canSummon()) { begin("summon", 30, getTarget()); summonCooldown = SUMMON_INTERVAL; }
+            else summonCooldown = 20;
+        }
         if (kind == YujiKind.TANYU && tickCount % 10 == 0) collectItems();
         if (kind == YujiKind.SHIFOTOU) {
             boss.setProgress(getHealth() / getMaxHealth());
@@ -289,8 +301,8 @@ public final class YujiMonster extends Monster implements GeoEntity {
             }
             case "spike_volley" -> { if (tick == 11 && target != null) volley(target, false); }
             case "stomp" -> { if (tick == 12) { if (stompBurst) areaDamage(4, 30, true); else strike(target, 20, false); } }
-            case "slam" -> { if (tick == 16) { areaDamage(6, 20, true); strike(target, 50, true); } }
-            case "sweep" -> { if (tick == 12) areaDamage(6, 40, true); }
+            case "slam" -> { if (tick == 16) { areaDamage(8, 30, true); strike(target, (float) getAttributeValue(Attributes.ATTACK_DAMAGE) * .4F, true); } }
+            case "sweep" -> { if (tick == 12) areaDamage(8, 60, true); }
             case "gaze" -> {
                 if (tick == 12 && target != null && target.isAlive() && distanceToSqr(target) <= 32 * 32) {
                     target.addEffect(new MobEffectInstance(MobEffects.DARKNESS, 60));
@@ -303,6 +315,7 @@ public final class YujiMonster extends Monster implements GeoEntity {
                     target.hurt(damageSources().indirectMagic(this, this), 6);
             }
             case "bless" -> { if (tick == 15) blessAllies(); }
+            case "summon" -> { if (tick == 18) summonAllies(); }
             default -> { }
         }
     }
@@ -313,6 +326,36 @@ public final class YujiMonster extends Monster implements GeoEntity {
                 new MobEffectInstance(MobEffects.REGENERATION, 220, 0)};
         for (YujiMonster ally : level().getEntitiesOfClass(YujiMonster.class, getBoundingBox().inflate(16), y -> y != this))
             for (MobEffectInstance buff : buffs) ally.addEffect(new MobEffectInstance(buff));
+    }
+    @Nullable public UUID summoner() { return summoner; }
+    public int livingSummons() {
+        return level().getEntitiesOfClass(YujiMonster.class, getBoundingBox().inflate(SUMMON_RANGE),
+                y -> y.isAlive() && getUUID().equals(y.summoner)).size();
+    }
+    public boolean canSummon() {
+        return level().getDifficulty() != net.minecraft.world.Difficulty.PEACEFUL
+                && (getTarget() != null && getTarget().isAlive() || !nearbyPlayers(SUMMON_RANGE).isEmpty())
+                && livingSummons() < SUMMON_CAP;
+    }
+    /** Calls one or two random Yuji kinds (never Qiyu or the giants) beside itself, up to SUMMON_CAP alive. */
+    public int summonAllies() {
+        if (!(level() instanceof ServerLevel server)) return 0;
+        int room = SUMMON_CAP - livingSummons(), wanted = Math.min(room, 1 + random.nextInt(2)), made = 0;
+        for (int attempt = 0; made < wanted && attempt < 12; attempt++) {
+            YujiKind pick = SUMMONABLE[random.nextInt(SUMMONABLE.length)];
+            YujiMonster mob = YujiContent.MOBS.get(pick).get().create(server);
+            if (mob == null) continue;
+            double angle = random.nextDouble() * Math.PI * 2, radius = 2 + random.nextDouble() * 2;
+            mob.moveTo(getX() + Math.cos(angle) * radius, Math.floor(getY()), getZ() + Math.sin(angle) * radius, random.nextFloat() * 360, 0);
+            if (!server.noCollision(mob) || !server.getBlockState(mob.blockPosition().below()).isSolid()) { mob.discard(); continue; }
+            mob.finalizeSpawn(server, server.getCurrentDifficultyAt(mob.blockPosition()), MobSpawnType.MOB_SUMMONED, null, null);
+            mob.summoner = getUUID();
+            if (getTarget() != null) mob.setTarget(getTarget());
+            server.addFreshEntityWithPassengers(mob);
+            server.sendParticles(net.minecraft.core.particles.ParticleTypes.SOUL, mob.getX(), mob.getY() + .5, mob.getZ(), 16, .4, .6, .4, .02);
+            made++;
+        }
+        return made;
     }
     private boolean strike(@Nullable LivingEntity target, float damage, boolean secondHit) {
         if (target == null || !target.isAlive() || target instanceof Player p && !vulnerable(p)
@@ -328,7 +371,10 @@ public final class YujiMonster extends Monster implements GeoEntity {
         return super.doHurtTarget(target);
     }
     private void areaDamage(double range, float damage, boolean launch) {
-        for (Player p : nearbyPlayers(range)) if (p.hurt(damageSources().mobAttack(this), damage) && launch) {
+        List<LivingEntity> victims = new ArrayList<>(nearbyPlayers(range));
+        // Giants also crush defending iron golems caught in the shockwave.
+        if (kind.giant()) victims.addAll(level().getEntitiesOfClass(IronGolem.class, getBoundingBox().inflate(range), LivingEntity::isAlive));
+        for (LivingEntity p : victims) if (p.hurt(damageSources().mobAttack(this), damage) && launch) {
             p.push(0, .65, 0); p.hurtMarked = true;
         }
     }
@@ -447,7 +493,7 @@ public final class YujiMonster extends Monster implements GeoEntity {
     }
     @Override public void addAdditionalSaveData(CompoundTag tag) {
         super.addAdditionalSaveData(tag); tag.putInt("YujiLayers", layers()); tag.putInt("YujiFlee", fleeTicks);
-        tag.putInt("YujiFollow", followTicks); if (grudge != null) tag.putUUID("YujiGrudge", grudge);
+        tag.putInt("YujiFollow", followTicks); if (summoner != null) tag.putUUID("YujiSummoner", summoner); if (grudge != null) tag.putUUID("YujiGrudge", grudge);
         ListTag items = new ListTag(); hoard.forEach(stack -> items.add(stack.save(new CompoundTag()))); tag.put("YujiHoard", items);
     }
     @Override public void readAdditionalSaveData(CompoundTag tag) {
@@ -456,6 +502,7 @@ public final class YujiMonster extends Monster implements GeoEntity {
         if (kind == YujiKind.TANYU && !tag.contains("Health")) setHealth(getMaxHealth());
         fleeTicks = Mth.clamp(tag.getInt("YujiFlee"), 0, 200); followTicks = Mth.clamp(tag.getInt("YujiFollow"), 0, 1000);
         grudge = tag.hasUUID("YujiGrudge") ? tag.getUUID("YujiGrudge") : null;
+        summoner = tag.hasUUID("YujiSummoner") ? tag.getUUID("YujiSummoner") : null;
         hoard.clear(); ListTag items = tag.getList("YujiHoard", Tag.TAG_COMPOUND);
         for (int i = 0; i < items.size(); i++) { ItemStack stack = ItemStack.of(items.getCompound(i)); if (!stack.isEmpty()) hoard.add(stack); }
         entityData.set(LOOT, hoard.isEmpty() ? ItemStack.EMPTY : hoard.get(hoard.size() - 1).copy());

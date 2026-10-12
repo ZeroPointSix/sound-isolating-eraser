@@ -308,6 +308,29 @@
      0
     ]
    }
+  ],
+  "summon": [
+   {
+    "t": 0.5,
+    "bone": "flute",
+    "vfx": "karma_wisp",
+    "sound": "flute",
+    "off": [
+     0,
+     4,
+     0
+    ]
+   },
+   {
+    "t": 0.9,
+    "bone": "root",
+    "vfx": "black_ooze",
+    "off": [
+     0,
+     4,
+     0
+    ]
+   }
   ]
  },
  "tanyu": {

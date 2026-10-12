@@ -431,10 +431,86 @@ public final class YujiGameTests {
     public static void yujiBossDoesNotCrushOutsideBody(GameTestHelper h) throws ReflectiveOperationException { bossContact(h, 15.31, 0, false); }
     @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
     public static void yujiBossDoesNotCrushAboveBody(GameTestHelper h) throws ReflectiveOperationException { bossContact(h, 0, 40.01, false); }
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
+    public static void yujiBossStatsRaisedPastVanillaCaps(GameTestHelper h) {
+        YujiMonster boss = monster(h, YujiKind.SHIFOTOU);
+        close(h, boss.getMaxHealth(), 12000, "boss health above 6000 baseline");
+        close(h, boss.getHealth(), 12000, "boss spawns at full health");
+        close(h, boss.getAttributeValue(Attributes.ATTACK_DAMAGE), 260, "boss damage above 150 baseline");
+        close(h, boss.getAttributeValue(Attributes.ARMOR), 60, "boss armor not clamped to vanilla 30");
+        close(h, boss.getArmorValue(), 60, "armor value used by combat rules");
+        close(h, boss.getAttributeValue(Attributes.ARMOR_TOUGHNESS), 20, "boss armor toughness");
+        h.succeed();
+    }
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji", timeoutTicks = 60)
+    public static void yujiEkouChantHitsFromRange(GameTestHelper h) {
+        YujiMonster chanter = monster(h, YujiKind.EKOU);
+        var cow = h.spawn(EntityType.COW, new BlockPos(2, 2, 2)); cow.setNoAi(true); cow.setNoGravity(true);
+        cow.moveTo(chanter.position().add(0, 0, 12)); cow.getAttribute(Attributes.MAX_HEALTH).setBaseValue(40); cow.setHealth(40);
+        chanter.setNoAi(false); chanter.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(0);
+        h.assertTrue(chanter.distanceTo(cow) > 10, "target well outside melee reach");
+        chanter.begin("chant", 40, cow);
+        h.runAtTickTime(17, () -> close(h, cow.getHealth(), 34, "first chant hit lands at range"));
+        h.runAtTickTime(34, () -> { close(h, cow.getHealth(), 28, "second chant hit lands at range"); h.succeed(); });
+    }
+    private static void summonFloor(GameTestHelper h, YujiMonster qiyu, net.minecraft.world.level.block.state.BlockState state) {
+        BlockPos base = qiyu.blockPosition().below();
+        for (BlockPos pos : BlockPos.betweenClosed(base.offset(-6, 0, -6), base.offset(6, 0, 6))) h.getLevel().setBlockAndUpdate(pos, state);
+        for (BlockPos pos : BlockPos.betweenClosed(base.offset(-6, 1, -6), base.offset(6, 8, 6)))
+            if (!pos.equals(qiyu.blockPosition())) h.getLevel().setBlockAndUpdate(pos, Blocks.AIR.defaultBlockState());
+    }
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
+    public static void yujiQiyuSummonsCappedOtherKinds(GameTestHelper h) {
+        YujiMonster qiyu = monster(h, YujiKind.QIYU);
+        summonFloor(h, qiyu, Blocks.STONE.defaultBlockState());
+        try {
+            int total = 0;
+            for (int cast = 0; cast < 8; cast++) total += qiyu.summonAllies();
+            h.assertTrue(total == YujiMonster.SUMMON_CAP, "summons fill exactly to the cap: " + total);
+            h.assertTrue(qiyu.livingSummons() == YujiMonster.SUMMON_CAP, "cap counted from living summons");
+            h.assertTrue(qiyu.summonAllies() == 0, "no summons beyond cap");
+            var summons = h.getLevel().getEntitiesOfClass(YujiMonster.class, qiyu.getBoundingBox().inflate(32), y -> qiyu.getUUID().equals(y.summoner()));
+            for (YujiMonster s : summons) {
+                h.assertTrue(s.kind() != YujiKind.QIYU && !s.kind().giant(), "summons other non-giant kinds: " + s.kind());
+                CompoundTag tag = new CompoundTag(); s.addAdditionalSaveData(tag);
+                h.assertTrue(tag.hasUUID("YujiSummoner") && tag.getUUID("YujiSummoner").equals(qiyu.getUUID()), "summoner persisted");
+            }
+            summons.get(0).discard();
+            h.assertTrue(qiyu.livingSummons() == YujiMonster.SUMMON_CAP - 1, "dead summons free a slot");
+            h.assertTrue(qiyu.summonAllies() == 1, "refills only the freed slot");
+            for (YujiMonster s : h.getLevel().getEntitiesOfClass(YujiMonster.class, qiyu.getBoundingBox().inflate(32), y -> qiyu.getUUID().equals(y.summoner()))) s.discard();
+            h.succeed();
+        } finally { summonFloor(h, qiyu, Blocks.AIR.defaultBlockState()); }
+    }
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
+    public static void yujiQiyuNeedsAudienceAndNotPeaceful(GameTestHelper h) {
+        YujiMonster qiyu = monster(h, YujiKind.QIYU);
+        var server = h.getLevel().getServer(); var difficulty = h.getLevel().getDifficulty();
+        try {
+            server.setDifficulty(net.minecraft.world.Difficulty.NORMAL, true);
+            h.assertTrue(!qiyu.canSummon(), "no summoning without a target or nearby player");
+            var cow = h.spawn(EntityType.COW, new BlockPos(3, 2, 2)); cow.setNoAi(true);
+            qiyu.setTarget(cow); h.assertTrue(qiyu.canSummon(), "summons once engaged");
+            server.setDifficulty(net.minecraft.world.Difficulty.PEACEFUL, true);
+            h.assertTrue(!qiyu.canSummon(), "never summons on peaceful");
+            h.succeed();
+        } finally { server.setDifficulty(difficulty, true); }
+    }
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji", timeoutTicks = 60)
+    public static void yujiQiyuBlessBuffsNearbyAllies(GameTestHelper h) {
+        YujiMonster qiyu = monster(h, YujiKind.QIYU), ally = monster(h, YujiKind.SHASHENG);
+        qiyu.setNoAi(false); qiyu.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(0);
+        qiyu.begin("bless", 30, null);
+        h.runAtTickTime(18, () -> {
+            h.assertTrue(ally.hasEffect(MobEffects.DAMAGE_BOOST) && ally.hasEffect(MobEffects.MOVEMENT_SPEED)
+                    && ally.hasEffect(MobEffects.DAMAGE_RESISTANCE) && ally.hasEffect(MobEffects.REGENERATION), "ally receives four buffs");
+            h.assertTrue(!qiyu.hasEffect(MobEffects.DAMAGE_BOOST), "aura buffs allies, not itself"); h.succeed();
+        });
+    }
     @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji", timeoutTicks = 100)
     public static void yujiGiantDeathAnimationCompletes(GameTestHelper h) {
         YujiMonster boss = monster(h, YujiKind.SHIFOTOU);
-        boss.hurt(boss.damageSources().genericKill(), 10000);
+        boss.hurt(boss.damageSources().genericKill(), 100000);
         h.runAtTickTime(55, () -> h.assertTrue(!boss.isRemoved(), "death animation retains entity before completion"));
         h.runAtTickTime(85, () -> { h.assertTrue(boss.isRemoved(), "boss removed after death animation completes"); h.succeed(); });
     }
