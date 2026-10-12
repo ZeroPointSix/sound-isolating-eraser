@@ -91,6 +91,10 @@ public final class WingsQaClient {
                 if (SHOWCASE) showcaseObserver(mc); else exerciseObserver(mc);
             }
             if (stage == 60) exerciseControls(mc);
+            if (stage == 70 && WingsInputQa.tick(mc, RESULTS)) {
+                capture(mc, "input-rebinding-complete");
+                stage = 99;
+            }
             if (stage == 99 && Files.exists(RESULTS.resolve("wings-observer.pass"))) {
                 mc.player.connection.sendCommand("wingsqa finish");
                 mark("wings-wearer.pass");
@@ -98,6 +102,11 @@ public final class WingsQaClient {
             }
         } catch (Throwable failure) {
             restoreCycleBinding();
+            try {
+                WingsInputQa.restore(mc);
+            } catch (Throwable cleanupFailure) {
+                failure.addSuppressed(cleanupFailure);
+            }
             failure.printStackTrace();
             try {
                 capture(mc, "failed");
@@ -314,7 +323,8 @@ public final class WingsQaClient {
                     "rebound native K cycles wings without opening Curios");
             restoreCycleBinding();
             mark("wings-key-conflicts.pass");
-            stage = 99;
+            WingsInputQa.begin(mc);
+            stage = 70;
         }
     }
 

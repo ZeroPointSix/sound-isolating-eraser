@@ -86,7 +86,8 @@ try:
     wearer = launch("runClient", "wearer", ":93")
     observer = launch("runClient", "observer", ":94")
     deadline = time.monotonic() + 600
-    required = ("wings-wearer", "wings-observer", "wings-server", "wings-controls", "wings-key-conflicts")
+    required = ("wings-wearer", "wings-observer", "wings-server", "wings-controls", "wings-key-conflicts",
+                "wings-input-rebinding")
     while not all((RESULTS / f"{role}.pass").exists() for role in required):
         failures = list(RESULTS.glob("wings-*.failed"))
         if failures:
