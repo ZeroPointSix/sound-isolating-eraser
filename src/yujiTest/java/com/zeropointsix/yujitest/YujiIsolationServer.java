@@ -90,8 +90,8 @@ public final class YujiIsolationServer {
         level.getGameRules().getRule(GameRules.RULE_DAYLIGHT).set(false, server);
         level.setDayTime(6000); level.setWeatherParameters(6000, 0, false, false);
         // Every scenario uses real gravity and block collision on a fresh dedicated-server world.
-        for (int x = -4; x <= 8; x++) for (int z = -4; z <= 4; z++) level.setChunkForced(x, z, true);
-        for (BlockPos pos : BlockPos.betweenClosed(-50, 64, -50, 130, 64, 60)) level.setBlockAndUpdate(pos, Blocks.SMOOTH_QUARTZ.defaultBlockState());
+        for (int x = -4; x <= 8; x++) for (int z = -4; z <= 8; z++) level.setChunkForced(x, z, true);
+        for (BlockPos pos : BlockPos.betweenClosed(-50, 64, -50, 130, 64, 130)) level.setBlockAndUpdate(pos, Blocks.SMOOTH_QUARTZ.defaultBlockState());
     }
     @SubscribeEvent public static void hurt(LivingDamageEvent event) {
         if (enabled() && panda != null && event.getSource().getEntity() == panda && event.getEntity() instanceof ServerPlayer)
@@ -194,11 +194,18 @@ public final class YujiIsolationServer {
                     if (current.horizontalCollision) contacts++;
                     if (current.verticalCollision && !current.onGround()) collisionTicks++;
                     highest = Math.max(highest, current.getY()); furthest = Math.max(furthest, current.getX());
+                    require(!current.isNoGravity() && level.noCollision(current), "climbing keeps gravity and never overlaps solid blocks");
                     if (round < 2 && highest >= (round == 0 ? 86 : 81) && ticks % 20 == 0) {
-                        // A moving connected target remains within aggro range while drawing the entire large body over the ledge.
-                        int x = Math.min(65, (int) current.getX() + 42), z = round == 1 ? Math.min(65, (int) current.getZ() + 42) : 0;
-                        fill(level, x - 1, 93, z - 1, x + 1, 93, z + 1);
-                        a.teleportTo(level, x, 94, z, 90, 0);
+                        // Remove the observation perch after reaching the crest. Leaving a trail of
+                        // elevated perches creates extra obstacles inside the boss's 30 x 40 body.
+                        int perchX = round == 1 ? 36 : 42, perchZ = round == 1 ? 36 : 0;
+                        for (BlockPos pos : BlockPos.betweenClosed(perchX - 2, 93, perchZ - 2, perchX + 2, 93, perchZ + 2))
+                            block(level, pos, Blocks.AIR.defaultBlockState());
+                        // Keep the connected player beyond the navigator's 30-block arrival radius,
+                        // but within aggro range, on the existing ground beyond both wall faces.
+                        double offset = round == 1 ? 30 : 42;
+                        double x = current.getX() + offset, z = round == 1 ? current.getZ() + offset : 0;
+                        a.teleportTo(level, x, 65, z, 90, 0);
                     }
                     if (ticks % 20 == 0) log(item + " tick=" + ticks + " pos=" + current.position() + " wallContacts=" + contacts
                             + " ceilingContacts=" + collisionTicks + " target=" + (current.getTarget() == a) + " noBlockOverlap=" + level.noCollision(current));
