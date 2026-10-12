@@ -362,11 +362,19 @@ public final class YujiGameTests {
     }
     private static void greedBiteSound(GameTestHelper h, boolean inReach) throws ReflectiveOperationException {
         YujiMonster greed = monster(h, YujiKind.TANYU);
-        greed.moveTo(greed.position().add(0, 64, 0));
+        // Test grids may start underground; a relative +64 can still leave the real hit ray in terrain.
+        greed.moveTo(greed.getX(), h.getLevel().getMaxBuildHeight() - 16, greed.getZ());
+        BlockPos start = greed.blockPosition();
+        for (BlockPos pos : BlockPos.betweenClosed(start.offset(-1, 0, -1), start.offset(9, 4, 1)))
+            h.getLevel().setBlock(pos, Blocks.AIR.defaultBlockState(), 2);
         var cow = h.spawn(EntityType.COW, new BlockPos(2, 2, 2));
         cow.setNoAi(true); cow.setNoGravity(true);
         cow.moveTo(greed.position().add(inReach ? 1 : 8, 0, 0));
         cow.getAttribute(Attributes.MAX_HEALTH).setBaseValue(20); cow.setHealth(20);
+        h.assertTrue(h.getLevel().getEntity(cow.getUUID()) == cow, "bite target registered in the world");
+        h.assertTrue(greed.hasLineOfSight(cow), "unobstructed bite fixture: " + greed.position() + " -> " + cow.position());
+        h.assertTrue((greed.distanceTo(cow) <= greed.getBbWidth() + cow.getBbWidth() + 1) == inReach,
+                "bite fixture is at the intended real attack range");
         var heardAt = new java.util.ArrayList<Integer>();
         int[] actionTick = {-1};
         java.util.function.Consumer<net.minecraftforge.event.PlayLevelSoundEvent.AtPosition> listener = event -> {
@@ -387,7 +395,10 @@ public final class YujiGameTests {
             }
             System.out.println("YUJI_GREED_BITE inReach=" + inReach + ", soundTicks=" + heardAt + ", damage=" + (20 - cow.getHealth()));
             h.succeed();
-        } finally { net.minecraftforge.common.MinecraftForge.EVENT_BUS.unregister(listener); }
+        } finally {
+            net.minecraftforge.common.MinecraftForge.EVENT_BUS.unregister(listener);
+            cow.discard(); greed.discard();
+        }
     }
     @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
     public static void yujiGreedBiteSoundMatchesHitTick(GameTestHelper h) throws ReflectiveOperationException { greedBiteSound(h, true); }

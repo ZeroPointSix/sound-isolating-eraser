@@ -63,6 +63,36 @@ stress twice, alongside the original gallery, two-client boundaries and isolatio
 / doors / climb / Panda scenarios. Exact current-HEAD results and run/artifact
 URLs are posted in the PR evidence comment, not inferred from the workflow design.
 
+## Recorded Local Results
+
+Both stress runs used the compiled production/QA sources committed as `5c8318640caab9b9dd770dad522d2a5883cbc49f`,
+with separate new dedicated-server worlds and the command above. The later GameTest
+fixture-only change was not loaded by either client. Both commands exited 0.
+
+| Run | Actual rendering | Tanyu combat | Bite playback | Original evidence |
+| --- | --- | --- | --- | --- |
+| `1791818113771833856` | Yuchi/Tanyu: 11 frames each; bone delta 0.4164/0.4209; 5896/14093 foreground pixels | 3 layers, 5 real-player damage events | 5 requested, 5 decoded channels playing | [client](stress-1/client.log), [server](stress-1/server.log), [playback](stress-1/audio-events-tanyu.log), [mix](stress-1/client-mix.ogg), [Yuchi](stress-1/yuchi.png), [Tanyu](stress-1/tanyu.png) |
+| `1791818580212988486` | Yuchi/Tanyu: 11 frames each; bone delta 0.4184/0.4352; 5830/14890 foreground pixels | 3 layers, 5 real-player damage events | 5 requested, 5 decoded channels playing | [client](stress-2/client.log), [server](stress-2/server.log), [playback](stress-2/audio-events-tanyu.log), [mix](stress-2/client-mix.ogg), [Yuchi](stress-2/yuchi.png), [Tanyu](stress-2/tanyu.png) |
+
+The first run records `YUJI_RENDER_WAIT` at 110 ticks with only 10 actual frames:
+the original deadline would have failed. The bounded readiness wait reaches 11
+without lowering the assertion. Both runs preserve zero Yuchi damage, real floor
+collision, movement and target acquisition. The actual audio recordings measure
+127.95/153.03 seconds and peak at -1.6/-1.5 dB respectively; this is technical
+playback evidence, not a human listening verdict.
+
+The first CI attempt on `5c83186` failed its new in-reach bite GameTest:
+[run 38269475205](https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38269475205),
+[unaltered failing job log](ci-fixture-failure.log). The out-of-reach test observed
+exactly one sound at tick 12 and zero damage. The in-reach fixture initially used
+test-grid Y + 64, which can still be inside generated terrain. The fixture now
+uses a cleared high-altitude line, asserts registration, line of sight and intended
+range before testing, and cleans up both entities. The expected damage (5 at tick
+12), sound count and timing are unchanged. The corrected local build and all 46
+Yuji GameTests passed in a new world, exit 0: [complete log](fixture-gametest.log).
+Both the hit and miss log exactly `soundTicks=[12]`, with damage 5/0. Current-HEAD
+full-suite CI still needs its own result; the failed run is not a green CI result.
+
 ## Independent Review / Human Acceptance Packet
 
 - [Requirement matrix](../../../yuji-acceptance.md): all ten monsters, Shifotou and BoneSpike, with implementation choices distinguished from user-specified values.

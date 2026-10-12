@@ -1,0 +1,6 @@
+phase=yuchi, tick=0, event=qihai:entity.qihai.yuchi.ambient, decoded=qihai:yuchi/ambient, channelPlaying=true, volume=1.0, pitch=0.94745165, position=0.5,65.0,0.5, backend=OpenAL-wave
+phase=yuchi, tick=30, event=qihai:entity.qihai.yuchi.ambient, decoded=qihai:yuchi/ambient, channelPlaying=true, volume=1.0, pitch=1.148788, position=0.5,65.0,0.5, backend=OpenAL-wave
+phase=yuchi, tick=90, event=qihai:entity.qihai.yuchi.ambient, decoded=qihai:yuchi/ambient, channelPlaying=true, volume=1.0, pitch=0.8952317, position=0.5,65.0,0.5, backend=OpenAL-wave
+phase=yuchi, tick=130, event=qihai:entity.qihai.yuchi.ambient, decoded=qihai:yuchi/ambient, channelPlaying=true, volume=1.0, pitch=0.99699116, position=0.5,65.0,0.5, backend=OpenAL-wave
+phase=ai-yuchi, tick=20, event=qihai:entity.qihai.yuchi.step, decoded=qihai:yuchi/step, channelPlaying=true, volume=0.5, pitch=1.0, position=0.5,65.0,2.125, backend=OpenAL-wave
+phase=audio-yuchi, tick=10, event=qihai:entity.qihai.yuchi.death, decoded=qihai:yuchi/death, channelPlaying=true, volume=1.0, pitch=1.1020042, position=0.5,65.0,2.875, backend=OpenAL-wave
