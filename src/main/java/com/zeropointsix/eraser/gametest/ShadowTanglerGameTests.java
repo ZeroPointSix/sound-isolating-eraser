@@ -321,6 +321,9 @@ public final class ShadowTanglerGameTests {
         target.getAttribute(Attributes.MAX_HEALTH).setBaseValue(200);
         target.getAttribute(Attributes.KNOCKBACK_RESISTANCE).setBaseValue(1);
         target.setHealth(200);
+        // This probe measures melee timing, not the target selector's random
+        // discovery delay. Start pursuit after the separately tested spawn lock.
+        h.runAtTickTime(26, () -> mob.setTarget(target));
         int[] lastSwing = {-1}, previousHit = {-1}, hits = {0};
         boolean[] swinging = {false};
         boolean[] interrupted = {false};
@@ -336,9 +339,6 @@ public final class ShadowTanglerGameTests {
                     lastSwing[0] = tick;
                 }
                 swinging[0] = mob.swinging;
-                if (tick % 10 == 0) System.out.println("SHADOW_MELEE_DIAGNOSTIC tick=" + tick
-                        + " hits=" + hits[0] + " interrupted=" + interrupted[0] + " " + escapeState(mob)
-                        + " victim=" + target.position() + " selected=" + mob.getTarget());
                 if (target.getHealth() < previousHealth[0]) {
                     h.assertTrue(lastSwing[0] >= 24 && Math.abs(tick - lastSwing[0] - 5) <= 1,
                             "native AI waits for spawn and five-tick attack windup");
@@ -358,7 +358,8 @@ public final class ShadowTanglerGameTests {
                 }
                 if (tick == 130) {
                     h.assertTrue(interrupted[0] && hits[0] >= 3,
-                            "native AI resumes attacks after pursuit interruption: hits=" + hits[0]);
+                            "native AI resumes attacks after pursuit interruption: hits=" + hits[0]
+                                    + ", " + escapeState(mob) + ", target=" + mob.getTarget());
                     h.succeed();
                 }
             });
