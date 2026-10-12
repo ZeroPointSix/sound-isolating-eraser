@@ -71,7 +71,8 @@ public final class WingsQaClient {
         if (ROLE == null || event.phase != TickEvent.Phase.END || finished) return;
         Minecraft mc = Minecraft.getInstance();
         try {
-            if (++totalTicks > 9000) throw new AssertionError("Timed out in stage " + stage);
+            if (++totalTicks > 9000) throw new AssertionError("Timed out in stage " + stage
+                    + " controlStep=" + controlStep + " phase=" + phase);
             if (mc.player == null || mc.level == null) return;
             if (stage == 0) {
                 if (!phase.equals("ready")) return;

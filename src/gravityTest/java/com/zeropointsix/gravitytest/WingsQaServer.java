@@ -53,6 +53,7 @@ public final class WingsQaServer {
     private static float chargeExhaustion;
     private static boolean chargeMeasured, chargedBlinkChecked, controlsDone;
     private static boolean awaitCharge;
+    private static boolean tracingVoid;
 
     @SubscribeEvent
     public static void registerCommands(RegisterCommandsEvent event) {
@@ -60,7 +61,7 @@ public final class WingsQaServer {
                 .requires(WingsQaServer::allowed)
                 .then(Commands.literal("phase")
                         .then(Commands.argument("word", StringArgumentType.word())
-                                .executes(context -> changePhase(context.getSource(),
+                                .executes(context -> checkedPhase(context.getSource(),
                                         StringArgumentType.getString(context, "word")))))
                 .then(Commands.literal("finish")
                         .executes(context -> finish(context.getSource().getServer()))));
@@ -221,8 +222,8 @@ public final class WingsQaServer {
             return 0;
         }
         switch (next) {
-            case "controlsSetup" -> {
-                controlFixture(server, wearerRef);
+            case "controlsSetup", "inputSetup" -> {
+                controlFixture(server, wearerRef, next.equals("inputSetup") ? 200 : 100);
                 WingsState.setTier(wearerRef, WingsState.CRUISE);
                 com.zeropointsix.eraser.wings.net.WingsNet.syncToTracking(wearerRef);
             }
@@ -241,13 +242,18 @@ public final class WingsQaServer {
                 wearerRef.getFoodData().setFoodLevel(0);
                 wearerRef.getFoodData().setSaturation(0);
                 voidSpeedFlag = WingsState.speedFlagAt(wearerRef);
+                tracingVoid = true;
+                LOGGER.info("WINGS_VOID_BASELINE tick={} pos={} flag={}", level.getGameTime(),
+                        wearerRef.position(), voidSpeedFlag);
                 com.zeropointsix.eraser.wings.net.WingsNet.syncToTracking(wearerRef);
             }
             case "voidDone" -> {
                 check(wearerRef.getY() > wearerRef.level().getMinBuildHeight() + 5,
                         "server confirms starving hover escapes void margin");
                 check(WingsState.speedFlagAt(wearerRef) == voidSpeedFlag,
-                        "void rescue never triggers server overspeed rollback");
+                        "void rescue never triggers server overspeed rollback: baseline=" + voidSpeedFlag
+                                + " current=" + WingsState.speedFlagAt(wearerRef));
+                tracingVoid = false;
                 controlFixture(server, wearerRef);
                 WingsState.setChargedUntil(wearerRef, 0);
                 awaitCharge = true;
@@ -439,8 +445,29 @@ public final class WingsQaServer {
         LOGGER.info("{}{}", PREFIX, next);
     }
 
+    private static int checkedPhase(CommandSourceStack source, String next) {
+        try {
+            return changePhase(source, next);
+        } catch (Throwable failure) {
+            fail(source.getServer(), "phase=" + next + " " + failure);
+            return 0;
+        }
+    }
+
+    @SubscribeEvent
+    public static void traceVoid(TickEvent.PlayerTickEvent event) {
+        if (tracingVoid && event.player == wearerRef) {
+            LOGGER.info("WINGS_VOID_TRACE phase={} tick={} pos={} flag={}", event.phase,
+                    wearerRef.level().getGameTime(), wearerRef.position(), WingsState.speedFlagAt(wearerRef));
+        }
+    }
+
     private static void controlFixture(MinecraftServer server, ServerPlayer player) {
-        player.teleportTo(server.overworld(), 0.5, 100, 0.5, -90, 0);
+        controlFixture(server, player, 100);
+    }
+
+    private static void controlFixture(MinecraftServer server, ServerPlayer player, double height) {
+        player.teleportTo(server.overworld(), 0.5, height, 0.5, -90, 0);
         player.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
         player.setOnGround(false);
         player.getFoodData().setFoodLevel(20);

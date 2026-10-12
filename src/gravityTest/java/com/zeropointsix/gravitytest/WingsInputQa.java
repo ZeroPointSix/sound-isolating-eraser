@@ -62,7 +62,7 @@ final class WingsInputQa {
                 super.write(ctx, message, promise);
             }
         });
-        add("fresh airborne fixture", () -> mc.player.connection.sendCommand("wingsqa phase controlsSetup"),
+        add("fresh airborne fixture", () -> mc.player.connection.sendCommand("wingsqa phase inputSetup"),
                 () -> require(info(mc).deployed() && info(mc).tier() == 1, "fixture is deployed/cruise"), 40, -1, 0);
         KeyMapping[] skills = {WingsKeys.CYCLE_TIER, WingsKeys.HOVER_TOGGLE, WingsKeys.BLINK};
         for (int i = 0; i < skills.length; i++) {
@@ -71,8 +71,9 @@ final class WingsInputQa {
             String label = mapping.getName();
             add(label + " reset airborne fixture", () -> {
                 restoreBindings();
-                mc.player.connection.sendCommand("wingsqa phase controlsSetup");
-            }, () -> require(info(mc).deployed() && info(mc).tier() == 1 && mc.player.getY() > 95,
+                // Held Shift is also a real descent input; leave enough altitude in BOOST.
+                mc.player.connection.sendCommand("wingsqa phase inputSetup");
+            }, () -> require(info(mc).deployed() && info(mc).tier() == 1 && mc.player.getY() > 195,
                     "fixture reset before held Shift"), 30, -1, 0);
             add(label + " bare K rejected", () -> {
                 restoreBindings();
