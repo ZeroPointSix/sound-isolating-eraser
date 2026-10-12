@@ -95,7 +95,11 @@ def run_mode(root, output, mode, offline, timeout):
     env["JAVA_TOOL_OPTIONS"] = ("-Dshadow.melee.seeds=64 "
                                 f"-Dshadow.melee.legacyTarget={'true' if mode == 'before' else 'false'}")
     command = ["bash", "./gradlew", "--no-daemon", "--max-workers=2",
-               "-Dorg.gradle.jvmargs=-Xmx2G", "-PshadowMeleeOnly", "runGameTestServer"]
+               "-Dorg.gradle.jvmargs=-Xmx2G", "-PshadowMeleeOnly",
+               f"-PshadowMeleeRunDir={output / (mode + '-runtime')}", "runGameTestServer"]
+    # A reused GameTest world can retain villagers from the previous JVM.
+    # Separate fresh worlds keep native target discovery identical in both arms.
+    (output / f"{mode}-runtime").mkdir()
     if offline:
         command.insert(2, "--offline")
     log_path = output / f"{mode}.log"

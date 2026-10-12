@@ -364,6 +364,9 @@ public final class ShadowTanglerGameTests {
         for (int t = 1; t <= 130; t++) {
             final int tick = t;
             h.runAtTickTime(t, () -> {
+                h.assertTrue(mob.getTarget() == null || mob.getTarget() == target,
+                        "melee fixture has no leftover target: expected=" + target
+                                + ", selected=" + mob.getTarget() + ", seed=" + seed + ", tick=" + tick);
                 if (firstTargetTick[0] < 0 && mob.getTarget() == target) firstTargetTick[0] = tick;
                 if (mob.swinging && !swinging[0]) {
                     h.assertTrue(lastSwing[0] < 0 || tick - lastSwing[0] >= 20,
@@ -377,7 +380,7 @@ public final class ShadowTanglerGameTests {
                         + " firstTarget=" + firstTargetTick[0] + " interruption=" + interruptedTick[0]
                         + " swings=" + swingTicks + " hitTicks=" + hitTicks
                         + " goalRunning=" + meleeGoal.isRunning() + " " + escapeState(mob)
-                        + " victim=" + target.position() + " selected=" + mob.getTarget());
+                        + " victim=" + target + " selected=" + mob.getTarget());
                 if (target.getHealth() < previousHealth[0]) {
                     h.assertTrue(lastSwing[0] >= 24 && Math.abs(tick - lastSwing[0] - 5) <= 1,
                             "native AI waits for spawn and five-tick attack windup");

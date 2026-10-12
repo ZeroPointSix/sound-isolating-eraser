@@ -101,6 +101,10 @@ minecraft {
         // By default, the server will crash when no gametests are provided.
         // The gametest system is also enabled by default for other run configs under the /test command.
         gameTestServer {
+            if (project.hasProperty('shadowMeleeOnly')) {
+                workingDirectory project.file(providers.gradleProperty('shadowMeleeRunDir')
+                        .getOrElse('run-shadow-melee'))
+            }
             property 'forge.enabledGameTestNamespaces', project.hasProperty('blinkOnly') ? 'wings_blink_tests' :
                     project.hasProperty('shadowMeleeOnly') ? 'shadow_melee_tests' :
                     project.hasProperty('nightOnly') ? 'eternal_night_tests' : "${mod_id},eternal_night_tests,shadow_melee_tests"
