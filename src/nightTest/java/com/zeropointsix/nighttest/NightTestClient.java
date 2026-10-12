@@ -209,7 +209,9 @@ public final class NightTestClient {
             int[] previous = new int[image.getWidth() + 1];
             for (int y = image.getHeight() / 6; y < image.getHeight() * 5 / 6; y++) {
                 int[] row = new int[previous.length];
-                for (int x = image.getWidth() / 5; x < image.getWidth() * 4 / 5; x++) {
+                // The viewing fixture centers the exit. Keep toast UI outside the
+                // sample: its white icon can dominate the particles-only control.
+                for (int x = image.getWidth() / 3; x < image.getWidth() * 2 / 3; x++) {
                     int color = image.getPixelRGBA(x, y);
                     if ((color & 255) > 220 && ((color >>> 8) & 255) > 220 && ((color >>> 16) & 255) > 220) {
                         white++;
