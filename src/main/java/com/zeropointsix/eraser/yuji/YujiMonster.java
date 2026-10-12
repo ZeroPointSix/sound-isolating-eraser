@@ -67,6 +67,7 @@ public final class YujiMonster extends Monster implements GeoEntity {
     private static final EntityDataAccessor<String> ACTION = SynchedEntityData.defineId(YujiMonster.class, EntityDataSerializers.STRING);
     private static final EntityDataAccessor<Integer> ACTION_SERIAL = SynchedEntityData.defineId(YujiMonster.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<ItemStack> LOOT = SynchedEntityData.defineId(YujiMonster.class, EntityDataSerializers.ITEM_STACK);
+    private static final EntityDataAccessor<Boolean> WHITE_ROBE = SynchedEntityData.defineId(YujiMonster.class, EntityDataSerializers.BOOLEAN);
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
     private final ServerBossEvent boss = new ServerBossEvent(Component.translatable("entity.qihai.shifotou"), BossEvent.BossBarColor.RED, BossEvent.BossBarOverlay.PROGRESS);
     private final List<ItemStack> hoard = new ArrayList<>();
@@ -137,6 +138,8 @@ public final class YujiMonster extends Monster implements GeoEntity {
         return super.getWalkTargetValue(pos, level);
     }
     public YujiKind kind() { return kind; }
+    public boolean whiteRobe() { return kind == YujiKind.YUCHI && entityData.get(WHITE_ROBE); }
+    public void setWhiteRobe(boolean value) { entityData.set(WHITE_ROBE, kind == YujiKind.YUCHI && value); }
     public int layers() { return entityData.get(LAYERS); }
     public ItemStack displayedLoot() { return entityData.get(LOOT); }
     public String action() { return entityData.get(ACTION); }
@@ -148,6 +151,7 @@ public final class YujiMonster extends Monster implements GeoEntity {
         super.defineSynchedData();
         entityData.define(LAYERS, 2); entityData.define(ACTION, "");
         entityData.define(ACTION_SERIAL, 0); entityData.define(LOOT, ItemStack.EMPTY);
+        entityData.define(WHITE_ROBE, false);
     }
     @Override protected void registerGoals() {
         goalSelector.addGoal(0, new FloatGoal(this));
@@ -196,6 +200,8 @@ public final class YujiMonster extends Monster implements GeoEntity {
         if (startledTicks > 0) startledTicks--;
         if (kind == YujiKind.CHENNU) {
             Player player = grudgePlayer();
+            if (player == null && getPersistentData().getBoolean("YujiHorde") && com.zeropointsix.eraser.yuji.city.RainCityContent.isCity(level())
+                    && getTarget() instanceof Player waveTarget) player = waveTarget;
             setTarget(player != null && vulnerable(player) ? player : null);
         } else if (kind == YujiKind.SHIFOTOU) {
             if (getTarget() == null || !getTarget().isAlive() || distanceToSqr(getTarget()) > 64 * 64
@@ -206,7 +212,7 @@ public final class YujiMonster extends Monster implements GeoEntity {
                         .stream().min(java.util.Comparator.comparingDouble(this::distanceToSqr)).orElse(null);
                 setTarget(pick);
             }
-        } else if (getTarget() == null || !getTarget().isAlive() || distanceToSqr(getTarget()) > 40 * 40
+        } else if (getTarget() == null || !getTarget().isAlive() || distanceToSqr(getTarget()) > (getPersistentData().getBoolean("YujiHorde") && com.zeropointsix.eraser.yuji.city.RainCityContent.isCity(level()) ? 128 * 128 : 40 * 40)
                 || getTarget() instanceof Player p && !vulnerable(p)) {
             setTarget(nearbyPlayers(kind == YujiKind.WANGYU ? 24 : 32).stream()
                     .filter(p -> kind == YujiKind.EKOU || kind == YujiKind.LIANGSHE || kind == YujiKind.XIEYIN || hasLineOfSight(p))
@@ -530,12 +536,14 @@ public final class YujiMonster extends Monster implements GeoEntity {
     }
     @Override public void addAdditionalSaveData(CompoundTag tag) {
         super.addAdditionalSaveData(tag); tag.putInt("YujiLayers", layers()); tag.putInt("YujiFlee", fleeTicks);
+        tag.putBoolean("YujiWhiteRobe", whiteRobe());
         tag.putInt("YujiFollow", followTicks); if (summoner != null) tag.putUUID("YujiSummoner", summoner); if (grudge != null) tag.putUUID("YujiGrudge", grudge);
         ListTag items = new ListTag(); hoard.forEach(stack -> items.add(stack.save(new CompoundTag()))); tag.put("YujiHoard", items);
     }
     @Override public void readAdditionalSaveData(CompoundTag tag) {
         if (kind == YujiKind.TANYU) setLayers(tag.contains("YujiLayers") ? tag.getInt("YujiLayers") : 2, false);
         super.readAdditionalSaveData(tag);
+        setWhiteRobe(tag.getBoolean("YujiWhiteRobe"));
         if (kind == YujiKind.TANYU && !tag.contains("Health")) setHealth(getMaxHealth());
         fleeTicks = Mth.clamp(tag.getInt("YujiFlee"), 0, 200); followTicks = Mth.clamp(tag.getInt("YujiFollow"), 0, 1000);
         grudge = tag.hasUUID("YujiGrudge") ? tag.getUUID("YujiGrudge") : null;

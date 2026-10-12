@@ -1,0 +1,11 @@
+{
+  "type": "minecraft:chest",
+  "pools": [
+    {"rolls": 1, "entries": [{"type": "minecraft:item", "name": "minecraft:bread", "functions": [{"function": "minecraft:set_count", "count": {"type": "minecraft:uniform", "min": 6, "max": 10}}]}]},
+    {"rolls": 1, "entries": [{"type": "minecraft:item", "name": "minecraft:torch", "functions": [{"function": "minecraft:set_count", "count": {"type": "minecraft:uniform", "min": 8, "max": 12}}]}]},
+    {"rolls": 1, "entries": [{"type": "minecraft:item", "name": "minecraft:cobblestone", "functions": [{"function": "minecraft:set_count", "count": {"type": "minecraft:uniform", "min": 16, "max": 24}}]}]},
+    {"rolls": 1, "entries": [{"type": "minecraft:item", "name": "minecraft:oak_planks", "functions": [{"function": "minecraft:set_count", "count": {"type": "minecraft:uniform", "min": 12, "max": 20}}]}]},
+    {"rolls": 1, "entries": [{"type": "minecraft:item", "name": "minecraft:stone_pickaxe"}]},
+    {"rolls": 1, "entries": [{"type": "minecraft:item", "name": "minecraft:honey_bottle", "functions": [{"function": "minecraft:set_count", "count": 2}]}]}
+  ]
+}
