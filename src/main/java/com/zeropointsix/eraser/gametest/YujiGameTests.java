@@ -450,6 +450,8 @@ public final class YujiGameTests {
         var cow = h.spawn(EntityType.COW, new BlockPos(2, 2, 2)); cow.setNoAi(true); cow.setNoGravity(true);
         cow.moveTo(chanter.position().add(0, 0, 12)); cow.getAttribute(Attributes.MAX_HEALTH).setBaseValue(40); cow.setHealth(40);
         chanter.setNoAi(false); chanter.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(0);
+        // Stray spikes from neighbouring batch tests must not trigger a defensive burst mid-cast.
+        chanter.setInvulnerable(true);
         h.assertTrue(chanter.distanceTo(cow) > 10, "target well outside melee reach");
         chanter.begin("chant", 40, cow);
         // Hits are scheduled at chant ticks 15 and 32; sample with slack for batch start-up jitter.
