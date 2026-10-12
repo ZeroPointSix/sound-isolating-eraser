@@ -1,0 +1,2 @@
+phase=ai-ekou, tick=29, event=qihai:entity.qihai.ekou.curse, decoded=qihai:ekou/curse, active=true, volume=1.0, pitch=1.0, position=0.5,65.0,2.9014246627623326, backend=OpenAL-null
+phase=audio-ekou, tick=11, event=qihai:entity.qihai.ekou.death, decoded=qihai:ekou/death, active=true, volume=1.0, pitch=1.1674966, position=0.5,65.0,12.625, backend=OpenAL-null

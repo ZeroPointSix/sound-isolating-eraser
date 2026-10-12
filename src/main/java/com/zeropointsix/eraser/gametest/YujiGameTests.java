@@ -442,28 +442,42 @@ public final class YujiGameTests {
         close(h, boss.getAttributeValue(Attributes.ARMOR_TOUGHNESS), 20, "boss armor toughness");
         h.succeed();
     }
-    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji", timeoutTicks = 80)
-    public static void yujiEkouChantHitsFromRange(GameTestHelper h) {
+    private static YujiMonster rangedChanter(GameTestHelper h) {
         YujiMonster chanter = monster(h, YujiKind.EKOU);
-        // The 12-block ray extends beyond the template; keep it away from neighboring batch structures.
-        chanter.moveTo(chanter.position().add(0, 128, 0));
-        var cow = h.spawn(EntityType.COW, new BlockPos(2, 2, 2)); cow.setNoAi(true); cow.setNoGravity(true);
-        cow.moveTo(chanter.position().add(0, 0, 12)); cow.getAttribute(Attributes.MAX_HEALTH).setBaseValue(40); cow.setHealth(40);
-        chanter.setNoAi(false); chanter.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(0);
-        // Stray spikes from neighbouring batch tests must not trigger a defensive burst mid-cast.
+        // Keep the entire 12-block ray in the template's ticketed chunk, above neighboring structures.
+        BlockPos origin = chanter.blockPosition();
+        chanter.moveTo((origin.getX() >> 4) * 16 + 1.5, origin.getY() + 128,
+                (origin.getZ() >> 4) * 16 + 1.5);
         chanter.setInvulnerable(true);
+        return chanter;
+    }
+    private static net.minecraft.world.entity.animal.Cow chantTarget(GameTestHelper h, YujiMonster chanter) {
+        var cow = h.spawn(EntityType.COW, new BlockPos(2, 2, 2));
+        cow.setNoAi(true); cow.setNoGravity(true);
+        cow.moveTo(chanter.position().add(0, 0, 12));
+        cow.getAttribute(Attributes.MAX_HEALTH).setBaseValue(40); cow.setHealth(40);
+        h.assertTrue(h.getLevel().getEntity(cow.getUUID()) == cow, "chant target registered in the world");
+        h.assertTrue(chanter.hasLineOfSight(cow), "unobstructed ranged chant fixture");
         h.assertTrue(chanter.distanceTo(cow) > 10, "target well outside melee reach");
-        chanter.begin("chant", 40, cow);
-        // Hits are scheduled at chant ticks 15 and 32; sample with slack for batch start-up jitter.
-        h.runAtTickTime(24, () -> close(h, cow.getHealth(), 34, "first chant hit lands at range"));
-        h.runAtTickTime(50, () -> { close(h, cow.getHealth(), 28, "second chant hit lands at range"); h.succeed(); });
+        return cow;
+    }
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji", timeoutTicks = 200)
+    public static void yujiEkouChantHitsFromRange(GameTestHelper h) {
+        YujiMonster chanter = rangedChanter(h);
+        var cow = chantTarget(h, chanter);
+        h.startSequence().thenWaitUntil(() -> h.assertTrue(h.getLevel().isPositionEntityTicking(chanter.blockPosition())
+                && h.getLevel().isPositionEntityTicking(cow.blockPosition()), "chant fixture is entity-ticking"))
+                .thenExecute(() -> {
+                    chanter.setNoAi(false); chanter.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(0);
+                    chanter.begin("chant", 40, cow);
+                    h.runAfterDelay(24, () -> close(h, cow.getHealth(), 34, "first chant hit lands at range"));
+                    h.runAfterDelay(50, () -> { close(h, cow.getHealth(), 28, "second chant hit lands at range"); h.succeed(); });
+                });
     }
     @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji", timeoutTicks = 60)
     public static void yujiEkouChantSurvivesExpiredCooldown(GameTestHelper h) throws ReflectiveOperationException {
-        YujiMonster chanter = monster(h, YujiKind.EKOU);
-        chanter.moveTo(chanter.position().add(0, 128, 0));
-        var cow = h.spawn(EntityType.COW, new BlockPos(2, 2, 2)); cow.setNoAi(true); cow.setNoGravity(true);
-        cow.moveTo(chanter.position().add(0, 0, 12)); cow.getAttribute(Attributes.MAX_HEALTH).setBaseValue(40); cow.setHealth(40);
+        YujiMonster chanter = rangedChanter(h);
+        var cow = chantTarget(h, chanter);
         // Keep a valid AI target when the initial skill cooldown expires midway through this cast.
         chanter.setTarget(cow);
         chanter.begin("chant", 40, cow);

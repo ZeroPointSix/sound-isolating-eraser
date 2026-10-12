@@ -1,0 +1,1 @@
+event=qihai:entity.qihai.ekou.death, decoded=qihai:ekou/death, active=true, volume=1.0, backend=OpenAL-null, observed=[qihai:entity.qihai.ekou.curse, qihai:entity.qihai.ekou.death]

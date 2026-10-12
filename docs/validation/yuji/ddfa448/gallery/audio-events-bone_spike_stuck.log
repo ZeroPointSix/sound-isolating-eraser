@@ -1,0 +1,1 @@
+phase=bone_spike_stuck, tick=4, event=minecraft:entity.skeleton.hurt, decoded=minecraft:mob/skeleton/hurt4, active=true, volume=0.8, pitch=1.2, position=0.5,66.0,5.25, backend=OpenAL-null

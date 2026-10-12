@@ -69,6 +69,9 @@ public final class YujiTestClient {
         String text = event.getMessage().getString();
         if (!text.startsWith("YUJI_QA:")) return;
         phase = text.substring(8); ticks = 0; frames = 0; captured = false; audioDone = false; poses.clear();
+        // Pin only the gallery camera; survival interactions use normal gravity on both sides.
+        if (Minecraft.getInstance().player != null)
+            Minecraft.getInstance().player.setNoGravity(!phase.startsWith("ai-") && !phase.startsWith("audio-"));
         if (!phase.startsWith("ai-") && !phase.startsWith("audio-")) { observedSounds.clear(); playedSounds.clear(); }
         event.setCanceled(true);
     }
@@ -196,9 +199,11 @@ public final class YujiTestClient {
                     require(changed >= 80 && maxX - minX >= 8 && maxY - minY >= 15,
                             "visible entity occupies central framebuffer: changed=" + changed);
                     require(changed < (right - left) * (bottom - top) * .65, "control camera remains stable");
-                    require(minX > left && maxX < right - 1 && minY > top && maxY < bottom - 1,
-                            "entity difference is framed away from viewport edges");
                     control.writeToFile(RESULTS.resolve(phase + "-control.png"));
+                    require(minX > left && maxX < right - 1 && minY > top && maxY < bottom - 1,
+                            "entity difference is framed away from viewport edges: " + phase
+                                    + ", changed=" + changed + ", bounds=" + minX + "," + minY + "," + maxX + "," + maxY
+                                    + ", camera=" + mc.player.position());
                     pass(phase, pendingEvidence + ", foregroundPixels=" + changed + ", bounds=" + minX + "," + minY + "," + maxX + "," + maxY);
                 } finally {
                     hidden.setPos(visiblePosition); hidden = null; visible.close(); visible = null;

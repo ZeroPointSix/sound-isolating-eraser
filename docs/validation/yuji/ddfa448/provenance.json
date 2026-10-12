@@ -1,0 +1,749 @@
+{
+  "source_head_sha": "ddfa448b02efc4cedd3527e836b4d24f8e9bd061",
+  "run_id": 38206157431,
+  "run_url": "https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38206157431",
+  "event": "pull_request",
+  "tested_checkout": "GitHub PR test merge",
+  "created_at": "2026-10-12T05:01:15Z",
+  "updated_at": "2026-10-12T05:08:02Z",
+  "artifacts": [
+    {
+      "id": 11726838839,
+      "name": "yuji-client-evidence",
+      "url": "https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38206157431/artifacts/11726838839",
+      "zip_sha256": "885d63c7fd2ccbeb83f9bf9f5524c194319d0acca924c1634c37d7153de64519"
+    },
+    {
+      "id": 11727840997,
+      "name": "yuji-validation",
+      "url": "https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38206157431/artifacts/11727840997",
+      "zip_sha256": "653a0e576bf7ad8332980c1d7292903c5eb81a91656cafe0247399612b3a152d"
+    }
+  ],
+  "files": {
+    "boundaries/betrayal-double-slash-YujiTester.png": {
+      "sha256": "4c7c898a77fe53f60993f8de47ab5ae61f0a17174a9949b702157411379af689",
+      "bytes": 77284,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-boundaries-1791781585125587134/betrayal-double-slash-YujiTester.png"
+    },
+    "boundaries/boss-above-YujiWitness.png": {
+      "sha256": "fbccb900b21b7b363cc177eb89eb054d9422a5317f9658004c6dab9b926b887c",
+      "bytes": 218970,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-boundaries-1791781585125587134/boss-above-YujiWitness.png"
+    },
+    "boundaries/boss-outside-side-YujiWitness.png": {
+      "sha256": "1da511689d61e8dc496b426b554f393795771baac0af1a53e8ab7b0a30649c40",
+      "bytes": 218104,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-boundaries-1791781585125587134/boss-outside-side-YujiWitness.png"
+    },
+    "boundaries/boss-side-YujiWitness.png": {
+      "sha256": "193b93e122d0056041002cab522e652ca189c5ebb2262669f09be073de0b8bbb",
+      "bytes": 239033,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-boundaries-1791781585125587134/boss-side-YujiWitness.png"
+    },
+    "boundaries/boss-upper-YujiWitness.png": {
+      "sha256": "28808cf2f422388597a01dbba5e6e9710e4e830bce14d243da3b964e823bdab7",
+      "bytes": 225106,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-boundaries-1791781585125587134/boss-upper-YujiWitness.png"
+    },
+    "boundaries/boundary-events.log": {
+      "sha256": "58799a6a81ecf7e5c1dc56dfd52c7e97c2192f4f5b433d8719656bb753c16f8a",
+      "bytes": 3942,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-boundaries-1791781585125587134/boundary-events.log"
+    },
+    "boundaries/client-betrayal-double-slash-YujiTester.pass": {
+      "sha256": "b31b5b9dfd2c1e57d1908269ead9ab601d87456671e9b3f6eef445ab39c85115",
+      "bytes": 76,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-boundaries-1791781585125587134/client-betrayal-double-slash-YujiTester.pass"
+    },
+    "boundaries/client-boss-above-YujiWitness.pass": {
+      "sha256": "4fb3f9962595a8446c934ecb863c3535e2e56aaebad422ac41ae07a6d8406fbc",
+      "bytes": 77,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-boundaries-1791781585125587134/client-boss-above-YujiWitness.pass"
+    },
+    "boundaries/client-boss-outside-side-YujiWitness.pass": {
+      "sha256": "5dc25eacc76ed816d7703d2c83596049e480b0f7078b18d9c77bf8bd2d71734a",
+      "bytes": 77,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-boundaries-1791781585125587134/client-boss-outside-side-YujiWitness.pass"
+    },
+    "boundaries/client-boss-side-YujiWitness.pass": {
+      "sha256": "d6f15708ac70aa7c675e4494d2f4b1f5ed75ef5f3e82a992ae1c3f05b34f39f8",
+      "bytes": 77,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-boundaries-1791781585125587134/client-boss-side-YujiWitness.pass"
+    },
+    "boundaries/client-boss-upper-YujiWitness.pass": {
+      "sha256": "33d6df935154deb9c40e7db17b1ecb0fadc9759eb00c35459cd4c836c15ca5e7",
+      "bytes": 77,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-boundaries-1791781585125587134/client-boss-upper-YujiWitness.pass"
+    },
+    "boundaries/client-boundaries-YujiTester.pass": {
+      "sha256": "40bf1b230a8f3c348aec6a1b3a1278ab3b0e83896b744a27947b4ec75c280105",
+      "bytes": 40,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-boundaries-1791781585125587134/client-boundaries-YujiTester.pass"
+    },
+    "boundaries/client-boundaries-YujiWitness.pass": {
+      "sha256": "40bf1b230a8f3c348aec6a1b3a1278ab3b0e83896b744a27947b4ec75c280105",
+      "bytes": 40,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-boundaries-1791781585125587134/client-boundaries-YujiWitness.pass"
+    },
+    "boundaries/client-grudge-two-clients-YujiTester.pass": {
+      "sha256": "98f390b63884c50609af1652083cbab58e729e424aa08797ba4c40a03ad158cd",
+      "bytes": 77,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-boundaries-1791781585125587134/client-grudge-two-clients-YujiTester.pass"
+    },
+    "boundaries/client-ready-YujiTester.pass": {
+      "sha256": "d90368dbd0d3464cace53bf62fc88a326a8eaac9df4c1e03e00d7ce103d4c1cd",
+      "bytes": 68,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-boundaries-1791781585125587134/client-ready-YujiTester.pass"
+    },
+    "boundaries/client-ready-YujiWitness.pass": {
+      "sha256": "10ac0927b714d6a190fdedecbd8d14435e9b4ba35ac69c3d096cc1f3e7bc6382",
+      "bytes": 68,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-boundaries-1791781585125587134/client-ready-YujiWitness.pass"
+    },
+    "boundaries/client.log": {
+      "sha256": "59f80c30ee738932a32ccbf96bf31f368435f7c2fb42ba64aed6916839ac1029",
+      "bytes": 201589,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-boundaries-1791781585125587134/client.log"
+    },
+    "boundaries/grudge-two-clients-YujiTester.png": {
+      "sha256": "9dee27675e58604cff82047d3ab06172c9714ecf18bcb6439eaacf79d8fbf22d",
+      "bytes": 170742,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-boundaries-1791781585125587134/grudge-two-clients-YujiTester.png"
+    },
+    "boundaries/server-betrayal-double-slash.pass": {
+      "sha256": "ff3975dcc527dc05f4719893acd6065f0dac7859570bb183ef54d5a6031ea6b6",
+      "bytes": 61,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-boundaries-1791781585125587134/server-betrayal-double-slash.pass"
+    },
+    "boundaries/server-boss-above.pass": {
+      "sha256": "3f8724fb541c6ff0b156bdc627b523d4947f18b8e5a4ace307ad263be0bfd7f5",
+      "bytes": 72,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-boundaries-1791781585125587134/server-boss-above.pass"
+    },
+    "boundaries/server-boss-outside-side.pass": {
+      "sha256": "495eefeb1f738972e504847a785b49eb2a50ce75004e6d8097c5c4ae288bf532",
+      "bytes": 72,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-boundaries-1791781585125587134/server-boss-outside-side.pass"
+    },
+    "boundaries/server-boss-upper.pass": {
+      "sha256": "489db5ffda5f6ef0b46be4d67801eb8be27d574547b97c74b9c6ae40450fa0b5",
+      "bytes": 87,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-boundaries-1791781585125587134/server-boss-upper.pass"
+    },
+    "boundaries/server-boss-side.pass": {
+      "sha256": "379f5c39da2ab0acbf9bf4f500e4d8f3cd4c118bdb911d1a7fed40e0e14ca3d8",
+      "bytes": 87,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-boundaries-1791781585125587134/server-boss-side.pass"
+    },
+    "boundaries/server-boundaries.pass": {
+      "sha256": "dfb24929fb4052d3dfc8f1acb8031639acb9814f4537669800829e03163649a6",
+      "bytes": 108,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-boundaries-1791781585125587134/server-boundaries.pass"
+    },
+    "boundaries/server-grudge-128.pass": {
+      "sha256": "f71a80df9192d8b5157ae0db293376ce207d58f4de811ef4f4ce6a7d98b9e171",
+      "bytes": 52,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-boundaries-1791781585125587134/server-grudge-128.pass"
+    },
+    "boundaries/server-grudge-release.pass": {
+      "sha256": "f92c4236f05e759b9551b168b586fa838dbac3db943a93f5882d5b35a53b4724",
+      "bytes": 62,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-boundaries-1791781585125587134/server-grudge-release.pass"
+    },
+    "boundaries/server-grudge-reload.pass": {
+      "sha256": "0d4ebf6d99f922afea88c0b3f40545113c9a281a420a3d812ad6f38f66df7dab",
+      "bytes": 83,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-boundaries-1791781585125587134/server-grudge-reload.pass"
+    },
+    "boundaries/server-grudge-two-clients.pass": {
+      "sha256": "f7ac0ec007b3ad7c13a0dfaa35a49c2a81edfa66327438517dbc30f2e1df53ca",
+      "bytes": 133,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-boundaries-1791781585125587134/server-grudge-two-clients.pass"
+    },
+    "boundaries/server.log": {
+      "sha256": "b9f0eb0a532b8a51e6649881c5cf35158e9ddcbee0212f780321967431bbbda8",
+      "bytes": 208831,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-boundaries-1791781585125587134/server.log"
+    },
+    "boundaries/witness.log": {
+      "sha256": "fd1dff0c1ec249eba0c4a68b99dbce32627e2ef41c406d0296fd375e3cdd1a7b",
+      "bytes": 201582,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-boundaries-1791781585125587134/witness.log"
+    },
+    "gallery/audio-events-bone_spike_stuck.log": {
+      "sha256": "b29c1a3481d649e26cd28fae0632455dc9781aca58e8021c17b031f757b7af43",
+      "bytes": 188,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/audio-events-bone_spike_stuck.log"
+    },
+    "gallery/audio-events-chennu.log": {
+      "sha256": "0f87d725ba302059ea080677327ba258016f9bfe57fbf66523ded3f9a08c85de",
+      "bytes": 757,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/audio-events-chennu.log"
+    },
+    "gallery/audio-events-ekou.log": {
+      "sha256": "1161ee755d552046dedb5a497d178c4a29174cae3443bd3cda761a0ffca84f3b",
+      "bytes": 359,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/audio-events-ekou.log"
+    },
+    "gallery/audio-events-liangshe.log": {
+      "sha256": "3ad3a8ab7569ee1bf0ccca514cc51d240b6ec216be5639d0d2135d4d22733334",
+      "bytes": 549,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/audio-events-liangshe.log"
+    },
+    "gallery/audio-events-qiyu.log": {
+      "sha256": "f0fd0f2ed96ddeca98c25eeed15fe6761a47072b63833570560ade3b4c8f2ffb",
+      "bytes": 1293,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/audio-events-qiyu.log"
+    },
+    "gallery/audio-events-shasheng.log": {
+      "sha256": "19810d0b302c033cc06f47443ed64ee796f5c4446662d8b07324306bd219b0be",
+      "bytes": 566,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/audio-events-shasheng.log"
+    },
+    "gallery/audio-events-shifotou.log": {
+      "sha256": "5e3c95e230ecb7142cc43bb2cf91a3a5b73205f5cdd8af00c6b9e5d6e2a8ad45",
+      "bytes": 780,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/audio-events-shifotou.log"
+    },
+    "gallery/audio-events-tanyu.log": {
+      "sha256": "743df85029d683e5501a722ad30bdf0fe31e70e61681412dd2e8bb4cd33cb912",
+      "bytes": 554,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/audio-events-tanyu.log"
+    },
+    "gallery/audio-events-toudao.log": {
+      "sha256": "a043d2cce9fb693fb6ea89b217b1221ac03e7990cc5d9e481bc9f72a300635e0",
+      "bytes": 549,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/audio-events-toudao.log"
+    },
+    "gallery/audio-events-wangyu.log": {
+      "sha256": "8988ac0dc45299c65cb3b3135f93735d1d32279715d8a1bfa829837cd6910801",
+      "bytes": 712,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/audio-events-wangyu.log"
+    },
+    "gallery/audio-events-xieyin.log": {
+      "sha256": "9520b2b6bb26d8f99fbe150d208840b19782a4c2640c00d842cdf69e78621f57",
+      "bytes": 554,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/audio-events-xieyin.log"
+    },
+    "gallery/audio-events-yuchi.log": {
+      "sha256": "1726e1f4c85e4f5b50ed89111fddb5726c2fe4acfb2d95213f5cc69818939b65",
+      "bytes": 526,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/audio-events-yuchi.log"
+    },
+    "gallery/bone_spike-control.png": {
+      "sha256": "8779988d24bd7952c66516b39615580a6c9e01c47b64c48496856d78c1e07f3b",
+      "bytes": 93716,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/bone_spike-control.png"
+    },
+    "gallery/bone_spike.png": {
+      "sha256": "b1c7d104816acdaa985118cb2fb0e1d0997f4e5ba2519486366eeddb1ae94c61",
+      "bytes": 99638,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/bone_spike.png"
+    },
+    "gallery/bone_spike_stuck-control.png": {
+      "sha256": "c5245348839abae2d5cc1338561686d729f84a9f1a5a3d3ca35713bdc75f0807",
+      "bytes": 172827,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/bone_spike_stuck-control.png"
+    },
+    "gallery/bone_spike_stuck.png": {
+      "sha256": "fb61e5748a9765cf63b352cab2b8c6262cd0a2a507836c95d76b8db57889a710",
+      "bytes": 173221,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/bone_spike_stuck.png"
+    },
+    "gallery/chennu-control.png": {
+      "sha256": "2550e9e96a1f501c219d5a933a723b17189c5dbdfbab6ad2a6195d58d52d06c0",
+      "bytes": 67242,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/chennu-control.png"
+    },
+    "gallery/chennu.png": {
+      "sha256": "f8e239ebdddace71da647203357b6de62e23c74acc0aa0e59f46be4220c71f98",
+      "bytes": 100434,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/chennu.png"
+    },
+    "gallery/client-audio-chennu.pass": {
+      "sha256": "426fd62431f89c8cb837c0271116698f575b98b2f0739ad51c3b72dae7c888ee",
+      "bytes": 253,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/client-audio-chennu.pass"
+    },
+    "gallery/client-audio-ekou.pass": {
+      "sha256": "0df327671b0573037c67b732b4b700d729990b1c9b45acc0264f7eeb6e3b2f45",
+      "bytes": 181,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/client-audio-ekou.pass"
+    },
+    "gallery/client-audio-liangshe.pass": {
+      "sha256": "70c89c541d1c247a511dfd70357760d7ea44efa76e7f556eecc4be6d7afbe55c",
+      "bytes": 235,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/client-audio-liangshe.pass"
+    },
+    "gallery/client-audio-qiyu.pass": {
+      "sha256": "4bdaec9d4c21cb1b6a087e92aa601141177492cb52f3a24df382b5e22e89d604",
+      "bytes": 354,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/client-audio-qiyu.pass"
+    },
+    "gallery/client-audio-shasheng.pass": {
+      "sha256": "7b4bdb2641eb5cf6d8032d6146593205dbb42e776a543c56ead448f5a2074778",
+      "bytes": 233,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/client-audio-shasheng.pass"
+    },
+    "gallery/client-audio-shifotou.pass": {
+      "sha256": "f936710979af29ab1a9d3f8173e5af16c16b69817e4fd04812487d42e79b0639",
+      "bytes": 265,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/client-audio-shifotou.pass"
+    },
+    "gallery/client-audio-tanyu.pass": {
+      "sha256": "fbe04c3f4cc59b64a670c1e9b05ed17087db75dd163245cb762feb160fd2114d",
+      "bytes": 218,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/client-audio-tanyu.pass"
+    },
+    "gallery/client-audio-toudao.pass": {
+      "sha256": "3b2022751c1f4a563b613e55b8f0c9ce33ed5db34b9170710ba73a483a6561e7",
+      "bytes": 224,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/client-audio-toudao.pass"
+    },
+    "gallery/client-audio-wangyu.pass": {
+      "sha256": "c1c6fa82f6d2b7e4ceb8d4a982f3d0a8cba5a57274d6b2e06891731dbefb857f",
+      "bytes": 248,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/client-audio-wangyu.pass"
+    },
+    "gallery/client-audio-xieyin.pass": {
+      "sha256": "1d0f5336102c94f9f9f7e98417e80fd8102deced24ecbeee027a1a7488b58980",
+      "bytes": 220,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/client-audio-xieyin.pass"
+    },
+    "gallery/client-audio-yuchi.pass": {
+      "sha256": "981c5308172d49789f1bf6684fa4c4df69bdd5ee5d9148d46e887339a645e2b7",
+      "bytes": 218,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/client-audio-yuchi.pass"
+    },
+    "gallery/client-bone_spike.pass": {
+      "sha256": "f5600a413f2ca6ce2df7daa0f5fad6d1d8172f2da8c0b270d5df337f2f6771b4",
+      "bytes": 108,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/client-bone_spike.pass"
+    },
+    "gallery/client-bone_spike_stuck.pass": {
+      "sha256": "72b302404eb27a8469baf454c5368bfb96432ab8924f9cf2521f36119b515a08",
+      "bytes": 145,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/client-bone_spike_stuck.pass"
+    },
+    "gallery/client-chennu.pass": {
+      "sha256": "41719a429f05e1eec9bdb43707e6229a53e5ede12b68ab83121d50bc5a8e0364",
+      "bytes": 129,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/client-chennu.pass"
+    },
+    "gallery/client-ekou.pass": {
+      "sha256": "143bdcd7143c70a02e024af555928fb452a973d4cafd068dccaca6b2b19c6270",
+      "bytes": 128,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/client-ekou.pass"
+    },
+    "gallery/client-gallery.pass": {
+      "sha256": "2995f3434decb0b6868c3a2e84b586bff7643e7dfecde5283a9d52231326a998",
+      "bytes": 109,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/client-gallery.pass"
+    },
+    "gallery/client-liangshe.pass": {
+      "sha256": "556610c4cd349e859fb469899c700b0d6590a5755f51fa96b6d9dcb30da21d6a",
+      "bytes": 128,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/client-liangshe.pass"
+    },
+    "gallery/client-qiyu.pass": {
+      "sha256": "856e129367a90b17bc4e17dc074c123adc70b3ce9f64b8e9e5044bdbc24e67bd",
+      "bytes": 147,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/client-qiyu.pass"
+    },
+    "gallery/client-ready.pass": {
+      "sha256": "d99bd247f382f4c29a84f0f1ad57945caa0e799def43a8331bb8777187b3720b",
+      "bytes": 44,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/client-ready.pass"
+    },
+    "gallery/client-shasheng.pass": {
+      "sha256": "3d49d2b5016f086237ef2aa99fbe1b97c80a04dc25178c7d6aa5fed63784af97",
+      "bytes": 129,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/client-shasheng.pass"
+    },
+    "gallery/client-shifotou.pass": {
+      "sha256": "a0d158668f4a3d40e3046e2212a722a6010821f0f479188a658531a7ab3224fb",
+      "bytes": 127,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/client-shifotou.pass"
+    },
+    "gallery/client-tanyu.pass": {
+      "sha256": "07d1a413374cc8c4d813d7f596340e1776930c428f27f3f48a83286e58bc1727",
+      "bytes": 130,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/client-tanyu.pass"
+    },
+    "gallery/client-toudao.pass": {
+      "sha256": "1c76889acb624d04985eea2912e094424595b16f38563393c198405b32223532",
+      "bytes": 127,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/client-toudao.pass"
+    },
+    "gallery/client-wangyu.pass": {
+      "sha256": "27c4149369981f29bac5c6d18d5fd5a15566217f0ee7bd219746844adf73870f",
+      "bytes": 128,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/client-wangyu.pass"
+    },
+    "gallery/client-xieyin.pass": {
+      "sha256": "52b71c203ca109c137d14f955488a43eb54f1efabdd2eeb2d86a6afeb10cc4e7",
+      "bytes": 129,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/client-xieyin.pass"
+    },
+    "gallery/client-yuchi.pass": {
+      "sha256": "30704769024bd6820763a7738f5a8db1eed4b1e9f48b2928ba30b7e93b5e55ae",
+      "bytes": 128,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/client-yuchi.pass"
+    },
+    "gallery/client.log": {
+      "sha256": "088f143ece1db5f9dfafc93145f5f9350a8b8001a2e3c41d806fc7cbb1a2ecc7",
+      "bytes": 205413,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/client.log"
+    },
+    "gallery/ekou-control.png": {
+      "sha256": "2576cac52dbb1d0d746878659cc1b2835a658287e6ef354c938f4dde8aea7f70",
+      "bytes": 58500,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/ekou-control.png"
+    },
+    "gallery/ekou.png": {
+      "sha256": "2947403b170cf5197f324570f1b73069ad202bf183bbc71db091d34b0c7b27b9",
+      "bytes": 66120,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/ekou.png"
+    },
+    "gallery/liangshe-control.png": {
+      "sha256": "6ffe6e57814019d14834541e19a51c2ff617d982a7f37faf80ec470ca197c0f1",
+      "bytes": 60065,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/liangshe-control.png"
+    },
+    "gallery/liangshe.png": {
+      "sha256": "fbbe5738212689c0582d88351da380e753bf7aca9518454786fe6adc1c64b979",
+      "bytes": 67360,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/liangshe.png"
+    },
+    "gallery/qiyu-control.png": {
+      "sha256": "a7c9b3033da1b15362c79d7ae96b5103b6181a113da572b5d4d4931348ae573a",
+      "bytes": 58858,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/qiyu-control.png"
+    },
+    "gallery/qiyu.png": {
+      "sha256": "fbcf04ca8c28b2c9929a6d4436f1839a68066be5ec09997fd8ef03be595fbe14",
+      "bytes": 67442,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/qiyu.png"
+    },
+    "gallery/server-ai-chennu.pass": {
+      "sha256": "9d5100b10f753fb93dad0061196270e4819ac4b482d5d89f224ffdadd3512228",
+      "bytes": 224,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/server-ai-chennu.pass"
+    },
+    "gallery/server-ai-ekou.pass": {
+      "sha256": "1ce134cc61b5f2a37a08d433d0f9937325c834225b2ffc1839a15faa2e1f5444",
+      "bytes": 238,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/server-ai-ekou.pass"
+    },
+    "gallery/server-ai-liangshe.pass": {
+      "sha256": "2d37cbc9aaadd0298e9d80e720ac9d9795886be952092d67d0919fe3be6ec26e",
+      "bytes": 209,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/server-ai-liangshe.pass"
+    },
+    "gallery/server-ai-qiyu.pass": {
+      "sha256": "5bf64edc64d358e6df9036574649c49851cd66bc02b41203faa947881584e6c6",
+      "bytes": 264,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/server-ai-qiyu.pass"
+    },
+    "gallery/server-ai-shasheng.pass": {
+      "sha256": "0c5149fc8acfb28d8f1ab1f91836edaaf9420fd2834d3293ba9508a4344d3f63",
+      "bytes": 226,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/server-ai-shasheng.pass"
+    },
+    "gallery/server-ai-shifotou.pass": {
+      "sha256": "e9e51bca98a3f2e3f8bf39c82425dc9c5f49d0ed53f65d2121ca69988f98a3d3",
+      "bytes": 224,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/server-ai-shifotou.pass"
+    },
+    "gallery/server-ai-tanyu.pass": {
+      "sha256": "39e5311d48522257a445ddfcbb4edff0bc75f3696316f7cf583f063d13533c45",
+      "bytes": 225,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/server-ai-tanyu.pass"
+    },
+    "gallery/server-ai-toudao.pass": {
+      "sha256": "b7ed46953a34ae13bab078e6922b61346d6a721b78c5a7b022d42e399123a891",
+      "bytes": 225,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/server-ai-toudao.pass"
+    },
+    "gallery/server-ai-wangyu.pass": {
+      "sha256": "2d37cbc9aaadd0298e9d80e720ac9d9795886be952092d67d0919fe3be6ec26e",
+      "bytes": 209,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/server-ai-wangyu.pass"
+    },
+    "gallery/server-ai-xieyin.pass": {
+      "sha256": "671ff419fa21b74c9a6fcdf6b18e5cc2d9aa2c92ce75decb411756b3d138878f",
+      "bytes": 222,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/server-ai-xieyin.pass"
+    },
+    "gallery/server-ai-yuchi.pass": {
+      "sha256": "d98ea70eff0bf1ce980ecfb38b0cd3140fea793b18387c81ff6b3ab0f356d86f",
+      "bytes": 224,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/server-ai-yuchi.pass"
+    },
+    "gallery/server-bone_spike.pass": {
+      "sha256": "fe240e2ba1a86d765fa395b3588f25047b07a7229f96542b148ffa472e2aa934",
+      "bytes": 110,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/server-bone_spike.pass"
+    },
+    "gallery/server-boss-iron-golem.pass": {
+      "sha256": "be5b93e48a2640857e7666d6980f9bc1d62d238ab058bcd9b8ed63f0d07730ad",
+      "bytes": 59,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/server-boss-iron-golem.pass"
+    },
+    "gallery/server-gallery.pass": {
+      "sha256": "950f81c12968f609a1e62defb6d81ccbe2c9dae7f2334a74abc43e6fe6ca2275",
+      "bytes": 76,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/server-gallery.pass"
+    },
+    "gallery/server.log": {
+      "sha256": "2f60897721a9c78a878cc41a6f6497acb3c81236d89b229efb5cf72fae55a49d",
+      "bytes": 186452,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/server.log"
+    },
+    "gallery/shasheng-control.png": {
+      "sha256": "774ab87ae548853016fa1e044bdbbf4463e7ecd6afe06e0b5a6da6a7440de0b1",
+      "bytes": 60558,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/shasheng-control.png"
+    },
+    "gallery/shasheng.png": {
+      "sha256": "d1cbe33989d3504da8ff6358a64a49b14228901bd902c22f7660d910db0b6694",
+      "bytes": 68125,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/shasheng.png"
+    },
+    "gallery/shifotou-control.png": {
+      "sha256": "e96df15a2e0dccb4098d0ae13c3609751b30741ef20d4615111b8fdde89d3ca6",
+      "bytes": 104008,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/shifotou-control.png"
+    },
+    "gallery/shifotou.png": {
+      "sha256": "a5fe39b31784bf4a927a72bf557fdeb1d5f05fb34e8057287360c6dbb57f7891",
+      "bytes": 175540,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/shifotou.png"
+    },
+    "gallery/tanyu-control.png": {
+      "sha256": "e33dc005fe6e1bc327fb31a9c35b796622b426fc802f2d644605e64568e20cdf",
+      "bytes": 58419,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/tanyu-control.png"
+    },
+    "gallery/tanyu.png": {
+      "sha256": "3b8d6527e0bef41b901cbb96e64b3a944f35240b06b37c4d8cc14b50845c2150",
+      "bytes": 69986,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/tanyu.png"
+    },
+    "gallery/toudao-control.png": {
+      "sha256": "c4cca64f917c760b411869d425c7b22a731402b61cc7f164c2a41d9abe3aa25d",
+      "bytes": 59547,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/toudao-control.png"
+    },
+    "gallery/toudao.png": {
+      "sha256": "aec3b72953e87e899822b906ceef96ce2e14c918fb14ce96398f9e1f6216fffd",
+      "bytes": 65572,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/toudao.png"
+    },
+    "gallery/wangyu-control.png": {
+      "sha256": "dd05528960e73939e62c1b6247decfb3bf85f96c2d96ad48b928618d9e2e4dc6",
+      "bytes": 58539,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/wangyu-control.png"
+    },
+    "gallery/wangyu.png": {
+      "sha256": "1d7e8352c138bbea3d4e2b12035c493f7095d36feb822c81b05a03dcdf8b247f",
+      "bytes": 66543,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/wangyu.png"
+    },
+    "gallery/xieyin-control.png": {
+      "sha256": "0b07001385225d20afd0b03b172eb47cfd77e9e2a9cb0953ffd0404148d76df9",
+      "bytes": 71119,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/xieyin-control.png"
+    },
+    "gallery/xieyin.png": {
+      "sha256": "97fef5e7aff3a25b38e8d38b2b69a737a534b9fea4f223256d49c8b90c822f15",
+      "bytes": 76728,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/xieyin.png"
+    },
+    "gallery/yuchi-control.png": {
+      "sha256": "d29df5af887beaacbd602b8e9370a2d6416e8d1010312008d682800e8f02848b",
+      "bytes": 104276,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/yuchi-control.png"
+    },
+    "gallery/yuchi.png": {
+      "sha256": "113e13baa7611152262b36c7cfb877f408eb012618375c6c081e3ca41a412844",
+      "bytes": 110868,
+      "artifact_id": 11726838839,
+      "archive_path": "yuji-e2e-1791781321251315581/yuchi.png"
+    },
+    "validation/gametest.log": {
+      "sha256": "a11e619ea7f253b86173c0d8235015c0905014819bc132082660c047b995bba7",
+      "bytes": 210934,
+      "artifact_id": 11727840997,
+      "archive_path": "build/yuji-gametest.log"
+    },
+    "validation/validate-job.log": {
+      "sha256": "db3a33947b0c0d9a056fac4c099802b929a3430420663ada879666eb373199a9",
+      "bytes": 287048,
+      "job_id": 114669986069,
+      "url": "https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38206157431/job/114669986069"
+    },
+    "validation/client-smoke-job.log": {
+      "sha256": "38072efd9654803b1e4bd323804fb7067220d02f3c4138faf8ace13f460961b4",
+      "bytes": 74267,
+      "job_id": 114669986323,
+      "url": "https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38206157431/job/114669986323"
+    },
+    "before/df93578-yuji-baseline.log": {
+      "sha256": "36416566c5576f8c1925acca62b403359e12ef5dc8960ee692b8996948b9cc69",
+      "bytes": 131100,
+      "production_sha": "df935784e16a61be2bc6ba74332f4fb95db714ea",
+      "fixture": "original",
+      "execution": "local Forge GameTest server, not a real-client scenario"
+    },
+    "before/df93578-chant-regression-before.log": {
+      "sha256": "78cc0c093838b2dfe5200d8c44fd1301b30d532b85ce4246f23ea2d50bc0f98b",
+      "bytes": 152341,
+      "production_sha": "df935784e16a61be2bc6ba74332f4fb95db714ea",
+      "fixture": "cb38c7698ffc76cd53fc444f6fc51055f749f791",
+      "execution": "local Forge GameTest server, not a real-client scenario"
+    },
+    "before/deterministic-fixture.patch": {
+      "sha256": "ec0aa88413fcf0b5a6fcbde5872b0fb1480a8c7bebd1b0a00dd1b5096a3776ea",
+      "bytes": 2000,
+      "production_sha": "df935784e16a61be2bc6ba74332f4fb95db714ea",
+      "fixture_stash": "cb38c7698ffc76cd53fc444f6fc51055f749f791"
+    },
+    "before/df93578-ci-validate.log": {
+      "sha256": "6d31b08a0e555b90e44140f94a97e0ca42aa4e3a835a9262599b27e66402787e",
+      "bytes": 306458,
+      "job_id": 114660539888,
+      "run_id": 38203086907,
+      "source_sha": "df935784e16a61be2bc6ba74332f4fb95db714ea"
+    }
+  },
+  "jobs": [
+    {
+      "id": 114669986069,
+      "name": "validate",
+      "conclusion": "success",
+      "html_url": "https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38206157431/job/114669986069"
+    },
+    {
+      "id": 114669986323,
+      "name": "client-smoke",
+      "conclusion": "success",
+      "html_url": "https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38206157431/job/114669986323"
+    }
+  ],
+  "tests": {
+    "total": 213,
+    "yuji": 41
+  },
+  "historical_evidence_verified": 184
+}

@@ -188,6 +188,7 @@ public final class YujiTestServer {
         player.removeAllEffects();
         player.setDeltaMovement(Vec3.ZERO); player.hurtMarked = true;
         player.setGameMode(GameType.CREATIVE);
+        player.setNoGravity(true);
         player.getAbilities().flying = true; player.onUpdateAbilities();
         player.getInventory().clearContent();
         if (++index == YujiKind.values().length) {
@@ -217,6 +218,7 @@ public final class YujiTestServer {
     }
 
     private static void startAi(ServerPlayer player) {
+        player.setNoGravity(false);
         initialPosition = current.position();
         current.move(MoverType.SELF, new Vec3(0, -1, 0));
         require(Math.abs(current.getY() - 65) < .01 && current.verticalCollision, "physical floor collision: " + current.kind());
