@@ -196,7 +196,8 @@ public final class YujiTestServer {
             spike = YujiContent.BONE_SPIKE.get().create(player.serverLevel());
             spike.setNoGravity(true); spike.moveTo(.5, 66, .5, 0, 0);
             player.serverLevel().addFreshEntity(spike);
-            player.teleportTo(player.serverLevel(), 1.5, 65, 1.5, 135, 23.7F);
+            // Include the flying spike's floor shadow and particle envelope in the frame.
+            player.teleportTo(player.serverLevel(), 2.5, 65, 2.5, 135, 12.4F);
             mode = "bone-gallery"; signal(player, "bone_spike"); return;
         }
         YujiKind kind = YujiKind.values()[index];

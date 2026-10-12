@@ -1,0 +1,1 @@
+java.lang.AssertionError: entity difference is framed away from viewport edges: bone_spike, changed=9251, bounds=416,184,572,485, camera=(1.5, 65.0, 1.5)
