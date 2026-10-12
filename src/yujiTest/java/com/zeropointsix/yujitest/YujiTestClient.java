@@ -109,6 +109,17 @@ public final class YujiTestClient {
                 + ", backend=" + System.getProperty("yuji.qa.audio", "OpenAL-null") + "\n";
         startedSounds.add(new Playback(profile, sound.getLocation().toString(), record));
     }
+    @SubscribeEvent public static void galleryCamera(TickEvent.ClientTickEvent event) {
+        if (event.phase != TickEvent.Phase.START || failed || phase.isEmpty()
+                || phase.startsWith("ai-") || phase.startsWith("audio-")) return;
+        var player = Minecraft.getInstance().player;
+        if (player == null) return;
+        // Player metadata/abilities can arrive after the phase message. Reassert the gallery-only lock
+        // before travel so a late packet cannot drop the elevated giant camera to the arena floor.
+        player.setNoGravity(true);
+        player.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
+        if (player.getAbilities().mayfly) player.getAbilities().flying = true;
+    }
     @SubscribeEvent public static void tick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END || failed || phase.isEmpty()) return;
         var mc = Minecraft.getInstance();
