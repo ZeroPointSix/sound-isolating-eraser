@@ -27,6 +27,13 @@ import zlib
 
 
 PHASES = ("grey", "black", "buddha_idle", "buddha_fall", "beam", "returned")
+CLIENT_OPTIONS = (
+    "version:3465\nrenderDistance:5\nsimulationDistance:5\nmaxFps:30\nenableVsync:false\n"
+    "fullscreen:false\npauseOnLostFocus:false\ngraphicsMode:1\nparticles:0\n"
+    "soundCategory_master:0.0\nclouds:false\nfov:1.0\ngamma:1.0\nautoJump:false\n"
+    # This flag requests onboarding, rather than recording that it was completed.
+    "onboardAccessibility:false\nskipMultiplayerWarning:true\n"
+)
 
 
 def require(condition: bool, message: str) -> None:
@@ -327,12 +334,7 @@ def run_smoke(options: argparse.Namespace) -> int:
             "view-distance=5\nsimulation-distance=5\nmax-players=1\nmax-tick-time=120000\n"
             "enable-rcon=false\nenable-query=false\nwhite-list=false\nsync-chunk-writes=false\n",
             encoding="utf-8")
-        (run / "client/options.txt").write_text(
-            "version:3465\nrenderDistance:5\nsimulationDistance:5\nmaxFps:30\nenableVsync:false\n"
-            "fullscreen:false\npauseOnLostFocus:false\ngraphicsMode:1\nparticles:0\n"
-            "soundCategory_master:0.0\nclouds:false\nfov:1.0\ngamma:1.0\nautoJump:false\n"
-            "onboardAccessibility:true\nskipMultiplayerWarning:true\n",
-            encoding="utf-8")
+        (run / "client/options.txt").write_text(CLIENT_OPTIONS, encoding="utf-8")
         xserver = processes.start("Xvfb", [xvfb, "-displayfd", "1", "-screen", "0", "1280x720x24",
                                              "-nolisten", "tcp", "-noreset"], run, run / "xvfb.log", display_pipe=True)
         display = wait_display(xserver)
@@ -412,6 +414,12 @@ def self_test() -> int:
                 + chunk(b"IDAT", zlib.compress(raw)) + chunk(b"IEND", b""))
 
     class Checks(unittest.TestCase):
+        def test_fresh_client_does_not_request_onboarding(self):
+            options = dict(line.split(":", 1) for line in CLIENT_OPTIONS.splitlines())
+            self.assertEqual(options["onboardAccessibility"], "false")
+            self.assertEqual(options["skipMultiplayerWarning"], "true")
+            self.assertEqual(options["pauseOnLostFocus"], "false")
+
         def test_rgb_and_rgba_all_filters(self):
             for alpha in (False, True):
                 expected = png_pixels(make_png(17, 11, alpha=alpha))
