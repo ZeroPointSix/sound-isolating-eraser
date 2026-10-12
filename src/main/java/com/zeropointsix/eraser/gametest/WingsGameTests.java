@@ -301,15 +301,40 @@ public final class WingsGameTests {
         LightningBolt bolt = new LightningBolt(EntityType.LIGHTNING_BOLT, level);
         bolt.setPos(phantom.position());
         level.addFreshEntity(bolt);
+        ItemEntity[] droppedFeather = new ItemEntity[1];
         h.runAfterDelay(2, () -> {
             h.assertTrue(!phantom.isAlive(), "real lightning entity kills the phantom");
-            long feathers = level.getEntitiesOfClass(ItemEntity.class,
+            var feathers = level.getEntitiesOfClass(ItemEntity.class,
                             phantom.getBoundingBox().inflate(3)).stream()
                     .filter(e -> e.getItem().is(ModItems.THUNDER_FEATHER.get()))
-                    .mapToInt(e -> e.getItem().getCount()).sum();
-            h.assertTrue(feathers == 1, "real lightning-killed phantom drops one thunder feather");
+                    .toList();
+            h.assertTrue(feathers.size() == 1 && feathers.get(0).getItem().getCount() == 1,
+                    "real lightning-killed phantom drops one thunder feather");
+            droppedFeather[0] = feathers.get(0);
+        });
+        h.runAfterDelay(40, () -> {
+            h.assertTrue(!bolt.isAlive(), "the real lightning bolt completes all flashes");
+            h.assertTrue(droppedFeather[0] != null && droppedFeather[0].isAlive()
+                            && droppedFeather[0].getItem().is(ModItems.THUNDER_FEATHER.get())
+                            && droppedFeather[0].getItem().getCount() == 1,
+                    "the same thunder feather survives the entire strike and remains collectible");
+            h.assertTrue(!droppedFeather[0].isInvulnerable(), "the drop is not globally invulnerable");
             h.succeed();
         });
+    }
+
+    @GameTest(template = "empty", timeoutTicks = 60)
+    public static void thunderFeatherStillTakesOtherDamage(GameTestHelper h) {
+        ServerLevel level = h.getLevel();
+        Vec3 position = h.absoluteVec(new Vec3(2.5, 3, 2.5));
+        for (var source : java.util.List.of(level.damageSources().genericKill(), level.damageSources().lava())) {
+            ItemEntity feather = new ItemEntity(level, position.x, position.y, position.z,
+                    new ItemStack(ModItems.THUNDER_FEATHER.get()));
+            level.addFreshEntity(feather);
+            h.assertTrue(feather.hurt(source, 5.0F) && !feather.isAlive(),
+                    "other damage, including lava, still removes thunder feathers: " + source);
+        }
+        h.succeed();
     }
 
     @GameTest(template = "empty", timeoutTicks = 60)
