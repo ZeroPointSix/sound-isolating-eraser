@@ -444,10 +444,13 @@ public final class YujiGameTests {
     }
     private static YujiMonster rangedChanter(GameTestHelper h) {
         YujiMonster chanter = monster(h, YujiKind.EKOU);
-        // Keep the entire 12-block ray in the template's ticketed chunk, above neighboring structures.
+        // Keep the ray in the ticketed chunk, clear of both generated terrain and other batch fixtures.
         BlockPos origin = chanter.blockPosition();
-        chanter.moveTo((origin.getX() >> 4) * 16 + 1.5, origin.getY() + 128,
+        chanter.moveTo((origin.getX() >> 4) * 16 + 1.5, h.getLevel().getMaxBuildHeight() - 16,
                 (origin.getZ() >> 4) * 16 + 1.5);
+        BlockPos start = chanter.blockPosition();
+        for (BlockPos pos : BlockPos.betweenClosed(start.offset(-1, 0, -1), start.offset(1, 3, 13)))
+            h.getLevel().setBlock(pos, Blocks.AIR.defaultBlockState(), 2);
         chanter.setInvulnerable(true);
         return chanter;
     }
@@ -457,7 +460,8 @@ public final class YujiGameTests {
         cow.moveTo(chanter.position().add(0, 0, 12));
         cow.getAttribute(Attributes.MAX_HEALTH).setBaseValue(40); cow.setHealth(40);
         h.assertTrue(h.getLevel().getEntity(cow.getUUID()) == cow, "chant target registered in the world");
-        h.assertTrue(chanter.hasLineOfSight(cow), "unobstructed ranged chant fixture");
+        h.assertTrue(chanter.hasLineOfSight(cow), "unobstructed ranged chant fixture: "
+                + chanter.position() + " -> " + cow.position());
         h.assertTrue(chanter.distanceTo(cow) > 10, "target well outside melee reach");
         return cow;
     }
