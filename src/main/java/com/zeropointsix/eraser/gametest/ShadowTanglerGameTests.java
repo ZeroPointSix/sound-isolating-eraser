@@ -6,9 +6,13 @@ import com.zeropointsix.eraser.registry.ModItems;
 import com.zeropointsix.eraser.shadow.ShadowLight;
 import com.zeropointsix.eraser.shadow.ShadowTanglerEntity;
 import com.zeropointsix.eraser.shaxia.ShaxiaTargets;
+import java.util.ArrayList;
+import java.util.Collection;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTest;
+import net.minecraft.gametest.framework.GameTestGenerator;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.gametest.framework.TestFunction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.effect.MobEffects;
@@ -201,17 +205,67 @@ public final class ShadowTanglerGameTests {
 
     @GameTest(template = "shadow_arena", timeoutTicks = 400)
     public static void shadowEscapesBrightArea(GameTestHelper h) {
+        escapeToDarkRefuge(h, false, null);
+    }
+
+    @GameTestGenerator
+    public static Collection<TestFunction> shadowEscapeSeedRegressions() {
+        Collection<TestFunction> tests = new ArrayList<>();
+        int seeds = Math.max(0, Math.min(64, Integer.getInteger("shadow.escape.seeds", 0)));
+        for (long seed = 0; seed < seeds; seed++) {
+            long fixedSeed = seed;
+            for (boolean glass : new boolean[] {false, true}) {
+                String name = "shadowescape_" + (glass ? "glass" : "stone") + "_seed_" + seed;
+                tests.add(new TestFunction("shadow_escape_stress", name,
+                        ModMain.MOD_ID + ":shadow_arena", 400, 0L, true,
+                        h -> escapeToDarkRefuge(h, glass, fixedSeed)));
+            }
+        }
+        return tests;
+    }
+
+    private static void escapeToDarkRefuge(GameTestHelper h, boolean glass, Long seed) {
+        if (glass) {
+            for (int x = 1; x < 24; x++) for (int z = 1; z < 24; z++) {
+                h.setBlock(new BlockPos(x, 1, z), Blocks.GLASS);
+            }
+        }
         ShadowTanglerEntity mob = spawn(h, 15, false);
+        if (seed != null) mob.getRandom().setSeed(seed);
         var origin = mob.position();
         mob.getAttribute(Attributes.MAX_HEALTH).setBaseValue(200);
         mob.setHealth(200);
-        h.runAtTickTime(60, () -> assertPromptEscape(h, mob, origin));
-        h.runAtTickTime(100, () -> h.assertTrue(mob.position().subtract(origin).horizontalDistanceSqr() >= 1
-                || mob.getLightTier() == ShadowLight.DARK, "escape continues beyond one block: " + escapeState(mob)));
-        h.runAtTickTime(300, () -> {
-            h.assertTrue(mob.isAlive() && mob.getLightTier() == ShadowLight.DARK, "real navigation reaches a dark refuge");
-            h.succeed();
-        });
+        boolean[] sawBright = {false};
+        int[] firstDarkTick = {-1}, recoveredTick = {-1};
+        for (int t = 1; t <= 300; t++) {
+            final int tick = t;
+            h.runAtTickTime(tick, () -> {
+                int light = mob.brightnessAt(mob.blockPosition());
+                if (mob.getLightTier() == ShadowLight.BRIGHT && light >= 11) sawBright[0] = true;
+                // Initial synced tier is DARK. Require actual escape from a lit, unlocked spawn.
+                if (firstDarkTick[0] < 0 && sawBright[0] && !mob.isSpawning()
+                        && mob.getLightTier() == ShadowLight.DARK && light <= 6
+                        && mob.position().subtract(origin).horizontalDistanceSqr() >= 1) {
+                    firstDarkTick[0] = tick;
+                }
+                if (firstDarkTick[0] >= 0 && recoveredTick[0] < 0 && !mob.isRetreating()) {
+                    recoveredTick[0] = tick;
+                }
+                if (tick == 60) assertPromptEscape(h, mob, origin);
+                if (tick == 100) h.assertTrue(mob.position().subtract(origin).horizontalDistanceSqr() >= 1
+                        || mob.getLightTier() == ShadowLight.DARK,
+                        "escape continues beyond one block: " + escapeState(mob));
+                if (tick == 300) {
+                    String evidence = "glass=" + glass + " seed=" + seed + " firstDarkTick=" + firstDarkTick[0]
+                            + " recoveredTick=" + recoveredTick[0] + " " + escapeState(mob);
+                    com.mojang.logging.LogUtils.getLogger().info("Shadow escape evidence: {}", evidence);
+                    // After the dark cooldown, normal wandering may legally return to dim light.
+                    h.assertTrue(mob.isAlive() && firstDarkTick[0] >= 0,
+                            "real navigation reaches a dark refuge by tick 300: " + evidence);
+                    h.succeed();
+                }
+            });
+        }
     }
 
     @GameTest(template = "empty")
@@ -256,20 +310,7 @@ public final class ShadowTanglerGameTests {
 
     @GameTest(template = "shadow_arena", timeoutTicks = 400)
     public static void shadowEscapesAcrossGlass(GameTestHelper h) {
-        for (int x = 1; x < 24; x++) for (int z = 1; z < 24; z++) {
-            h.setBlock(new BlockPos(x, 1, z), Blocks.GLASS);
-        }
-        ShadowTanglerEntity mob = spawn(h, 15, false);
-        var origin = mob.position();
-        mob.getAttribute(Attributes.MAX_HEALTH).setBaseValue(200);
-        mob.setHealth(200);
-        h.runAtTickTime(60, () -> assertPromptEscape(h, mob, origin));
-        h.runAtTickTime(100, () -> h.assertTrue(mob.position().subtract(origin).horizontalDistanceSqr() >= 1
-                || mob.getLightTier() == ShadowLight.DARK, "glass escape continues beyond one block: " + escapeState(mob)));
-        h.runAtTickTime(300, () -> {
-            h.assertTrue(mob.isAlive() && mob.getLightTier() == ShadowLight.DARK, "glass floor is a valid dark refuge");
-            h.succeed();
-        });
+        escapeToDarkRefuge(h, true, null);
     }
 
     @GameTest(template = "shadow_arena", timeoutTicks = 160)
