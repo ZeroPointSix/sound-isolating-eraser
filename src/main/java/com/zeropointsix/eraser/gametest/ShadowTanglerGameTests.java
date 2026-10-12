@@ -336,6 +336,9 @@ public final class ShadowTanglerGameTests {
                     lastSwing[0] = tick;
                 }
                 swinging[0] = mob.swinging;
+                if (tick % 10 == 0) System.out.println("SHADOW_MELEE_DIAGNOSTIC tick=" + tick
+                        + " hits=" + hits[0] + " interrupted=" + interrupted[0] + " " + escapeState(mob)
+                        + " victim=" + target.position() + " selected=" + mob.getTarget());
                 if (target.getHealth() < previousHealth[0]) {
                     h.assertTrue(lastSwing[0] >= 24 && Math.abs(tick - lastSwing[0] - 5) <= 1,
                             "native AI waits for spawn and five-tick attack windup");
