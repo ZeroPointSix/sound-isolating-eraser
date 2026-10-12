@@ -1,0 +1,6 @@
+PASS voice-0 natural target=e2b10060-b568-3058-a037-b909b67bdc60; adjacent witness=82056727-80fc-35e5-b2f5-c6c33a3f7acf; both actual sound engines checked
+PASS voice-1 natural target=82056727-80fc-35e5-b2f5-c6c33a3f7acf; adjacent witness=e2b10060-b568-3058-a037-b909b67bdc60; both actual sound engines checked
+PASS camera-0 natural source; actual client yaw/effect probes, victim=e2b10060-b568-3058-a037-b909b67bdc60; witness=82056727-80fc-35e5-b2f5-c6c33a3f7acf
+PASS camera-clear-0 both clients remain free of effects, yaw and pitch drift after source removal
+PASS camera-1 natural source; actual client yaw/effect probes, victim=82056727-80fc-35e5-b2f5-c6c33a3f7acf; witness=e2b10060-b568-3058-a037-b909b67bdc60
+PASS camera-clear-1 both clients remain free of effects, yaw and pitch drift after source removal

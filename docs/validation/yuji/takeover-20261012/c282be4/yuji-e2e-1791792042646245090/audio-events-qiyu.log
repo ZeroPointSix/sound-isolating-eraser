@@ -1,0 +1,6 @@
+phase=qiyu, tick=2, event=qihai:entity.qihai.qiyu.flute, decoded=qihai:qiyu/flute, active=true, volume=1.0, pitch=1.0, position=0.5,65.0,0.5, backend=OpenAL-wave
+phase=ai-qiyu, tick=65, event=qihai:entity.qihai.yuchi.ambient, decoded=qihai:yuchi/ambient, active=true, volume=0.3, pitch=0.8575586, position=2.5,65.0,0.5, backend=OpenAL-wave
+phase=ai-qiyu, tick=340, event=qihai:entity.qihai.wangyu.ambient, decoded=qihai:wangyu/ambient, active=true, volume=0.3, pitch=1.137849, position=-2.375,65.0,14.5, backend=OpenAL-wave
+phase=ai-qiyu, tick=345, event=qihai:entity.qihai.xieyin.lure, decoded=qihai:xieyin/lure, active=true, volume=0.3, pitch=1.0, position=-2.411876194467403,65.0,17.131541617768008, backend=OpenAL-wave
+phase=ai-qiyu, tick=351, event=qihai:entity.qihai.xieyin.pull, decoded=qihai:xieyin/pull, active=true, volume=0.3, pitch=1.0, position=-2.2888281232725447,65.0,17.65899051514882, backend=OpenAL-wave
+phase=audio-qiyu, tick=11, event=qihai:entity.qihai.qiyu.death, decoded=qihai:qiyu/death, active=true, volume=0.3, pitch=0.9574755, position=-0.375,65.0,19.5, backend=OpenAL-wave

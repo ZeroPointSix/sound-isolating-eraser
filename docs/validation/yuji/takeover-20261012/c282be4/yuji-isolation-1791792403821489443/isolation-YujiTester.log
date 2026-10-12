@@ -1,0 +1,54 @@
+epochMs=1791792451487 PASS isolation-ready real TCP player=e2b10060-b568-3058-a037-b909b67bdc60
+epochMs=1791792488143 START voice-0 target=YujiTester yaw=0.0
+epochMs=1791792489072 PASS armed-voice-0 listening before server enables natural AI
+epochMs=1791792490198 voice-0 tick=41 event=minecraft:entity.player.hurt decoded=minecraft:damage/hit1 active=true position=-6.375,66.0,12.5
+epochMs=1791792498637 voice-0 tick=211 event=minecraft:entity.villager.hurt decoded=minecraft:mob/villager/hit4 active=true position=2.5,66.0,2.25
+epochMs=1791792501160 PASS voice-0 target=YujiTester received=2 resolvedActive=2
+epochMs=1791792501251 PASS shot-voice-0 actual client framebuffer
+epochMs=1791792501297 START voice-1 target=YujiWitness yaw=0.0
+epochMs=1791792502278 PASS armed-voice-1 listening before server enables natural AI
+epochMs=1791792514339 PASS voice-1 target=YujiWitness received=0 resolvedActive=0
+epochMs=1791792514414 PASS shot-voice-1 actual client framebuffer
+epochMs=1791792514454 START camera-0 target=YujiTester yaw=0.0
+epochMs=1791792515413 PASS armed-camera-0 listening before server enables natural AI
+epochMs=1791792515417 camera-0 tick=20 yaw=0.0 maxTurn=0.0 effectLevel=-1
+epochMs=1791792516414 camera-0 tick=40 yaw=0.0 maxTurn=0.0 effectLevel=-1
+epochMs=1791792517429 camera-0 tick=60 yaw=0.0 maxTurn=0.0 effectLevel=0
+epochMs=1791792518410 camera-0 tick=80 yaw=0.0 maxTurn=0.0 effectLevel=0
+epochMs=1791792519420 camera-0 tick=100 yaw=0.0 maxTurn=0.0 effectLevel=1
+epochMs=1791792520428 camera-0 tick=120 yaw=38.0 maxTurn=38.0 effectLevel=1
+epochMs=1791792521442 camera-0 tick=140 yaw=78.0 maxTurn=78.0 effectLevel=1
+epochMs=1791792522423 camera-0 tick=160 yaw=90.0 maxTurn=90.0 effectLevel=2
+epochMs=1791792523429 camera-0 tick=180 yaw=90.0 maxTurn=90.0 effectLevel=2
+epochMs=1791792524440 PASS camera-0 target=YujiTester maxTurn=90.0 maxPitch=46.2787 effectLevel=2
+epochMs=1791792524523 PASS shot-camera-0 actual client framebuffer
+epochMs=1791792526107 START camera-clear-0 target=none yaw=90.0
+epochMs=1791792527079 PASS armed-camera-clear-0 listening before server enables natural AI
+epochMs=1791792527079 camera-clear-0 tick=20 yaw=90.0 maxTurn=0.0 effectLevel=-1
+epochMs=1791792528082 camera-clear-0 tick=40 yaw=90.0 maxTurn=0.0 effectLevel=-1
+epochMs=1791792529084 camera-clear-0 tick=60 yaw=90.0 maxTurn=0.0 effectLevel=-1
+epochMs=1791792530087 camera-clear-0 tick=80 yaw=90.0 maxTurn=0.0 effectLevel=-1
+epochMs=1791792531088 PASS camera-clear-0 target=none maxTurn=0.0 maxPitch=0.0 effectLevel=-1
+epochMs=1791792531151 PASS shot-camera-clear-0 actual client framebuffer
+epochMs=1791792531258 START camera-1 target=YujiWitness yaw=0.0
+epochMs=1791792532218 PASS armed-camera-1 listening before server enables natural AI
+epochMs=1791792532219 camera-1 tick=20 yaw=0.0 maxTurn=0.0 effectLevel=-1
+epochMs=1791792533230 camera-1 tick=40 yaw=0.0 maxTurn=0.0 effectLevel=-1
+epochMs=1791792534239 camera-1 tick=60 yaw=0.0 maxTurn=0.0 effectLevel=-1
+epochMs=1791792535219 camera-1 tick=80 yaw=0.0 maxTurn=0.0 effectLevel=-1
+epochMs=1791792536228 camera-1 tick=100 yaw=0.0 maxTurn=0.0 effectLevel=-1
+epochMs=1791792537240 camera-1 tick=120 yaw=0.0 maxTurn=0.0 effectLevel=-1
+epochMs=1791792538213 camera-1 tick=140 yaw=0.0 maxTurn=0.0 effectLevel=-1
+epochMs=1791792539217 camera-1 tick=160 yaw=0.0 maxTurn=0.0 effectLevel=-1
+epochMs=1791792540220 camera-1 tick=180 yaw=0.0 maxTurn=0.0 effectLevel=-1
+epochMs=1791792541230 PASS camera-1 target=YujiWitness maxTurn=0.0 maxPitch=0.0 effectLevel=-1
+epochMs=1791792541285 PASS shot-camera-1 actual client framebuffer
+epochMs=1791792542828 START camera-clear-1 target=none yaw=0.0
+epochMs=1791792543766 PASS armed-camera-clear-1 listening before server enables natural AI
+epochMs=1791792543767 camera-clear-1 tick=20 yaw=0.0 maxTurn=0.0 effectLevel=-1
+epochMs=1791792544771 camera-clear-1 tick=40 yaw=0.0 maxTurn=0.0 effectLevel=-1
+epochMs=1791792545776 camera-clear-1 tick=60 yaw=0.0 maxTurn=0.0 effectLevel=-1
+epochMs=1791792546781 camera-clear-1 tick=80 yaw=0.0 maxTurn=0.0 effectLevel=-1
+epochMs=1791792547786 camera-clear-1 tick=100 yaw=0.0 maxTurn=0.0 effectLevel=-1
+epochMs=1791792547851 PASS camera-clear-1 target=none maxTurn=0.0 maxPitch=0.0 effectLevel=-1
+epochMs=1791792547910 PASS shot-camera-clear-1 actual client framebuffer

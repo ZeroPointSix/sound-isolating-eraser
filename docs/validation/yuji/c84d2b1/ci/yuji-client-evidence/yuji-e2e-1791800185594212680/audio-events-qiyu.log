@@ -1,0 +1,7 @@
+phase=qiyu, tick=2, event=qihai:entity.qihai.qiyu.flute, decoded=qihai:qiyu/flute, active=true, volume=1.0, pitch=1.0, position=0.5,65.0,0.5, backend=OpenAL-wave
+phase=ai-qiyu, tick=58, event=qihai:entity.qihai.yuchi.ambient, decoded=qihai:yuchi/ambient, active=true, volume=0.3, pitch=0.981174, position=2.5,65.0,0.5, backend=OpenAL-wave
+phase=ai-qiyu, tick=128, event=qihai:entity.qihai.liangshe.whisper, decoded=qihai:liangshe/whisper, active=true, volume=0.3, pitch=1.0, position=-0.48610589337435495,65.0,2.6093558712765463, backend=OpenAL-wave
+phase=ai-qiyu, tick=140, event=qihai:entity.qihai.liangshe.betray, decoded=qihai:liangshe/betray, active=true, volume=0.3, pitch=1.0, position=-0.48779296875,65.0,2.139404296875, backend=OpenAL-wave
+phase=ai-qiyu, tick=328, event=qihai:entity.qihai.toudao.steal, decoded=qihai:toudao/steal, active=true, volume=0.3, pitch=1.0, position=1.8002524399670408,65.0,15.566826613878227, backend=OpenAL-wave
+phase=ai-qiyu, tick=344, event=qihai:entity.qihai.toudao.ambient, decoded=qihai:toudao/ambient, active=true, volume=0.3, pitch=0.88458514, position=6.375,65.0,20.375, backend=OpenAL-wave
+phase=audio-qiyu, tick=11, event=qihai:entity.qihai.qiyu.death, decoded=qihai:qiyu/death, active=true, volume=0.3, pitch=0.9058642, position=-5.75,65.0,13.25, backend=OpenAL-wave

@@ -1,0 +1,144 @@
+YUJI_QA_RESULTS=/data/yuji-fodu-20261011/repo/build/yuji-isolation-1791791783828934955
+--- client.log ---
+[07:59:11] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Recieved login wrapper packet event for channel fml:handshake with index 25
+[07:59:11] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.HandshakeHandler/FMLHANDSHAKE]: Received config sync from server
+[07:59:11] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Dispatching wrapped packet reply for channel fml:handshake with index 25
+[07:59:11] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Recieved login wrapper packet event for channel fml:handshake with index 26
+[07:59:11] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.HandshakeHandler/FMLHANDSHAKE]: Received config sync from server
+[07:59:11] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Dispatching wrapped packet reply for channel fml:handshake with index 26
+[07:59:11] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Recieved login wrapper packet event for channel fml:handshake with index 27
+[07:59:11] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.HandshakeHandler/FMLHANDSHAKE]: Received config sync from server
+[07:59:11] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Dispatching wrapped packet reply for channel fml:handshake with index 27
+[07:59:11] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Recieved login wrapper packet event for channel fml:handshake with index 28
+[07:59:11] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.HandshakeHandler/FMLHANDSHAKE]: Received config sync from server
+[07:59:11] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Dispatching wrapped packet reply for channel fml:handshake with index 28
+[07:59:11] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Recieved login wrapper packet event for channel fml:handshake with index 29
+[07:59:11] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.HandshakeHandler/FMLHANDSHAKE]: Received config sync from server
+[07:59:11] [Netty Epoll Client IO #0/DEBUG] [ne.mi.co.ForgeConfig/FORGEMOD]: Forge config just got changed on the file system!
+[07:59:11] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Dispatching wrapped packet reply for channel fml:handshake with index 29
+[07:59:12] [Netty Epoll Client IO #0/INFO] [ne.mi.ne.NetworkHooks/]: Connected to a modded server.
+[07:59:22] [Render thread/DEBUG] [ne.mi.ne.fi.NetworkFilters/]: Injected net.minecraftforge.network.filters.ForgeConnectionNetworkFilter@2c451c4a into net.minecraft.network.Connection@38ad86b1
+[07:59:31] [Render thread/INFO] [minecraft/AdvancementList]: Loaded 2 advancements
+[08:08:35] [Render thread/INFO] [minecraft/ChatComponent]: [System] [CHAT] YujiWitness加入了游戏
+--- client-mix-audio.log ---
+size=N/A time=00:12:33.86 bitrate=N/A speed=74.5x    
+[out#0/null @ 0x5e93aacd6d00] video:0kB audio:132207kB subtitle:0kB other streams:0kB global headers:0kB muxing overhead: unknown
+size=N/A time=00:12:47.45 bitrate=N/A speed=74.2x    
+[Parsed_volumedetect_0 @ 0x5e93aad02180] n_samples: 67689972
+[Parsed_volumedetect_0 @ 0x5e93aad02180] mean_volume: -31.9 dB
+[Parsed_volumedetect_0 @ 0x5e93aad02180] max_volume: -0.1 dB
+[Parsed_volumedetect_0 @ 0x5e93aad02180] histogram_0db: 115
+[Parsed_volumedetect_0 @ 0x5e93aad02180] histogram_1db: 373
+[Parsed_volumedetect_0 @ 0x5e93aad02180] histogram_2db: 470
+[Parsed_volumedetect_0 @ 0x5e93aad02180] histogram_3db: 647
+[Parsed_volumedetect_0 @ 0x5e93aad02180] histogram_4db: 926
+[Parsed_volumedetect_0 @ 0x5e93aad02180] histogram_5db: 1365
+[Parsed_volumedetect_0 @ 0x5e93aad02180] histogram_6db: 1791
+[Parsed_volumedetect_0 @ 0x5e93aad02180] histogram_7db: 2343
+[Parsed_volumedetect_0 @ 0x5e93aad02180] histogram_8db: 2989
+[Parsed_volumedetect_0 @ 0x5e93aad02180] histogram_9db: 3892
+[Parsed_volumedetect_0 @ 0x5e93aad02180] histogram_10db: 5912
+[Parsed_volumedetect_0 @ 0x5e93aad02180] histogram_11db: 9315
+[Parsed_volumedetect_0 @ 0x5e93aad02180] histogram_12db: 17339
+[Parsed_volumedetect_0 @ 0x5e93aad02180] histogram_13db: 34105
+--- isolation-YujiWitness.log ---
+epochMs=1791792624807 PASS isolation-ready real TCP player=82056727-80fc-35e5-b2f5-c6c33a3f7acf
+epochMs=1791792628907 START voice-0 target=YujiTester yaw=0.0
+epochMs=1791792641844 PASS armed-voice-0 listening before server enables natural AI
+epochMs=1791792669693 PASS voice-0 target=YujiTester received=0 resolvedActive=0
+epochMs=1791792677402 PASS shot-voice-0 actual client framebuffer
+epochMs=1791792678296 START voice-1 target=YujiWitness yaw=0.0
+epochMs=1791792684857 PASS armed-voice-1 listening before server enables natural AI
+epochMs=1791792693406 voice-1 tick=31 event=minecraft:entity.villager.hurt decoded=minecraft:mob/villager/hit4 active=true position=-0.75,66.0,17.625
+--- server.log ---
+java.lang.AssertionError: only natural sound target receives weakness
+	at TRANSFORMER/yuji_qa@1.0/com.zeropointsix.yujitest.YujiIsolationServer.require(YujiIsolationServer.java:46)
+	at TRANSFORMER/yuji_qa@1.0/com.zeropointsix.yujitest.YujiIsolationServer.tick(YujiIsolationServer.java:129)
+	at TRANSFORMER/yuji_qa@1.0/com.zeropointsix.yujitest.__YujiIsolationServer_tick_ServerTickEvent.invoke(.dynamic)
+	at MC-BOOTSTRAP/net.minecraftforge.eventbus/net.minecraftforge.eventbus.ASMEventHandler.invoke(ASMEventHandler.java:73)
+	at MC-BOOTSTRAP/net.minecraftforge.eventbus/net.minecraftforge.eventbus.EventBus.post(EventBus.java:315)
+	at MC-BOOTSTRAP/net.minecraftforge.eventbus/net.minecraftforge.eventbus.EventBus.post(EventBus.java:296)
+	at TRANSFORMER/forge@47.2.0/net.minecraftforge.event.ForgeEventFactory.onPostServerTick(ForgeEventFactory.java:950)
+	at TRANSFORMER/minecraft@1.20.1/net.minecraft.server.MinecraftServer.tickServer(MinecraftServer.java:835)
+	at TRANSFORMER/minecraft@1.20.1/net.minecraft.server.MinecraftServer.runServer(MinecraftServer.java:661)
+	at TRANSFORMER/minecraft@1.20.1/net.minecraft.server.MinecraftServer.lambda$spin$2(MinecraftServer.java:251)
+	at java.base/java.lang.Thread.run(Thread.java:840)
+[08:11:39] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: YujiWitness lost connection: Disconnected
+[08:11:39] [Server thread/INFO] [minecraft/MinecraftServer]: YujiWitness left the game
+[08:11:40] [Server thread/INFO] [minecraft/MinecraftServer]: Stopping server
+[08:11:40] [Server thread/INFO] [minecraft/MinecraftServer]: Saving players
+[08:11:40] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: YujiTester lost connection: Disconnected
+[08:11:40] [Server thread/INFO] [minecraft/MinecraftServer]: YujiTester left the game
+[08:11:40] [Server thread/INFO] [minecraft/MinecraftServer]: Saving worlds
+[08:11:49] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[world]'/minecraft:overworld
+--- witness.log ---
+[08:08:32] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Dispatching wrapped packet reply for channel fml:handshake with index 24
+[08:08:32] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Recieved login wrapper packet event for channel fml:handshake with index 25
+[08:08:32] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.HandshakeHandler/FMLHANDSHAKE]: Received config sync from server
+[08:08:32] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Dispatching wrapped packet reply for channel fml:handshake with index 25
+[08:08:32] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Recieved login wrapper packet event for channel fml:handshake with index 26
+[08:08:32] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.HandshakeHandler/FMLHANDSHAKE]: Received config sync from server
+[08:08:32] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Dispatching wrapped packet reply for channel fml:handshake with index 26
+[08:08:32] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Recieved login wrapper packet event for channel fml:handshake with index 27
+[08:08:32] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.HandshakeHandler/FMLHANDSHAKE]: Received config sync from server
+[08:08:32] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Dispatching wrapped packet reply for channel fml:handshake with index 27
+[08:08:32] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Recieved login wrapper packet event for channel fml:handshake with index 28
+[08:08:32] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.HandshakeHandler/FMLHANDSHAKE]: Received config sync from server
+[08:08:33] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Dispatching wrapped packet reply for channel fml:handshake with index 28
+[08:08:33] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Recieved login wrapper packet event for channel fml:handshake with index 29
+[08:08:33] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.HandshakeHandler/FMLHANDSHAKE]: Received config sync from server
+[08:08:33] [Netty Epoll Client IO #0/DEBUG] [ne.mi.co.ForgeConfig/FORGEMOD]: Forge config just got changed on the file system!
+[08:08:33] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Dispatching wrapped packet reply for channel fml:handshake with index 29
+[08:08:33] [Netty Epoll Client IO #0/INFO] [ne.mi.ne.NetworkHooks/]: Connected to a modded server.
+[08:09:13] [Render thread/DEBUG] [ne.mi.ne.fi.NetworkFilters/]: Injected net.minecraftforge.network.filters.ForgeConnectionNetworkFilter@9976b27 into net.minecraft.network.Connection@4fe9a396
+[08:09:43] [Render thread/INFO] [minecraft/AdvancementList]: Loaded 2 advancements
+--- witness-mix-audio.log ---
+[Parsed_volumedetect_0 @ 0x618574445180] max_volume: -9.8 dB
+[Parsed_volumedetect_0 @ 0x618574445180] histogram_9db: 2
+[Parsed_volumedetect_0 @ 0x618574445180] histogram_10db: 16
+[Parsed_volumedetect_0 @ 0x618574445180] histogram_11db: 41
+[Parsed_volumedetect_0 @ 0x618574445180] histogram_12db: 79
+[Parsed_volumedetect_0 @ 0x618574445180] histogram_13db: 140
+[Parsed_volumedetect_0 @ 0x618574445180] histogram_14db: 164
+[Parsed_volumedetect_0 @ 0x618574445180] histogram_15db: 200
+[Parsed_volumedetect_0 @ 0x618574445180] histogram_16db: 226
+[Parsed_volumedetect_0 @ 0x618574445180] histogram_17db: 255
+[Parsed_volumedetect_0 @ 0x618574445180] histogram_18db: 258
+[Parsed_volumedetect_0 @ 0x618574445180] histogram_19db: 322
+[Parsed_volumedetect_0 @ 0x618574445180] histogram_20db: 349
+[Parsed_volumedetect_0 @ 0x618574445180] histogram_21db: 380
+[Parsed_volumedetect_0 @ 0x618574445180] histogram_22db: 524
+[Parsed_volumedetect_0 @ 0x618574445180] histogram_23db: 1336
+[Parsed_volumedetect_0 @ 0x618574445180] histogram_24db: 2859
+[Parsed_volumedetect_0 @ 0x618574445180] histogram_25db: 5493
+[Parsed_volumedetect_0 @ 0x618574445180] histogram_26db: 9047
+[Parsed_volumedetect_0 @ 0x618574445180] histogram_27db: 13843
+--- isolation-YujiTester.log ---
+epochMs=1791791981446 PASS isolation-ready real TCP player=e2b10060-b568-3058-a037-b909b67bdc60
+epochMs=1791792628297 START voice-0 target=YujiTester yaw=0.0
+epochMs=1791792631075 PASS armed-voice-0 listening before server enables natural AI
+epochMs=1791792654520 voice-0 tick=131 event=minecraft:block.chest.open decoded=minecraft:block/chest/open active=true position=-7.625,66.0,14.375
+epochMs=1791792663360 voice-0 tick=161 event=minecraft:entity.villager.hurt decoded=minecraft:mob/villager/hit1 active=true position=-9.375,66.0,8.375
+epochMs=1791792667452 PASS voice-0 target=YujiTester received=2 resolvedActive=2
+epochMs=1791792672730 PASS shot-voice-0 actual client framebuffer
+epochMs=1791792679405 START voice-1 target=YujiWitness yaw=0.0
+epochMs=1791792682874 PASS armed-voice-1 listening before server enables natural AI
+--- isolation-events.log ---
+PASS voice-0 natural target=e2b10060-b568-3058-a037-b909b67bdc60; adjacent witness=82056727-80fc-35e5-b2f5-c6c33a3f7acf; both actual sound engines checked
+client-armed-voice-0-YujiTester.pass: listening before server enables natural AI
+client-armed-voice-0-YujiWitness.pass: listening before server enables natural AI
+client-armed-voice-1-YujiTester.pass: listening before server enables natural AI
+client-armed-voice-1-YujiWitness.pass: listening before server enables natural AI
+client-isolation-ready-YujiTester.pass: real TCP player=e2b10060-b568-3058-a037-b909b67bdc60
+client-isolation-ready-YujiWitness.pass: real TCP player=82056727-80fc-35e5-b2f5-c6c33a3f7acf
+client-shot-voice-0-YujiTester.pass: actual client framebuffer
+client-shot-voice-0-YujiWitness.pass: actual client framebuffer
+client-voice-0-YujiTester.pass: target=YujiTester received=2 resolvedActive=2
+client-voice-0-YujiWitness.pass: target=YujiTester received=0 resolvedActive=0
+server-voice-0.pass: natural target=e2b10060-b568-3058-a037-b909b67bdc60; adjacent witness=82056727-80fc-35e5-b2f5-c6c33a3f7acf; both actual sound engines checked
+Traceback (most recent call last):
+  File "/data/yuji-fodu-20261011/repo/tools/yuji/e2e.py", line 135, in <module>
+    wait_for(lambda: all((RESULTS / (name + ".pass")).exists() for name in
+  File "/data/yuji-fodu-20261011/repo/tools/yuji/e2e.py", line 101, in wait_for
+    raise AssertionError("; ".join(path.read_text() for path in failures))
+AssertionError: java.lang.AssertionError: only natural sound target receives weakness

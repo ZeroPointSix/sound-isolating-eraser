@@ -1,0 +1,78 @@
+PASS voice-0 natural target=e2b10060-b568-3058-a037-b909b67bdc60; adjacent witness=82056727-80fc-35e5-b2f5-c6c33a3f7acf; both actual sound engines checked
+PASS voice-1 natural target=82056727-80fc-35e5-b2f5-c6c33a3f7acf; adjacent witness=e2b10060-b568-3058-a037-b909b67bdc60; both actual sound engines checked
+PASS camera-0 natural source; actual client yaw/effect probes, victim=e2b10060-b568-3058-a037-b909b67bdc60; witness=82056727-80fc-35e5-b2f5-c6c33a3f7acf
+PASS camera-clear-0 both clients remain free of effects, yaw and pitch drift after source removal
+PASS camera-1 natural source; actual client yaw/effect probes, victim=82056727-80fc-35e5-b2f5-c6c33a3f7acf; witness=e2b10060-b568-3058-a037-b909b67bdc60
+PASS camera-clear-1 both clients remain free of effects, yaw and pitch drift after source removal
+PASS door-standing-closed z=5.47197235278764; closed door blocked naturally pursuing husk; crawling=false
+PASS door-standing-open same mob naturally crossed after opening: z=7.06638168496233
+PASS door-crawling-closed z=3.35956202312648; closed door blocked naturally pursuing husk; crawling=true
+PASS door-crawling-open same mob naturally crossed after opening: z=7.001763631316367
+climb-wall tick=20 pos=(0.3599644096323038, 65.0, 1.1378879723099875) wallContacts=0 ceilingContacts=0 target=true noBlockOverlap=true
+climb-wall tick=40 pos=(1.1377192472328146, 65.0, 2.9295225267414353) wallContacts=0 ceilingContacts=0 target=true noBlockOverlap=true
+climb-wall tick=60 pos=(1.7295692183733697, 65.0, 4.629918321093638) wallContacts=0 ceilingContacts=0 target=true noBlockOverlap=true
+climb-wall tick=80 pos=(1.9999999999999993, 67.80000000000004, 4.775822748766992) wallContacts=15 ceilingContacts=0 target=true noBlockOverlap=true
+climb-wall tick=100 pos=(1.9999999999999993, 71.8000000000001, 4.651892511278302) wallContacts=35 ceilingContacts=0 target=true noBlockOverlap=true
+climb-wall tick=120 pos=(1.9999999999999993, 75.80000000000015, 4.5310040496102415) wallContacts=55 ceilingContacts=0 target=true noBlockOverlap=true
+climb-wall tick=140 pos=(1.9999999999999993, 79.80000000000021, 4.41319305141725) wallContacts=75 ceilingContacts=0 target=true noBlockOverlap=true
+climb-wall tick=160 pos=(1.9999999999999993, 83.80000000000027, 4.298400451373164) wallContacts=95 ceilingContacts=0 target=true noBlockOverlap=true
+climb-wall tick=180 pos=(2.5597153803507524, 86.0, 4.1995641745308605) wallContacts=105 ceilingContacts=0 target=true noBlockOverlap=true
+climb-wall tick=200 pos=(4.384546887066439, 86.0, 5.841456041999958) wallContacts=105 ceilingContacts=0 target=true noBlockOverlap=true
+climb-wall tick=220 pos=(6.233922984229992, 86.0, 7.50269495893707) wallContacts=105 ceilingContacts=0 target=true noBlockOverlap=true
+climb-wall tick=240 pos=(8.064266523060072, 86.0, 9.184753138154106) wallContacts=105 ceilingContacts=0 target=true noBlockOverlap=true
+climb-wall tick=260 pos=(9.903402905302633, 86.0, 10.857990343804001) wallContacts=105 ceilingContacts=0 target=true noBlockOverlap=true
+climb-wall tick=280 pos=(11.750738033115994, 86.0, 12.521552167485295) wallContacts=105 ceilingContacts=0 target=true noBlockOverlap=true
+climb-wall tick=300 pos=(13.578375561848732, 86.0, 14.207135099069852) wallContacts=105 ceilingContacts=0 target=true noBlockOverlap=true
+climb-wall tick=320 pos=(15.440717076533723, 86.0, 15.853924116197474) wallContacts=105 ceilingContacts=0 target=true noBlockOverlap=true
+climb-wall tick=340 pos=(17.338633674297245, 86.0, 17.457985732325003) wallContacts=105 ceilingContacts=0 target=true noBlockOverlap=true
+climb-wall tick=360 pos=(19.24183606238137, 86.0, 19.05404024850444) wallContacts=105 ceilingContacts=0 target=true noBlockOverlap=true
+climb-wall tick=380 pos=(21.40601391000195, 86.0, 19.814775475408048) wallContacts=105 ceilingContacts=0 target=true noBlockOverlap=true
+climb-wall tick=400 pos=(23.882778522216796, 86.0, 19.65275240726238) wallContacts=105 ceilingContacts=0 target=true noBlockOverlap=true
+climb-wall tick=420 pos=(26.36110722489563, 86.0, 19.501959087233164) wallContacts=105 ceilingContacts=0 target=true noBlockOverlap=true
+climb-wall tick=440 pos=(28.83226790812704, 86.0, 19.31276958100678) wallContacts=105 ceilingContacts=0 target=true noBlockOverlap=true
+climb-wall tick=460 pos=(31.2707665174244, 86.0, 19.120937351961107) wallContacts=105 ceilingContacts=0 target=true noBlockOverlap=true
+climb-wall tick=480 pos=(33.52429201400897, 86.0, 18.205041435632065) wallContacts=105 ceilingContacts=0 target=true noBlockOverlap=true
+PASS climb-wall natural AI, gravity/collision; highest=86.15444800524932; x=34.02824331285937; contacts=105
+climb-corner tick=20 pos=(0.7738140535928997, 65.0, 0.7737888664946185) wallContacts=0 ceilingContacts=0 target=true noBlockOverlap=true
+climb-corner tick=40 pos=(1.9999999999999987, 66.00000000000001, 2.0000000000000004) wallContacts=6 ceilingContacts=0 target=true noBlockOverlap=true
+climb-corner tick=60 pos=(1.9999999999999987, 70.00000000000007, 2.0000000000000004) wallContacts=26 ceilingContacts=0 target=true noBlockOverlap=true
+climb-corner tick=80 pos=(1.9999999999999987, 74.00000000000013, 2.0000000000000004) wallContacts=46 ceilingContacts=0 target=true noBlockOverlap=true
+climb-corner tick=100 pos=(1.9999999999999987, 78.00000000000018, 2.0000000000000004) wallContacts=66 ceilingContacts=0 target=true noBlockOverlap=true
+climb-corner tick=120 pos=(2.0968646079822104, 81.0, 2.096855317016906) wallContacts=80 ceilingContacts=0 target=true noBlockOverlap=true
+climb-corner tick=140 pos=(3.812706798529926, 81.0, 3.8126914440951802) wallContacts=80 ceilingContacts=0 target=true noBlockOverlap=true
+climb-corner tick=160 pos=(5.571066389149541, 81.0, 5.571051034681175) wallContacts=80 ceilingContacts=0 target=true noBlockOverlap=true
+climb-corner tick=180 pos=(7.329426215502252, 81.0, 7.329410861033886) wallContacts=80 ceilingContacts=0 target=true noBlockOverlap=true
+climb-corner tick=200 pos=(9.087786041856269, 81.0, 9.087770687387904) wallContacts=80 ceilingContacts=0 target=true noBlockOverlap=true
+climb-corner tick=220 pos=(10.846145868210286, 81.0, 10.84613051374192) wallContacts=80 ceilingContacts=0 target=true noBlockOverlap=true
+climb-corner tick=240 pos=(12.604505694564303, 81.0, 12.604490340095937) wallContacts=80 ceilingContacts=0 target=true noBlockOverlap=true
+climb-corner tick=260 pos=(14.36286552091832, 81.0, 14.362850166449954) wallContacts=80 ceilingContacts=0 target=true noBlockOverlap=true
+climb-corner tick=280 pos=(16.12122534727234, 81.0, 16.121209992803973) wallContacts=80 ceilingContacts=0 target=true noBlockOverlap=true
+climb-corner tick=300 pos=(17.879585173626392, 81.0, 17.879569819158025) wallContacts=80 ceilingContacts=0 target=true noBlockOverlap=true
+climb-corner tick=320 pos=(19.669661970060982, 81.0, 19.60507437707734) wallContacts=80 ceilingContacts=0 target=true noBlockOverlap=true
+climb-corner tick=340 pos=(21.46221768074078, 81.0, 21.324786094701068) wallContacts=80 ceilingContacts=0 target=true noBlockOverlap=true
+climb-corner tick=360 pos=(23.244911231868592, 81.0, 23.052566211707298) wallContacts=80 ceilingContacts=0 target=true noBlockOverlap=true
+climb-corner tick=380 pos=(25.149345188614895, 81.0, 24.64342331362512) wallContacts=80 ceilingContacts=0 target=true noBlockOverlap=true
+climb-corner tick=400 pos=(27.065770488178426, 81.0, 26.221576457276576) wallContacts=80 ceilingContacts=0 target=true noBlockOverlap=true
+climb-corner tick=420 pos=(28.986783332521565, 81.0, 27.775403780522158) wallContacts=80 ceilingContacts=0 target=true noBlockOverlap=true
+climb-corner tick=440 pos=(30.91698992384543, 81.0, 29.291819469621974) wallContacts=80 ceilingContacts=0 target=true noBlockOverlap=true
+climb-corner tick=460 pos=(32.965086228849394, 81.0, 30.678898438038054) wallContacts=80 ceilingContacts=0 target=true noBlockOverlap=true
+climb-corner tick=480 pos=(35.0412595059839, 81.0, 31.972015768144725) wallContacts=80 ceilingContacts=0 target=true noBlockOverlap=true
+climb-corner tick=500 pos=(37.33968843607047, 81.0, 32.887367995591816) wallContacts=80 ceilingContacts=0 target=true noBlockOverlap=true
+climb-corner tick=520 pos=(39.74956195721523, 81.0, 33.460009694444956) wallContacts=80 ceilingContacts=0 target=true noBlockOverlap=true
+climb-corner tick=540 pos=(42.18542040445693, 81.0, 33.809558996959815) wallContacts=80 ceilingContacts=0 target=true noBlockOverlap=true
+PASS climb-corner natural AI, gravity/collision; highest=81.15444800524925; x=43.15922810547642; contacts=80
+climb-overhang tick=20 pos=(0.3599644096323038, 65.0, 1.1378879723099875) wallContacts=0 ceilingContacts=0 target=true noBlockOverlap=true
+climb-overhang tick=40 pos=(1.1377192472328146, 65.0, 2.9295225267414353) wallContacts=0 ceilingContacts=0 target=true noBlockOverlap=true
+climb-overhang tick=60 pos=(1.7295692183733697, 65.0, 4.629918321093638) wallContacts=0 ceilingContacts=0 target=true noBlockOverlap=true
+climb-overhang tick=80 pos=(1.9999999999999993, 67.80000000000004, 4.775822748766992) wallContacts=15 ceilingContacts=0 target=true noBlockOverlap=true
+climb-overhang tick=100 pos=(1.9999999999999993, 68.0, 4.651892511278302) wallContacts=35 ceilingContacts=20 target=true noBlockOverlap=true
+climb-overhang tick=120 pos=(1.9999999999999993, 68.0, 4.5310040496102415) wallContacts=55 ceilingContacts=40 target=true noBlockOverlap=true
+climb-overhang tick=140 pos=(1.9999999999999993, 68.0, 4.41319305141725) wallContacts=75 ceilingContacts=60 target=true noBlockOverlap=true
+climb-overhang tick=160 pos=(1.9999999999999993, 68.0, 4.298400451373164) wallContacts=95 ceilingContacts=80 target=true noBlockOverlap=true
+climb-overhang tick=180 pos=(1.9999999999999993, 68.0, 4.1865619724218295) wallContacts=115 ceilingContacts=100 target=true noBlockOverlap=true
+climb-overhang tick=200 pos=(1.9999999999999993, 68.0, 4.077597689054274) wallContacts=135 ceilingContacts=120 target=true noBlockOverlap=true
+climb-overhang tick=220 pos=(1.9999999999999993, 68.0, 3.9714386221931406) wallContacts=155 ceilingContacts=140 target=true noBlockOverlap=true
+PASS climb-overhang solid ceiling respected; highest=68.0; wallContacts=155; ceilingContacts=140
+PASS panda-attack natural betrayal -> actual panda damage=6.0; target=e2b10060-b568-3058-a037-b909b67bdc60
+PASS panda-clear removed source clears target and influence; no lingering hostility
+PASS isolation both recipient roles, actual audio/camera, standing/crawling doors, wall/corner/overhang and panda passed
