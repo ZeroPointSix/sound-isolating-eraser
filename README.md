@@ -125,7 +125,7 @@ artifact (same filename), and publishes a GitHub Release with that jar attached.
 银白金纹的飞行法宝，胸甲槽穿戴（同鞘翅惯例），消耗原版饥饿值——**没有也不新增灵力条**。
 
 - 物品：`sound_isolating_eraser:wind_thunder_wings`（EPIC 级，防火）与材料 `sound_isolating_eraser:thunder_feather`（雷鹏骨羽，幻翼被雷击陨落掉落）。
-- 展开/收起：空中双击空格；落地或入水自动收起。
+- 展开/收起：空中双击空格；落地自动收起，水下保持飞行（原规格 §4.6）。
 - 四档速度（G 切换）：悬停 ≤5 / 御风 30 / 疾风 60 / 神霄 120 m/s；H 切换悬停锚定。
 - 雷遁（R）：向视线方向闪现 24 格，12 tick 内连闪最多 3 次；满 3 次进入 160 tick 冷却，否则 40 tick。
 - 饥饿消耗：按档每秒 0.4/0.8/2.0/4.0 点 exhaustion（`wings/` 下 `FlightEvents.onPlayerTick` 调 `FoodData.addExhaustion`）；饥饿 <4 禁止展开，<6 限制为悬停/巡航，=0 强制悬停并附加缓降。

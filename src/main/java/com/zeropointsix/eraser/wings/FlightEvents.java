@@ -15,6 +15,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
@@ -307,7 +308,8 @@ public final class FlightEvents {
     @SubscribeEvent
     public static void onPhantomDeath(LivingDeathEvent event) {
         if (!(event.getEntity() instanceof Phantom phantom)) return;
-        if (!(event.getSource().getDirectEntity() instanceof LightningBolt)) return;
+        // Vanilla thunderHit uses a typed source without a direct entity.
+        if (!event.getSource().is(DamageTypes.LIGHTNING_BOLT)) return;
         if (phantom.level().isClientSide) return;
         ItemStack drop = new ItemStack(ModItems.THUNDER_FEATHER.get());
         phantom.level().addFreshEntity(new ItemEntity(phantom.level(),

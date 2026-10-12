@@ -11,7 +11,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -24,7 +23,6 @@ import net.minecraftforge.common.util.FakePlayer;
 import net.minecraftforge.common.util.FakePlayerFactory;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.EntityStruckByLightningEvent;
-import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.event.entity.living.LivingFallEvent;
 import net.minecraftforge.gametest.GameTestHolder;
 import net.minecraftforge.gametest.PrefixGameTestTemplate;
@@ -296,19 +294,36 @@ public final class WingsGameTests {
         ServerLevel level = h.getLevel();
         Phantom phantom = new Phantom(EntityType.PHANTOM, level);
         phantom.setPos(h.absoluteVec(new Vec3(2.5, 3, 2.5)));
+        phantom.setNoAi(true);
+        phantom.setNoGravity(true);
+        phantom.setHealth(1);
+        level.addFreshEntity(phantom);
         LightningBolt bolt = new LightningBolt(EntityType.LIGHTNING_BOLT, level);
         bolt.setPos(phantom.position());
-        FlightEvents.onPhantomDeath(new LivingDeathEvent(phantom,
-                new net.minecraft.world.damagesource.DamageSource(
-                        level.registryAccess().registryOrThrow(
-                                net.minecraft.core.registries.Registries.DAMAGE_TYPE)
-                                .getHolderOrThrow(DamageTypes.LIGHTNING_BOLT),
-                        bolt, bolt, phantom.position())));
-        long feathers = level.getEntitiesOfClass(ItemEntity.class,
+        level.addFreshEntity(bolt);
+        h.runAfterDelay(2, () -> {
+            h.assertTrue(!phantom.isAlive(), "real lightning entity kills the phantom");
+            long feathers = level.getEntitiesOfClass(ItemEntity.class,
+                            phantom.getBoundingBox().inflate(3)).stream()
+                    .filter(e -> e.getItem().is(ModItems.THUNDER_FEATHER.get()))
+                    .mapToInt(e -> e.getItem().getCount()).sum();
+            h.assertTrue(feathers == 1, "real lightning-killed phantom drops one thunder feather");
+            h.succeed();
+        });
+    }
+
+    @GameTest(template = "empty", timeoutTicks = 60)
+    public static void phantomKilledWithoutLightningDoesNotDropFeather(GameTestHelper h) {
+        ServerLevel level = h.getLevel();
+        Phantom phantom = new Phantom(EntityType.PHANTOM, level);
+        phantom.setPos(h.absoluteVec(new Vec3(2.5, 3, 2.5)));
+        level.addFreshEntity(phantom);
+        phantom.hurt(level.damageSources().genericKill(), Float.MAX_VALUE);
+        h.assertTrue(!phantom.isAlive(), "control phantom actually dies");
+        h.assertTrue(level.getEntitiesOfClass(ItemEntity.class,
                         phantom.getBoundingBox().inflate(3)).stream()
-                .filter(e -> e.getItem().is(ModItems.THUNDER_FEATHER.get()))
-                .count();
-        h.assertTrue(feathers == 1, "lightning-killed phantom drops 雷鹏骨羽");
+                .noneMatch(e -> e.getItem().is(ModItems.THUNDER_FEATHER.get())),
+                "non-lightning death must not produce thunder feathers");
         h.succeed();
     }
 

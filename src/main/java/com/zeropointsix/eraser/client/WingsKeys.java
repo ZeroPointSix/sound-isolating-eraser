@@ -27,7 +27,7 @@ public final class WingsKeys {
     @SubscribeEvent
     public static void register(RegisterKeyMappingsEvent event) {
         CYCLE_TIER = new KeyMapping("key.sound_isolating_eraser.cycle_tier",
-                GLFW.GLFW_KEY_C, "key.categories.sound_isolating_eraser");
+                GLFW.GLFW_KEY_G, "key.categories.sound_isolating_eraser");
         HOVER_TOGGLE = new KeyMapping("key.sound_isolating_eraser.hover",
                 GLFW.GLFW_KEY_H, "key.categories.sound_isolating_eraser");
         BLINK = new KeyMapping("key.sound_isolating_eraser.blink",
