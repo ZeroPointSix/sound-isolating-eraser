@@ -258,6 +258,8 @@ public final class YujiMonster extends Monster implements GeoEntity {
         switch (kind) {
             case EKOU -> {
                 LivingEntity target = getTarget();
+                // Never cut an ongoing chant/volley short; that would silently drop its second hit.
+                if (actionTicks > 0) { skillCooldown = 10; return; }
                 if (target != null && distanceToSqr(target) <= 24 * 24 && hasLineOfSight(target)) begin("chant", 40, target);
                 else if (target != null && distanceToSqr(target) <= 256 && hasLineOfSight(target)) begin("spike_volley", 28, target);
                 skillCooldown = 60;

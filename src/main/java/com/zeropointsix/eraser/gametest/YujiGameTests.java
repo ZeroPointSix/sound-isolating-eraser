@@ -442,7 +442,7 @@ public final class YujiGameTests {
         close(h, boss.getAttributeValue(Attributes.ARMOR_TOUGHNESS), 20, "boss armor toughness");
         h.succeed();
     }
-    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji", timeoutTicks = 60)
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji", timeoutTicks = 80)
     public static void yujiEkouChantHitsFromRange(GameTestHelper h) {
         YujiMonster chanter = monster(h, YujiKind.EKOU);
         var cow = h.spawn(EntityType.COW, new BlockPos(2, 2, 2)); cow.setNoAi(true); cow.setNoGravity(true);
@@ -450,8 +450,9 @@ public final class YujiGameTests {
         chanter.setNoAi(false); chanter.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(0);
         h.assertTrue(chanter.distanceTo(cow) > 10, "target well outside melee reach");
         chanter.begin("chant", 40, cow);
-        h.runAtTickTime(17, () -> close(h, cow.getHealth(), 34, "first chant hit lands at range"));
-        h.runAtTickTime(34, () -> { close(h, cow.getHealth(), 28, "second chant hit lands at range"); h.succeed(); });
+        // Hits are scheduled at chant ticks 15 and 32; sample with slack for batch start-up jitter.
+        h.runAtTickTime(24, () -> close(h, cow.getHealth(), 34, "first chant hit lands at range"));
+        h.runAtTickTime(50, () -> { close(h, cow.getHealth(), 28, "second chant hit lands at range"); h.succeed(); });
     }
     private static void summonFloor(GameTestHelper h, YujiMonster qiyu, net.minecraft.world.level.block.state.BlockState state) {
         BlockPos base = qiyu.blockPosition().below();
@@ -462,6 +463,8 @@ public final class YujiGameTests {
     @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
     public static void yujiQiyuSummonsCappedOtherKinds(GameTestHelper h) {
         YujiMonster qiyu = monster(h, YujiKind.QIYU);
+        // A private floor high above the batch grid: summons land 2-4 blocks out, beyond this tiny template.
+        qiyu.moveTo(qiyu.getX(), Math.floor(qiyu.getY()) + 64, qiyu.getZ());
         summonFloor(h, qiyu, Blocks.STONE.defaultBlockState());
         try {
             int total = 0;
