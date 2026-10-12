@@ -17,10 +17,12 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.RenderLevelStageEvent;
 import net.minecraftforge.client.event.ViewportEvent;
+import net.minecraftforge.client.gui.LoadingErrorScreen;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.ModLoader;
 import software.bernie.geckolib.event.GeoRenderEvent;
 
 @Mod.EventBusSubscriber(modid = RainCityQa.ID, value = Dist.CLIENT)
@@ -47,6 +49,12 @@ public final class RainCityQaClient {
                 lastScreen = screen;
                 org.slf4j.LoggerFactory.getLogger("RainCityQA").info("City QA client screen: {}", screen);
                 QaFiles.write("client-state.json", Map.of("screen", screen, "connecting", connecting, "tick", ticks));
+            }
+            if (mc.screen instanceof LoadingErrorScreen) {
+                phase = "loading";
+                throw new IllegalStateException("Forge displayed LoadingErrorScreen; refusing to bypass loading errors or warnings. "
+                        + "Warnings: " + ModLoader.get().getWarnings().stream().map(warning -> warning.formatToString()).toList()
+                        + ". See client.log and client/crash-reports for error details.");
             }
             if (!connecting && (mc.screen instanceof TitleScreen || mc.screen instanceof AccessibilityOnboardingScreen)) {
                 connecting = true;

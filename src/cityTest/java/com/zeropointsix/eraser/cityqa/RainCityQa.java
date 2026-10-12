@@ -96,16 +96,19 @@ public final class RainCityQa {
                 case "entry" -> {
                     if (!RainCityContent.isCity(player.level())) return;
                     verifyArrival(player, city, state(data, player));
-                    camera(player, city, 96.5, 132, 120.5, 180, 8);
+                    camera(player, city, 96.5, 132, 136.5, 180, 8);
+                    QaFiles.require(city.noCollision(player), "Grey-rain camera intersects city blocks");
                     shot("grey");
                 }
                 case "grey" -> {
+                    QaFiles.require(city.noCollision(player), "Grey-rain camera intersects city blocks");
                     if (!passed("grey")) return;
                     state(data, player).putLong("Entered", city.getGameTime() - 12000);
                     data.setDirty();
                     shot("black");
                 }
                 case "black" -> {
+                    QaFiles.require(city.noCollision(player), "Black-rain camera intersects city blocks");
                     if (!passed("black")) return;
                     QaFiles.require(state(data, player).getInt("Kills") == 0, "Unexpected initial kills");
                     camera(player, city, 96.5, 230, 120.5, 180, 0);

@@ -270,6 +270,17 @@ def reject_failure_markers(run: Path) -> None:
             raise RuntimeError(f"{side} failed in {value.get('phase')}: {value.get('error')}")
 
 
+def failure_log_excerpt(text: str) -> str:
+    lines = text.splitlines()
+    selected = set(range(max(0, len(lines) - 15), len(lines)))
+    issue = re.compile(r"(?:/|\s|\[)(?:ERROR|FATAL)[ \]/:]|Missing metadata in pack|"
+                       r"ModLoadingException|LoadingFailedException|LoadingErrorScreen|brokenresources")
+    matches = [index for index, line in enumerate(lines) if issue.search(line)]
+    for index in matches[:5]:
+        selected.update(range(max(0, index - 2), min(len(lines), index + 13)))
+    return "\n".join(f"{index + 1}: {lines[index][:1200]}" for index in sorted(selected))
+
+
 def verify_capture(run: Path, phase: str, previous: dict) -> dict:
     captured = json.loads((run / (phase + ".captured.json")).read_text(encoding="utf-8"))
     require(captured["phase"] == phase, "Screenshot phase mismatch")
@@ -280,7 +291,7 @@ def verify_capture(run: Path, phase: str, previous: dict) -> dict:
     if phase in ("black", "beam"):
         require(abs(captured["fogFar"] - 32) < .5, "Black-rain fog was not actually applied")
     if phase in ("grey", "black", "beam"):
-        expected = (.5, 32, 12.5) if phase == "beam" else (96.5, 132, 120.5)
+        expected = (.5, 32, 12.5) if phase == "beam" else (96.5, 132, 136.5)
         require(sum((captured[axis] - position) ** 2 for axis, position in zip(("x", "y", "z"), expected)) < .04,
                 "Screenshot camera drifted from its requested position")
         if phase != "beam":
@@ -380,7 +391,8 @@ def run_smoke(options: argparse.Namespace) -> int:
         for name in ("server", "client", "build"):
             path = run / (name + ".log")
             if path.exists():
-                print("\nLast " + name + " log lines:\n" + "\n".join(path.read_text(encoding="utf-8", errors="replace").splitlines()[-15:]),
+                print("\n" + name + " failure context and final log lines:\n"
+                      + failure_log_excerpt(path.read_text(encoding="utf-8", errors="replace")),
                       file=sys.stderr)
         return 1
     finally:
@@ -414,6 +426,22 @@ def self_test() -> int:
                 + chunk(b"IDAT", zlib.compress(raw)) + chunk(b"IEND", b""))
 
     class Checks(unittest.TestCase):
+        def test_city_qa_has_valid_pack_metadata(self):
+            path = Path(__file__).resolve().parents[2] / "src/cityTest/resources/pack.mcmeta"
+            pack = json.loads(path.read_text(encoding="utf-8"))["pack"]
+            self.assertEqual(pack["pack_format"], 15)
+            self.assertTrue(pack["description"])
+
+        def test_failure_context_keeps_early_pack_warning(self):
+            text = "\n".join(["startup", "[Render thread/WARN] Missing metadata in pack mod:raincity_qa",
+                              "[Render thread/ERROR] LoadingFailedException: broken resources"]
+                             + ["atlas loaded"] * 80 + ["City QA client screen: LoadingErrorScreen"])
+            excerpt = failure_log_excerpt(text)
+            self.assertIn("Missing metadata in pack mod:raincity_qa", excerpt)
+            self.assertIn("LoadingFailedException: broken resources", excerpt)
+            self.assertIn("LoadingErrorScreen", excerpt)
+            self.assertLess(len(excerpt.splitlines()), len(text.splitlines()))
+
         def test_fresh_client_does_not_request_onboarding(self):
             options = dict(line.split(":", 1) for line in CLIENT_OPTIONS.splitlines())
             self.assertEqual(options["onboardAccessibility"], "false")
@@ -511,10 +539,20 @@ def self_test() -> int:
             with tempfile.TemporaryDirectory() as folder:
                 run = Path(folder)
                 atomic_json(run / "grey.captured.json", {"phase": "grey", "dimension": "qihai:yuji_fodu", "fogFar": 64,
-                            "x": 96.5, "y": 128, "z": 120.5, "yaw": 180, "pitch": 8})
+                            "x": 96.5, "y": 128, "z": 136.5, "yaw": 180, "pitch": 8})
                 with self.assertRaisesRegex(RuntimeError, "camera drifted"):
                     verify_capture(run, "grey", {})
                 self.assertFalse((run / "grey.pass.json").exists())
+
+        def test_old_wall_camera_cannot_pass(self):
+            with tempfile.TemporaryDirectory() as folder:
+                run = Path(folder)
+                for phase, fog in (("grey", 64), ("black", 32)):
+                    atomic_json(run / (phase + ".captured.json"), {"phase": phase, "dimension": "qihai:yuji_fodu", "fogFar": fog,
+                                "x": 96.5, "y": 132, "z": 120.5, "yaw": 180, "pitch": 8})
+                    with self.assertRaisesRegex(RuntimeError, "camera drifted"):
+                        verify_capture(run, phase, {})
+                    self.assertFalse((run / (phase + ".pass.json")).exists())
 
     return 0 if unittest.TextTestRunner(verbosity=2).run(unittest.defaultTestLoader.loadTestsFromTestCase(Checks)).wasSuccessful() else 1
 
