@@ -43,6 +43,15 @@ def read_results(path, mode):
 
 
 def stop_tree(process):
+    # Finish cleanup even if CI sends another termination signal during the grace period.
+    previous_mask = signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGTERM, signal.SIGINT})
+    try:
+        _stop_tree(process)
+    finally:
+        signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
+
+
+def _stop_tree(process):
     # Gradle's single-use daemon may start a separate process group.
     parents = {int(pid): int(ppid) for pid, ppid in
                (line.split() for line in subprocess.check_output(
@@ -127,6 +136,8 @@ def summarize(output):
         errors.extend(issues)
         exit_path = output / f"{mode}.exit"
         exits[mode] = int(exit_path.read_text()) if exit_path.exists() else None
+        if exits[mode] is None:
+            errors.append(f"Missing {mode} process exit code")
         for seed in SEEDS - rows[mode].keys():
             rows[mode][seed] = dict(status="NO_RESULT", hits=None, first_target=None,
                                    interruption=None, swings=[], hit_ticks=[])
@@ -187,8 +198,20 @@ def main():
             seeds=sorted(SEEDS), baseline="pre-6516a51 target discovery; production code unchanged",
         )
         (output / "metadata.json").write_text(json.dumps(metadata, indent=2) + "\n")
-        for mode in ("before", "after"):
-            run_mode(root, output, mode, args.offline, args.timeout)
+        def terminate(signum, _frame):
+            signal.signal(signum, signal.SIG_IGN)
+            raise SystemExit(128 + signum)
+
+        signal.signal(signal.SIGTERM, terminate)
+        try:
+            for mode in ("before", "after"):
+                run_mode(root, output, mode, args.offline, args.timeout)
+        except BaseException:
+            try:
+                summarize(output)
+            except Exception as error:
+                print(f"Incomplete run report: {error}", flush=True)
+            raise
     summarize(output)
 
 
