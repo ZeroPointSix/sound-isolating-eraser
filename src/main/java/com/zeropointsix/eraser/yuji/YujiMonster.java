@@ -89,7 +89,10 @@ public final class YujiMonster extends Monster implements GeoEntity {
         super(type, level);
         this.kind = kind;
         xpReward = kind.giant() ? 50 : 5;
-        if (kind == YujiKind.TANYU) setLayers(2, false);
+        if (kind == YujiKind.TANYU) {
+            setLayers(2, false);
+            navigation = new GreedGroundNavigation(this, level);
+        }
         if (kind == YujiKind.SHIFOTOU) {
             setHealth(getMaxHealth());
             // Ground paths can reject tall walls before the boss ever reaches them.
@@ -98,6 +101,22 @@ public final class YujiMonster extends Monster implements GeoEntity {
         if (kind == YujiKind.YUCHI && navigation instanceof net.minecraft.world.entity.ai.navigation.GroundPathNavigation ground)
             ground.setCanOpenDoors(false);
         refreshDimensions();
+    }
+    private static final class GreedGroundNavigation extends net.minecraft.world.entity.ai.navigation.GroundPathNavigation {
+        private GreedGroundNavigation(Mob mob, Level level) {
+            super(mob, level);
+            setCanFloat(mob.getNavigation().canFloat());
+        }
+
+        @Override protected void followThePath() {
+            // Fractional layer widths can round vanilla's arrival box away from its own movement target.
+            // Consume an exactly reached waypoint before the normal collision-aware path follower runs.
+            if (path != null && !path.isDone() && mob.position().equals(path.getNextEntityPos(mob))) {
+                path.advance();
+                if (path.isDone()) return;
+            }
+            super.followThePath();
+        }
     }
     @Override public double getAttributeValue(Attribute attribute) {
         if (kind != YujiKind.SHIFOTOU || attribute != Attributes.MAX_HEALTH && attribute != Attributes.ARMOR)

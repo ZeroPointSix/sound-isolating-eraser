@@ -115,6 +115,29 @@ public final class YujiGameTests {
         close(h, restored.getHealth(), 30, "health clamped after peeling"); h.succeed();
     }
     @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
+    public static void yujiGreedReachedWaypointAdvancesAtEveryLayer(GameTestHelper h) {
+        BlockPos start = h.absolutePos(new BlockPos(2, 2, 2));
+        for (int layers = 0; layers <= 12; layers++) {
+            YujiMonster greed = monster(h, YujiKind.TANYU);
+            h.assertTrue(greed.getNavigation().canFloat(), "growth navigation retains the swim goal's float setting");
+            greed.setLayers(layers, false);
+            var path = new net.minecraft.world.level.pathfinder.Path(java.util.List.of(
+                    new net.minecraft.world.level.pathfinder.Node(start.getX(), start.getY(), start.getZ()),
+                    new net.minecraft.world.level.pathfinder.Node(start.getX(), start.getY(), start.getZ() + 4)),
+                    start.offset(0, 0, 4), true);
+            var reached = path.getNextEntityPos(greed);
+            greed.moveTo(reached);
+            greed.setOnGround(true);
+            h.assertTrue(greed.getNavigation().moveTo(path, 1), "native path starts at layer " + layers);
+            greed.getNavigation().tick();
+            h.assertTrue(path.getNextNodeIndex() > 0,
+                    "reached movement waypoint advances at layer " + layers + ", width=" + greed.getBbWidth());
+            h.assertTrue(greed.position().equals(reached), "navigation never teleports the mob");
+            greed.discard();
+        }
+        h.succeed();
+    }
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
     public static void yujiGreedPeelsOnlyLargeAcceptedHit(GameTestHelper h) {
         YujiMonster greed = monster(h, YujiKind.TANYU); greed.setLayers(6, false); greed.setHealth(greed.getMaxHealth());
         greed.hurt(greed.damageSources().generic(), 5); h.assertTrue(greed.layers() == 6, "small hit cannot peel");
