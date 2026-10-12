@@ -7,6 +7,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
+import net.minecraft.client.gui.screens.AccessibilityOnboardingScreen;
 import net.minecraft.client.gui.screens.ConnectScreen;
 import net.minecraft.client.gui.screens.DisconnectedScreen;
 import net.minecraft.client.gui.screens.TitleScreen;
@@ -25,7 +26,7 @@ import software.bernie.geckolib.event.GeoRenderEvent;
 @Mod.EventBusSubscriber(modid = RainCityQa.ID, value = Dist.CLIENT)
 public final class RainCityQaClient {
     private static boolean connecting, failed, capturePending;
-    private static String phase = "", dimension = "";
+    private static String phase = "", dimension = "", lastScreen = "";
     private static int ticks, phaseTick, draws, phaseDraws, frames, lastDrawFrame = -1, lastWorldFrame = -1;
     private static double renderedBuddhaY = -1000;
     private static float fogFar = -1;
@@ -41,12 +42,19 @@ public final class RainCityQaClient {
         if (event.phase != TickEvent.Phase.END) return;
         ticks++;
         try {
-            if (!connecting && mc.screen instanceof TitleScreen) {
+            String screen = mc.screen == null ? "none" : mc.screen.getClass().getSimpleName();
+            if (!screen.equals(lastScreen)) {
+                lastScreen = screen;
+                org.slf4j.LoggerFactory.getLogger("RainCityQA").info("City QA client screen: {}", screen);
+                QaFiles.write("client-state.json", Map.of("screen", screen, "connecting", connecting, "tick", ticks));
+            }
+            if (!connecting && (mc.screen instanceof TitleScreen || mc.screen instanceof AccessibilityOnboardingScreen)) {
                 connecting = true;
                 mc.options.pauseOnLostFocus = false;
                 mc.options.hideGui = true;
                 mc.options.fov().set(110);
                 String address = "127.0.0.1:" + Integer.getInteger("yuji.city.qa.port", 25591);
+                org.slf4j.LoggerFactory.getLogger("RainCityQA").info("City QA client connecting to {} from {}", address, screen);
                 ConnectScreen.startConnecting(new TitleScreen(), mc, ServerAddress.parseString(address),
                         new ServerData("Rain City QA", address, false), false);
             }
