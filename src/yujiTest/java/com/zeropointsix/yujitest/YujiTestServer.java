@@ -107,6 +107,12 @@ public final class YujiTestServer {
                         default -> false;
                     };
                     if (current.kind() == YujiKind.QIYU) observeSupport(player);
+                    if (current.kind() == YujiKind.TANYU && elapsed % 10 == 0)
+                        System.out.println("YUJI_TANYU_DIAGNOSTIC elapsed=" + elapsed + ", entityTick=" + current.tickCount
+                                + ", layers=" + current.layers() + ", hits=" + mobHits
+                                + ", mob=" + current.position() + ", player=" + player.position()
+                                + ", food=" + player.serverLevel().getEntitiesOfClass(ItemEntity.class, current.getBoundingBox().inflate(16))
+                                        .stream().map(item -> item.position() + ":" + item.getItem()).toList());
                     if (elapsed == (current.kind() == YujiKind.QIYU ? 500 : 180)) finishAi(player);
                 }
                 case "golem" -> {
@@ -282,7 +288,9 @@ public final class YujiTestServer {
             case QIYU -> require(moved > .3 && mobHits > 0 && supportBuffed && summonRefilled
                             && summonsObserved > 0 && summonsObserved <= YujiMonster.SUMMON_CAP,
                     "flute buffs allies and replenishes natural summons: buffs=" + supportBuffed + ", refill=" + summonRefilled);
-            case TANYU -> require(current.layers() >= 3 && mobHits > 0, "real dropped flesh consumed and real player attacked");
+            case TANYU -> require(current.layers() >= 3 && mobHits > 0,
+                    "real dropped flesh consumed and real player attacked: layers=" + current.layers()
+                            + ", hits=" + mobHits + ", mob=" + current.position() + ", player=" + player.position());
             case CHENNU -> {
                 CompoundTag tag = new CompoundTag(); current.addAdditionalSaveData(tag);
                 require(playerHits > 0 && tag.hasUUID("YujiGrudge") && tag.getUUID("YujiGrudge").equals(player.getUUID()), "real client attack creates persisted grudge");
@@ -293,7 +301,8 @@ public final class YujiTestServer {
         pass("ai-" + current.kind().id(), "realPlayer=" + player.getUUID() + ", floorCollision=true, aiTargetObserved=" + acquiredTarget
                 + ", finalAiTarget=" + (current.getTarget() == player) + ", moved=" + moved
                 + ", playerDamageEvents=" + mobHits + ", hitsByPlayer=" + playerHits + ", statusObserved=" + effectObserved + ", chantRange=" + chantRange
-                + ", summons=" + summonsObserved + (current.kind() == YujiKind.QIYU ? ", allyFourBuffs=" + supportBuffed + ", replenished=" + summonRefilled : ""));
+                + ", summons=" + summonsObserved + (current.kind() == YujiKind.QIYU ? ", allyFourBuffs=" + supportBuffed + ", replenished=" + summonRefilled : "")
+                + (current.kind() == YujiKind.TANYU ? ", layers=" + current.layers() : ""));
         for (YujiMonster summoned : player.serverLevel().getEntitiesOfClass(YujiMonster.class, current.getBoundingBox().inflate(64),
                 y -> current.getUUID().equals(y.summoner()))) summoned.discard();
         if (supportAlly != null) { supportAlly.discard(); supportAlly = null; }

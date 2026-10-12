@@ -181,6 +181,11 @@ public final class YujiTestClient {
         var mc = Minecraft.getInstance();
         if (mc.player == null || mc.level == null || mc.screen != null) return;
         try {
+            // Slow software rendering can lag behind client ticks; require the same real frame count within a bounded window.
+            if (visible == null && frames <= 10) {
+                require(ticks < 310, "real render readiness timed out: phase=" + phase + ", frames=" + frames + ", ticks=" + ticks);
+                return;
+            }
             if (visible != null) {
                 if (ticks < hiddenAt + 3) return;
                 try (var control = Screenshot.takeScreenshot(mc.getMainRenderTarget())) {
