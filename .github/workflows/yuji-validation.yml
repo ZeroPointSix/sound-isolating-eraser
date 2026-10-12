@@ -54,7 +54,7 @@ jobs:
 
   client-smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 50
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -68,9 +68,11 @@ jobs:
       - name: Prepare real-client probe
         run: bash ./gradlew -PyujiE2E writeYujiTestClasspath --no-daemon
       - name: Render each profile and exercise sound pipeline
-        run: python tools/yuji/e2e.py
+        run: YUJI_QA_RECORD_AUDIO=1 python tools/yuji/e2e.py
       - name: Exercise grudge, buffed slashes and body contact with two real clients
         run: YUJI_QA_BOUNDARIES=1 python tools/yuji/e2e.py
+      - name: Verify targeted audio, camera isolation, doors, climbing and Panda with two real clients
+        run: YUJI_QA_ISOLATION=1 YUJI_QA_RECORD_AUDIO=1 python tools/yuji/e2e.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -80,7 +82,15 @@ jobs:
             build/yuji-e2e-*/*.pass
             build/yuji-e2e-*/*.failed
             build/yuji-e2e-*/*.png
+            build/yuji-e2e-*/*.ogg
+            build/yuji-e2e-*/*-mix.wav
             build/yuji-boundaries-*/*.log
             build/yuji-boundaries-*/*.pass
             build/yuji-boundaries-*/*.failed
             build/yuji-boundaries-*/*.png
+            build/yuji-isolation-*/*.log
+            build/yuji-isolation-*/*.pass
+            build/yuji-isolation-*/*.failed
+            build/yuji-isolation-*/*.png
+            build/yuji-isolation-*/*.ogg
+            build/yuji-isolation-*/*-mix.wav

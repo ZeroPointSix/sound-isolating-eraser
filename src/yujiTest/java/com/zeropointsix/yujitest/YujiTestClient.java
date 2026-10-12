@@ -100,7 +100,7 @@ public final class YujiTestClient {
                     String record = "phase=" + phase + ", tick=" + ticks + ", event=" + entry.getKey()
                             + ", decoded=" + sound.getSound().getLocation() + ", active=true, volume=" + sound.getVolume()
                             + ", pitch=" + sound.getPitch() + ", position=" + sound.getX() + "," + sound.getY() + "," + sound.getZ()
-                            + ", backend=OpenAL-null\n";
+                            + ", backend=" + System.getProperty("yuji.qa.audio", "OpenAL-null") + "\n";
                     Files.writeString(RESULTS.resolve("audio-events-" + profile + ".log"), record,
                             java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND);
                 }
@@ -126,7 +126,7 @@ public final class YujiTestClient {
                     if (kind.equals("wangyu")) require(playedSounds.stream().anyMatch(name -> name.startsWith("minecraft:")), "real targeted false voice played");
                     else require(playedSounds.contains("qihai:entity.qihai." + kind + "." + skill), "real locomotion/skill audio played: " + kind + "." + skill);
                     pass(phase, "event=" + sound.getLocation() + ", decoded=" + sound.getSound().getLocation()
-                            + ", active=true, volume=" + sound.getVolume() + ", backend=OpenAL-null, observed=" + playedSounds);
+                            + ", active=true, volume=" + sound.getVolume() + ", backend=" + System.getProperty("yuji.qa.audio", "OpenAL-null") + ", observed=" + playedSounds);
                     audioDone = true;
                 } else require(ticks < 120, "real audio playback not active: " + kind);
             }

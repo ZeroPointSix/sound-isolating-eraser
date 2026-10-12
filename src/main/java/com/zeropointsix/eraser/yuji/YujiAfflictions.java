@@ -292,6 +292,7 @@ public final class YujiAfflictions {
         if (mob instanceof TamableAnimal pet && pet.isTame()) return p.getUUID().equals(pet.getOwnerUUID()) && YujiConfig.AFFECT_PETS.get();
         if (mob instanceof AbstractVillager) return YujiConfig.AFFECT_VILLAGERS.get();
         return mob instanceof NeutralMob || mob instanceof IronGolem || mob instanceof SnowGolem
+                || mob instanceof net.minecraft.world.entity.animal.Panda
                 || mob instanceof net.minecraft.world.entity.animal.goat.Goat
                 || mob instanceof net.minecraft.world.entity.animal.horse.Llama;
     }

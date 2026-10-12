@@ -226,6 +226,33 @@ public final class YujiGameTests {
         h.assertTrue(p.getUUID().equals(wolf.getOwnerUUID()) && p.getUUID().equals(cat.getOwnerUUID()), "ownership remains intact"); h.succeed();
     }
     @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
+    public static void yujiBetrayalPandaTargetsAndRestores(GameTestHelper h) {
+        YujiMonster source = monster(h, YujiKind.LIANGSHE); Player p = player(h, source);
+        var panda = h.spawn(EntityType.PANDA, new BlockPos(3, 2, 2)); panda.setNoAi(true);
+        var previous = h.spawn(EntityType.COW, new BlockPos(4, 2, 2)); previous.setNoAi(true);
+        panda.setTarget(previous);
+        double attack = panda.getAttributeValue(Attributes.ATTACK_DAMAGE);
+        YujiAfflictions.recruit(p, false);
+        h.assertTrue(panda.getTarget() == previous, "curse must not recruit a neutral panda");
+        YujiAfflictions.apply(p, source, "betrayed");
+        YujiAfflictions.recruit(p, true); YujiAfflictions.recruit(p, true);
+        h.assertTrue(panda.getTarget() == p, "betrayal recruits panda even though it is not NeutralMob");
+        close(h, panda.getAttributeValue(Attributes.ATTACK_DAMAGE), attack, "neutral panda does not receive hostile buff");
+        YujiAfflictions.restore(panda);
+        h.assertTrue(panda.getTarget() == previous, "panda restores original target after repeated recruitment");
+        h.assertTrue(!panda.getPersistentData().contains("QihaiBetrayal"), "influence state cleared");
+        h.succeed();
+    }
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
+    public static void yujiNavigationKeepsClosedDoorsAndClimbsWalls(GameTestHelper h) {
+        YujiMonster husk = monster(h, YujiKind.YUCHI), boss = monster(h, YujiKind.SHIFOTOU);
+        h.assertTrue(!((net.minecraft.world.entity.ai.navigation.GroundPathNavigation) husk.getNavigation()).canOpenDoors(),
+                "husk never opens closed doors");
+        h.assertTrue(boss.getNavigation() instanceof net.minecraft.world.entity.ai.navigation.WallClimberNavigation,
+                "boss keeps approaching blocked targets when a ground path cannot reach them");
+        h.succeed();
+    }
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
     public static void yujiBetrayalGhastKeepsNativeAttack(GameTestHelper h) {
         var ghast = h.spawn(EntityType.GHAST, new BlockPos(2, 4, 2)); ghast.setNoAi(true);
         h.assertTrue(ghast.getAttribute(Attributes.ATTACK_DAMAGE) == null, "regression covers a non-melee enemy");

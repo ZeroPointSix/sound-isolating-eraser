@@ -1,6 +1,7 @@
 """Opt-in real Forge client and dedicated-server rendering/audio smoke test."""
 import json
 import os
+import re
 from pathlib import Path
 import shlex
 import socket
@@ -9,12 +10,15 @@ import time
 
 ROOT = Path(__file__).resolve().parents[2]
 BOUNDARIES = os.environ.get("YUJI_QA_BOUNDARIES") == "1"
-RESULTS = ROOT / "build" / (("yuji-boundaries-" if BOUNDARIES else "yuji-e2e-") + str(time.time_ns()))
+ISOLATION = os.environ.get("YUJI_QA_ISOLATION") == "1"
+RECORD_AUDIO = os.environ.get("YUJI_QA_RECORD_AUDIO") == "1"
+RESULTS = ROOT / "build" / (("yuji-isolation-" if ISOLATION else "yuji-boundaries-" if BOUNDARIES else "yuji-e2e-") + str(time.time_ns()))
 RESULTS.mkdir(parents=True)
 CONFIGS = {c["name"]: c for c in json.loads((ROOT / ".vscode/launch.json").read_text())["configurations"]}
 CLASSPATH = (ROOT / "build/yuji-test-classpath.txt").read_text().strip()
 PORT = int(os.environ.get("YUJI_QA_PORT", "25589"))
 processes, logs = [], []
+acceptance_complete = False
 
 
 def expand(value):
@@ -46,6 +50,10 @@ def launch(role, username="YujiTester"):
     env.update(LIBGL_ALWAYS_SOFTWARE="1", ALSOFT_DRIVERS="null")
     if not server:
         env["DISPLAY"] = display
+        if RECORD_AUDIO:
+            audio_config = directory / "alsoft.conf"
+            audio_config.write_text(f"[general]\nchannels=stereo\nsample-type=int16\n[wave]\nfile={RESULTS / (role + '-mix.wav')}\n")
+            env.update(ALSOFT_DRIVERS="wave", ALSOFT_CONF=str(audio_config))
     args = shlex.split(expand(config["args"]))
     if not server:
         for option in ("--username", "--width", "--height", "--quickPlayMultiplayer"):
@@ -57,6 +65,9 @@ def launch(role, username="YujiTester"):
     command = ["java", "-Xmx1024M" if server else "-Xmx2048M", f"-Dyuji.qa.results={RESULTS}"]
     if BOUNDARIES:
         command += ["-Dyuji.qa.boundaries=true"]
+    if ISOLATION:
+        command += ["-Dyuji.qa.isolation=true"]
+    command += ["-Dyuji.qa.audio=" + ("OpenAL-wave" if RECORD_AUDIO else "OpenAL-null")]
     command += shlex.split(expand(config["vmArgs"]))
     if not server:
         natives = directory / "lwjgl-natives"
@@ -83,10 +94,12 @@ def stop(process):
 
 def wait_for(predicate, running, message, seconds):
     deadline = time.monotonic() + seconds
-    while not predicate():
+    while True:
         failures = list(RESULTS.glob("*.failed"))
         if failures:
             raise AssertionError("; ".join(path.read_text() for path in failures))
+        if predicate():
+            return
         if any(p.poll() is not None for p in running):
             raise RuntimeError("Minecraft exited before " + message)
         if time.monotonic() >= deadline:
@@ -113,7 +126,13 @@ try:
     server = launch("server")
     wait_for(ready, [server], "dedicated server startup", 600)
     client = launch("client")
-    if BOUNDARIES:
+    if ISOLATION:
+        witness = launch("witness", "YujiWitness")
+        wait_for(lambda: all((RESULTS / (name + ".pass")).exists() for name in
+                            ["server-isolation", "client-isolation-YujiTester", "client-isolation-YujiWitness"]),
+                 [server, client, witness], "two-client audio/camera isolation and real terrain/Panda scenarios", 1800)
+        stop(witness)
+    elif BOUNDARIES:
         witness = launch("witness", "YujiWitness")
         wait_for(lambda: all((RESULTS / (name + ".pass")).exists() for name in
                             ["server-boundaries", "client-boundaries-YujiTester", "client-boundaries-YujiWitness"]),
@@ -127,14 +146,40 @@ try:
     server.stdin.flush()
     if server.wait(timeout=180) != 0:
         raise RuntimeError("Dedicated server did not shut down cleanly")
-    print("YUJI_TWO_REAL_CLIENT_BOUNDARIES_PASSED" if BOUNDARIES else "YUJI_REAL_CLIENT_AI_COLLISION_AND_AUDIO_ACCEPTANCE_PASSED", flush=True)
+    if list(RESULTS.glob("*.failed")):
+        raise AssertionError("late failure markers after shutdown")
+    acceptance_complete = True
 finally:
     for process in reversed(processes):
         stop(process)
     for log in logs:
         log.close()
+    if RECORD_AUDIO:
+        audio_error = None
+        for wav in sorted(RESULTS.glob("*-mix.wav")):
+            try:
+                ogg = wav.with_suffix(".ogg")
+                converted = subprocess.run(["ffmpeg", "-nostdin", "-y", "-i", str(wav), "-c:a", "libvorbis", "-q:a", "4", str(ogg)],
+                                           check=True, capture_output=True, text=True)
+                probe = subprocess.run(["ffmpeg", "-nostdin", "-i", str(ogg), "-af", "volumedetect", "-f", "null", "-"],
+                                       check=True, capture_output=True, text=True)
+                (RESULTS / (ogg.stem + "-audio.log")).write_text(converted.stderr + probe.stderr)
+                peak = re.search(r"max_volume: (-?[\d.]+) dB", probe.stderr)
+                if not peak or float(peak.group(1)) < -80:
+                    raise AssertionError("recorded real-client mix is silent: " + str(ogg))
+            except Exception as error:
+                audio_error = error
+                (RESULTS / (wav.stem + "-audio.failed")).write_text(str(error) + "\n" + getattr(error, "stderr", ""))
+        expected = 2 if ISOLATION or BOUNDARIES else 1
+        if acceptance_complete and audio_error is not None:
+            raise audio_error
+        if acceptance_complete and len(list(RESULTS.glob("*-mix.ogg"))) != expected:
+            raise AssertionError("missing a real client audio recording")
     for path in RESULTS.glob("*.log"):
         print(f"--- {path.name} ---")
         print("\n".join(path.read_text(errors="replace").splitlines()[-20:]))
     for path in sorted(RESULTS.glob("*.pass")):
         print(f"{path.name}: {path.read_text().strip()}")
+
+print("YUJI_TWO_REAL_CLIENT_ISOLATION_AND_TERRAIN_PASSED" if ISOLATION else
+      "YUJI_TWO_REAL_CLIENT_BOUNDARIES_PASSED" if BOUNDARIES else "YUJI_REAL_CLIENT_AI_COLLISION_AND_AUDIO_ACCEPTANCE_PASSED", flush=True)

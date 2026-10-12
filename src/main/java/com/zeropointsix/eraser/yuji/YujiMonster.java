@@ -90,7 +90,11 @@ public final class YujiMonster extends Monster implements GeoEntity {
         this.kind = kind;
         xpReward = kind.giant() ? 50 : 5;
         if (kind == YujiKind.TANYU) setLayers(2, false);
-        if (kind == YujiKind.SHIFOTOU) setHealth(getMaxHealth());
+        if (kind == YujiKind.SHIFOTOU) {
+            setHealth(getMaxHealth());
+            // Ground paths can reject tall walls before the boss ever reaches them.
+            navigation = new net.minecraft.world.entity.ai.navigation.WallClimberNavigation(this, level);
+        }
         refreshDimensions();
     }
     @Override public double getAttributeValue(Attribute attribute) {
