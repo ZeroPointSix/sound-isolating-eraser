@@ -120,16 +120,12 @@ apply from: 'gradle/gravity-texture.gradle'
 apply from: 'gradle/fertilizer-resources.gradle'
 
 repositories {
-    maven {
-        url = 'https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/'
-        content { includeGroupByRegex('software\\.bernie.*'); includeGroup('com.eliotlash.mclib') }
-    }
     maven { url = 'https://maven.theillusivec4.top/' }
     maven {
         name = 'GeckoLib'
         url = 'https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/'
         content {
-            includeGroup('software.bernie.geckolib')
+            includeGroupByRegex('software\\.bernie.*')
             includeGroup('com.eliotlash.mclib')
         }
     }
@@ -144,7 +140,6 @@ repositories {
 }
 
 dependencies {
-    implementation fg.deobf("software.bernie.geckolib:geckolib-forge-${minecraft_version}:4.4.9")
     // Specify the version of Minecraft to use.
     // Any artifact can be supplied so long as it has a "userdev" classifier artifact and is a compatible patcher artifact.
     // The "userdev" classifier will be requested and setup by ForgeGradle.
@@ -199,6 +194,7 @@ tasks.named('jar', Jar).configure {
     // Keep Forge GameTests available to development runs without shipping them to players.
     exclude 'com/zeropointsix/eraser/gametest/**'
     exclude 'data/sound_isolating_eraser/structures/empty.nbt'
+    exclude 'data/sound_isolating_eraser/structures/shadow_arena.nbt'
     exclude 'data/eternal_night_tests/**'
 
     manifest {
@@ -286,6 +282,9 @@ if (project.hasProperty('shaxiaE2E')) {
     apply from: 'gradle/shaxia-e2e.gradle'
 }
 
+if (project.hasProperty('shadowE2E')) {
+    apply from: 'gradle/shadow-e2e.gradle'
+}
 apply from: 'gradle/brickrot.gradle'
 if (project.hasProperty('brickrotE2E')) {
     apply from: 'gradle/brickrot-e2e.gradle'
