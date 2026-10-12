@@ -42,7 +42,11 @@ import net.minecraftforge.common.ForgeSpawnEggItem;
 @GameTestHolder(ModMain.MOD_ID)
 @PrefixGameTestTemplate(false)
 public final class BrickrotGameTests {
-    private static final int TARGET_FIXTURE_Y = 100;
+    private static int targetFixtureY(GameTestHelper h) {
+        // Relative +100 can still sit inside a generated city. Keep the encounter
+        // near the absolute build ceiling, outside terrain and ground-level lures.
+        return h.getLevel().getMaxBuildHeight() - 16 - h.absolutePos(BlockPos.ZERO).getY();
+    }
 
     private static BrickrotWallEntity wall(GameTestHelper h) {
         return wall(h, 4);
@@ -59,20 +63,21 @@ public final class BrickrotGameTests {
     }
 
     private static BrickrotWallEntity targetFixtureWall(GameTestHelper h, Map<BlockPos, BlockState> savedBlocks) {
-        int floorY = h.absolutePos(new BlockPos(32, TARGET_FIXTURE_Y - 1, 25)).getY();
-        int topY = h.absolutePos(new BlockPos(32, TARGET_FIXTURE_Y + 8, 25)).getY();
+        int y = targetFixtureY(h);
+        int floorY = h.absolutePos(new BlockPos(32, y - 1, 25)).getY();
+        int topY = h.absolutePos(new BlockPos(32, y + 8, 25)).getY();
         h.assertTrue(floorY >= h.getLevel().getMinBuildHeight() && topY < h.getLevel().getMaxBuildHeight(),
                 "isolated target fixture must fit inside the world's build height");
         for (int x = 29; x <= 35; x++) for (int z = 0; z < 63; z++) {
-            BlockPos pos = h.absolutePos(new BlockPos(x, TARGET_FIXTURE_Y - 1, z));
+            BlockPos pos = h.absolutePos(new BlockPos(x, y - 1, z));
             savedBlocks.putIfAbsent(pos, h.getLevel().getBlockState(pos));
             // A raised relative Y can still be underground; keep bodies and attack rays unobstructed.
-            for (int y = 0; y <= 8; y++) {
-                setFixtureBlock(h, savedBlocks, h.absolutePos(new BlockPos(x, TARGET_FIXTURE_Y + y, z)),
+            for (int offset = 0; offset <= 8; offset++) {
+                setFixtureBlock(h, savedBlocks, h.absolutePos(new BlockPos(x, y + offset, z)),
                         Blocks.AIR.defaultBlockState());
             }
         }
-        return wall(h, TARGET_FIXTURE_Y);
+        return wall(h, y);
     }
 
     private static void setFixtureBlock(GameTestHelper h, Map<BlockPos, BlockState> savedBlocks,
@@ -245,7 +250,7 @@ public final class BrickrotGameTests {
         // The 40-block lure scan must not include another parallel fixture's dropped items.
         var savedBlocks = new LinkedHashMap<BlockPos, BlockState>();
         BrickrotWallEntity wall = targetFixtureWall(h, savedBlocks);
-        var villager = h.spawn(EntityType.VILLAGER, new BlockPos(32, TARGET_FIXTURE_Y, 31));
+        var villager = h.spawn(EntityType.VILLAGER, new BlockPos(32, targetFixtureY(h), 31));
         villager.setNoAi(true);
         villager.setNoGravity(true);
         var light = new ItemEntity(h.getLevel(), wall.getX() + 20, wall.getY(), wall.getZ(), new ItemStack(Items.TORCH));
@@ -413,17 +418,17 @@ public final class BrickrotGameTests {
         // findQuarry scans the shared level, where luminous drops outrank even nearby villagers.
         var savedBlocks = new LinkedHashMap<BlockPos, BlockState>();
         BrickrotWallEntity wall = targetFixtureWall(h, savedBlocks);
-        var target = h.spawn(EntityType.VILLAGER, new BlockPos(32, TARGET_FIXTURE_Y, 28));
+        var target = h.spawn(EntityType.VILLAGER, new BlockPos(32, targetFixtureY(h), 28));
         target.setNoAi(true);
         target.setNoGravity(true);
         var groundLure = new ItemEntity(h.getLevel(), wall.getX(),
-                h.absolutePos(new BlockPos(32, 4, 25)).getY(), wall.getZ(), new ItemStack(Items.TORCH));
+                h.absolutePos(new BlockPos(32, 100, 25)).getY(), wall.getZ(), new ItemStack(Items.TORCH));
         groundLure.setNoGravity(true);
         groundLure.setDeltaMovement(Vec3.ZERO);
         h.getLevel().addFreshEntity(groundLure);
         try {
             h.assertTrue(groundLure.isAlive() && !wall.detectable(groundLure),
-                    "ground-level luminous drops stay outside the isolated encounter");
+                    "luminous drops at the old relative +100 fixture stay outside the isolated encounter");
             var selected = wall.findQuarry();
             h.assertTrue(selected == target, "bite fixture selects its own target: " + selected);
             wall.setNoAi(false);
@@ -445,7 +450,7 @@ public final class BrickrotGameTests {
         var savedBlocks = new LinkedHashMap<BlockPos, BlockState>();
         BrickrotWallEntity wall = targetFixtureWall(h, savedBlocks);
         // Behind the head, inside the first red part's sweep radius, without a chase step.
-        var target = h.spawn(EntityType.VILLAGER, new BlockPos(33, TARGET_FIXTURE_Y, 22));
+        var target = h.spawn(EntityType.VILLAGER, new BlockPos(33, targetFixtureY(h), 22));
         target.setNoAi(true);
         target.setNoGravity(true);
         try {
