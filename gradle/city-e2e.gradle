@@ -1,0 +1,28 @@
+// Opt-in via -PcityE2E; the production jar still contains main output only.
+sourceSets {
+    cityTest {
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+    }
+}
+
+configurations {
+    cityTestImplementation.extendsFrom implementation
+    cityTestRuntimeOnly.extendsFrom runtimeOnly
+}
+
+minecraft.runs {
+    client {
+        mods { raincity_qa { source sourceSets.cityTest } }
+    }
+    server {
+        mods { raincity_qa { source sourceSets.cityTest } }
+    }
+}
+
+tasks.register('writeCityTestClasspath') {
+    dependsOn 'classes', 'cityTestClasses', 'genVSCodeRuns'
+    doLast {
+        file("${buildDir}/city-test-classpath.txt").text = sourceSets.cityTest.runtimeClasspath.asPath
+    }
+}
