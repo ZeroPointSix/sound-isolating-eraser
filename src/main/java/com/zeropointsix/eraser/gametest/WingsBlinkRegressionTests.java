@@ -8,12 +8,12 @@ import net.minecraftforge.gametest.PrefixGameTestTemplate;
 @GameTestHolder("wings_blink_tests")
 @PrefixGameTestTemplate(false)
 public final class WingsBlinkRegressionTests {
-    @GameTest(template = "empty", timeoutTicks = 40)
+    @GameTest(template = "brickrot_empty", timeoutTicks = 40)
     public static void forwardEndpoint(GameTestHelper h) {
         WingsBlinkGameTests.blinkSharedSegmentEndpointStopsAtWall(h);
     }
 
-    @GameTest(template = "empty", timeoutTicks = 40)
+    @GameTest(template = "brickrot_empty", timeoutTicks = 40)
     public static void reverseEndpoint(GameTestHelper h) {
         WingsBlinkGameTests.blinkReverseSharedSegmentEndpointStopsAtWall(h);
     }

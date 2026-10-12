@@ -136,12 +136,12 @@ public final class WingsBlinkGameTests {
         }
     }
 
-    @GameTest(template = "empty", timeoutTicks = 40)
+    @GameTest(template = "brickrot_empty", timeoutTicks = 40)
     public static void blinkSharedSegmentEndpointStopsAtWall(GameTestHelper h) {
         assertSharedSegmentEndpoint(h, false);
     }
 
-    @GameTest(template = "empty", timeoutTicks = 40)
+    @GameTest(template = "brickrot_empty", timeoutTicks = 40)
     public static void blinkReverseSharedSegmentEndpointStopsAtWall(GameTestHelper h) {
         assertSharedSegmentEndpoint(h, true);
     }
@@ -222,15 +222,19 @@ public final class WingsBlinkGameTests {
         }
     }
 
-    @GameTest(template = "empty", timeoutTicks = 40)
+    @GameTest(template = "brickrot_empty", timeoutTicks = 40)
     public static void blinkDefaultDistanceCrossesSixSweeps(GameTestHelper h) {
         try (var saved = config()) {
             WingsConfig.SERVER.blinkDistance.set(24.0);
-            BlinkPlayer p = player(h, new Vec3(2.5, 12, 2.5));
-            Vec3 expected = p.position().add(p.getLookAngle().scale(24));
+            // Keep the whole player and all six sweeps inside the cleared template.
+            BlinkPlayer p = player(h, new Vec3(2.5, 3, 2.5));
+            Vec3 before = p.position();
+            Vec3 expected = before.add(p.getLookAngle().scale(24));
             FlightEvents.serverBlink(p);
             h.assertTrue(p.teleports == 1 && p.position().distanceTo(expected) < 0.001,
-                    "the default blink must travel all 24 blocks across six continuous sweeps");
+                    "the default blink must travel all 24 blocks across six continuous sweeps: actual distance="
+                            + p.position().distanceTo(before) + ", teleports=" + p.teleports
+                            + ", destination error=" + p.position().distanceTo(expected));
             h.assertTrue(h.getLevel().noCollision(p, p.getBoundingBox()), "default-distance landing must fit");
             h.succeed();
         }
