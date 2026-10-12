@@ -35,7 +35,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Build and run real Forge regressions
         env:
-          JAVA_TOOL_OPTIONS: -Dshadow.escape.seeds=16
+          JAVA_TOOL_OPTIONS: -Dshadow.escape.seeds=16 -Dshadow.melee.seeds=64
         run: bash ./gradlew --no-daemon --max-workers=2 build runGameTestServer
       - name: Verify production jar boundary
         run: |
