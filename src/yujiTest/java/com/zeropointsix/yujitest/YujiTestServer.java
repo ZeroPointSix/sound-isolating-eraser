@@ -65,7 +65,8 @@ public final class YujiTestServer {
         level.setWeatherParameters(6000, 0, false, false);
         level.getGameRules().getRule(GameRules.RULE_DOMOBSPAWNING).set(false, event.getServer());
         level.getGameRules().getRule(GameRules.RULE_DAYLIGHT).set(false, event.getServer());
-        for (BlockPos pos : BlockPos.betweenClosed(-16, 64, -16, 16, 64, 24)) {
+        // Group combat and the 30-block boss must not spill off the old single-mob platform.
+        for (BlockPos pos : BlockPos.betweenClosed(-64, 64, -64, 64, 64, 64)) {
             level.setBlockAndUpdate(pos, Blocks.SMOOTH_QUARTZ.defaultBlockState());
         }
     }
@@ -263,7 +264,8 @@ public final class YujiTestServer {
 
     private static void finishAi(ServerPlayer player) throws Exception {
         double moved = current.position().distanceTo(initialPosition);
-        require(current.getTarget() == player, "AI naturally tracks connected survival player: " + current.kind());
+        require(current.getTarget() == player, "AI naturally tracks connected survival player: " + current.kind()
+                + ", mob=" + current.position() + ", player=" + player.position() + ", target=" + current.getTarget());
         switch (current.kind()) {
             case YUCHI -> require(moved > .3 && mobHits == 0, "passive follow without direct attack");
             case SHASHENG -> require(mobHits >= 2, "real player receives double slash");
