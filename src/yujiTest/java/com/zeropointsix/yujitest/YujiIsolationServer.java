@@ -164,8 +164,13 @@ public final class YujiIsolationServer {
                     if (current.getTarget() == a) { door(level, false); next("door-closed"); }
                 }
                 case "door-closed" -> {
-                    require(current.getZ() < 6, "husk crossed closed door");
-                    require(!level.getBlockState(new BlockPos(0, 65, 6)).getValue(DoorBlock.OPEN), "husk opened door");
+                    var doorPos = new BlockPos(0, 65, 6);
+                    var doorState = level.getBlockState(doorPos);
+                    require(!doorState.getValue(DoorBlock.OPEN), "husk opened door");
+                    // A closed door occupies a thin slice, not the entire block containing it.
+                    double barrier = doorPos.getZ() + doorState.getCollisionShape(level, doorPos).bounds().minZ;
+                    require(current.getBoundingBox().maxZ <= barrier + .001 && level.noCollision(current),
+                            "husk crossed closed door: box=" + current.getBoundingBox() + " barrier=" + barrier);
                     if (ticks == 180) {
                         require(current.getZ() > 1.5, "husk actually approached barrier");
                         require(a.getHealth() == 400, "husk never damages player");

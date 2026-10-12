@@ -246,8 +246,11 @@ public final class YujiGameTests {
     @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
     public static void yujiNavigationKeepsClosedDoorsAndClimbsWalls(GameTestHelper h) {
         YujiMonster husk = monster(h, YujiKind.YUCHI), boss = monster(h, YujiKind.SHIFOTOU);
-        h.assertTrue(!((net.minecraft.world.entity.ai.navigation.GroundPathNavigation) husk.getNavigation()).canOpenDoors(),
+        // In 1.20.1 GroundPathNavigation.canOpenDoors delegates to canPassDoors; inspect the actual flags.
+        var evaluator = husk.getNavigation().getNodeEvaluator();
+        h.assertTrue(!evaluator.canOpenDoors(),
                 "husk never opens closed doors");
+        h.assertTrue(evaluator.canPassDoors(), "husk can still use an already open doorway");
         h.assertTrue(boss.getNavigation() instanceof net.minecraft.world.entity.ai.navigation.WallClimberNavigation,
                 "boss keeps approaching blocked targets when a ground path cannot reach them");
         h.succeed();
