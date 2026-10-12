@@ -374,11 +374,12 @@ def run_smoke(options: argparse.Namespace) -> int:
                 result = json.loads(success.read_text(encoding="utf-8"))
                 require(result.get("passed") is True and result.get("actualKills") == 50
                         and result.get("physicalMarkKinds") == 10 and result.get("homeRestored") is True
-                        and result.get("actualBellInteraction") is True and result.get("automaticBeamReturn") is True,
+                        and result.get("actualBellInteraction") is True and result.get("automaticBeamReturn") is True
+                        and result.get("netherAnchorRespawn") is True,
                         "Incomplete server success evidence")
                 require(set(captures) == set(PHASES), "Server finished without every validated screenshot")
                 atomic_json(run / "summary.json", {"passed": True, "server": result, "screenshots": captures})
-                print("PASS: hospital entry, grey/black rain, 50 real kills, physical marks, bell, Buddha render/fall, beam and home return", flush=True)
+                print("PASS: hospital entry, grey/black rain, real Nether-anchor death/respawn, 50 real kills, physical marks, bell, Buddha render/fall, beam and home return", flush=True)
                 return 0
             require(server.poll() is None, "Server exited before success; see server.log")
             require(client.poll() is None, "Client exited before success; see client.log")

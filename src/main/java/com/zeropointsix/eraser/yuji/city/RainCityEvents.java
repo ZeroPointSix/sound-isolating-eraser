@@ -20,7 +20,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameRules;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.EntityJoinLevelEvent;
@@ -35,7 +35,7 @@ public final class RainCityEvents {
     @SubscribeEvent public static void commands(RegisterCommandsEvent e) {
         e.getDispatcher().register(Commands.literal("yuji")
                 .then(Commands.literal("enter").requires(s -> s.hasPermission(2)).executes(c -> RainCityEntry.request(c.getSource().getPlayerOrException()) ? 1 : 0))
-                .then(Commands.literal("leave").requires(s -> s.hasPermission(2)).executes(c -> { leave(c.getSource().getPlayerOrException()); return 1; }))
+                .then(Commands.literal("leave").requires(s -> s.hasPermission(2)).executes(c -> leave(c.getSource().getPlayerOrException()) ? 1 : 0))
                 .then(Commands.literal("status").executes(c -> {
                     ServerPlayer p = c.getSource().getPlayerOrException();
                     CompoundTag state = RainCityData.get(p.serverLevel()).players.get(p.getUUID());
@@ -80,7 +80,8 @@ public final class RainCityEvents {
                         city.setBlock(light, state.setValue(RainCityBlocks.HolyLightBlock.LIT, true), 3);
                 }
                 if (city.getGameTime() % 4 == 0) city.sendParticles(RainCityContent.HOLY_LIGHT.get(), 0, 16, 0, 12, 5, 3, 5, .05);
-                for (ServerPlayer p : players) if (p.getX() * p.getX() + p.getZ() * p.getZ() <= 49 && p.getY() >= 10 && p.getY() < 142) leave(p);
+                for (ServerPlayer p : players) if (p.getX() * p.getX() + p.getZ() * p.getZ() <= 49 && p.getY() >= 10 && p.getY() < 142
+                        && city.getGameTime() >= data.players.get(p.getUUID()).getLong("ReturnRetryAt")) leave(p);
             }
         }
     }
@@ -163,8 +164,8 @@ public final class RainCityEvents {
         if (e.getSource().getEntity() instanceof YujiMonster mob && RainCityContent.isCity(mob.level()) && mob.getPersistentData().contains("YujiCityDay"))
             e.setAmount((float) (e.getAmount() * RainCityRules.strength(mob.getPersistentData().getInt("YujiCityDay"))));
     }
-    public static void leave(ServerPlayer p) {
-        if (!RainCityContent.isCity(p.level())) return;
+    public static boolean leave(ServerPlayer p) {
+        if (!RainCityContent.isCity(p.level())) return false;
         RainCityData data = RainCityData.get(p.serverLevel());
         CompoundTag state = data.players.get(p.getUUID());
         ServerLevel home = p.server.overworld();
@@ -172,24 +173,24 @@ public final class RainCityEvents {
         double x = state == null ? fallback.getX() + .5 : state.getDouble("HomeX");
         double y = state == null ? fallback.getY() : state.getDouble("HomeY");
         double z = state == null ? fallback.getZ() + .5 : state.getDouble("HomeZ");
-        home.getChunk(new BlockPos((int) Math.floor(x), (int) Math.floor(y), (int) Math.floor(z)));
-        BlockPos feet = BlockPos.containing(x, y, z);
-        if (!home.getWorldBorder().isWithinBounds(feet) || !home.getFluidState(feet).isEmpty()
-                || !home.getBlockState(feet.below()).isFaceSturdy(home, feet.below(), net.minecraft.core.Direction.UP)
-                || !home.noCollision(new AABB(x - .3, y, z - .3, x + .3, y + 1.8, z + .3))) {
-            BlockPos safe = home.getHeightmapPos(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, fallback);
-            x = safe.getX() + .5; y = safe.getY(); z = safe.getZ() + .5;
+        Vec3 destination = RainCityPlacement.home(home, new Vec3(x, y, z), fallback);
+        if (destination == null) {
+            if (state != null) { state.putLong("ReturnRetryAt", p.level().getGameTime() + 20); data.setDirty(); }
+            p.displayClientMessage(Component.translatable("commands.teleport.invalidPosition"), true);
+            return false;
         }
-        p.teleportTo(home, x, y, z, state == null ? 0 : state.getFloat("HomeYaw"), state == null ? 0 : state.getFloat("HomePitch"));
+        p.teleportTo(home, destination.x, destination.y, destination.z, state == null ? 0 : state.getFloat("HomeYaw"), state == null ? 0 : state.getFloat("HomePitch"));
+        if (p.serverLevel() != home) return false;
         p.setDeltaMovement(0, 0, 0); p.fallDistance = 0;
         if (state != null) { state.putBoolean("Active", false); state.putInt("Horde", 0); data.setDirty(); }
+        return true;
     }
     @SubscribeEvent public static void respawn(PlayerEvent.PlayerRespawnEvent e) {
         if (!(e.getEntity() instanceof ServerPlayer p)) return;
         RainCityData data = RainCityData.get(p.serverLevel());
         CompoundTag state = data.players.get(p.getUUID());
         if (state != null && state.getBoolean("Active")) {
-            if (!data.ringing()) RainCityEntry.request(p);
+            if (!data.ringing()) RainCityEntry.recoverAfterDeath(p);
             else { state.putBoolean("Active", false); state.putInt("Horde", 0); data.setDirty(); }
         }
     }

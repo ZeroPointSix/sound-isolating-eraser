@@ -20,29 +20,51 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.level.chunk.ChunkStatus;
-import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 
 public final class RainCityEntry {
     private static final TicketType<UUID> TICKET = TicketType.create("yuji_city_entry", Comparator.comparing(UUID::toString), 1240);
     private static final Map<UUID, Pending> PENDING = new HashMap<>();
     private record Pending(ServerPlayer player, ServerLevel source, ServerLevel city, List<ChunkPos> tickets,
-                           CompletableFuture<Boolean> ready, long deadline) { }
+                           CompletableFuture<Boolean> ready, long deadline, boolean recovery) { }
 
     public static boolean request(ServerPlayer player) {
-        if (PENDING.containsKey(player.getUUID())) return true;
+        return request(player, false);
+    }
+    public static boolean recoverAfterDeath(ServerPlayer player) {
+        CompoundTag state = RainCityData.get(player.serverLevel()).players.get(player.getUUID());
+        if (state == null || !state.getBoolean("Active")) return false;
+        if (request(player, true)) return true;
+        abandonRecovery(player);
+        return false;
+    }
+    private static boolean request(ServerPlayer player, boolean recovery) {
+        if (!recovery && !player.level().dimension().equals(Level.OVERWORLD)) return false;
+        Pending previous = PENDING.get(player.getUUID());
+        if (previous != null) {
+            if (previous.player == player) return true;
+            PENDING.remove(player.getUUID()); release(previous);
+        }
         ServerLevel city = player.server.getLevel(RainCityContent.LEVEL);
-        if (city == null || !player.level().dimension().equals(Level.OVERWORLD) || !player.isAlive()) return false;
+        if (city == null || !player.isAlive()) return false;
         if (RainCityData.get(city).ringing() && !RainCityData.get(city).open(city.getGameTime())) return false;
         List<ChunkPos> tickets = new ArrayList<>();
         List<CompletableFuture<Boolean>> futures = new ArrayList<>();
-        for (int x = 5; x <= 6; x++) for (int z = 5; z <= 6; z++) {
-            var pos = new ChunkPos(x, z); tickets.add(pos);
-            city.getChunkSource().addRegionTicket(TICKET, pos, 0, player.getUUID());
-            futures.add(CompletableFuture.supplyAsync(() -> city.getChunkSource().getChunkFuture(pos.x, pos.z, ChunkStatus.FULL, true), Util.backgroundExecutor())
-                    .thenCompose(f -> f).thenApply(r -> r.left().isPresent()));
+        try {
+            for (int x = 5; x <= 6; x++) for (int z = 5; z <= 6; z++) {
+                var pos = new ChunkPos(x, z); tickets.add(pos);
+                city.getChunkSource().addRegionTicket(TICKET, pos, 0, player.getUUID());
+                futures.add(CompletableFuture.supplyAsync(() -> city.getChunkSource().getChunkFuture(pos.x, pos.z, ChunkStatus.FULL, true), Util.backgroundExecutor())
+                        .thenCompose(f -> f).thenApply(r -> r.left().isPresent()));
+            }
+        } catch (RuntimeException failure) {
+            for (ChunkPos pos : tickets) city.getChunkSource().removeRegionTicket(TICKET, pos, 0, player.getUUID());
+            org.slf4j.LoggerFactory.getLogger(RainCityEntry.class).warn("Yuji entry preparation failed", failure);
+            return false;
         }
         var ready = CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).thenApply(v -> futures.stream().allMatch(CompletableFuture::join));
-        PENDING.put(player.getUUID(), new Pending(player, player.serverLevel(), city, tickets, ready, player.server.overworld().getGameTime() + 1200));
+        PENDING.put(player.getUUID(), new Pending(player, player.serverLevel(), city, tickets, ready,
+                player.server.overworld().getGameTime() + 1200, recovery));
         player.displayClientMessage(Component.translatable("message.qihai.city.preparing"), true);
         return true;
     }
@@ -51,16 +73,23 @@ public final class RainCityEntry {
         while (iterator.hasNext()) {
             Pending p = iterator.next();
             if (p.player.server != server) continue;
-            boolean remove = false;
+            boolean remove = false, entered = false;
             try {
                 if (server.getPlayerList().getPlayer(p.player.getUUID()) != p.player || !p.player.isAlive() || p.player.serverLevel() != p.source) remove = true;
                 else if (server.overworld().getGameTime() >= p.deadline) { fail(p.player); remove = true; }
-                else if (p.ready.isDone()) { if (!p.ready.join() || !finish(p.player, p.city)) fail(p.player); remove = true; }
+                else if (p.ready.isDone()) {
+                    entered = p.ready.join() && finish(p.player, p.city);
+                    if (!entered) fail(p.player);
+                    remove = true;
+                }
             } catch (RuntimeException failure) {
                 org.slf4j.LoggerFactory.getLogger(RainCityEntry.class).warn("Yuji entry failed", failure);
                 fail(p.player); remove = true;
             } finally {
-                if (remove) { release(p); iterator.remove(); }
+                if (remove) {
+                    if (p.recovery && !entered && p.player.serverLevel() != p.city) abandonRecovery(p.player);
+                    release(p); iterator.remove();
+                }
             }
         }
     }
@@ -71,8 +100,7 @@ public final class RainCityEntry {
             if (!(city.getBlockState(bed).getBlock() instanceof BedBlock)) continue;
             for (Direction direction : Direction.Plane.HORIZONTAL) {
                 BlockPos p = bed.relative(direction);
-                if (city.getBlockState(p.below()).isFaceSturdy(city, p.below(), Direction.UP)
-                        && city.noCollision(new AABB(p.getX() + .2, p.getY(), p.getZ() + .2, p.getX() + .8, p.getY() + 1.8, p.getZ() + .8))) return p;
+                if (RainCityPlacement.safe(city, Vec3.atBottomCenterOf(p))) return p;
             }
         }
         return null;
@@ -88,16 +116,28 @@ public final class RainCityEntry {
             state.putDouble("HomeX", player.getX()); state.putDouble("HomeY", player.getY()); state.putDouble("HomeZ", player.getZ());
             state.putFloat("HomeYaw", player.getYRot()); state.putFloat("HomePitch", player.getXRot());
             state.putLong("Arrival", arrival.asLong());
-            data.players.put(player.getUUID(), state); data.setDirty();
         }
         player.teleportTo(city, arrival.getX() + .5, arrival.getY(), arrival.getZ() + .5, 0, 0);
+        if (player.serverLevel() != city) return false;
+        state.putLong("Arrival", arrival.asLong());
+        state.remove("ReturnRetryAt");
+        data.players.put(player.getUUID(), state); data.setDirty();
         player.setDeltaMovement(0, 0, 0); player.fallDistance = 0;
         player.displayClientMessage(Component.translatable("message.qihai.city.arrived"), false);
         return true;
     }
     private static void fail(ServerPlayer p) { p.displayClientMessage(Component.translatable("message.qihai.city.entry_failed"), false); }
+    private static void abandonRecovery(ServerPlayer player) {
+        RainCityData data = RainCityData.get(player.serverLevel());
+        CompoundTag state = data.players.get(player.getUUID());
+        if (state == null) return;
+        state.putBoolean("Active", false); state.putInt("Horde", 0); data.setDirty();
+    }
     private static void release(Pending p) { for (ChunkPos c : p.tickets) p.city.getChunkSource().removeRegionTicket(TICKET, c, 0, p.player.getUUID()); }
-    public static void cancel(UUID id) { Pending p = PENDING.remove(id); if (p != null) release(p); }
-    public static void clear() { PENDING.values().forEach(RainCityEntry::release); PENDING.clear(); }
+    public static void cancel(UUID id) {
+        Pending p = PENDING.remove(id);
+        if (p != null) { if (p.recovery && p.player.serverLevel() != p.city) abandonRecovery(p.player); release(p); }
+    }
+    public static void clear() { for (UUID id : List.copyOf(PENDING.keySet())) cancel(id); }
     private RainCityEntry() { }
 }
