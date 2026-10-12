@@ -325,7 +325,7 @@ public final class ShadowTanglerGameTests {
         for (long seed = 0; seed < seeds; seed++) {
             long fixedSeed = seed;
             tests.add(new TestFunction("shadow_melee_stress", "shadowmelee_seed_" + seed,
-                    ModMain.MOD_ID + ":shadow_arena", 160, 0L, true,
+                    "shadow_melee_tests:shadow_arena", 160, 0L, true,
                     h -> meleeWindupAndInterval(h, fixedSeed)));
         }
         return tests;
@@ -339,15 +339,19 @@ public final class ShadowTanglerGameTests {
         target.getAttribute(Attributes.MAX_HEALTH).setBaseValue(200);
         target.getAttribute(Attributes.KNOCKBACK_RESISTANCE).setBaseValue(1);
         target.setHealth(200);
-        // This fixture times melee, not vanilla's randomized target-acquisition delay.
-        h.runAtTickTime(26, () -> {
-            h.assertTrue(!mob.isSpawning(), "melee fixture assigns its target after the spawn lock");
-            h.assertTrue(mob.getLightTier() == ShadowLight.DARK && mob.brightnessAt(mob.blockPosition()) <= 6,
-                    "melee fixture remains dark: " + escapeState(mob));
-            h.assertTrue(target.isAlive(), "melee fixture target is alive before pursuit");
-            mob.setTarget(target);
-            h.assertTrue(mob.getTarget() == target, "melee fixture accepts its own living target");
-        });
+        // The negative control restores only the pre-6516a51 random discovery delay.
+        // Both modes retain real AI, damage, windup, cooldown and goal restart checks.
+        boolean legacyTarget = Boolean.getBoolean("shadow.melee.legacyTarget");
+        if (!legacyTarget) {
+            h.runAtTickTime(26, () -> {
+                h.assertTrue(!mob.isSpawning(), "melee fixture assigns its target after the spawn lock");
+                h.assertTrue(mob.getLightTier() == ShadowLight.DARK && mob.brightnessAt(mob.blockPosition()) <= 6,
+                        "melee fixture remains dark: " + escapeState(mob));
+                h.assertTrue(target.isAlive(), "melee fixture target is alive before pursuit");
+                mob.setTarget(target);
+                h.assertTrue(mob.getTarget() == target, "melee fixture accepts its own living target");
+            });
+        }
         int[] lastSwing = {-1}, previousHit = {-1}, hits = {0};
         boolean[] swinging = {false};
         boolean[] interrupted = {false};
@@ -368,6 +372,12 @@ public final class ShadowTanglerGameTests {
                     swingTicks.add(tick);
                 }
                 swinging[0] = mob.swinging;
+                if (tick % 10 == 0) System.out.println("SHADOW_MELEE_DIAGNOSTIC tick=" + tick
+                        + " seed=" + seed + " hits=" + hits[0] + " interrupted=" + interrupted[0]
+                        + " firstTarget=" + firstTargetTick[0] + " interruption=" + interruptedTick[0]
+                        + " swings=" + swingTicks + " hitTicks=" + hitTicks
+                        + " goalRunning=" + meleeGoal.isRunning() + " " + escapeState(mob)
+                        + " victim=" + target.position() + " selected=" + mob.getTarget());
                 if (target.getHealth() < previousHealth[0]) {
                     h.assertTrue(lastSwing[0] >= 24 && Math.abs(tick - lastSwing[0] - 5) <= 1,
                             "native AI waits for spawn and five-tick attack windup");
@@ -388,11 +398,15 @@ public final class ShadowTanglerGameTests {
                     interruptedTick[0] = tick;
                 }
                 if (tick == 130) {
-                    String evidence = "seed=" + seed + " hits=" + hits[0] + " firstTarget=" + firstTargetTick[0]
-                            + " interruption=" + interruptedTick[0] + " swings=" + swingTicks + " hitTicks=" + hitTicks;
-                    com.mojang.logging.LogUtils.getLogger().info("SHADOW_MELEE_EVIDENCE {}", evidence);
+                    System.out.println("SHADOW_MELEE_RESULT mode=" + (legacyTarget ? "before" : "after")
+                            + " seed=" + seed + " status=" + (interrupted[0] && hits[0] >= 3 ? "PASS" : "FAIL")
+                            + " hits=" + hits[0] + " firstTarget=" + firstTargetTick[0]
+                            + " interruption=" + interruptedTick[0] + " swings=" + swingTicks
+                            + " hitTicks=" + hitTicks);
                     h.assertTrue(interrupted[0] && hits[0] >= 3,
-                            "native AI resumes attacks after pursuit interruption: " + evidence
+                            "native AI resumes attacks after pursuit interruption: seed=" + seed + " hits=" + hits[0]
+                                    + " firstTarget=" + firstTargetTick[0] + " interruption=" + interruptedTick[0]
+                                    + " swings=" + swingTicks + " hitTicks=" + hitTicks
                                     + " goalRunning=" + meleeGoal.isRunning() + " " + escapeState(mob)
                                     + " victim=" + target.position() + " selected=" + mob.getTarget());
                     h.succeed();
