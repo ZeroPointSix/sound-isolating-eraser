@@ -159,11 +159,23 @@ public final class GravityTestClient {
             case 65 -> {
                 requireCanceled(mc, "native Escape");
                 nativeInput("keyup", "v");
+            }
+            case 70 -> {
+                // Closing the menu re-samples physical keys. Let GLFW consume the
+                // queued X11 keyup first, or catch-up ticks can re-arm then cast.
+                if (InputConstants.isKeyDown(mc.getWindow().getWindow(), GLFW.GLFW_KEY_V)) { ticks--; return; }
                 mc.setScreen(null);
                 mc.mouseHandler.grabMouse();
+                require(!GravityClient.TARGET.isDown(), "V remains released after closing the Escape screen");
+                requireCanceled(mc, "closing Escape screen after native key release");
             }
             case 75 -> nativeInput("keydown", "v");
-            case 80 -> command(mc, "unequip");
+            case 80 -> {
+                require(aiming() && GravityClient.TARGET.isDown(), "server unequip starts from a held native-key preview");
+                require(fields(mc) == 0 && !mc.player.getCooldowns().isOnCooldown(ModItems.GRAVITY_JADE_PENDANT.get()),
+                        "server unequip starts without a field or cooldown");
+                command(mc, "unequip");
+            }
             case 110 -> {
                 // Client catch-up ticks are not a server acknowledgement. Wait
                 // for both the command reply and Curios' equipment packet.
