@@ -7,11 +7,16 @@ import com.zeropointsix.eraser.yuji.BoneSpike;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.MoverType;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.animal.IronGolem;
+import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
@@ -39,6 +44,11 @@ public final class YujiTestServer {
     private static int elapsed, mobHits, playerHits, summonsObserved;
     private static double chantRange;
     private static boolean effectObserved, spikeStuck;
+    private static YujiMonster supportAlly;
+    private static boolean supportBuffed, summonRefilled, golemTargeted;
+    private static final HashSet<UUID> firstSummons = new HashSet<>();
+    private static IronGolem golem;
+    private static int golemHits;
     private static Vec3 initialPosition, initialPlayer;
     private static final ArrayList<BlockPos> walls = new ArrayList<>();
 
@@ -94,8 +104,20 @@ public final class YujiTestServer {
                         case SHIFOTOU -> player.hasEffect(net.minecraft.world.effect.MobEffects.DARKNESS);
                         default -> false;
                     };
-                    if (current.kind() == YujiKind.QIYU) summonsObserved = Math.max(summonsObserved, current.livingSummons());
-                    if (elapsed == 180) finishAi(player);
+                    if (current.kind() == YujiKind.QIYU) observeSupport(player);
+                    if (elapsed == (current.kind() == YujiKind.QIYU ? 500 : 180)) finishAi(player);
+                }
+                case "golem" -> {
+                    elapsed++;
+                    golemTargeted |= current.getTarget() == golem;
+                    if (elapsed == 180) {
+                        require(golemTargeted && golemHits > 0 && golem.getHealth() < golem.getMaxHealth(),
+                                "hostile boss selects and damages an unprovoking iron golem");
+                        pass("boss-iron-golem", "naturalTarget=" + golemTargeted + ", damageEvents=" + golemHits
+                                + ", actualHealthLoss=" + (golem.getMaxHealth() - golem.getHealth()));
+                        golem.discard(); golem = null;
+                        startAudio(player);
+                    }
                 }
                 case "audio" -> {
                     if (++elapsed == 10) {
@@ -110,6 +132,8 @@ public final class YujiTestServer {
                         for (BlockPos p : BlockPos.betweenClosed(-1, 65, 5, 1, 67, 5)) {
                             player.serverLevel().setBlockAndUpdate(p, Blocks.STONE.defaultBlockState());
                         }
+                        player.teleportTo(player.serverLevel(), 2.3, 65.2, 3, 40, 18);
+                        signal(player, "bone_spike_stuck");
                         spike.shoot(0, 0, 1, 1.6F, 0); elapsed = 0; mode = "bone-flight";
                     }
                 }
@@ -118,7 +142,8 @@ public final class YujiTestServer {
                     if (elapsed == 10) { require(spike.stuck(), "real projectile collides with arena wall"); spikeStuck = true; }
                     if (elapsed == 215) {
                         require(spikeStuck && spike.isRemoved(), "stuck projectile expires after 200 server ticks");
-                        pass("bone_spike", "Real rendered projectile collided with wall and expired; no independent audio in source pack.");
+                        require(clientDone("bone_spike_stuck"), "embedded spike is visibly rendered with its impact sound");
+                        pass("bone_spike", "Real projectile hit wall, remained visibly embedded, played vanilla impact sound and expired after 200 ticks.");
                         pass("gallery", "11 real-player AI/collision/audio probes and rendered projectile completed.");
                         complete = true; signal(player, "cleanup");
                     }
@@ -133,6 +158,24 @@ public final class YujiTestServer {
     }
 
     private static boolean clientDone(String phase) { return Files.exists(RESULTS.resolve("client-" + phase + ".pass")); }
+
+    private static void observeSupport(ServerPlayer player) {
+        supportBuffed |= supportAlly.hasEffect(MobEffects.DAMAGE_BOOST) && supportAlly.hasEffect(MobEffects.MOVEMENT_SPEED)
+                && supportAlly.hasEffect(MobEffects.DAMAGE_RESISTANCE) && supportAlly.hasEffect(MobEffects.REGENERATION);
+        var summons = player.serverLevel().getEntitiesOfClass(YujiMonster.class, current.getBoundingBox().inflate(32),
+                y -> y.isAlive() && current.getUUID().equals(y.summoner()));
+        summonsObserved = Math.max(summonsObserved, summons.size());
+        require(summons.size() <= YujiMonster.SUMMON_CAP, "natural summon count stays capped");
+        for (YujiMonster child : summons) {
+            require(child.kind() != YujiKind.QIYU && !child.kind().giant(), "only other eligible kinds are summoned");
+            if (elapsed <= 200) firstSummons.add(child.getUUID());
+            else summonRefilled |= !firstSummons.contains(child.getUUID());
+        }
+        if (elapsed == 200) {
+            require(!summons.isEmpty(), "first natural summon wave exists");
+            summons.get(0).discard();
+        }
+    }
 
     private static void advance(ServerPlayer player) throws Exception {
         if (current != null) current.discard();
@@ -194,12 +237,19 @@ public final class YujiTestServer {
             var item = new ItemEntity(player.serverLevel(), current.getX(), current.getY(), current.getZ(), new ItemStack(Items.ROTTEN_FLESH, 3));
             item.setNoPickUpDelay(); item.setDeltaMovement(Vec3.ZERO); player.serverLevel().addFreshEntity(item);
         }
+        if (current.kind() == YujiKind.QIYU) {
+            supportAlly = YujiContent.MOBS.get(YujiKind.YUCHI).get().create(player.serverLevel());
+            supportAlly.setNoAi(true); supportAlly.moveTo(current.position().add(2, 0, 0));
+            player.serverLevel().addFreshEntity(supportAlly);
+            supportBuffed = false; summonRefilled = false; firstSummons.clear();
+        }
         if (current.kind() == YujiKind.CHENNU) require(current.getTarget() == null, "giant starts neutral before real player attack");
         current.setNoAi(false); elapsed = 0; mobHits = 0; playerHits = 0; effectObserved = false; chantRange = 0; summonsObserved = 0;
         mode = "ai"; signal(player, "ai-" + current.kind().id());
     }
 
     @SubscribeEvent public static void hurt(LivingHurtEvent event) {
+        if (mode.equals("golem") && event.getEntity() == golem && event.getSource().getEntity() == current) golemHits++;
         if (!mode.equals("ai") || current == null) return;
         if (event.getEntity() == current && event.getSource().getEntity() instanceof ServerPlayer) playerHits++;
         if (event.getEntity() instanceof ServerPlayer p && event.getSource().getEntity() == current) {
@@ -221,8 +271,9 @@ public final class YujiTestServer {
             case EKOU -> require(effectObserved, "ranged chant damages real player from >= 3 blocks: " + chantRange);
             case WANGYU, LIANGSHE -> require(effectObserved, "AI applies source-specific status");
             case XIEYIN -> require(effectObserved && player.position().distanceTo(initialPlayer) > .3, "actual client moved by enthrallment");
-            case QIYU -> require(moved > .3 && mobHits > 0 && summonsObserved > 0 && summonsObserved <= YujiMonster.SUMMON_CAP,
-                    "flute monster pursues, strikes and summons capped allies: " + summonsObserved);
+            case QIYU -> require(moved > .3 && mobHits > 0 && supportBuffed && summonRefilled
+                            && summonsObserved > 0 && summonsObserved <= YujiMonster.SUMMON_CAP,
+                    "flute buffs allies and replenishes natural summons: buffs=" + supportBuffed + ", refill=" + summonRefilled);
             case TANYU -> require(current.layers() >= 3 && mobHits > 0, "real dropped flesh consumed and real player attacked");
             case CHENNU -> {
                 CompoundTag tag = new CompoundTag(); current.addAdditionalSaveData(tag);
@@ -232,9 +283,24 @@ public final class YujiTestServer {
             case SHIFOTOU -> require(effectObserved && mobHits > 0, "boss gaze and combat affect connected player");
         }
         pass("ai-" + current.kind().id(), "realPlayer=" + player.getUUID() + ", floorCollision=true, aiTarget=true, moved=" + moved
-                + ", playerDamageEvents=" + mobHits + ", hitsByPlayer=" + playerHits + ", statusObserved=" + effectObserved + ", chantRange=" + chantRange + ", summons=" + summonsObserved);
+                + ", playerDamageEvents=" + mobHits + ", hitsByPlayer=" + playerHits + ", statusObserved=" + effectObserved + ", chantRange=" + chantRange
+                + ", summons=" + summonsObserved + (current.kind() == YujiKind.QIYU ? ", allyFourBuffs=" + supportBuffed + ", replenished=" + summonRefilled : ""));
         for (YujiMonster summoned : player.serverLevel().getEntitiesOfClass(YujiMonster.class, current.getBoundingBox().inflate(64),
                 y -> current.getUUID().equals(y.summoner()))) summoned.discard();
+        if (supportAlly != null) { supportAlly.discard(); supportAlly = null; }
+        if (current.kind() == YujiKind.SHIFOTOU) {
+            player.setGameMode(GameType.CREATIVE);
+            golem = EntityType.IRON_GOLEM.create(player.serverLevel());
+            golem.setNoAi(true); golem.moveTo(current.position().add(0, 0, current.getBbWidth() / 2 + 2));
+            golem.getAttribute(Attributes.MAX_HEALTH).setBaseValue(400); golem.setHealth(400);
+            player.serverLevel().addFreshEntity(golem);
+            golemTargeted = false; golemHits = 0; elapsed = 0; mode = "golem";
+            return;
+        }
+        startAudio(player);
+    }
+
+    private static void startAudio(ServerPlayer player) {
         current.setNoAi(true); player.setGameMode(GameType.CREATIVE); player.removeAllEffects();
         // Stay within the 16-block attenuation of entity sounds even for the 30-block-wide boss.
         player.teleportTo(player.serverLevel(), current.getX(), current.getY(), current.getZ() + Math.min(12, Math.max(5, current.getBbWidth() + 2)), 180, 0);

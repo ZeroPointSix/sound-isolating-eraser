@@ -454,6 +454,27 @@ public final class YujiGameTests {
         h.runAtTickTime(24, () -> close(h, cow.getHealth(), 34, "first chant hit lands at range"));
         h.runAtTickTime(50, () -> { close(h, cow.getHealth(), 28, "second chant hit lands at range"); h.succeed(); });
     }
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji", timeoutTicks = 60)
+    public static void yujiEkouChantSurvivesExpiredCooldown(GameTestHelper h) {
+        YujiMonster chanter = monster(h, YujiKind.EKOU);
+        var cow = h.spawn(EntityType.COW, new BlockPos(2, 2, 2)); cow.setNoAi(true); cow.setNoGravity(true);
+        cow.moveTo(chanter.position().add(0, 0, 12)); cow.getAttribute(Attributes.MAX_HEALTH).setBaseValue(40); cow.setHealth(40);
+        chanter.setNoAi(false); chanter.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(0);
+        // Keep a valid AI target when the initial skill cooldown expires midway through this cast.
+        chanter.setTarget(cow);
+        chanter.begin("chant", 40, cow);
+        int cast = chanter.actionSerial();
+        h.runAtTickTime(17, () -> close(h, cow.getHealth(), 34, "first chant hit lands at range"));
+        h.runAtTickTime(22, () -> h.assertTrue(chanter.actionSerial() == cast,
+                "skill cooldown must not restart the active chant: " + chanter.actionSerial() + " != " + cast));
+        h.runAtTickTime(34, () -> {
+            close(h, cow.getHealth(), 28, "second chant hit lands at range; action=" + chanter.action()
+                    + ", serial=" + chanter.actionSerial() + ", target=" + chanter.getTarget()
+                    + ", distance=" + chanter.distanceTo(cow) + ", sight=" + chanter.hasLineOfSight(cow)
+                    + ", cow=" + cow.position() + ", invulnerable=" + cow.invulnerableTime);
+            h.succeed();
+        });
+    }
     private static void summonFloor(GameTestHelper h, YujiMonster qiyu, net.minecraft.world.level.block.state.BlockState state) {
         BlockPos base = qiyu.blockPosition().below();
         for (BlockPos pos : BlockPos.betweenClosed(base.offset(-6, 0, -6), base.offset(6, 0, 6))) h.getLevel().setBlockAndUpdate(pos, state);

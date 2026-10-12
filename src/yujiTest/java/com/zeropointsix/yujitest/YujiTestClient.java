@@ -79,7 +79,8 @@ public final class YujiTestClient {
         if (sound instanceof TickableSoundInstance loop && (path.contains("qiyu.flute") || path.contains("shifotou_battle"))) loops.add(loop);
         if (phase.equals("qiyu") && path.equals("entity.zombie.ambient")) masked = sound;
         if (sound.getLocation().getNamespace().equals("qihai") && path.endsWith(".death")) deathSounds.put(path, sound);
-        if (sound.getLocation().getNamespace().equals("qihai") || phase.equals("ai-wangyu")) observedSounds.put(sound.getLocation().toString(), sound);
+        if (sound.getLocation().getNamespace().equals("qihai") || phase.equals("ai-wangyu") || phase.equals("bone_spike_stuck"))
+            observedSounds.put(sound.getLocation().toString(), sound);
     }
     @SubscribeEvent public static void tick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END || failed || phase.isEmpty()) return;
@@ -155,7 +156,7 @@ public final class YujiTestClient {
         return names.get(kind);
     }
     @SubscribeEvent public static void model(GeoRenderEvent.Entity.Post event) {
-        if (!failed && !captured && ticks >= 20 && phase.equals("bone_spike") && event.getEntity() instanceof BoneSpike) { frames++; return; }
+        if (!failed && !captured && ticks >= 20 && phase.startsWith("bone_spike") && event.getEntity() instanceof BoneSpike) { frames++; return; }
         if (failed || captured || ticks < 20 || !(event.getEntity() instanceof YujiMonster monster) || !monster.kind().id().equals(phase)) return;
         try {
             frames++;
@@ -205,16 +206,21 @@ public final class YujiTestClient {
                 captured = true;
                 return;
             }
-            if (phase.equals("bone_spike")) {
+            if (phase.startsWith("bone_spike")) {
                 BoneSpike spike = null;
                 for (var entity : mc.level.entitiesForRendering()) if (entity instanceof BoneSpike candidate) spike = candidate;
                 require(spike != null && frames > 10, "real projectile rendered: frames=" + frames);
+                if (phase.equals("bone_spike_stuck")) {
+                    require(spike.stuck(), "rendered projectile is truly embedded after collision");
+                    require(playedSounds.contains("minecraft:entity.skeleton.hurt"), "real wall impact sound played");
+                }
                 for (String asset : new String[]{"geo/bone_spike.geo.json", "textures/entity/bone_spike.png", "animations/bone_spike.animation.json"}) {
                     mc.getResourceManager().getResourceOrThrow(YujiContent.id(asset));
                 }
                 visible = Screenshot.takeScreenshot(mc.getMainRenderTarget());
-                visible.writeToFile(RESULTS.resolve("bone_spike.png"));
-                pendingEvidence = "real projectile frames=" + frames + ", ownAudio=none (source pack has no projectile sound)";
+                visible.writeToFile(RESULTS.resolve(phase + ".png"));
+                pendingEvidence = "real projectile frames=" + frames + ", embedded=" + spike.stuck()
+                        + (spike.stuck() ? ", impactAudio=minecraft:entity.skeleton.hurt, active=true" : ", flightAudio=none");
                 hidden = spike; hiddenAt = ticks; visiblePosition = spike.position(); hidden.setPos(visiblePosition.add(1000, 0, 0));
                 return;
             }
