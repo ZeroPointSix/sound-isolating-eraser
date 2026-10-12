@@ -1,0 +1,1 @@
+event=qihai:entity.qihai.yuchi.death, decoded=qihai:yuchi/death, active=true, volume=1.0, backend=OpenAL-wave, observed=[qihai:entity.qihai.yuchi.step, qihai:entity.qihai.yuchi.ambient, qihai:entity.qihai.yuchi.death]

@@ -1,0 +1,10 @@
+phase=tanyu, tick=10, event=qihai:entity.qihai.tanyu.ambient, decoded=qihai:tanyu/ambient, channelPlaying=true, volume=1.0, pitch=1.1905826, position=0.5,65.0,0.5, backend=OpenAL-wave
+phase=tanyu, tick=60, event=qihai:entity.qihai.tanyu.ambient, decoded=qihai:tanyu/ambient, channelPlaying=true, volume=1.0, pitch=0.9159331, position=0.5,65.0,0.5, backend=OpenAL-wave
+phase=tanyu, tick=120, event=qihai:entity.qihai.tanyu.ambient, decoded=qihai:tanyu/ambient, channelPlaying=true, volume=1.0, pitch=0.95642495, position=0.5,65.0,0.5, backend=OpenAL-wave
+phase=ai-tanyu, tick=20, event=qihai:entity.qihai.tanyu.bite, decoded=qihai:tanyu/bite, channelPlaying=true, volume=1.0, pitch=1.0, position=0.75,65.0,7.625, backend=OpenAL-wave
+phase=ai-tanyu, tick=30, event=qihai:entity.qihai.tanyu.bite, decoded=qihai:tanyu/bite, channelPlaying=true, volume=1.0, pitch=1.0, position=0.75,65.0,7.625, backend=OpenAL-wave
+phase=ai-tanyu, tick=30, event=qihai:entity.qihai.tanyu.bite, decoded=qihai:tanyu/bite, channelPlaying=true, volume=1.0, pitch=1.0, position=0.75,65.0,7.625, backend=OpenAL-wave
+phase=ai-tanyu, tick=30, event=qihai:entity.qihai.tanyu.bite, decoded=qihai:tanyu/bite, channelPlaying=true, volume=1.0, pitch=1.0, position=0.25,65.0,8.375, backend=OpenAL-wave
+phase=ai-tanyu, tick=30, event=qihai:entity.qihai.tanyu.ambient, decoded=qihai:tanyu/ambient, channelPlaying=true, volume=1.0, pitch=0.92330205, position=0.625,65.0,8.5, backend=OpenAL-wave
+phase=ai-tanyu, tick=40, event=qihai:entity.qihai.tanyu.bite, decoded=qihai:tanyu/bite, channelPlaying=true, volume=1.0, pitch=1.0, position=0.625,65.0,8.5, backend=OpenAL-wave
+phase=audio-tanyu, tick=0, event=qihai:entity.qihai.tanyu.death, decoded=qihai:tanyu/death, channelPlaying=true, volume=1.0, pitch=0.92703015, position=0.625,65.0,8.5, backend=OpenAL-wave

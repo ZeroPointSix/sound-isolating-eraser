@@ -1,0 +1,7 @@
+phase=yuchi, tick=11, event=qihai:entity.qihai.yuchi.ambient, decoded=qihai:yuchi/ambient, active=true, volume=1.0, pitch=1.0115715, position=0.5,65.0,0.5, backend=OpenAL-wave
+phase=yuchi, tick=10, event=qihai:entity.qihai.yuchi.ambient, decoded=qihai:yuchi/ambient, channelPlaying=true, volume=1.0, pitch=1.0115715, position=0.5,65.0,0.5, backend=OpenAL-wave
+phase=yuchi, tick=50, event=qihai:entity.qihai.yuchi.ambient, decoded=qihai:yuchi/ambient, channelPlaying=true, volume=1.0, pitch=0.902946, position=0.5,65.0,0.5, backend=OpenAL-wave
+phase=yuchi, tick=100, event=qihai:entity.qihai.yuchi.ambient, decoded=qihai:yuchi/ambient, channelPlaying=true, volume=1.0, pitch=1.0114069, position=0.5,65.0,0.5, backend=OpenAL-wave
+phase=ai-yuchi, tick=20, event=qihai:entity.qihai.yuchi.ambient, decoded=qihai:yuchi/ambient, channelPlaying=true, volume=1.0, pitch=1.0001706, position=0.5,65.0,2.25, backend=OpenAL-wave
+phase=ai-yuchi, tick=20, event=qihai:entity.qihai.yuchi.step, decoded=qihai:yuchi/step, channelPlaying=true, volume=0.5, pitch=1.0, position=0.5,65.0,2.125, backend=OpenAL-wave
+phase=audio-yuchi, tick=6, event=qihai:entity.qihai.yuchi.death, decoded=qihai:yuchi/death, channelPlaying=true, volume=1.0, pitch=1.178248, position=0.5,65.0,2.875, backend=OpenAL-wave
