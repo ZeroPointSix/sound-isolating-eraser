@@ -36,7 +36,8 @@ public final class YujiTestServer {
     private static YujiMonster current;
     private static BoneSpike spike;
     private static String mode = "ready";
-    private static int elapsed, mobHits, playerHits;
+    private static int elapsed, mobHits, playerHits, summonsObserved;
+    private static double chantRange;
     private static boolean effectObserved, spikeStuck;
     private static Vec3 initialPosition, initialPlayer;
     private static final ArrayList<BlockPos> walls = new ArrayList<>();
@@ -86,13 +87,14 @@ public final class YujiTestServer {
                     elapsed++;
                     if (player.getHealth() < 100) player.setHealth(400);
                     effectObserved |= switch (current.kind()) {
-                        case EKOU -> player.hasEffect(YujiContent.CURSED.get());
+                        case EKOU -> chantRange >= 3;
                         case WANGYU -> player.hasEffect(net.minecraft.world.effect.MobEffects.WEAKNESS);
                         case LIANGSHE -> player.hasEffect(YujiContent.BETRAYED.get());
                         case XIEYIN -> player.hasEffect(YujiContent.ENTHRALLED.get());
                         case SHIFOTOU -> player.hasEffect(net.minecraft.world.effect.MobEffects.DARKNESS);
                         default -> false;
                     };
+                    if (current.kind() == YujiKind.QIYU) summonsObserved = Math.max(summonsObserved, current.livingSummons());
                     if (elapsed == 180) finishAi(player);
                 }
                 case "audio" -> {
@@ -155,9 +157,13 @@ public final class YujiTestServer {
         current = YujiContent.MOBS.get(kind).get().create(player.serverLevel());
         current.setNoAi(true); current.setPersistenceRequired(); current.moveTo(.5, 65, .5, 0, 0); current.setYBodyRot(0);
         player.serverLevel().addFreshEntity(current);
-        double distance = Math.max(5.5, kind.height * 1.7);
-        double y = Math.max(65, 65 + kind.height * .5 - 1.62);
-        float pitch = (float) Math.toDegrees(Math.atan2(y + 1.62 - (65 + kind.height * .5), distance));
+        // Frame the actual (model-scaled) body: giants like xieyin/shifotou are far larger than their base profile.
+        double height = current.getBbHeight(), width = current.getBbWidth();
+        // Server view-distance is 3 chunks (48 blocks), so giants are framed just inside tracking range.
+        double distance = Math.max(5.5, Math.min(46, Math.max(height * 1.7, width * 1.9)));
+        double y = Math.max(65, 65 + height * .5 - 1.62);
+        // Aim a little below centre on giants so the near-side legs and shadow stay off the bottom edge.
+        float pitch = (float) Math.toDegrees(Math.atan2(y + 1.62 - (65 + height * (height > 10 ? .42 : .5)), distance));
         player.teleportTo(player.serverLevel(), .5, y, .5 + distance, 180, pitch);
         player.getInventory().setItem(0, new ItemStack(ForgeRegistries.ITEMS.getValue(YujiContent.id(kind.id() + "_spawn_egg"))));
         player.getInventory().selected = 0;
@@ -189,14 +195,20 @@ public final class YujiTestServer {
             item.setNoPickUpDelay(); item.setDeltaMovement(Vec3.ZERO); player.serverLevel().addFreshEntity(item);
         }
         if (current.kind() == YujiKind.CHENNU) require(current.getTarget() == null, "giant starts neutral before real player attack");
-        current.setNoAi(false); elapsed = 0; mobHits = 0; playerHits = 0; effectObserved = false;
+        current.setNoAi(false); elapsed = 0; mobHits = 0; playerHits = 0; effectObserved = false; chantRange = 0; summonsObserved = 0;
         mode = "ai"; signal(player, "ai-" + current.kind().id());
     }
 
     @SubscribeEvent public static void hurt(LivingHurtEvent event) {
         if (!mode.equals("ai") || current == null) return;
         if (event.getEntity() == current && event.getSource().getEntity() instanceof ServerPlayer) playerHits++;
-        if (event.getEntity() instanceof ServerPlayer && event.getSource().getEntity() == current) mobHits++;
+        if (event.getEntity() instanceof ServerPlayer p && event.getSource().getEntity() == current) {
+            mobHits++;
+            // 恶口: a magic hit landed from range while chanting proves the ranged chant, not a melee claw.
+            if (current.kind() == YujiKind.EKOU && current.action().equals("chant")
+                    && event.getSource().is(net.minecraft.world.damagesource.DamageTypes.INDIRECT_MAGIC))
+                chantRange = Math.max(chantRange, current.distanceTo(p));
+        }
     }
 
     private static void finishAi(ServerPlayer player) throws Exception {
@@ -206,9 +218,11 @@ public final class YujiTestServer {
             case YUCHI -> require(moved > .3 && mobHits == 0, "passive follow without direct attack");
             case SHASHENG -> require(mobHits >= 2, "real player receives double slash");
             case TOUDAO -> require(!current.displayedLoot().isEmpty() && player.getInventory().getItem(1).isEmpty(), "real inventory stack stolen");
-            case EKOU, WANGYU, LIANGSHE -> require(effectObserved, "AI applies source-specific status");
+            case EKOU -> require(effectObserved, "ranged chant damages real player from >= 3 blocks: " + chantRange);
+            case WANGYU, LIANGSHE -> require(effectObserved, "AI applies source-specific status");
             case XIEYIN -> require(effectObserved && player.position().distanceTo(initialPlayer) > .3, "actual client moved by enthrallment");
-            case QIYU -> require(moved > .3 && mobHits > 0, "flute monster pursues and strikes real player");
+            case QIYU -> require(moved > .3 && mobHits > 0 && summonsObserved > 0 && summonsObserved <= YujiMonster.SUMMON_CAP,
+                    "flute monster pursues, strikes and summons capped allies: " + summonsObserved);
             case TANYU -> require(current.layers() >= 3 && mobHits > 0, "real dropped flesh consumed and real player attacked");
             case CHENNU -> {
                 CompoundTag tag = new CompoundTag(); current.addAdditionalSaveData(tag);
@@ -218,9 +232,12 @@ public final class YujiTestServer {
             case SHIFOTOU -> require(effectObserved && mobHits > 0, "boss gaze and combat affect connected player");
         }
         pass("ai-" + current.kind().id(), "realPlayer=" + player.getUUID() + ", floorCollision=true, aiTarget=true, moved=" + moved
-                + ", playerDamageEvents=" + mobHits + ", hitsByPlayer=" + playerHits + ", statusObserved=" + effectObserved);
+                + ", playerDamageEvents=" + mobHits + ", hitsByPlayer=" + playerHits + ", statusObserved=" + effectObserved + ", chantRange=" + chantRange + ", summons=" + summonsObserved);
+        for (YujiMonster summoned : player.serverLevel().getEntitiesOfClass(YujiMonster.class, current.getBoundingBox().inflate(64),
+                y -> current.getUUID().equals(y.summoner()))) summoned.discard();
         current.setNoAi(true); player.setGameMode(GameType.CREATIVE); player.removeAllEffects();
-        player.teleportTo(player.serverLevel(), current.getX(), current.getY(), current.getZ() + Math.max(5, current.getBbWidth() + 2), 180, 0);
+        // Stay within the 16-block attenuation of entity sounds even for the 30-block-wide boss.
+        player.teleportTo(player.serverLevel(), current.getX(), current.getY(), current.getZ() + Math.min(12, Math.max(5, current.getBbWidth() + 2)), 180, 0);
         mode = "audio"; elapsed = 0; signal(player, "audio-" + current.kind().id());
     }
 }

@@ -47,7 +47,8 @@
    "spike_volley",
    "claw",
    "burst",
-   "death"
+   "death",
+   "chant"
   ],
   "tex": 128,
   "glow": false
@@ -98,7 +99,9 @@
    "idle_play",
    "glide",
    "strike",
-   "death"
+   "death",
+   "bless",
+   "summon"
   ],
   "tex": 128,
   "glow": false

@@ -33,7 +33,8 @@ public final class YujiBoundaryServer {
     private static final ArrayList<Integer> hitTicks = new ArrayList<>();
     private static final ArrayList<Float> damage = new ArrayList<>();
     private static final String[] CONTACT = {"side", "upper", "outside-side", "above"};
-    private static final double[][] OFFSETS = {{3.2, 0}, {0, 7.8}, {3.31, 0}, {0, 8.01}};
+    // Boss body is 30x40 (modelScale 5); offsets straddle its edges like the matching GameTests.
+    private static final double[][] OFFSETS = {{15.2, 0}, {0, 39.8}, {15.31, 0}, {0, 40.01}};
 
     private static void require(boolean value, String message) { if (!value) throw new AssertionError(message); }
     private static void close(double actual, double expected, String message) {
