@@ -351,7 +351,7 @@ public final class YujiAfflictions {
     }
     private static void restoreFollowers(Player p) {
         if (!(p.level() instanceof ServerLevel level)) return;
-        for (Entity entity : level.getAllEntities()) if (entity instanceof Mob mob) {
+        for (Entity entity : com.zeropointsix.eraser.yuji.city.RainCitySpawns.snapshot(level)) if (entity instanceof Mob mob) {
             CompoundTag data = mob.getPersistentData().getCompound(INFLUENCE);
             if (data.hasUUID("Player") && data.getUUID("Player").equals(p.getUUID())) restore(mob);
         }
