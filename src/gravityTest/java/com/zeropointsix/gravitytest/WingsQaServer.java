@@ -3,6 +3,8 @@ package com.zeropointsix.gravitytest;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.logging.LogUtils;
 import com.zeropointsix.eraser.registry.ModItems;
+import com.zeropointsix.eraser.wings.FlightEvents;
+import com.zeropointsix.eraser.wings.WingsState;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import net.minecraft.commands.CommandSourceStack;
@@ -47,6 +49,11 @@ public final class WingsQaServer {
     private static boolean hungerChecked;
     private static ServerPlayer wearerRef;
     private static String reviewView = "reviewBack";
+    private static long voidSpeedFlag, chargeEnds, blinkBefore;
+    private static float chargeExhaustion;
+    private static boolean chargeMeasured, chargedBlinkChecked, controlsDone;
+    private static boolean awaitCharge;
+    private static boolean tracingVoid;
 
     @SubscribeEvent
     public static void registerCommands(RegisterCommandsEvent event) {
@@ -54,7 +61,7 @@ public final class WingsQaServer {
                 .requires(WingsQaServer::allowed)
                 .then(Commands.literal("phase")
                         .then(Commands.argument("word", StringArgumentType.word())
-                                .executes(context -> changePhase(context.getSource(),
+                                .executes(context -> checkedPhase(context.getSource(),
                                         StringArgumentType.getString(context, "word")))))
                 .then(Commands.literal("finish")
                         .executes(context -> finish(context.getSource().getServer()))));
@@ -99,6 +106,29 @@ public final class WingsQaServer {
         try {
             // Server-side asserts run on phase commands from the clients, not on
             // tick positions — llvmpipe clients tick slower than the server.
+            if (awaitCharge && wearerRef != null && WingsState.charged(wearerRef)) {
+                long remaining = WingsState.chargedUntil(wearerRef) - wearerRef.level().getGameTime();
+                long duration = com.zeropointsix.eraser.wings.WingsConfig.SERVER.chargedDurationTicks.get();
+                check(remaining >= duration - 1 && remaining <= duration,
+                        "real lightning starts configured charge duration: " + remaining);
+                awaitCharge = false;
+            }
+            if (chargeMeasured && wearerRef != null) {
+                chargeEnds = WingsState.chargedUntil(wearerRef);
+                long now = wearerRef.level().getGameTime();
+                float exhaustion = wearerRef.getFoodData().getExhaustionLevel();
+                if (now < chargeEnds) {
+                    checkExhaustion(exhaustion);
+                } else if (now >= chargeEnds + 2) {
+                    check(chargedBlinkChecked, "charged native blink was verified before expiry");
+                    check(!WingsState.charged(wearerRef) && exhaustion > chargeExhaustion,
+                            "real 1200-tick charge expiry resumes flight exhaustion");
+                    Files.writeString(results().resolve("wings-controls.pass"),
+                            "PASS native G/H/Shift/W movement, fixed hover, starving void rescue, real lightning charge, free blink/flight and natural expiry\n");
+                    controlsDone = true;
+                    chargeMeasured = false;
+                }
+            }
         } catch (Throwable failure) {
             fail(server, failure.toString());
         }
@@ -192,6 +222,56 @@ public final class WingsQaServer {
             return 0;
         }
         switch (next) {
+            case "controlsSetup", "inputSetup" -> {
+                controlFixture(server, wearerRef, next.equals("inputSetup") ? 200 : 100);
+                WingsState.setTier(wearerRef, WingsState.CRUISE);
+                com.zeropointsix.eraser.wings.net.WingsNet.syncToTracking(wearerRef);
+            }
+            case "voidSetup" -> {
+                ServerLevel level = wearerRef.serverLevel();
+                int bottom = level.getMinBuildHeight();
+                for (BlockPos pos : BlockPos.betweenClosed(6, bottom, 6, 10, bottom + 16, 10)) {
+                    level.setBlockAndUpdate(pos, Blocks.AIR.defaultBlockState());
+                }
+                wearerRef.teleportTo(level, 8.5, bottom + 3, 8.5, -90, 0);
+                wearerRef.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
+                wearerRef.setOnGround(false);
+                FlightEvents.markTeleported(wearerRef);
+                WingsState.setHoverAnchor(wearerRef, bottom + 3);
+                WingsState.setTier(wearerRef, WingsState.HOVER);
+                wearerRef.getFoodData().setFoodLevel(0);
+                wearerRef.getFoodData().setSaturation(0);
+                voidSpeedFlag = WingsState.speedFlagAt(wearerRef);
+                tracingVoid = true;
+                LOGGER.info("WINGS_VOID_BASELINE tick={} pos={} flag={}", level.getGameTime(),
+                        wearerRef.position(), voidSpeedFlag);
+                com.zeropointsix.eraser.wings.net.WingsNet.syncToTracking(wearerRef);
+            }
+            case "voidDone" -> {
+                check(wearerRef.getY() > wearerRef.level().getMinBuildHeight() + 5,
+                        "server confirms starving hover escapes void margin");
+                check(WingsState.speedFlagAt(wearerRef) == voidSpeedFlag,
+                        "void rescue never triggers server overspeed rollback: baseline=" + voidSpeedFlag
+                                + " current=" + WingsState.speedFlagAt(wearerRef));
+                tracingVoid = false;
+                controlFixture(server, wearerRef);
+                WingsState.setChargedUntil(wearerRef, 0);
+                awaitCharge = true;
+                com.zeropointsix.eraser.wings.net.WingsNet.syncToTracking(wearerRef);
+            }
+            case "chargeStart" -> {
+                check(WingsState.charged(wearerRef), "charge originates from real spawned lightning");
+                chargeEnds = WingsState.chargedUntil(wearerRef);
+                check(!awaitCharge, "server clock observed the full charge duration");
+                chargeExhaustion = wearerRef.getFoodData().getExhaustionLevel();
+                blinkBefore = WingsState.blinkCooldownUntil(wearerRef);
+                chargeMeasured = true;
+            }
+            case "chargeBlinkDone" -> {
+                check(WingsState.blinkCooldownUntil(wearerRef) > blinkBefore, "server accepted native charged blink");
+                checkExhaustion(wearerRef.getFoodData().getExhaustionLevel());
+                chargedBlinkChecked = true;
+            }
             case "showcaseDeploy", "showcaseStow", "showcaseCruise", "showcaseBoost", "showcaseStorm" -> {
                 if (!SHOWCASE || wearerRef == null) return 0;
                 wearerRef.getFoodData().setFoodLevel(20);
@@ -199,6 +279,7 @@ public final class WingsQaServer {
                 if (next.equals("showcaseDeploy")) {
                     // Startup/recorder latency must not leave the model grounded before filming.
                     wearerRef.teleportTo(server.overworld(), 0.5, 100, 0.5, -90f, 0f);
+                    FlightEvents.markTeleported(wearerRef);
                     wearerRef.setOnGround(false);
                     wearerRef.resetFallDistance();
                     wearerRef.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
@@ -365,6 +446,47 @@ public final class WingsQaServer {
         LOGGER.info("{}{}", PREFIX, next);
     }
 
+    private static int checkedPhase(CommandSourceStack source, String next) {
+        try {
+            return changePhase(source, next);
+        } catch (Throwable failure) {
+            fail(source.getServer(), "phase=" + next + " " + failure);
+            return 0;
+        }
+    }
+
+    @SubscribeEvent
+    public static void traceVoid(TickEvent.PlayerTickEvent event) {
+        if (tracingVoid && event.player == wearerRef) {
+            LOGGER.info("WINGS_VOID_TRACE phase={} tick={} pos={} flag={}", event.phase,
+                    wearerRef.level().getGameTime(), wearerRef.position(), WingsState.speedFlagAt(wearerRef));
+        }
+    }
+
+    private static void controlFixture(MinecraftServer server, ServerPlayer player) {
+        controlFixture(server, player, 100);
+    }
+
+    private static void controlFixture(MinecraftServer server, ServerPlayer player, double height) {
+        player.teleportTo(server.overworld(), 0.5, height, 0.5, -90, 0);
+        FlightEvents.markTeleported(player);
+        player.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
+        player.setOnGround(false);
+        player.getFoodData().setFoodLevel(20);
+        player.getFoodData().setSaturation(20);
+        player.getFoodData().setExhaustion(0);
+        FlightEvents.serverSetDeployed(player, true);
+        WingsState.setTier(player, WingsState.HOVER);
+        com.zeropointsix.eraser.wings.net.WingsNet.syncToTracking(player);
+    }
+
+    private static void checkExhaustion(float value) {
+        if (Math.abs(value - chargeExhaustion) > 0.001f) {
+            throw new AssertionError("charged real flight/blink must not drain exhaustion: "
+                    + chargeExhaustion + " -> " + value);
+        }
+    }
+
     private static void check(boolean condition, String message) {
         if (!condition) throw new AssertionError(message);
         LOGGER.info("WINGS_E2E_ASSERT server: {}", message);
@@ -384,6 +506,10 @@ public final class WingsQaServer {
 
     private static int finish(MinecraftServer server) {
         if (stopAt >= 0) return 1;
+        if (!SHOWCASE && !controlsDone) {
+            fail(server, "WINGS_CONTROLS_NOT_VERIFIED");
+            return 0;
+        }
         LOGGER.info("WINGS_QA_SERVER_FINISHED");
         announce(server, "finished");
         stopAt = server.getTickCount() + 20;

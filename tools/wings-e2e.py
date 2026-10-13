@@ -3,7 +3,6 @@ import json
 import os
 from pathlib import Path
 import shlex
-import shutil
 import socket
 import subprocess
 import time
@@ -12,11 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 RESULTS = ROOT / "build/wings-e2e"
 # Fresh world every run: player NBT (deployed wings, food, position) must not carry over.
 if RESULTS.exists():
-    for stale in RESULTS.iterdir():
-        if stale.is_dir():
-            shutil.rmtree(stale)
-        else:
-            stale.unlink()
+    RESULTS.rename(RESULTS.with_name("wings-e2e-previous-" + str(time.time_ns())))
 RESULTS.mkdir(parents=True, exist_ok=True)
 CONFIGS = {c["name"]: c for c in json.loads((ROOT / ".vscode/launch.json").read_text())["configurations"]}
 CLASSPATH = (ROOT / "build/gravity-test-classpath.txt").read_text().strip()
@@ -38,7 +33,7 @@ def launch(name, role, display=None):
             "online-mode=false\nserver-ip=127.0.0.1\nserver-port=25566\n"
             "enforce-secure-profile=false\nspawn-protection=0\nview-distance=4\n"
             "simulation-distance=4\nlevel-type=minecraft:flat\nmax-tick-time=0\n"
-            "allow-flight=true\n"
+            "allow-flight=false\n"
             "generate-structures=false\nspawn-monsters=false\ngamemode=survival\n"
         )
     else:
@@ -91,7 +86,8 @@ try:
     wearer = launch("runClient", "wearer", ":93")
     observer = launch("runClient", "observer", ":94")
     deadline = time.monotonic() + 600
-    required = ("wings-wearer", "wings-observer", "wings-server")
+    required = ("wings-wearer", "wings-observer", "wings-server", "wings-controls", "wings-key-conflicts",
+                "wings-input-rebinding")
     while not all((RESULTS / f"{role}.pass").exists() for role in required):
         failures = list(RESULTS.glob("wings-*.failed"))
         if failures:

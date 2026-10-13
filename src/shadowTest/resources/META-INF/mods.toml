@@ -1,0 +1,13 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="MIT"
+[[mods]]
+modId="shadow_qa"
+version="1.0"
+displayName="Shadow Tangler Test Driver"
+[[dependencies.shadow_qa]]
+modId="sound_isolating_eraser"
+mandatory=true
+versionRange="[0.8,)"
+ordering="AFTER"
+side="BOTH"

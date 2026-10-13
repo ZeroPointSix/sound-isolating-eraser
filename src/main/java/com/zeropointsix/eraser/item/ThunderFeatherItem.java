@@ -3,6 +3,8 @@ package com.zeropointsix.eraser.item;
 import java.util.List;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
@@ -12,6 +14,15 @@ import net.minecraft.world.level.Level;
 public class ThunderFeatherItem extends Item {
     public ThunderFeatherItem(Properties props) {
         super(props);
+    }
+
+    @Override
+    public boolean canBeHurtBy(DamageSource source) {
+        // Repeated lightning ticks and the fire they ignite must not erase the drop.
+        return !source.is(DamageTypes.LIGHTNING_BOLT)
+                && !source.is(DamageTypes.IN_FIRE)
+                && !source.is(DamageTypes.ON_FIRE)
+                && super.canBeHurtBy(source);
     }
 
     @Override

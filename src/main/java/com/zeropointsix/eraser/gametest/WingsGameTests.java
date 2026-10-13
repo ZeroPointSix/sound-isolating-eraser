@@ -11,7 +11,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -24,7 +23,6 @@ import net.minecraftforge.common.util.FakePlayer;
 import net.minecraftforge.common.util.FakePlayerFactory;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.EntityStruckByLightningEvent;
-import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.event.entity.living.LivingFallEvent;
 import net.minecraftforge.gametest.GameTestHolder;
 import net.minecraftforge.gametest.PrefixGameTestTemplate;
@@ -245,6 +243,112 @@ public final class WingsGameTests {
         h.succeed();
     }
 
+    @GameTest(template = "empty", timeoutTicks = 60)
+    public static void speedGovernorAcceptsBatchedHoverSteps(GameTestHelper h) {
+        FakePlayer p = winged(h, h.absoluteVec(new Vec3(2.5, 3.5, 2.5)), 20);
+        FlightEvents.serverSetDeployed(p, true);
+        p.getFoodData().setFoodLevel(0);
+        tick(p);
+        double step = WingsConfig.SERVER.hoverMaxSpeed.get() / 20.0;
+        double startY = p.getY();
+        // Three legal client steps can arrive before the next server tick.
+        for (int i = 0; i < 3; i++) p.setPos(p.getX(), p.getY() + step, p.getZ());
+        tick(p);
+        h.assertTrue(WingsState.speedFlagAt(p) == 0,
+                "batched legal hover steps must not be flagged as one overspeed step");
+        h.assertTrue(Math.abs(p.getY() - startY - step * 3) < 0.001,
+                "batched rescue movement must not be pulled back");
+        h.succeed();
+    }
+
+    @GameTest(template = "empty", timeoutTicks = 60)
+    public static void repeatedDeployCannotRefillSpeedBudget(GameTestHelper h) {
+        assertDeployDoesNotRefill(h, false);
+    }
+
+    @GameTest(template = "empty", timeoutTicks = 60)
+    public static void sameTickRedeployCannotRefillSpeedBudget(GameTestHelper h) {
+        assertDeployDoesNotRefill(h, true);
+    }
+
+    @GameTest(template = "empty", timeoutTicks = 60)
+    public static void movementBeforeStowCannotBeErased(GameTestHelper h) {
+        assertToggleDoesNotEraseMovement(h, false);
+    }
+
+    @GameTest(template = "empty", timeoutTicks = 60)
+    public static void movementBetweenStowAndDeployCannotBeErased(GameTestHelper h) {
+        assertToggleDoesNotEraseMovement(h, true);
+    }
+
+    private static void assertToggleDoesNotEraseMovement(GameTestHelper h, boolean moveWhileStowed) {
+        FakePlayer p = winged(h, h.absoluteVec(new Vec3(2.5, 3.5, 2.5)), 20);
+        FlightEvents.serverSetDeployed(p, true);
+        tick(p);
+        double acceptedY = p.getY();
+        if (moveWhileStowed) FlightEvents.serverSetDeployed(p, false);
+        p.setPos(p.getX(), p.getY() + 2, p.getZ());
+        if (!moveWhileStowed) FlightEvents.serverSetDeployed(p, false);
+        FlightEvents.serverSetDeployed(p, true);
+        tick(p);
+        h.assertTrue(WingsState.speedFlagAt(p) > 0, "same-tick toggle cannot erase unchecked movement");
+        h.assertTrue(Math.abs(p.getY() - acceptedY) < 0.001, "unchecked movement is rolled back");
+        h.succeed();
+    }
+
+    @GameTest(template = "empty", timeoutTicks = 60)
+    public static void redeployAfterStowedTickReanchorsNormally(GameTestHelper h) {
+        FakePlayer p = winged(h, h.absoluteVec(new Vec3(2.5, 3.5, 2.5)), 20);
+        FlightEvents.serverSetDeployed(p, true);
+        tick(p);
+        FlightEvents.serverSetDeployed(p, false);
+        tick(p);
+        p.setPos(p.getX(), p.getY() + 5, p.getZ());
+        double deployY = p.getY();
+        FlightEvents.serverSetDeployed(p, true);
+        tick(p);
+        h.assertTrue(WingsState.speedFlagAt(p) == 0, "non-flying movement is not charged on later deploy");
+        h.assertTrue(Math.abs(p.getY() - deployY) < 0.001, "later deploy uses its new anchor");
+        h.succeed();
+    }
+
+    @GameTest(template = "empty", timeoutTicks = 60)
+    public static void redeployAfterIdleRestoresBoundedBudget(GameTestHelper h) {
+        FakePlayer p = winged(h, h.absoluteVec(new Vec3(2.5, 3.5, 2.5)), 20);
+        FlightEvents.serverSetDeployed(p, true);
+        tick(p);
+        p.setPos(p.getX(), p.getY() + 1.25, p.getZ());
+        tick(p);
+        FlightEvents.serverSetDeployed(p, false);
+        tick(p);
+        h.runAfterDelay(3, () -> {
+            FlightEvents.serverSetDeployed(p, true);
+            double startY = p.getY();
+            p.setPos(p.getX(), p.getY() + 0.75, p.getZ());
+            tick(p);
+            h.assertTrue(WingsState.speedFlagAt(p) == 0, "idle restores legal bounded burst allowance");
+            h.assertTrue(Math.abs(p.getY() - startY - 0.75) < 0.001, "legal resumed movement remains");
+            h.succeed();
+        });
+    }
+
+    private static void assertDeployDoesNotRefill(GameTestHelper h, boolean stowFirst) {
+        FakePlayer p = winged(h, h.absoluteVec(new Vec3(2.5, 3.5, 2.5)), 20);
+        FlightEvents.serverSetDeployed(p, true);
+        tick(p);
+        p.setPos(p.getX(), p.getY() + 0.75, p.getZ());
+        tick(p);
+        h.assertTrue(WingsState.speedFlagAt(p) == 0, "first legal burst is accepted");
+        if (stowFirst) FlightEvents.serverSetDeployed(p, false);
+        FlightEvents.serverSetDeployed(p, true);
+        double acceptedY = p.getY();
+        p.setPos(p.getX(), p.getY() + 0.75, p.getZ());
+        tick(p);
+        h.assertTrue(WingsState.speedFlagAt(p) > 0, "client deploy cannot mint movement allowance");
+        h.assertTrue(Math.abs(p.getY() - acceptedY) < 0.001, "second burst is rolled back");
+        h.succeed();
+    }
+
     /** R2-02：>20 格/t 不再有“传送豁免”——未授权的大位移同样拉回并打标。 */
     @GameTest(template = "empty", timeoutTicks = 60)
     public static void speedGovernorPullsBackHugeDelta(GameTestHelper h) {
@@ -296,19 +400,61 @@ public final class WingsGameTests {
         ServerLevel level = h.getLevel();
         Phantom phantom = new Phantom(EntityType.PHANTOM, level);
         phantom.setPos(h.absoluteVec(new Vec3(2.5, 3, 2.5)));
+        phantom.setNoAi(true);
+        phantom.setNoGravity(true);
+        phantom.setHealth(1);
+        level.addFreshEntity(phantom);
         LightningBolt bolt = new LightningBolt(EntityType.LIGHTNING_BOLT, level);
         bolt.setPos(phantom.position());
-        FlightEvents.onPhantomDeath(new LivingDeathEvent(phantom,
-                new net.minecraft.world.damagesource.DamageSource(
-                        level.registryAccess().registryOrThrow(
-                                net.minecraft.core.registries.Registries.DAMAGE_TYPE)
-                                .getHolderOrThrow(DamageTypes.LIGHTNING_BOLT),
-                        bolt, bolt, phantom.position())));
-        long feathers = level.getEntitiesOfClass(ItemEntity.class,
+        level.addFreshEntity(bolt);
+        ItemEntity[] droppedFeather = new ItemEntity[1];
+        h.runAfterDelay(2, () -> {
+            h.assertTrue(!phantom.isAlive(), "real lightning entity kills the phantom");
+            var feathers = level.getEntitiesOfClass(ItemEntity.class,
+                            phantom.getBoundingBox().inflate(3)).stream()
+                    .filter(e -> e.getItem().is(ModItems.THUNDER_FEATHER.get()))
+                    .toList();
+            h.assertTrue(feathers.size() == 1 && feathers.get(0).getItem().getCount() == 1,
+                    "real lightning-killed phantom drops one thunder feather");
+            droppedFeather[0] = feathers.get(0);
+        });
+        h.runAfterDelay(40, () -> {
+            h.assertTrue(!bolt.isAlive(), "the real lightning bolt completes all flashes");
+            h.assertTrue(droppedFeather[0] != null && droppedFeather[0].isAlive()
+                            && droppedFeather[0].getItem().is(ModItems.THUNDER_FEATHER.get())
+                            && droppedFeather[0].getItem().getCount() == 1,
+                    "the same thunder feather survives the entire strike and remains collectible");
+            h.assertTrue(!droppedFeather[0].isInvulnerable(), "the drop is not globally invulnerable");
+            h.succeed();
+        });
+    }
+
+    @GameTest(template = "empty", timeoutTicks = 60)
+    public static void thunderFeatherStillTakesOtherDamage(GameTestHelper h) {
+        ServerLevel level = h.getLevel();
+        Vec3 position = h.absoluteVec(new Vec3(2.5, 3, 2.5));
+        for (var source : java.util.List.of(level.damageSources().genericKill(), level.damageSources().lava())) {
+            ItemEntity feather = new ItemEntity(level, position.x, position.y, position.z,
+                    new ItemStack(ModItems.THUNDER_FEATHER.get()));
+            level.addFreshEntity(feather);
+            h.assertTrue(feather.hurt(source, 5.0F) && !feather.isAlive(),
+                    "other damage, including lava, still removes thunder feathers: " + source);
+        }
+        h.succeed();
+    }
+
+    @GameTest(template = "empty", timeoutTicks = 60)
+    public static void phantomKilledWithoutLightningDoesNotDropFeather(GameTestHelper h) {
+        ServerLevel level = h.getLevel();
+        Phantom phantom = new Phantom(EntityType.PHANTOM, level);
+        phantom.setPos(h.absoluteVec(new Vec3(2.5, 3, 2.5)));
+        level.addFreshEntity(phantom);
+        phantom.hurt(level.damageSources().genericKill(), Float.MAX_VALUE);
+        h.assertTrue(!phantom.isAlive(), "control phantom actually dies");
+        h.assertTrue(level.getEntitiesOfClass(ItemEntity.class,
                         phantom.getBoundingBox().inflate(3)).stream()
-                .filter(e -> e.getItem().is(ModItems.THUNDER_FEATHER.get()))
-                .count();
-        h.assertTrue(feathers == 1, "lightning-killed phantom drops 雷鹏骨羽");
+                .noneMatch(e -> e.getItem().is(ModItems.THUNDER_FEATHER.get())),
+                "non-lightning death must not produce thunder feathers");
         h.succeed();
     }
 

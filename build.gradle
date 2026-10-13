@@ -101,9 +101,15 @@ minecraft {
         // By default, the server will crash when no gametests are provided.
         // The gametest system is also enabled by default for other run configs under the /test command.
         gameTestServer {
+            if (project.hasProperty('shadowMeleeOnly')) {
+                workingDirectory project.file(providers.gradleProperty('shadowMeleeRunDir')
+                        .getOrElse('run-shadow-melee'))
+            }
             property 'forge.enabledGameTestNamespaces', project.hasProperty('yujiOnly') ? 'yuji_tests' :
                     project.hasProperty('coreOnly') ? "${mod_id},yuji_tests" :
-                    project.hasProperty('nightOnly') ? 'eternal_night_tests' : "${mod_id},eternal_night_tests,yuji_tests"
+                    project.hasProperty('blinkOnly') ? 'wings_blink_tests' :
+                    project.hasProperty('shadowMeleeOnly') ? 'shadow_melee_tests' :
+                    project.hasProperty('nightOnly') ? 'eternal_night_tests' : "${mod_id},eternal_night_tests,shadow_melee_tests,yuji_tests"
         }
 
         data {
@@ -122,16 +128,12 @@ apply from: 'gradle/gravity-texture.gradle'
 apply from: 'gradle/fertilizer-resources.gradle'
 
 repositories {
-    maven {
-        url = 'https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/'
-        content { includeGroupByRegex('software\\.bernie.*'); includeGroup('com.eliotlash.mclib') }
-    }
     maven { url = 'https://maven.theillusivec4.top/' }
     maven {
         name = 'GeckoLib'
         url = 'https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/'
         content {
-            includeGroup('software.bernie.geckolib')
+            includeGroupByRegex('software\\.bernie.*')
             includeGroup('com.eliotlash.mclib')
         }
     }
@@ -146,7 +148,6 @@ repositories {
 }
 
 dependencies {
-    implementation fg.deobf("software.bernie.geckolib:geckolib-forge-${minecraft_version}:4.4.9")
     // Specify the version of Minecraft to use.
     // Any artifact can be supplied so long as it has a "userdev" classifier artifact and is a compatible patcher artifact.
     // The "userdev" classifier will be requested and setup by ForgeGradle.
@@ -185,6 +186,12 @@ tasks.named('processResources', ProcessResources).configure {
     from('src/main/resources/data/sound_isolating_eraser/structures/empty.nbt') {
         into 'data/yuji_tests/structures'
     }
+    from(layout.buildDirectory.file('generated/brickrot-test-resources/data/sound_isolating_eraser/structures/brickrot_empty.nbt')) {
+        into 'data/wings_blink_tests/structures'
+    }
+    from('src/main/resources/data/sound_isolating_eraser/structures/shadow_arena.nbt') {
+        into 'data/shadow_melee_tests/structures'
+    }
     var replaceProperties = [
             minecraft_version: minecraft_version, minecraft_version_range: minecraft_version_range,
             forge_version: forge_version, forge_version_range: forge_version_range,
@@ -204,8 +211,11 @@ tasks.named('jar', Jar).configure {
     // Keep Forge GameTests available to development runs without shipping them to players.
     exclude 'com/zeropointsix/eraser/gametest/**'
     exclude 'data/sound_isolating_eraser/structures/empty.nbt'
+    exclude 'data/sound_isolating_eraser/structures/shadow_arena.nbt'
     exclude 'data/eternal_night_tests/**'
     exclude 'data/yuji_tests/**'
+    exclude 'data/wings_blink_tests/**'
+    exclude 'data/shadow_melee_tests/**'
 
     manifest {
         attributes([
@@ -268,6 +278,19 @@ def checkWingsMotion = tasks.register('checkWingsMotion', JavaExec) {
 }
 tasks.named('check').configure { dependsOn checkWingsMotion }
 
+def compileFlightSpeedBudgetCheck = tasks.register('compileFlightSpeedBudgetCheck', JavaCompile) {
+    source = files('src/main/java/com/zeropointsix/eraser/wings/FlightSpeedBudget.java',
+            'tools/FlightSpeedBudgetCheck.java')
+    classpath = files()
+    destinationDirectory = layout.buildDirectory.dir('flight-speed-budget-check')
+}
+def checkFlightSpeedBudget = tasks.register('checkFlightSpeedBudget', JavaExec) {
+    dependsOn compileFlightSpeedBudgetCheck
+    classpath = files(compileFlightSpeedBudgetCheck.flatMap { it.destinationDirectory })
+    mainClass = 'FlightSpeedBudgetCheck'
+}
+tasks.named('check').configure { dependsOn checkFlightSpeedBudget }
+
 def compileNightRulesCheck = tasks.register('compileNightRulesCheck', JavaCompile) {
     source = files('src/main/java/com/zeropointsix/eraser/eternalnight/NightRules.java',
             'src/main/java/com/zeropointsix/eraser/eternalnight/CityLayout.java', 'tools/NightRulesCheck.java')
@@ -292,6 +315,9 @@ if (project.hasProperty('shaxiaE2E')) {
     apply from: 'gradle/shaxia-e2e.gradle'
 }
 
+if (project.hasProperty('shadowE2E')) {
+    apply from: 'gradle/shadow-e2e.gradle'
+}
 apply from: 'gradle/brickrot.gradle'
 if (project.hasProperty('brickrotE2E')) {
     apply from: 'gradle/brickrot-e2e.gradle'

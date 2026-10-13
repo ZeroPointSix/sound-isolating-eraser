@@ -9,13 +9,13 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.UUID;
 import java.util.WeakHashMap;
-import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
@@ -46,11 +46,13 @@ public final class FlightEvents {
 
     /** 上一 tick 位置（服务端速度校验/撞墙探测用；玩家对象弱引用，离线自动回收）。 */
     private static final Map<UUID, Vec3> lastPositions = new WeakHashMap<>();
+    private static final Map<UUID, FlightSpeedBudget> speedBudgets = new WeakHashMap<>();
     /** 超速告警节流（仅提示用，不落盘）。 */
     private static final Map<UUID, Long> lastSpeedWarnAt = new WeakHashMap<>();
 
     // ------------------------------------------------------------ actions
     public static void serverSetDeployed(ServerPlayer p, boolean want) {
+        boolean wasDeployed = WingsState.deployed(p);
         if (want) {
             // 展开才校验穿戴与饥饿；收起路径必须无条件清状态（脱装备时也要回收
             // deployed/noGravity/fallFlying，否则残留泄漏）
@@ -60,12 +62,17 @@ public final class FlightEvents {
                 return;
             }
         }
+        // Settle movement before changing flight state. Same-tick stow/deploy
+        // requests must not erase unchecked movement or refill the budget.
+        if (wasDeployed || (want && lastPositions.containsKey(p.getUUID()))) {
+            acceptMovement(p);
+        }
         WingsState.setDeployed(p, want);
         if (want) {
             p.setNoGravity(true);
             // 部署瞬间可能带着落体惯性——把超速治理基准锚在部署点，
             // 否则下一 tick 的合法速度余量会被误判拉回
-            markTeleported(p);
+            lastPositions.putIfAbsent(p.getUUID(), p.position());
             // 标记为鞘翅式飞行：原版服务器 floating 踢人与客户端动画都按 fall-flying 处理
             p.startFallFlying();
             WingsState.setHoverAnchor(p, p.getY());
@@ -101,7 +108,7 @@ public final class FlightEvents {
     }
 
     public static void serverBlink(ServerPlayer p) {
-        if (!WingsState.deployed(p)) return;
+        if (!p.isAlive() || p.isSpectator() || !WingsState.wearing(p) || !WingsState.deployed(p)) return;
         ServerLevel level = p.serverLevel();
         long now = level.getGameTime();
         WingsConfig.Server cfg = WingsConfig.SERVER;
@@ -114,43 +121,35 @@ public final class FlightEvents {
         if (times.length == 0 || now - times[0] >= cfg.blinkChainWindowTicks.get()) {
             times = new long[0]; // 链窗已结束（或无链），整条作废
         }
-        if (times.length == 0) {
-            // 新链第一闪：走普通冷却，成功后锚定链窗
-            if (now < WingsState.blinkCooldownUntil(p)) return;
-            WingsState.setBlinkTimes(p, new long[]{now});
-        } else if (times.length >= cfg.blinkChainMax.get() - 1) {
+        if (times.length == 0 && now < WingsState.blinkCooldownUntil(p)) return;
+
+        var destination = BlinkDestination.find(p, cfg.blinkDistance.get());
+        if (destination.isEmpty()) return;
+        Vec3 target = destination.get();
+        Vec3 eye = p.getEyePosition();
+        Vec3 dir = p.getLookAngle().normalize();
+        Vec3 from = p.position();
+        p.teleportToWithTicket(target.x, target.y, target.z);
+        markTeleported(p);
+        WingsState.setHoverAnchor(p, target.y);
+        p.resetFallDistance();
+        p.setDeltaMovement(dir.scale(0.6));
+
+        // 只有安全落位后才结算连闪与消耗；上限为 1 时首闪即打满。
+        if (times.length + 1 >= cfg.blinkChainMax.get()) {
             // 链内第 N 闪补满：本次放行，随后进入长锁（窗口随之作废）
             WingsState.setBlinkLockUntil(p, now + cfg.blinkChainCooldownTicks.get());
+            WingsState.setBlinkCooldownUntil(p, now + cfg.blinkChainCooldownTicks.get());
             WingsState.setBlinkTimes(p, new long[0]);
         } else {
             long[] merged = Arrays.copyOf(times, times.length + 1);
             merged[times.length] = now;
             WingsState.setBlinkTimes(p, merged);
-        }
-        // 每次成功雷遁都刷新普通冷却：链内连闪不读它，但窗口结束后下一闪要等它
-        WingsState.setBlinkCooldownUntil(p, now + cfg.blinkCooldownTicks.get());
-
-        Vec3 eye = p.getEyePosition();
-        Vec3 dir = p.getLookAngle().normalize();
-        double dist = cfg.blinkDistance.get();
-        Vec3 end = eye.add(dir.scale(dist));
-        BlockHitResult hit = level.clip(new ClipContext(eye, end,
-                ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, p));
-        Vec3 target = hit.getType() == HitResult.Type.MISS
-                ? end
-                : hit.getLocation().subtract(dir.scale(1.0));
-        if (!level.getBlockState(BlockPos.containing(target)).isAir()) {
-            target = hit.getLocation().subtract(dir.scale(1.0));
+            WingsState.setBlinkCooldownUntil(p, now + cfg.blinkCooldownTicks.get());
         }
 
         // departure FX: silver arc + ring
         spawnBlinkFx(level, eye, target);
-        Vec3 from = p.position();
-        p.teleportToWithTicket(target.x, target.y, target.z);
-        // 雷瞬是服务端位移：标记授权传送，避免被超速治理/撞墙探测误判
-        markTeleported(p);
-        p.resetFallDistance();
-        p.setDeltaMovement(dir.scale(0.6));
 
         level.playSound(null, from.x, from.y, from.z,
                 SoundEvents.LIGHTNING_BOLT_THUNDER, SoundSource.PLAYERS, 0.6f, 1.3f);
@@ -200,6 +199,7 @@ public final class FlightEvents {
             if (WingsState.deployed(p)) {
                 serverSetDeployed(p, false);
             }
+            lastPositions.remove(p.getUUID());
             return;
         }
 
@@ -232,30 +232,13 @@ public final class FlightEvents {
             // 客户端权威飞行下 horizontalCollision 不可信，统一用每 tick 位置增量。
             // 大位移不再有豁免档：合法传送/重生/跨维度在事件里显式 markTeleported 重置基准。
             {
-                Vec3 prev = lastPositions.put(p.getUUID(), p.position());
+                Vec3 prev = acceptMovement(p);
                 if (prev != null) {
                     ServerLevel level = p.serverLevel();
                     long now = level.getGameTime();
-                    double dx = p.getX() - prev.x, dy = p.getY() - prev.y, dz = p.getZ() - prev.z;
-                    double speedBpt3d = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                    double dx = p.getX() - prev.x, dz = p.getZ() - prev.z;
                     double speedBpt = Math.hypot(dx, dz);
-                    // 超速治理：超出档位上限 +50% 余量的位移拉回上一认可位置
-                    double allowedMs = cfg.tierSpeed(WingsState.tier(p)) * 1.5 + 5.0;
-                    if (speedBpt3d * 20.0 > allowedMs) {
-                        WingsState.setSpeedFlagAt(p, now);
-                        p.teleportToWithTicket(prev.x, prev.y, prev.z);
-                        // FakePlayer 的 connection.teleport 是空实现：补一次直接落位，
-                        // 保证服务端视图坐标也回到上一认可位置（真实玩家已由包处理落位）
-                        p.setPos(prev.x, prev.y, prev.z);
-                        p.setDeltaMovement(Vec3.ZERO);
-                        lastPositions.put(p.getUUID(), p.position());
-                        Long lastWarn = lastSpeedWarnAt.get(p.getUUID());
-                        if (lastWarn == null || now - lastWarn > 100) {
-                            lastSpeedWarnAt.put(p.getUUID(), now);
-                            p.displayClientMessage(Component.translatable(
-                                    "message.sound_isolating_eraser.speed_cap"), true);
-                        }
-                    } else if (cfg.wallDamageEnabled.get()
+                    if (cfg.wallDamageEnabled.get()
                             && speedBpt * 20.0 > cfg.wallDamageThresholdSpeed.get()
                             && (WingsState.wallHitAt(p) == 0
                                     || now >= WingsState.wallHitAt(p) + 20)) {
@@ -282,10 +265,39 @@ public final class FlightEvents {
             if (p.tickCount % 40 == 0) {
                 WingsNet.syncToTracking(p);
             }
-        } else if (p.tickCount % 40 == 0) {
-            // 未部署也要周期性同步：客户端手势判定依赖 WingInfo（首次展开前没有包会发）
-            WingsNet.syncToTracking(p);
+        } else {
+            // Only an actual stowed tick allows a later deployment to re-anchor.
+            lastPositions.remove(p.getUUID());
+            if (p.tickCount % 40 == 0) {
+                // 未部署也要周期性同步：客户端手势判定依赖 WingInfo（首次展开前没有包会发）
+                WingsNet.syncToTracking(p);
+            }
         }
+    }
+
+    /** Returns the previous accepted position, or null on initialization/rollback. */
+    private static Vec3 acceptMovement(ServerPlayer p) {
+        Vec3 prev = lastPositions.put(p.getUUID(), p.position());
+        if (prev == null) return null;
+        long now = p.serverLevel().getGameTime();
+        double allowedMs = WingsConfig.SERVER.tierSpeed(WingsState.tier(p)) * 1.5 + 5.0;
+        FlightSpeedBudget budget = speedBudgets.computeIfAbsent(p.getUUID(),
+                ignored -> new FlightSpeedBudget());
+        if (budget.accept(p.position().distanceTo(prev), allowedMs / 20.0, now)) return prev;
+
+        WingsState.setSpeedFlagAt(p, now);
+        p.teleportToWithTicket(prev.x, prev.y, prev.z);
+        // FakePlayer's connection teleport does not update its server position.
+        p.setPos(prev.x, prev.y, prev.z);
+        p.setDeltaMovement(Vec3.ZERO);
+        lastPositions.put(p.getUUID(), p.position());
+        Long lastWarn = lastSpeedWarnAt.get(p.getUUID());
+        if (lastWarn == null || now - lastWarn > 100) {
+            lastSpeedWarnAt.put(p.getUUID(), now);
+            p.displayClientMessage(Component.translatable(
+                    "message.sound_isolating_eraser.speed_cap"), true);
+        }
+        return null;
     }
 
     // ------------------------------------------------------------ world events
@@ -316,7 +328,8 @@ public final class FlightEvents {
     @SubscribeEvent
     public static void onPhantomDeath(LivingDeathEvent event) {
         if (!(event.getEntity() instanceof Phantom phantom)) return;
-        if (!(event.getSource().getDirectEntity() instanceof LightningBolt)) return;
+        // Vanilla thunderHit uses a typed source without a direct entity.
+        if (!event.getSource().is(DamageTypes.LIGHTNING_BOLT)) return;
         if (phantom.level().isClientSide) return;
         ItemStack drop = new ItemStack(ModItems.THUNDER_FEATHER.get());
         phantom.level().addFreshEntity(new ItemEntity(phantom.level(),
@@ -326,28 +339,33 @@ public final class FlightEvents {
     /** 服务端发起的位移（雷瞬/拉回等）调用：重置速度基准，下一 tick 不判超速。 */
     public static void markTeleported(Player p) {
         lastPositions.put(p.getUUID(), p.position());
+        speedBudgets.remove(p.getUUID());
     }
 
     /** 原版/指令传送（/tp、末影珍珠、紫颂果等）同样属于授权位移。 */
     @SubscribeEvent
     public static void onTeleport(EntityTeleportEvent event) {
         lastPositions.remove(event.getEntity().getUUID());
+        speedBudgets.remove(event.getEntity().getUUID());
     }
 
     @SubscribeEvent
     public static void onRespawn(PlayerEvent.PlayerRespawnEvent event) {
         lastPositions.remove(event.getEntity().getUUID());
+        speedBudgets.remove(event.getEntity().getUUID());
     }
 
     @SubscribeEvent
     public static void onDimensionChange(PlayerEvent.PlayerChangedDimensionEvent event) {
         lastPositions.remove(event.getEntity().getUUID());
+        speedBudgets.remove(event.getEntity().getUUID());
     }
 
     /** 登录即发初始 WingInfo，否则客户端连一次部署手势都无法判定。 */
     @SubscribeEvent
     public static void onLogin(PlayerEvent.PlayerLoggedInEvent event) {
         lastPositions.remove(event.getEntity().getUUID());
+        speedBudgets.remove(event.getEntity().getUUID());
         if (event.getEntity() instanceof ServerPlayer sp) WingsNet.syncToTracking(sp);
     }
 
