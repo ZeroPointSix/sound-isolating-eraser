@@ -320,9 +320,8 @@ public final class WingsQaServer {
                         "PASS real connected survival player: batched CRUISE wall, STORM-to-HOVER, repeated deploy collision health damage\n");
             }
             case "controlsSetup", "inputSetup" -> {
-                // Native modifier tests deliberately descend, then coast between
-                // GUI checks. Keep landing outside this input-only fixture.
-                controlFixture(server, wearerRef, next.equals("inputSetup") ? 1000 : 100);
+                // Leave descent room while keeping blink destinations inside build height.
+                controlFixture(server, wearerRef, next.equals("inputSetup") ? 300 : 100);
                 WingsState.setTier(wearerRef, WingsState.CRUISE);
                 com.zeropointsix.eraser.wings.net.WingsNet.syncToTracking(wearerRef);
             }

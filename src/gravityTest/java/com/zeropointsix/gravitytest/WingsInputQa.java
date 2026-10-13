@@ -86,7 +86,7 @@ final class WingsInputQa {
                 restoreBindings();
                 // Held Shift is also a real descent input; leave enough altitude in BOOST.
                 mc.player.connection.sendCommand("wingsqa phase inputSetup");
-            }, () -> require(info(mc).deployed() && info(mc).tier() == 1 && mc.player.getY() > 995,
+            }, () -> require(info(mc).deployed() && info(mc).tier() == 1 && mc.player.getY() > 295,
                     "fixture reset before held Shift"), 30, -1, 0);
             add(label + " bare K rejected", () -> {
                 restoreBindings();
@@ -99,6 +99,10 @@ final class WingsInputQa {
                     () -> checkAction(mc, packet), 25, packet, 1);
             add(label + " release does not emit", () -> input("keyup", "k", "Shift_L"),
                     () -> { }, 8, -1, 0);
+            add(label + " reset after held-modifier descent",
+                    () -> mc.player.connection.sendCommand("wingsqa phase inputSetup"),
+                    () -> require(info(mc).deployed() && info(mc).tier() == 1 && mc.player.getY() > 295,
+                            "GUI fixture remains airborne inside build height"), 30, -1, 0);
             add(label + " open inventory", () -> input("key", "e"),
                     () -> require(mc.screen != null, "inventory opened"), 8, -1, 0);
             add(label + " GUI input rejected", () -> input("key", "shift+k"),
@@ -124,7 +128,7 @@ final class WingsInputQa {
         add("R4 overlapping bindings reset airborne fixture", () -> {
             restoreBindings();
             mc.player.connection.sendCommand("wingsqa phase inputSetup");
-        }, () -> require(info(mc).deployed() && info(mc).tier() == 1 && mc.player.getY() > 995,
+        }, () -> require(info(mc).deployed() && info(mc).tier() == 1 && mc.player.getY() > 295,
                 "R4 fixture is deployed/cruise"), 40, -1, 0);
         add("R4 Shift+K selects blink without bare K cycle", () -> {
             bind(WingsKeys.CYCLE_TIER, KeyModifier.NONE, InputConstants.Type.KEYSYM.getOrCreate(GLFW.GLFW_KEY_K));
@@ -158,7 +162,7 @@ final class WingsInputQa {
         add("R4 mouse overlap reset airborne fixture", () -> {
             restoreBindings();
             mc.player.connection.sendCommand("wingsqa phase inputSetup");
-        }, () -> require(info(mc).deployed() && info(mc).tier() == 1 && mc.player.getY() > 195,
+        }, () -> require(info(mc).deployed() && info(mc).tier() == 1 && mc.player.getY() > 295,
                 "R4 mouse fixture is deployed/cruise"), 40, -1, 0);
         add("R4 Ctrl+mouse selects blink without bare mouse cycle", () -> {
             bind(WingsKeys.CYCLE_TIER, KeyModifier.NONE, InputConstants.Type.MOUSE.getOrCreate(GLFW.GLFW_MOUSE_BUTTON_4));
