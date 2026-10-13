@@ -26,6 +26,11 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BedPart;
 import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.phys.Vec3;
+import com.zeropointsix.eraser.yuji.city.RainCityEvents;
+import com.zeropointsix.eraser.yuji.city.RecliningBuddha;
+import com.zeropointsix.eraser.yuji.city.RainCityRules;
+import com.zeropointsix.eraser.yuji.city.RainCityTemplates;
+import com.zeropointsix.eraser.yuji.city.RainCityData;
 import net.minecraftforge.gametest.GameTestHolder;
 import net.minecraftforge.gametest.PrefixGameTestTemplate;
 
@@ -346,6 +351,46 @@ public final class RainCityGameTests {
         int minZ = Math.floorDiv((int) Math.floor(box.minZ) - 1, 16);
         int maxZ = Math.floorDiv((int) Math.floor(box.maxZ) + 1, 16);
         for (int x = minX; x <= maxX; x++) for (int z = minZ; z <= maxZ; z++) city.getChunk(x, z);
+    }
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji_city")
+    public static void cityClockLivesInSavedData(GameTestHelper h) {
+        var city = h.getLevel().getServer().getLevel(RainCityContent.LEVEL);
+        long before = city.getDayTime();
+        city.setDayTime(before + 12345);
+        // Extra dimensions wrap the overworld's level data; this is why the city keeps its own clock.
+        h.assertTrue(city.getDayTime() == h.getLevel().getServer().overworld().getDayTime(), "city level time mirrors the overworld");
+        RainCityData data = new RainCityData(); data.cityTime = RainCityRules.FIRST_NIGHT + 9 * RainCityRules.DAY;
+        RainCityData copy = RainCityData.load(data.save(new CompoundTag()));
+        h.assertTrue(copy.cityTime == data.cityTime && RainCityRules.day(copy.cityTime) == 10, "city clock survives restart at day ten");
+        h.succeed();
+    }
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji_city")
+    public static void cityMissingTemplateIsSkipped(GameTestHelper h) {
+        var manager = h.getLevel().getStructureManager();
+        h.assertTrue(RainCityTemplates.lookup(manager, "yuji/does_not_exist").isEmpty(), "missing template resolves empty without throwing");
+        h.assertTrue(RainCityTemplates.lookup(manager, "yuji/buildings/hospital").isPresent(), "real template still resolves");
+        h.succeed();
+    }
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji_city", timeoutTicks = 1200)
+    public static void cityBuddhaRespawnsAfterRemoval(GameTestHelper h) {
+        var city = h.getLevel().getServer().getLevel(RainCityContent.LEVEL);
+        city.getChunk(0, 0);
+        RainCityData data = new RainCityData();
+        UUID[] first = new UUID[1];
+        h.succeedWhen(() -> {
+            RainCityEvents.ensureBuddha(city, data);
+            h.assertTrue(data.buddha != null, "statue spawned or adopted");
+            if (first[0] == null) {
+                first[0] = data.buddha;
+                for (var b : city.getEntitiesOfClass(RecliningBuddha.class, new net.minecraft.world.phys.AABB(new BlockPos(0, 123, 0)).inflate(16), e -> true)) b.discard();
+                RainCityEvents.ensureBuddha(city, data);
+            }
+            h.assertTrue(!data.buddha.equals(first[0]), "removed statue is replaced");
+            var alive = city.getEntitiesOfClass(RecliningBuddha.class, new net.minecraft.world.phys.AABB(new BlockPos(0, 123, 0)).inflate(16), RecliningBuddha::isAlive);
+            h.assertTrue(alive.size() == 1 && alive.get(0).getUUID().equals(data.buddha), "exactly one live statue");
+            RainCityEvents.ensureBuddha(city, data);
+            h.assertTrue(city.getEntitiesOfClass(RecliningBuddha.class, new net.minecraft.world.phys.AABB(new BlockPos(0, 123, 0)).inflate(16), RecliningBuddha::isAlive).size() == 1, "no duplicate on later ticks");
+        });
     }
     private RainCityGameTests() { }
 }
