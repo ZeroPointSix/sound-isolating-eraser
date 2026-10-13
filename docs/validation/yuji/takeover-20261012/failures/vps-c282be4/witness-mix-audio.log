@@ -1,0 +1,106 @@
+ffmpeg version 6.1.1-3ubuntu5 Copyright (c) 2000-2023 the FFmpeg developers
+  built with gcc 13 (Ubuntu 13.2.0-23ubuntu3)
+  configuration: --prefix=/usr --extra-version=3ubuntu5 --toolchain=hardened --libdir=/usr/lib/x86_64-linux-gnu --incdir=/usr/include/x86_64-linux-gnu --arch=amd64 --enable-gpl --disable-stripping --disable-omx --enable-gnutls --enable-libaom --enable-libass --enable-libbs2b --enable-libcaca --enable-libcdio --enable-libcodec2 --enable-libdav1d --enable-libflite --enable-libfontconfig --enable-libfreetype --enable-libfribidi --enable-libglslang --enable-libgme --enable-libgsm --enable-libharfbuzz --enable-libmp3lame --enable-libmysofa --enable-libopenjpeg --enable-libopenmpt --enable-libopus --enable-librubberband --enable-libshine --enable-libsnappy --enable-libsoxr --enable-libspeex --enable-libtheora --enable-libtwolame --enable-libvidstab --enable-libvorbis --enable-libvpx --enable-libwebp --enable-libx265 --enable-libxml2 --enable-libxvid --enable-libzimg --enable-openal --enable-opencl --enable-opengl --disable-sndio --enable-libvpl --disable-libmfx --enable-libdc1394 --enable-libdrm --enable-libiec61883 --enable-chromaprint --enable-frei0r --enable-ladspa --enable-libbluray --enable-libjack --enable-libpulse --enable-librabbitmq --enable-librist --enable-libsrt --enable-libssh --enable-libsvtav1 --enable-libx264 --enable-libzmq --enable-libzvbi --enable-lv2 --enable-sdl2 --enable-libplacebo --enable-librav1e --enable-pocketsphinx --enable-librsvg --enable-libjxl --enable-shared
+  libavutil      58. 29.100 / 58. 29.100
+  libavcodec     60. 31.102 / 60. 31.102
+  libavformat    60. 16.100 / 60. 16.100
+  libavdevice    60.  3.100 / 60.  3.100
+  libavfilter     9. 12.100 /  9. 12.100
+  libswscale      7.  5.100 /  7.  5.100
+  libswresample   4. 12.100 /  4. 12.100
+  libpostproc    57.  3.100 / 57.  3.100
+[wav @ 0x5816f6df8ec0] Ignoring maximum wav data size, file may be invalid
+[wav @ 0x5816f6df8ec0] Estimating duration from bitrate, this may be inaccurate
+Input #0, wav, from '/data/yuji-fodu-20261011/repo/build/yuji-isolation-1791791783828934955/witness-mix.wav':
+  Duration: 00:04:09.04, bitrate: 1411 kb/s
+  Stream #0:0: Audio: pcm_s16le ([1][0][0][0] / 0x0001), 44100 Hz, stereo, s16, 1411 kb/s
+Stream mapping:
+  Stream #0:0 -> #0:0 (pcm_s16le (native) -> vorbis (libvorbis))
+Output #0, ogg, to '/data/yuji-fodu-20261011/repo/build/yuji-isolation-1791791783828934955/witness-mix.ogg':
+  Metadata:
+    encoder         : Lavf60.16.100
+  Stream #0:0: Audio: vorbis, 44100 Hz, stereo, fltp
+    Metadata:
+      encoder         : Lavc60.31.102 libvorbis
+size=       0kB time=N/A bitrate=N/A speed=N/A    
+size=     141kB time=00:00:13.80 bitrate=  83.8kbits/s speed=27.6x    
+size=     256kB time=00:00:26.01 bitrate=  80.6kbits/s speed=  26x    
+size=     256kB time=00:00:36.23 bitrate=  57.9kbits/s speed=24.1x    
+size=     256kB time=00:00:43.22 bitrate=  48.5kbits/s speed=21.4x    
+size=     512kB time=00:00:50.35 bitrate=  83.3kbits/s speed=  20x    
+size=     512kB time=00:01:03.20 bitrate=  66.4kbits/s speed=20.9x    
+size=     768kB time=00:01:13.30 bitrate=  85.8kbits/s speed=20.8x    
+size=     768kB time=00:01:25.32 bitrate=  73.7kbits/s speed=21.2x    
+size=    1024kB time=00:01:38.04 bitrate=  85.6kbits/s speed=21.7x    
+size=    1024kB time=00:01:48.26 bitrate=  77.5kbits/s speed=21.6x    
+size=    1280kB time=00:01:58.64 bitrate=  88.4kbits/s speed=21.5x    
+size=    1280kB time=00:02:08.06 bitrate=  81.9kbits/s speed=21.3x    
+size=    1536kB time=00:02:18.40 bitrate=  90.9kbits/s speed=21.2x    
+size=    1536kB time=00:02:27.80 bitrate=  85.1kbits/s speed=  21x    
+size=    1792kB time=00:02:38.42 bitrate=  92.7kbits/s speed=21.1x    
+size=    1792kB time=00:02:45.17 bitrate=  88.9kbits/s speed=20.6x    
+size=    1792kB time=00:02:53.57 bitrate=  84.6kbits/s speed=20.4x    
+size=    2048kB time=00:03:04.92 bitrate=  90.7kbits/s speed=20.5x    
+size=    2048kB time=00:03:16.19 bitrate=  85.5kbits/s speed=20.6x    
+size=    2304kB time=00:03:25.93 bitrate=  91.7kbits/s speed=20.5x    
+size=    2304kB time=00:03:38.39 bitrate=  86.4kbits/s speed=20.7x    
+size=    2560kB time=00:03:50.60 bitrate=  90.9kbits/s speed=20.9x    
+size=    2816kB time=00:04:02.36 bitrate=  95.2kbits/s speed=  21x    
+[wav @ 0x5816f6df8ec0] Packet corrupt (stream = 0, dts = NOPTS).
+[in#0/wav @ 0x5816f6df8dc0] corrupt input packet in stream 0
+[out#0/ogg @ 0x5816f6e0e640] video:0kB audio:2911kB subtitle:0kB other streams:0kB global headers:4kB muxing overhead: 1.098725%
+size=    2943kB time=00:04:09.02 bitrate=  96.8kbits/s speed=20.9x    
+ffmpeg version 6.1.1-3ubuntu5 Copyright (c) 2000-2023 the FFmpeg developers
+  built with gcc 13 (Ubuntu 13.2.0-23ubuntu3)
+  configuration: --prefix=/usr --extra-version=3ubuntu5 --toolchain=hardened --libdir=/usr/lib/x86_64-linux-gnu --incdir=/usr/include/x86_64-linux-gnu --arch=amd64 --enable-gpl --disable-stripping --disable-omx --enable-gnutls --enable-libaom --enable-libass --enable-libbs2b --enable-libcaca --enable-libcdio --enable-libcodec2 --enable-libdav1d --enable-libflite --enable-libfontconfig --enable-libfreetype --enable-libfribidi --enable-libglslang --enable-libgme --enable-libgsm --enable-libharfbuzz --enable-libmp3lame --enable-libmysofa --enable-libopenjpeg --enable-libopenmpt --enable-libopus --enable-librubberband --enable-libshine --enable-libsnappy --enable-libsoxr --enable-libspeex --enable-libtheora --enable-libtwolame --enable-libvidstab --enable-libvorbis --enable-libvpx --enable-libwebp --enable-libx265 --enable-libxml2 --enable-libxvid --enable-libzimg --enable-openal --enable-opencl --enable-opengl --disable-sndio --enable-libvpl --disable-libmfx --enable-libdc1394 --enable-libdrm --enable-libiec61883 --enable-chromaprint --enable-frei0r --enable-ladspa --enable-libbluray --enable-libjack --enable-libpulse --enable-librabbitmq --enable-librist --enable-libsrt --enable-libssh --enable-libsvtav1 --enable-libx264 --enable-libzmq --enable-libzvbi --enable-lv2 --enable-sdl2 --enable-libplacebo --enable-librav1e --enable-pocketsphinx --enable-librsvg --enable-libjxl --enable-shared
+  libavutil      58. 29.100 / 58. 29.100
+  libavcodec     60. 31.102 / 60. 31.102
+  libavformat    60. 16.100 / 60. 16.100
+  libavdevice    60.  3.100 / 60.  3.100
+  libavfilter     9. 12.100 /  9. 12.100
+  libswscale      7.  5.100 /  7.  5.100
+  libswresample   4. 12.100 /  4. 12.100
+  libpostproc    57.  3.100 / 57.  3.100
+Input #0, ogg, from '/data/yuji-fodu-20261011/repo/build/yuji-isolation-1791791783828934955/witness-mix.ogg':
+  Duration: 00:04:09.04, start: 0.000000, bitrate: 96 kb/s
+  Stream #0:0: Audio: vorbis, 44100 Hz, stereo, fltp, 128 kb/s
+    Metadata:
+      encoder         : Lavc60.31.102 libvorbis
+[Parsed_volumedetect_0 @ 0x61857443fe40] n_samples: 0
+Stream mapping:
+  Stream #0:0 -> #0:0 (vorbis (native) -> pcm_s16le (native))
+Output #0, null, to 'pipe:':
+  Metadata:
+    encoder         : Lavf60.16.100
+  Stream #0:0: Audio: pcm_s16le, 44100 Hz, stereo, s16, 1411 kb/s
+    Metadata:
+      encoder         : Lavc60.31.102 pcm_s16le
+size=       0kB time=00:00:00.00 bitrate=N/A speed=   0x    
+size=N/A time=00:00:58.41 bitrate=N/A speed= 116x    
+size=N/A time=00:01:56.55 bitrate=N/A speed= 116x    
+size=N/A time=00:02:57.04 bitrate=N/A speed= 118x    
+size=N/A time=00:03:42.57 bitrate=N/A speed= 111x    
+[out#0/null @ 0x618574419d00] video:0kB audio:42901kB subtitle:0kB other streams:0kB global headers:0kB muxing overhead: unknown
+size=N/A time=00:04:09.02 bitrate=N/A speed= 106x    
+[Parsed_volumedetect_0 @ 0x618574445180] n_samples: 21965328
+[Parsed_volumedetect_0 @ 0x618574445180] mean_volume: -46.4 dB
+[Parsed_volumedetect_0 @ 0x618574445180] max_volume: -9.8 dB
+[Parsed_volumedetect_0 @ 0x618574445180] histogram_9db: 2
+[Parsed_volumedetect_0 @ 0x618574445180] histogram_10db: 16
+[Parsed_volumedetect_0 @ 0x618574445180] histogram_11db: 41
+[Parsed_volumedetect_0 @ 0x618574445180] histogram_12db: 79
+[Parsed_volumedetect_0 @ 0x618574445180] histogram_13db: 140
+[Parsed_volumedetect_0 @ 0x618574445180] histogram_14db: 164
+[Parsed_volumedetect_0 @ 0x618574445180] histogram_15db: 200
+[Parsed_volumedetect_0 @ 0x618574445180] histogram_16db: 226
+[Parsed_volumedetect_0 @ 0x618574445180] histogram_17db: 255
+[Parsed_volumedetect_0 @ 0x618574445180] histogram_18db: 258
+[Parsed_volumedetect_0 @ 0x618574445180] histogram_19db: 322
+[Parsed_volumedetect_0 @ 0x618574445180] histogram_20db: 349
+[Parsed_volumedetect_0 @ 0x618574445180] histogram_21db: 380
+[Parsed_volumedetect_0 @ 0x618574445180] histogram_22db: 524
+[Parsed_volumedetect_0 @ 0x618574445180] histogram_23db: 1336
+[Parsed_volumedetect_0 @ 0x618574445180] histogram_24db: 2859
+[Parsed_volumedetect_0 @ 0x618574445180] histogram_25db: 5493
+[Parsed_volumedetect_0 @ 0x618574445180] histogram_26db: 9047
+[Parsed_volumedetect_0 @ 0x618574445180] histogram_27db: 13843

@@ -215,6 +215,8 @@ public final class NightEvents {
             player.displayClientMessage(Component.translatable("message.sound_isolating_eraser.city.unsafe_home"), true);
         }
         player.teleportTo(overworld, target.x, target.y, target.z, player.getRespawnAngle(), 0);
+        // Door exits run inside connection.tick(), which restores firstGoodXYZ after doTick().
+        player.connection.resetPosition();
         player.fallDistance = 0;
         player.getPersistentData().remove(PLAYER_TAG);
         PREVIOUS_POSITION.remove(player.getUUID());

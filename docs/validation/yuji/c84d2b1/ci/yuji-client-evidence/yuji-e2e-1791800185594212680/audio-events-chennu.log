@@ -1,0 +1,4 @@
+phase=ai-chennu, tick=16, event=qihai:entity.qihai.chennu.roar, decoded=qihai:chennu/roar, active=true, volume=1.0, pitch=1.0, position=0.5,65.0,0.5, backend=OpenAL-wave
+phase=ai-chennu, tick=21, event=qihai:entity.qihai.chennu.step, decoded=qihai:chennu/step, active=true, volume=0.5, pitch=1.0, position=1.5,65.0,1.75, backend=OpenAL-wave
+phase=ai-chennu, tick=51, event=qihai:entity.qihai.chennu.stomp, decoded=qihai:chennu/stomp, active=true, volume=1.0, pitch=1.0, position=2.925929023391131,65.0,5.294540242603801, backend=OpenAL-wave
+phase=audio-chennu, tick=11, event=qihai:entity.qihai.chennu.death, decoded=qihai:chennu/death, active=true, volume=1.0, pitch=0.98244894, position=2.625,65.0,7.875, backend=OpenAL-wave

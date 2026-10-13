@@ -1,0 +1,1 @@
+event=qihai:entity.qihai.wangyu.death, decoded=qihai:wangyu/death, active=true, volume=1.0, backend=OpenAL-wave, observed=[minecraft:block.stone.step, qihai:entity.qihai.wangyu.death, minecraft:block.wooden_door.open, qihai:entity.qihai.wangyu.ambient]

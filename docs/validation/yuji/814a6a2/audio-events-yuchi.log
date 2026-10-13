@@ -1,0 +1,3 @@
+phase=yuchi, tick=17, event=qihai:entity.qihai.yuchi.ambient, decoded=qihai:yuchi/ambient, active=true, volume=1.0, pitch=1.0081494, position=0.5,65.0,0.5, backend=OpenAL-null
+phase=ai-yuchi, tick=30, event=qihai:entity.qihai.yuchi.step, decoded=qihai:yuchi/step, active=true, volume=0.5, pitch=1.0, position=0.5,65.0,2.125, backend=OpenAL-null
+phase=audio-yuchi, tick=11, event=qihai:entity.qihai.yuchi.death, decoded=qihai:yuchi/death, active=true, volume=1.0, pitch=1.0516257, position=0.5,65.0,2.875, backend=OpenAL-null

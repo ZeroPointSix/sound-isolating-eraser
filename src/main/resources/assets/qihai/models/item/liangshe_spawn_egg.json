@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "qihai:item/liangshe_spawn_egg"
+  }
+}

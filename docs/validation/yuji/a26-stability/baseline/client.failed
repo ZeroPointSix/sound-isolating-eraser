@@ -1,0 +1,1 @@
+java.lang.AssertionError: real locomotion/skill audio played: tanyu.bite, requested=[qihai:entity.qihai.tanyu.death, qihai:entity.qihai.tanyu.ambient], active=[qihai:entity.qihai.tanyu.death, qihai:entity.qihai.tanyu.ambient]

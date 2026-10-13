@@ -33,6 +33,7 @@ public final class ModMain {
         com.zeropointsix.eraser.eternalnight.EternalNightContent.register(
                 FMLJavaModLoadingContext.get().getModEventBus());
         IEventBus bus = FMLJavaModLoadingContext.get().getModEventBus();
+        com.zeropointsix.eraser.yuji.YujiContent.register(bus);
         com.zeropointsix.eraser.brickrot.BrickrotContent.register(bus);
         com.zeropointsix.eraser.fertilizer.FertilizerContent.register(bus);
         ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER,

@@ -108,7 +108,23 @@ public final class EternalNightGameTests {
                 reloaded.load(saved);
                 h.assertTrue(NightEvents.playerData(reloaded).getLongArray("Doors").length == 2,
                         "actual player save/load preserves door history");
-                NightEvents.returnHome(player);
+                boolean[] returnedDuringTick = {false};
+                java.util.function.Consumer<net.minecraftforge.event.TickEvent.PlayerTickEvent> returnAtPlayerTick = event -> {
+                    if (event.player == player && event.phase == net.minecraftforge.event.TickEvent.Phase.END) {
+                        NightEvents.returnHome(player);
+                        returnedDuringTick[0] = true;
+                    }
+                };
+                // Exercise the native connection's post-doTick position restore, not only direct teleport.
+                net.minecraftforge.common.MinecraftForge.EVENT_BUS.addListener(
+                        net.minecraftforge.eventbus.api.EventPriority.LOWEST, false,
+                        net.minecraftforge.event.TickEvent.PlayerTickEvent.class, returnAtPlayerTick);
+                try {
+                    player.connection.tick();
+                } finally {
+                    net.minecraftforge.common.MinecraftForge.EVENT_BUS.unregister(returnAtPlayerTick);
+                }
+                h.assertTrue(returnedDuringTick[0], "return executes inside the native connection tick");
                 h.assertTrue(player.serverLevel() == overworld, "returns to overworld");
                 h.assertTrue(player.blockPosition().distSqr(savedBed) < 25, "returns beside own bed");
                 h.assertTrue(NightEvents.playerData(player).isEmpty(), "return clears history");

@@ -1,0 +1,79 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. See https://docs.gradle.org/8.1.1/userguide/gradle_daemon.html#sec:disabling_the_daemon.
+Daemon will be stopped at the end of the build 
+
+> Configure project :
+Java: 17.0.20.1, JVM: 17.0.20.1+1-1-24.04-Ubuntu (Ubuntu), Arch: amd64
+Path for java installation '/usr/lib/jvm/openjdk-17' (Common Linux Locations) does not contain a java executable
+
+> Task :compileJava
+Note: /data/yuji-pr21-a23/src/main/java/com/zeropointsix/eraser/yuji/YujiMonster.java uses or overrides a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+
+> Task :generateBrickrotTestTemplate UP-TO-DATE
+> Task :generateFertilizerResources UP-TO-DATE
+> Task :generateGravityTexture UP-TO-DATE
+> Task :processResources UP-TO-DATE
+> Task :classes
+> Task :downloadMcpConfig
+> Task :extractSrg UP-TO-DATE
+> Task :createSrgToMcp UP-TO-DATE
+> Task :downloadMCMeta UP-TO-DATE
+> Task :downloadAssets UP-TO-DATE
+> Task :extractNatives UP-TO-DATE
+> Task :makeSrcDirs
+> Task :prepareRuns
+> Task :genVSCodeRuns
+> Task :compileYujiTestJava
+> Task :processYujiTestResources UP-TO-DATE
+> Task :yujiTestClasses
+> Task :writeYujiTestClasspath UP-TO-DATE
+
+> Task :verifyBrickrotAssets
+cebbc944e19c4e10433ea84ef2c420da79e375df3c3b9dc1203a941589dd3fcd geo/brickrot_head.geo.json
+56bb6b252e432d406a6e361939c38fe04d92124813ab026029c3eabfdaae08cf geo/brickrot_neck.geo.json
+26c16193c0da86bc8a21e9de2fd42b91e691b2cd6c8ba080345a0c373b858638 geo/brickrot_neck_breached.geo.json
+08b0d244720d07f5935cb278c8b0974cf94a775619c510b6f7a8b12833d1a22d geo/brickrot_segment_grey.geo.json
+663f4ec9845a279a2cc9e5602355586cb0237897ccb557590cd82b1f8981e82f geo/brickrot_segment_red.geo.json
+dae77423c7eb810018fbcba2c7a6e542ba5a5cedae35f3b9365108ea4d3a0191 geo/brickrot_segment_tail.geo.json
+b965c627fa86fb5a59592f0590da75d30844c773a257a56a7a769c718aabdcc2 animations/brickrot.animation.json
+549eb882af4352ed5a3ceecc1842bb734133047a7327baa1888cb58fa89c281d textures/entity/brickrot.png
+2771b6e82581f960c1d6d89f44a8c0f99ab402ca68d1d5eb58b19616ca05f636 textures/entity/brickrot_glowmask.png
+56cd4c535ad675983cfe868386d678d14c413859a84b02ec6f63e0fd97556e4a textures/item/brickrot_spawn_egg.png
+d2d67b22443c23da9188100f1a63ddf1f7ec4e0e4a3dcc4e6a1d04d87b2213ef models/item/brickrot_spawn_egg.json
+Brickrot art verified: 6 geometries, 11 animations, 3 textures, spawn egg model
+
+> Task :jar
+> Task :createMcpToSrg
+> Task :reobfJar
+> Task :jarJar SKIPPED
+> Task :reobfJarJar SKIPPED
+> Task :assemble
+> Task :compileNightRulesCheck
+
+> Task :checkNightRules
+NightRulesCheck PASS assertions=666325
+
+> Task :compileWingsMotionCheck
+
+> Task :checkWingsMotion
+WINGS_MOTION_PASSED assertions=1470
+
+> Task :compileTestJava NO-SOURCE
+> Task :processTestResources NO-SOURCE
+> Task :testClasses UP-TO-DATE
+> Task :test NO-SOURCE
+
+> Task :verifyCityAssets
+CITY_ART_VERIFIED files=87 loot_tables=6 source_sha256=9dab6be385742ebc8a1e7c2d371db5f8b5ef6b40a1062ee376ae99f915455d24
+
+> Task :check
+> Task :build
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+See https://docs.gradle.org/8.1.1/userguide/command_line_interface.html#sec:command_line_warnings
+
+BUILD SUCCESSFUL in 1m 56s
+25 actionable tasks: 14 executed, 11 up-to-date

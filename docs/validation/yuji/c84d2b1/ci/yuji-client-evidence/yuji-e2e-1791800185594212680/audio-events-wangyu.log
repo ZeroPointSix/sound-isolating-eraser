@@ -1,0 +1,3 @@
+phase=wangyu, tick=58, event=qihai:entity.qihai.wangyu.ambient, decoded=qihai:wangyu/ambient, active=true, volume=1.0, pitch=0.8748609, position=0.5,65.0,0.5, backend=OpenAL-wave
+phase=ai-wangyu, tick=21, event=minecraft:entity.player.hurt, decoded=minecraft:damage/hit3, active=true, volume=1.0, pitch=1.0, position=-5.375,66.0,13.0, backend=OpenAL-wave
+phase=audio-wangyu, tick=11, event=qihai:entity.qihai.wangyu.death, decoded=qihai:wangyu/death, active=true, volume=1.0, pitch=1.0643126, position=0.5,65.0,0.5, backend=OpenAL-wave

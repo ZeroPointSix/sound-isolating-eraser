@@ -1,0 +1,4 @@
+phase=shifotou, tick=2, event=qihai:music.qihai.shifotou_battle, decoded=qihai:shifotou/music_battle, active=true, volume=1.0, pitch=1.0, position=0.5,65.0,0.5, backend=OpenAL-wave
+phase=ai-shifotou, tick=22, event=qihai:entity.qihai.shifotou.slam, decoded=qihai:shifotou/slam, active=true, volume=1.0, pitch=1.0, position=1.4295247395833333,65.0,-0.55419921875, backend=OpenAL-wave
+phase=ai-shifotou, tick=36, event=qihai:entity.qihai.shifotou.gaze, decoded=qihai:shifotou/gaze, active=true, volume=1.0, pitch=1.0, position=2.8635796440972223,65.0,-0.4461082175925926, backend=OpenAL-wave
+phase=audio-shifotou, tick=10, event=qihai:entity.qihai.shifotou.death, decoded=qihai:shifotou/death, active=true, volume=1.0, pitch=1.1712478, position=32.75,65.0,15.0, backend=OpenAL-wave

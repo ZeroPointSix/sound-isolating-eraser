@@ -1,0 +1,29 @@
+{
+  "role": "Original local successful focused regression, local timeout, and unrelated first failures; separate from CI sources",
+  "files": {
+    "114722648071-e961-enhancement-first-failure.log": {
+      "bytes": 284946,
+      "sha256": "038fee48ac3cfc5dff93f496ec26946b26bdcc6a621bf814b3373a4886f1e450"
+    },
+    "114732796068-bd-eternal-night-first-failure.log": {
+      "bytes": 307535,
+      "sha256": "c42d273fd67e318902241e51818e580e9dd80ce9566ba17876880da384e230cf"
+    },
+    "compile-a18-door.log": {
+      "bytes": 1457,
+      "sha256": "73c3b7828c2456418ff593c558886346debdbca134ee6ce33e79554783df0811"
+    },
+    "full-a18-door-status.json": {
+      "bytes": 947,
+      "sha256": "3860378bd8502be2e9c169782862be427469b10dcf8944ea3246b437886e7b0a"
+    },
+    "full-a18-door-timeout.log": {
+      "bytes": 188478,
+      "sha256": "1c6d84fb4f3349980e8aba40732828fffd0b4cd948d915a6d502f73e5963f9fe"
+    },
+    "gametest-a20-focused.log": {
+      "bytes": 195478,
+      "sha256": "aa0a1947fc9bb12ba99e84190c3e3043e4aa937ff00e1386271825c9cf61d3f1"
+    }
+  }
+}

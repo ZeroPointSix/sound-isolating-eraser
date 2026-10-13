@@ -1,0 +1,8 @@
+epochMs=1791792624807 PASS isolation-ready real TCP player=82056727-80fc-35e5-b2f5-c6c33a3f7acf
+epochMs=1791792628907 START voice-0 target=YujiTester yaw=0.0
+epochMs=1791792641844 PASS armed-voice-0 listening before server enables natural AI
+epochMs=1791792669693 PASS voice-0 target=YujiTester received=0 resolvedActive=0
+epochMs=1791792677402 PASS shot-voice-0 actual client framebuffer
+epochMs=1791792678296 START voice-1 target=YujiWitness yaw=0.0
+epochMs=1791792684857 PASS armed-voice-1 listening before server enables natural AI
+epochMs=1791792693406 voice-1 tick=31 event=minecraft:entity.villager.hurt decoded=minecraft:mob/villager/hit4 active=true position=-0.75,66.0,17.625

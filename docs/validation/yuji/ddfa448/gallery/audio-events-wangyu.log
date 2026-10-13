@@ -1,0 +1,4 @@
+phase=wangyu, tick=36, event=qihai:entity.qihai.wangyu.ambient, decoded=qihai:wangyu/ambient, active=true, volume=1.0, pitch=1.1154007, position=0.5,65.0,0.5, backend=OpenAL-null
+phase=ai-wangyu, tick=21, event=minecraft:block.stone.step, decoded=minecraft:step/stone4, active=true, volume=1.0, pitch=1.0, position=1.875,66.0,18.25, backend=OpenAL-null
+phase=ai-wangyu, tick=156, event=minecraft:entity.wolf.whine, decoded=minecraft:mob/wolf/whine, active=true, volume=1.0, pitch=1.0, position=-4.25,66.0,14.0, backend=OpenAL-null
+phase=audio-wangyu, tick=11, event=qihai:entity.qihai.wangyu.death, decoded=qihai:wangyu/death, active=true, volume=1.0, pitch=0.9624443, position=0.5,65.0,0.5, backend=OpenAL-null

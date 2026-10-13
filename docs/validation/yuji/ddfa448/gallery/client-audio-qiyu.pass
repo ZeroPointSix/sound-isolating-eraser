@@ -1,0 +1,1 @@
+event=qihai:entity.qihai.qiyu.death, decoded=qihai:qiyu/death, active=true, volume=0.3, backend=OpenAL-null, observed=[qihai:entity.qihai.toudao.ambient, qihai:entity.qihai.toudao.steal, qihai:entity.qihai.yuchi.ambient, qihai:entity.qihai.qiyu.death, qihai:entity.qihai.qiyu.flute, qihai:entity.qihai.shasheng.chop, qihai:entity.qihai.shasheng.ambient]

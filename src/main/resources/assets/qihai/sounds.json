@@ -1,0 +1,289 @@
+{
+  "entity.qihai.yuchi.ambient": {
+    "sounds": [
+      "qihai:yuchi/ambient"
+    ],
+    "subtitle": "subtitles.entity.qihai.yuchi.ambient"
+  },
+  "entity.qihai.yuchi.step": {
+    "sounds": [
+      "qihai:yuchi/step"
+    ],
+    "subtitle": "subtitles.entity.qihai.yuchi.step"
+  },
+  "entity.qihai.yuchi.hurt": {
+    "sounds": [
+      "qihai:yuchi/hurt"
+    ],
+    "subtitle": "subtitles.entity.qihai.yuchi.hurt"
+  },
+  "entity.qihai.yuchi.death": {
+    "sounds": [
+      "qihai:yuchi/death"
+    ],
+    "subtitle": "subtitles.entity.qihai.yuchi.death"
+  },
+  "entity.qihai.shasheng.ambient": {
+    "sounds": [
+      "qihai:shasheng/ambient"
+    ],
+    "subtitle": "subtitles.entity.qihai.shasheng.ambient"
+  },
+  "entity.qihai.shasheng.chop": {
+    "sounds": [
+      "qihai:shasheng/chop"
+    ],
+    "subtitle": "subtitles.entity.qihai.shasheng.chop"
+  },
+  "entity.qihai.shasheng.hurt": {
+    "sounds": [
+      "qihai:shasheng/hurt"
+    ],
+    "subtitle": "subtitles.entity.qihai.shasheng.hurt"
+  },
+  "entity.qihai.shasheng.death": {
+    "sounds": [
+      "qihai:shasheng/death"
+    ],
+    "subtitle": "subtitles.entity.qihai.shasheng.death"
+  },
+  "entity.qihai.toudao.ambient": {
+    "sounds": [
+      "qihai:toudao/ambient"
+    ],
+    "subtitle": "subtitles.entity.qihai.toudao.ambient"
+  },
+  "entity.qihai.toudao.steal": {
+    "sounds": [
+      "qihai:toudao/steal"
+    ],
+    "subtitle": "subtitles.entity.qihai.toudao.steal"
+  },
+  "entity.qihai.toudao.scream": {
+    "sounds": [
+      "qihai:toudao/scream"
+    ],
+    "subtitle": "subtitles.entity.qihai.toudao.scream"
+  },
+  "entity.qihai.toudao.death": {
+    "sounds": [
+      "qihai:toudao/death"
+    ],
+    "subtitle": "subtitles.entity.qihai.toudao.death"
+  },
+  "entity.qihai.ekou.curse": {
+    "sounds": [
+      "qihai:ekou/curse"
+    ],
+    "subtitle": "subtitles.entity.qihai.ekou.curse"
+  },
+  "entity.qihai.ekou.volley": {
+    "sounds": [
+      "qihai:ekou/volley"
+    ],
+    "subtitle": "subtitles.entity.qihai.ekou.volley"
+  },
+  "entity.qihai.ekou.hurt": {
+    "sounds": [
+      "qihai:ekou/hurt"
+    ],
+    "subtitle": "subtitles.entity.qihai.ekou.hurt"
+  },
+  "entity.qihai.ekou.death": {
+    "sounds": [
+      "qihai:ekou/death"
+    ],
+    "subtitle": "subtitles.entity.qihai.ekou.death"
+  },
+  "entity.qihai.ekou.burst": {
+    "sounds": [
+      "qihai:ekou/burst"
+    ],
+    "subtitle": "subtitles.entity.qihai.ekou.burst"
+  },
+  "entity.qihai.wangyu.mimic": {
+    "sounds": [
+      "qihai:wangyu/mimic"
+    ],
+    "subtitle": "subtitles.entity.qihai.wangyu.mimic"
+  },
+  "entity.qihai.wangyu.ambient": {
+    "sounds": [
+      "qihai:wangyu/ambient"
+    ],
+    "subtitle": "subtitles.entity.qihai.wangyu.ambient"
+  },
+  "entity.qihai.wangyu.hurt": {
+    "sounds": [
+      "qihai:wangyu/hurt"
+    ],
+    "subtitle": "subtitles.entity.qihai.wangyu.hurt"
+  },
+  "entity.qihai.wangyu.death": {
+    "sounds": [
+      "qihai:wangyu/death"
+    ],
+    "subtitle": "subtitles.entity.qihai.wangyu.death"
+  },
+  "entity.qihai.liangshe.whisper": {
+    "sounds": [
+      "qihai:liangshe/whisper"
+    ],
+    "subtitle": "subtitles.entity.qihai.liangshe.whisper"
+  },
+  "entity.qihai.liangshe.hurt": {
+    "sounds": [
+      "qihai:liangshe/hurt"
+    ],
+    "subtitle": "subtitles.entity.qihai.liangshe.hurt"
+  },
+  "entity.qihai.liangshe.death": {
+    "sounds": [
+      "qihai:liangshe/death"
+    ],
+    "subtitle": "subtitles.entity.qihai.liangshe.death"
+  },
+  "entity.qihai.liangshe.betray": {
+    "sounds": [
+      "qihai:liangshe/betray"
+    ],
+    "subtitle": "subtitles.entity.qihai.liangshe.betray"
+  },
+  "entity.qihai.xieyin.lure": {
+    "sounds": [
+      "qihai:xieyin/lure"
+    ],
+    "subtitle": "subtitles.entity.qihai.xieyin.lure"
+  },
+  "entity.qihai.xieyin.hurt": {
+    "sounds": [
+      "qihai:xieyin/hurt"
+    ],
+    "subtitle": "subtitles.entity.qihai.xieyin.hurt"
+  },
+  "entity.qihai.xieyin.death": {
+    "sounds": [
+      "qihai:xieyin/death"
+    ],
+    "subtitle": "subtitles.entity.qihai.xieyin.death"
+  },
+  "entity.qihai.xieyin.pull": {
+    "sounds": [
+      "qihai:xieyin/pull"
+    ],
+    "subtitle": "subtitles.entity.qihai.xieyin.pull"
+  },
+  "entity.qihai.qiyu.flute": {
+    "sounds": [
+      "qihai:qiyu/flute"
+    ],
+    "subtitle": "subtitles.entity.qihai.qiyu.flute"
+  },
+  "entity.qihai.qiyu.hurt": {
+    "sounds": [
+      "qihai:qiyu/hurt"
+    ],
+    "subtitle": "subtitles.entity.qihai.qiyu.hurt"
+  },
+  "entity.qihai.qiyu.death": {
+    "sounds": [
+      "qihai:qiyu/death"
+    ],
+    "subtitle": "subtitles.entity.qihai.qiyu.death"
+  },
+  "entity.qihai.tanyu.ambient": {
+    "sounds": [
+      "qihai:tanyu/ambient"
+    ],
+    "subtitle": "subtitles.entity.qihai.tanyu.ambient"
+  },
+  "entity.qihai.tanyu.bite": {
+    "sounds": [
+      "qihai:tanyu/bite"
+    ],
+    "subtitle": "subtitles.entity.qihai.tanyu.bite"
+  },
+  "entity.qihai.tanyu.peel": {
+    "sounds": [
+      "qihai:tanyu/peel"
+    ],
+    "subtitle": "subtitles.entity.qihai.tanyu.peel"
+  },
+  "entity.qihai.tanyu.death": {
+    "sounds": [
+      "qihai:tanyu/death"
+    ],
+    "subtitle": "subtitles.entity.qihai.tanyu.death"
+  },
+  "entity.qihai.tanyu.absorb": {
+    "sounds": [
+      "qihai:tanyu/absorb"
+    ],
+    "subtitle": "subtitles.entity.qihai.tanyu.absorb"
+  },
+  "entity.qihai.chennu.step": {
+    "sounds": [
+      "qihai:chennu/step"
+    ],
+    "subtitle": "subtitles.entity.qihai.chennu.step"
+  },
+  "entity.qihai.chennu.roar": {
+    "sounds": [
+      "qihai:chennu/roar"
+    ],
+    "subtitle": "subtitles.entity.qihai.chennu.roar"
+  },
+  "entity.qihai.chennu.stomp": {
+    "sounds": [
+      "qihai:chennu/stomp"
+    ],
+    "subtitle": "subtitles.entity.qihai.chennu.stomp"
+  },
+  "entity.qihai.chennu.death": {
+    "sounds": [
+      "qihai:chennu/death"
+    ],
+    "subtitle": "subtitles.entity.qihai.chennu.death"
+  },
+  "entity.qihai.shifotou.grind": {
+    "sounds": [
+      "qihai:shifotou/grind"
+    ],
+    "subtitle": "subtitles.entity.qihai.shifotou.grind"
+  },
+  "entity.qihai.shifotou.slam": {
+    "sounds": [
+      "qihai:shifotou/slam"
+    ],
+    "subtitle": "subtitles.entity.qihai.shifotou.slam"
+  },
+  "entity.qihai.shifotou.gaze": {
+    "sounds": [
+      "qihai:shifotou/gaze"
+    ],
+    "subtitle": "subtitles.entity.qihai.shifotou.gaze"
+  },
+  "entity.qihai.shifotou.death": {
+    "sounds": [
+      "qihai:shifotou/death"
+    ],
+    "subtitle": "subtitles.entity.qihai.shifotou.death"
+  },
+  "music.qihai.shifotou_battle": {
+    "sounds": [
+      {
+        "name": "qihai:shifotou/music_battle",
+        "stream": true
+      }
+    ]
+  },
+  "ambient.qihai.yuji_fodu.rain": {
+    "sounds": [
+      {
+        "name": "qihai:ambience/rain",
+        "stream": true
+      }
+    ],
+    "subtitle": "subtitles.ambient.qihai.yuji_fodu.rain"
+  }
+}

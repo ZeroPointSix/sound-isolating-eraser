@@ -1,0 +1,76 @@
+{
+ "colors": {
+  "yuchi": [
+   "#96AAB6",
+   "#B0B6A8"
+  ],
+  "shasheng": [
+   "#806656",
+   "#8E2020"
+  ],
+  "toudao": [
+   "#D6D0C4",
+   "#101012"
+  ],
+  "ekou": [
+   "#888A88",
+   "#6E141A"
+  ],
+  "wangyu": [
+   "#C6BAA8",
+   "#96505A"
+  ],
+  "liangshe": [
+   "#B4A696",
+   "#B04654"
+  ],
+  "xieyin": [
+   "#E2DCD6",
+   "#141216"
+  ],
+  "qiyu": [
+   "#CEC8C4",
+   "#141216"
+  ],
+  "tanyu": [
+   "#84827E",
+   "#3A3634"
+  ],
+  "chennu": [
+   "#18161A",
+   "#D22818"
+  ],
+  "shifotou": [
+   "#5C5C60",
+   "#3A1830"
+  ]
+ },
+ "zh": {
+  "yuchi": "愚痴怪",
+  "shasheng": "杀生怪",
+  "toudao": "偷盗怪",
+  "ekou": "恶口怪",
+  "wangyu": "妄语怪",
+  "liangshe": "两舌怪",
+  "xieyin": "邪淫怪",
+  "qiyu": "绮语怪",
+  "tanyu": "贪欲怪",
+  "chennu": "嗔怒怪",
+  "shifotou": "十佛头",
+  "bone_spike": "骨刺"
+ },
+ "en": {
+  "yuchi": "Delusion Husk",
+  "shasheng": "Killing Blade",
+  "toudao": "Thieving Infant",
+  "ekou": "Cursing Mouth",
+  "wangyu": "False Voice",
+  "liangshe": "Two-Tongue",
+  "xieyin": "Luring Body",
+  "qiyu": "Rooftop Flute",
+  "tanyu": "Greed Hoarder",
+  "chennu": "Wrath Strider",
+  "shifotou": "Ten-Faced Buddha",
+  "bone_spike": "Bone Spike"
+ }
+}

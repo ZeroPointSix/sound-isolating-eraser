@@ -438,8 +438,9 @@ public final class FertilizerGameTests {
         // An old trunk index can mask a separate meadow record at the same coordinate.
         data.remove(ground.asLong());
         h.assertTrue(data.at(level,ground)==null,"meadow fixture starts without a saved identity");
-        int originalThreshold = FertilizerConfig.THRESHOLD.get();
-        try (var saved = GameTestConfigs.sandbox(FertilizerConfig.SPEC)) {
+        int old=FertilizerConfig.THRESHOLD.get();
+        // The live TOML autosaves and reloads on another thread; keep this trial off its watcher.
+        try (var config=GameTestConfigs.sandbox(FertilizerConfig.SPEC)) {
             FertilizerConfig.THRESHOLD.set(10);
             for(int n=1;n<=10;n++) {
                 h.assertTrue(FertilizerConfig.THRESHOLD.get()==10,"configured threshold remains ten before dose "+n);
@@ -456,8 +457,7 @@ public final class FertilizerGameTests {
                 if(level.getBlockState(ground.offset(x,1,z)).getBlock() instanceof net.minecraft.world.level.block.BushBlock) plants++;
             h.assertTrue(plants>=100,"threshold produces a real broad grass and flower meadow");
         }
-        h.assertTrue(FertilizerConfig.THRESHOLD.get() == originalThreshold,
-                "meadow fixture restores the live threshold after its isolated configuration");
+        h.assertTrue(FertilizerConfig.THRESHOLD.get()==old,"live threshold restored after configurable meadow trial");
         h.succeed();
     }
 
