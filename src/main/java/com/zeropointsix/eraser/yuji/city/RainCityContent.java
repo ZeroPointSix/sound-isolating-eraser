@@ -12,14 +12,12 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.item.BlockItem;
-import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.BuildCreativeModeTabContentsEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.config.ModConfig;
@@ -53,13 +51,9 @@ public final class RainCityContent {
     }
     public static void register(IEventBus bus) {
         BLOCKS.register(bus); ITEMS.register(bus); ENTITIES.register(bus); PARTICLES.register(bus); GENERATORS.register(bus);
-        bus.addListener(RainCityContent::creative);
         ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER, RainCityConfig.SPEC, "qihai-city-server.toml");
         MinecraftForge.EVENT_BUS.register(RainCityEvents.class);
         RainCityNetwork.register();
-    }
-    private static void creative(BuildCreativeModeTabContentsEvent e) {
-        if (e.getTabKey() == CreativeModeTabs.TOOLS_AND_UTILITIES) ITEMS.getEntries().forEach(i -> e.accept(i.get()));
     }
     public static boolean isCity(Level level) { return level.dimension().equals(LEVEL); }
     private RainCityContent() { }
