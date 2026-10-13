@@ -248,7 +248,12 @@ public final class GravityGameTests {
         Vec3 center = Vec3.atBottomCenterOf(h.absolutePos(new BlockPos(3, 7, 3)));
         BlockPos floor = BlockPos.containing(center).below();
         h.getLevel().setBlockAndUpdate(floor, Blocks.STONE.defaultBlockState());
-        h.getLevel().setBlockAndUpdate(floor.offset(18, 0, 0), Blocks.STONE.defaultBlockState());
+        Vec3 landing = center.add(-18, 0, 0);
+        BlockPos landingFloor = BlockPos.containing(landing).below();
+        for (BlockPos pos : BlockPos.betweenClosed(landingFloor.offset(-1, 0, -1), landingFloor.offset(1, 6, 1))) {
+            h.getLevel().setBlockAndUpdate(pos, pos.getY() == landingFloor.getY()
+                    ? Blocks.STONE.defaultBlockState() : Blocks.AIR.defaultBlockState());
+        }
         var zombie = EntityType.ZOMBIE.create(h.getLevel());
         zombie.setPos(center);
         // NoAI also disables travel(), so keep physics active while preventing walking.
@@ -263,12 +268,15 @@ public final class GravityGameTests {
             h.assertTrue(height > 2.5 && height <= 3.3, "bounded hover near 3 blocks: " + height
                     + " fieldRemoved=" + field.isRemoved() + " motion=" + zombie.getDeltaMovement());
             h.assertTrue(zombie.getEffect(MobEffects.MOVEMENT_SLOWDOWN).getAmplifier() == 4, "slowness V");
-            zombie.setPos(center.add(18, 3, 0));
+            zombie.getNavigation().stop();
+            zombie.setPos(landing.add(0, 3, 0));
             zombie.setDeltaMovement(Vec3.ZERO);
         });
         h.runAtTickTime(115, () -> {
             h.assertTrue(!zombie.hasEffect(MobEffects.MOVEMENT_SLOWDOWN), "hostile debuff fades outside");
-            h.assertTrue(zombie.onGround() && zombie.getY() <= center.y + .01, "natural gravity after leaving");
+            h.assertTrue(zombie.onGround() && Math.abs(zombie.getY() - landing.y) <= .01,
+                    "natural gravity after leaving: pos=" + zombie.position() + " ground=" + zombie.onGround()
+                            + " motion=" + zombie.getDeltaMovement() + " removed=" + zombie.isRemoved());
             field.discard();
             zombie.discard();
             h.succeed();
