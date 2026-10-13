@@ -87,10 +87,7 @@ public final class RainCityEvents {
     }
     private static void ensureScene(ServerLevel city, RainCityData data) {
         if (!city.hasChunkAt(new BlockPos(0, 123, 0))) return;
-        if (data.buddha == null) {
-            RecliningBuddha buddha = RainCityContent.BUDDHA.get().create(city);
-            if (buddha != null) { buddha.moveTo(0, 123, 0); if (city.addFreshEntity(buddha)) { data.buddha = buddha.getUUID(); data.setDirty(); } }
-        }
+        ensureBuddha(city, data);
         if (!data.guardiansSpawned && !data.ringing() && city.hasChunkAt(RainCityTemplates.BELL)) {
             for (int i = 0; i < 7; i++) {
                 if ((data.guardianMask & (1 << i)) == 0 && spawnGuardian(city, YujiKind.YUCHI,
@@ -100,6 +97,21 @@ public final class RainCityEvents {
                     && spawnGuardian(city, YujiKind.XIEYIN, RainCityTemplates.RITUAL_GUARDIANS.get(i), false)) data.guardianMask |= 1 << (i + 7);
             data.guardiansSpawned = data.guardianMask == 1023; data.setDirty();
         }
+    }
+    /** Spawns the reclining Buddha, and respawns it if it was killed or removed (e.g. /kill). */
+    public static void ensureBuddha(ServerLevel city, RainCityData data) {
+        BlockPos home = new BlockPos(0, 123, 0);
+        if (!city.hasChunkAt(home) || !city.areEntitiesLoaded(net.minecraft.world.level.ChunkPos.asLong(home))) return;
+        if (data.buddha != null) {
+            Entity existing = city.getEntity(data.buddha);
+            if (existing instanceof RecliningBuddha && existing.isAlive()) return;
+            // Adopt a surviving statue (e.g. after the saved UUID was lost) instead of duplicating it.
+            var nearby = city.getEntitiesOfClass(RecliningBuddha.class, new net.minecraft.world.phys.AABB(home).inflate(16), Entity::isAlive);
+            if (!nearby.isEmpty()) { data.buddha = nearby.get(0).getUUID(); data.setDirty(); return; }
+            data.buddha = null; data.setDirty();
+        }
+        RecliningBuddha buddha = RainCityContent.BUDDHA.get().create(city);
+        if (buddha != null) { buddha.moveTo(0, 123, 0); if (city.addFreshEntity(buddha)) { data.buddha = buddha.getUUID(); data.setDirty(); } }
     }
     private static boolean spawnGuardian(ServerLevel city, YujiKind kind, BlockPos pos, boolean white) {
         if (!city.hasChunkAt(pos)) return false;
