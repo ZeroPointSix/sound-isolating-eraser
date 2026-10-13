@@ -3,6 +3,7 @@ package com.zeropointsix.shadowtest;
 import com.zeropointsix.eraser.client.ShadowTanglerModel;
 import com.zeropointsix.eraser.client.ShadowTanglerRenderer;
 import com.zeropointsix.eraser.registry.ModItems;
+import com.zeropointsix.eraser.registry.ModCreativeTabs;
 import com.zeropointsix.eraser.shadow.ShadowTanglerEntity;
 import com.mojang.blaze3d.platform.NativeImage;
 import java.nio.file.Files;
@@ -10,7 +11,6 @@ import java.nio.file.Path;
 import java.util.HashSet;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.ClientChatReceivedEvent;
@@ -92,9 +92,9 @@ public final class ShadowTestClient {
             }
             if (phase.equals("place") && ticks == 40) {
                 CreativeModeTabs.tryRebuildTabContents(mc.level.enabledFeatures(), false, mc.level.registryAccess());
-                long count = BuiltInRegistries.CREATIVE_MODE_TAB.get(CreativeModeTabs.SPAWN_EGGS).getDisplayItems()
+                long count = ModCreativeTabs.QIJIE.get().getDisplayItems()
                         .stream().filter(stack -> stack.is(ModItems.SHADOW_TANGLER_SPAWN_EGG.get())).count();
-                require(count == 1, "creative spawn egg tab includes exactly one shadow egg");
+                require(count == 1, "Qijie creative tab includes exactly one shadow egg");
                 var stack = mc.player.getMainHandItem();
                 String texture = mc.getItemRenderer().getModel(stack, mc.level, mc.player, 0).getParticleIcon().contents().name().toString();
                 require(texture.equals("sound_isolating_eraser:item/shadow_tangler_spawn_egg"), "original egg texture resolves");
