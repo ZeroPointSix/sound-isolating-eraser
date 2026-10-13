@@ -272,6 +272,19 @@ def checkWingsMotion = tasks.register('checkWingsMotion', JavaExec) {
 }
 tasks.named('check').configure { dependsOn checkWingsMotion }
 
+def compileFlightSpeedBudgetCheck = tasks.register('compileFlightSpeedBudgetCheck', JavaCompile) {
+    source = files('src/main/java/com/zeropointsix/eraser/wings/FlightSpeedBudget.java',
+            'tools/FlightSpeedBudgetCheck.java')
+    classpath = files()
+    destinationDirectory = layout.buildDirectory.dir('flight-speed-budget-check')
+}
+def checkFlightSpeedBudget = tasks.register('checkFlightSpeedBudget', JavaExec) {
+    dependsOn compileFlightSpeedBudgetCheck
+    classpath = files(compileFlightSpeedBudgetCheck.flatMap { it.destinationDirectory })
+    mainClass = 'FlightSpeedBudgetCheck'
+}
+tasks.named('check').configure { dependsOn checkFlightSpeedBudget }
+
 def compileNightRulesCheck = tasks.register('compileNightRulesCheck', JavaCompile) {
     source = files('src/main/java/com/zeropointsix/eraser/eternalnight/NightRules.java',
             'src/main/java/com/zeropointsix/eraser/eternalnight/CityLayout.java', 'tools/NightRulesCheck.java')

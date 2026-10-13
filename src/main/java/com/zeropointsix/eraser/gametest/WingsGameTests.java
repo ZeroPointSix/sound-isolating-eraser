@@ -243,6 +243,112 @@ public final class WingsGameTests {
         h.succeed();
     }
 
+    @GameTest(template = "empty", timeoutTicks = 60)
+    public static void speedGovernorAcceptsBatchedHoverSteps(GameTestHelper h) {
+        FakePlayer p = winged(h, h.absoluteVec(new Vec3(2.5, 3.5, 2.5)), 20);
+        FlightEvents.serverSetDeployed(p, true);
+        p.getFoodData().setFoodLevel(0);
+        tick(p);
+        double step = WingsConfig.SERVER.hoverMaxSpeed.get() / 20.0;
+        double startY = p.getY();
+        // Three legal client steps can arrive before the next server tick.
+        for (int i = 0; i < 3; i++) p.setPos(p.getX(), p.getY() + step, p.getZ());
+        tick(p);
+        h.assertTrue(WingsState.speedFlagAt(p) == 0,
+                "batched legal hover steps must not be flagged as one overspeed step");
+        h.assertTrue(Math.abs(p.getY() - startY - step * 3) < 0.001,
+                "batched rescue movement must not be pulled back");
+        h.succeed();
+    }
+
+    @GameTest(template = "empty", timeoutTicks = 60)
+    public static void repeatedDeployCannotRefillSpeedBudget(GameTestHelper h) {
+        assertDeployDoesNotRefill(h, false);
+    }
+
+    @GameTest(template = "empty", timeoutTicks = 60)
+    public static void sameTickRedeployCannotRefillSpeedBudget(GameTestHelper h) {
+        assertDeployDoesNotRefill(h, true);
+    }
+
+    @GameTest(template = "empty", timeoutTicks = 60)
+    public static void movementBeforeStowCannotBeErased(GameTestHelper h) {
+        assertToggleDoesNotEraseMovement(h, false);
+    }
+
+    @GameTest(template = "empty", timeoutTicks = 60)
+    public static void movementBetweenStowAndDeployCannotBeErased(GameTestHelper h) {
+        assertToggleDoesNotEraseMovement(h, true);
+    }
+
+    private static void assertToggleDoesNotEraseMovement(GameTestHelper h, boolean moveWhileStowed) {
+        FakePlayer p = winged(h, h.absoluteVec(new Vec3(2.5, 3.5, 2.5)), 20);
+        FlightEvents.serverSetDeployed(p, true);
+        tick(p);
+        double acceptedY = p.getY();
+        if (moveWhileStowed) FlightEvents.serverSetDeployed(p, false);
+        p.setPos(p.getX(), p.getY() + 2, p.getZ());
+        if (!moveWhileStowed) FlightEvents.serverSetDeployed(p, false);
+        FlightEvents.serverSetDeployed(p, true);
+        tick(p);
+        h.assertTrue(WingsState.speedFlagAt(p) > 0, "same-tick toggle cannot erase unchecked movement");
+        h.assertTrue(Math.abs(p.getY() - acceptedY) < 0.001, "unchecked movement is rolled back");
+        h.succeed();
+    }
+
+    @GameTest(template = "empty", timeoutTicks = 60)
+    public static void redeployAfterStowedTickReanchorsNormally(GameTestHelper h) {
+        FakePlayer p = winged(h, h.absoluteVec(new Vec3(2.5, 3.5, 2.5)), 20);
+        FlightEvents.serverSetDeployed(p, true);
+        tick(p);
+        FlightEvents.serverSetDeployed(p, false);
+        tick(p);
+        p.setPos(p.getX(), p.getY() + 5, p.getZ());
+        double deployY = p.getY();
+        FlightEvents.serverSetDeployed(p, true);
+        tick(p);
+        h.assertTrue(WingsState.speedFlagAt(p) == 0, "non-flying movement is not charged on later deploy");
+        h.assertTrue(Math.abs(p.getY() - deployY) < 0.001, "later deploy uses its new anchor");
+        h.succeed();
+    }
+
+    @GameTest(template = "empty", timeoutTicks = 60)
+    public static void redeployAfterIdleRestoresBoundedBudget(GameTestHelper h) {
+        FakePlayer p = winged(h, h.absoluteVec(new Vec3(2.5, 3.5, 2.5)), 20);
+        FlightEvents.serverSetDeployed(p, true);
+        tick(p);
+        p.setPos(p.getX(), p.getY() + 1.25, p.getZ());
+        tick(p);
+        FlightEvents.serverSetDeployed(p, false);
+        tick(p);
+        h.runAfterDelay(3, () -> {
+            FlightEvents.serverSetDeployed(p, true);
+            double startY = p.getY();
+            p.setPos(p.getX(), p.getY() + 0.75, p.getZ());
+            tick(p);
+            h.assertTrue(WingsState.speedFlagAt(p) == 0, "idle restores legal bounded burst allowance");
+            h.assertTrue(Math.abs(p.getY() - startY - 0.75) < 0.001, "legal resumed movement remains");
+            h.succeed();
+        });
+    }
+
+    private static void assertDeployDoesNotRefill(GameTestHelper h, boolean stowFirst) {
+        FakePlayer p = winged(h, h.absoluteVec(new Vec3(2.5, 3.5, 2.5)), 20);
+        FlightEvents.serverSetDeployed(p, true);
+        tick(p);
+        p.setPos(p.getX(), p.getY() + 0.75, p.getZ());
+        tick(p);
+        h.assertTrue(WingsState.speedFlagAt(p) == 0, "first legal burst is accepted");
+        if (stowFirst) FlightEvents.serverSetDeployed(p, false);
+        FlightEvents.serverSetDeployed(p, true);
+        double acceptedY = p.getY();
+        p.setPos(p.getX(), p.getY() + 0.75, p.getZ());
+        tick(p);
+        h.assertTrue(WingsState.speedFlagAt(p) > 0, "client deploy cannot mint movement allowance");
+        h.assertTrue(Math.abs(p.getY() - acceptedY) < 0.001, "second burst is rolled back");
+        h.succeed();
+    }
+
     /** R2-02：>20 格/t 不再有“传送豁免”——未授权的大位移同样拉回并打标。 */
     @GameTest(template = "empty", timeoutTicks = 60)
     public static void speedGovernorPullsBackHugeDelta(GameTestHelper h) {

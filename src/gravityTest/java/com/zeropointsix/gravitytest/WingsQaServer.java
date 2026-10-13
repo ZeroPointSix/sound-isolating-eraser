@@ -279,6 +279,7 @@ public final class WingsQaServer {
                 if (next.equals("showcaseDeploy")) {
                     // Startup/recorder latency must not leave the model grounded before filming.
                     wearerRef.teleportTo(server.overworld(), 0.5, 100, 0.5, -90f, 0f);
+                    FlightEvents.markTeleported(wearerRef);
                     wearerRef.setOnGround(false);
                     wearerRef.resetFallDistance();
                     wearerRef.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
@@ -468,6 +469,7 @@ public final class WingsQaServer {
 
     private static void controlFixture(MinecraftServer server, ServerPlayer player, double height) {
         player.teleportTo(server.overworld(), 0.5, height, 0.5, -90, 0);
+        FlightEvents.markTeleported(player);
         player.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
         player.setOnGround(false);
         player.getFoodData().setFoodLevel(20);
