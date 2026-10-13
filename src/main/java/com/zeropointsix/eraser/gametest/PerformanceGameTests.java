@@ -87,6 +87,13 @@ public final class PerformanceGameTests {
         helper.runAtTickTime(30, () -> {
             helper.assertTrue(goal.canUse() && mob.brightnessAt(sealed) <= 6,
                     "adult bright mob has a nearby dark sealed refuge");
+            BlockPos reachable = helper.absolutePos(new BlockPos(19, 2, 15));
+            var fixturePath = mob.getNavigation().createPath(reachable, 0);
+            helper.assertTrue(mob.onGround() && mob.brightnessAt(reachable) <= 6
+                            && fixturePath != null && fixturePath.canReach(),
+                    "stationary fixture can really pathfind to the later dark refuge: ground="
+                            + mob.onGround() + " light=" + mob.brightnessAt(reachable)
+                            + " path=" + fixturePath);
             goal.start();
         });
         helper.runAtTickTime(31, () -> {
@@ -115,7 +122,10 @@ public final class PerformanceGameTests {
                     } else {
                         int cursor = (Integer) searchState(goal, "searchCursor");
                         helper.assertTrue(cursor > previousCursor[0],
-                                "unreachable near candidates do not restart or exhaust a search before the reachable refuge");
+                                "search advances before the reachable refuge: cursor=" + cursor
+                                        + " previous=" + previousCursor[0] + " ground=" + mob.onGround()
+                                        + " scanned=" + goal.lastSearchPositions() + " targets=" + goal.lastPathTargets()
+                                        + " path=" + path);
                         previousCursor[0] = cursor;
                     }
                 }
@@ -138,6 +148,13 @@ public final class PerformanceGameTests {
     private static ShadowTanglerEntity stationaryShadow(GameTestHelper helper) {
         ShadowTanglerEntity mob = helper.spawn(ModEntities.SHADOW_TANGLER.get(), CENTER);
         mob.setNoAi(true);
+        helper.assertTrue(!helper.getBlockState(CENTER.below()).getCollisionShape(
+                helper.getLevel(), helper.absolutePos(CENTER.below())).isEmpty(), "fixture has solid ground");
+        helper.assertTrue(mob.getY() == helper.absolutePos(CENTER).getY()
+                && helper.getLevel().noCollision(mob, mob.getBoundingBox()), "fixture stands above its floor without collisions");
+        // NoAI prevents the normal movement tick from establishing this real floor contact.
+        System.out.println("QIJIE_STATIONARY_FIXTURE initial_on_ground=" + mob.onGround());
+        mob.setOnGround(true);
         mob.getAttribute(Attributes.MAX_HEALTH).setBaseValue(200);
         mob.setHealth(200);
         return mob;
