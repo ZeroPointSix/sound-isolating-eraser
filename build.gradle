@@ -328,3 +328,23 @@ if (project.hasProperty('neonE2E')) {
 if (project.hasProperty('yujiE2E')) {
     apply from: 'gradle/yuji-e2e.gradle'
 }
+if (project.hasProperty('cityE2E')) {
+    apply from: 'gradle/city-e2e.gradle'
+}
+
+def compileRainCityRules = tasks.register('compileRainCityRules', JavaCompile) {
+    source = files('src/main/java/com/zeropointsix/eraser/yuji/city/RainCityRules.java', 'tools/RainCityRulesCheck.java')
+    classpath = files()
+    destinationDirectory = layout.buildDirectory.dir('rain-city-rules')
+}
+def checkRainCityRules = tasks.register('checkRainCityRules', JavaExec) {
+    dependsOn compileRainCityRules
+    classpath = files(compileRainCityRules.flatMap { it.destinationDirectory })
+    mainClass = 'RainCityRulesCheck'
+}
+def verifyRainCityAssets = tasks.register('verifyRainCityAssets', Exec) {
+    commandLine 'python3', 'tools/yuji/verify_city.py'
+}
+tasks.named('check').configure {
+    dependsOn checkRainCityRules, verifyRainCityAssets
+}

@@ -1,0 +1,144 @@
+{
+ "format_version": "1.8.0",
+ "animations": {
+  "animation.reclining_buddha.idle": {
+   "loop": true,
+   "animation_length": 4.0,
+   "bones": {
+    "root": {
+     "position": {
+      "0.0": [
+       0,
+       0,
+       0
+      ],
+      "4.0": [
+       0,
+       0,
+       0
+      ]
+     }
+    }
+   }
+  },
+  "animation.reclining_buddha.crack": {
+   "loop": false,
+   "animation_length": 1.6,
+   "bones": {
+    "root": {
+     "rotation": {
+      "0.0": [
+       0,
+       0,
+       0
+      ],
+      "0.2": [
+       0,
+       0,
+       -1.5
+      ],
+      "0.4": [
+       0,
+       0,
+       1
+      ],
+      "0.7": [
+       0,
+       0,
+       -2
+      ],
+      "1.0": [
+       0,
+       0,
+       1.5
+      ],
+      "1.3": [
+       0,
+       0,
+       -3
+      ],
+      "1.6": [
+       0,
+       0,
+       -4
+      ]
+     }
+    }
+   }
+  },
+  "animation.reclining_buddha.fall": {
+   "loop": "hold_on_last_frame",
+   "animation_length": 3.0,
+   "bones": {
+    "root": {
+     "rotation": {
+      "0.0": [
+       0,
+       0,
+       -4
+      ],
+      "0.6": [
+       0,
+       0,
+       -18
+      ],
+      "1.4": [
+       6,
+       0,
+       -42
+      ],
+      "2.2": [
+       10,
+       0,
+       -58
+      ],
+      "3.0": [
+       12,
+       0,
+       -62
+      ]
+     }
+    },
+    "head": {
+     "rotation": {
+      "0.0": [
+       0,
+       0,
+       0
+      ],
+      "1.4": [
+       0,
+       0,
+       -6
+      ],
+      "3.0": [
+       0,
+       0,
+       -10
+      ]
+     }
+    }
+   }
+  },
+  "animation.reclining_buddha.rest": {
+   "loop": true,
+   "animation_length": 2.0,
+   "bones": {
+    "root": {
+     "rotation": {
+      "0.0": [
+       12,
+       0,
+       -62
+      ],
+      "2.0": [
+       12,
+       0,
+       -62
+      ]
+     }
+    }
+   }
+  }
+ }
+}

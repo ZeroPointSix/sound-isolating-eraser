@@ -1,0 +1,41 @@
+{
+ "parent": "minecraft:block/block",
+ "textures": {
+  "particle": "qihai:block/holy_light_source",
+  "all": "qihai:block/holy_light_source"
+ },
+ "elements": [
+  {
+   "from": [
+    5,
+    5,
+    5
+   ],
+   "to": [
+    11,
+    11,
+    11
+   ],
+   "faces": {
+    "north": {
+     "texture": "#all"
+    },
+    "south": {
+     "texture": "#all"
+    },
+    "east": {
+     "texture": "#all"
+    },
+    "west": {
+     "texture": "#all"
+    },
+    "up": {
+     "texture": "#all"
+    },
+    "down": {
+     "texture": "#all"
+    }
+   }
+  }
+ ]
+}

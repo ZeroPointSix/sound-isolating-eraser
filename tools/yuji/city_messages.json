@@ -1,0 +1,18 @@
+{
+  "en_us": {
+    "message.qihai.city.preparing": "Preparing Yuji Fodu. Please wait.",
+    "message.qihai.city.arrived": "You awaken in an old hospital ward. Collect all ten karma marks and defeat 50 monsters, then find the bronze bell beneath the temple.",
+    "message.qihai.city.entry_failed": "Unable to enter Yuji Fodu right now. Please try again later.",
+    "message.qihai.city.status": "Day %s | Kills %s / 50 | Karma marks %s / 10",
+    "message.qihai.city.locked": "The bell gives a dull ring. Defeat each of the ten monster kinds, carry all ten karma marks, and reach 50 total kills.",
+    "entity.qihai.reclining_buddha": "Reclining Buddha"
+  },
+  "zh_cn": {
+    "message.qihai.city.preparing": "正在准备雨寂佛都，请稍候。",
+    "message.qihai.city.arrived": "你在旧医院的病房醒来。收集十种业纹，累计击杀 50 只怪物，再寻找寺院深处的铜钟。",
+    "message.qihai.city.entry_failed": "暂时无法进入雨寂佛都，请稍后重试。",
+    "message.qihai.city.status": "第 %s 天 | 击杀 %s / 50 | 业纹 %s / 10",
+    "message.qihai.city.locked": "铜钟只发出闷响。需要击杀过全部十类怪物、携带十种业纹，且总击杀至少 50。",
+    "entity.qihai.reclining_buddha": "卧佛"
+  }
+}
