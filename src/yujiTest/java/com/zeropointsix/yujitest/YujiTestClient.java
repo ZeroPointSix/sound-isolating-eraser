@@ -54,6 +54,10 @@ public final class YujiTestClient {
     private static final Map<String, SoundInstance> observedSounds = new HashMap<>();
     private static final java.util.Set<String> playedSounds = new HashSet<>();
     private static boolean audioDone;
+    private static int deathFrames, livingDeathFrames;
+    private static double deathMinAngle, deathMaxAngle;
+    private static boolean deathStartCaptured, deathEndCaptured;
+    private static YujiMonster deathProbe;
     private static String lastTanyuAction = "";
     private static int stalledSerial = -1;
     private record Playback(String profile, String sound, String evidence) {}
@@ -76,6 +80,8 @@ public final class YujiTestClient {
         String text = event.getMessage().getString();
         if (!text.startsWith("YUJI_QA:")) return;
         phase = text.substring(8); ticks = 0; frames = 0; captured = false; audioDone = false; poses.clear();
+        deathFrames = 0; livingDeathFrames = 0; deathMinAngle = 180; deathMaxAngle = 0;
+        deathStartCaptured = false; deathEndCaptured = false; deathProbe = null;
         // Pin only the gallery camera; survival interactions use normal gravity on both sides.
         if (Minecraft.getInstance().player != null)
             Minecraft.getInstance().player.setNoGravity(!phase.startsWith("ai-") && !phase.startsWith("audio-"));
@@ -219,6 +225,26 @@ public final class YujiTestClient {
         return names.get(kind);
     }
     @SubscribeEvent public static void model(GeoRenderEvent.Entity.Post event) {
+        if (phase.startsWith("death-") && !failed && event.getEntity() instanceof YujiMonster monster
+                && monster.kind() == YujiKind.YUCHI) {
+            try {
+                double angle = Math.abs(Math.toDegrees(event.getModel().getBone("root").orElseThrow().getRotX()));
+                deathProbe = monster;
+                boolean crawl = phase.equals("death-crawl");
+                if (!monster.isDeadOrDying()) {
+                    if ((crawl && angle >= 75 && angle <= 85) || (!crawl && angle < 10)) livingDeathFrames++;
+                    if (livingDeathFrames == 10) pass("ready-" + phase, "living root angle=" + angle);
+                } else {
+                    if (monster.deathTime == 0) return;
+                    if (monster.deathTime >= 2) require(monster.deathAnimation().equals(phase.equals("death-standing") ? "death" : "crawl_death"), "synced death animation selection");
+                    deathFrames++;
+                    deathMinAngle = Math.min(deathMinAngle, angle); deathMaxAngle = Math.max(deathMaxAngle, angle);
+                    if (crawl) require(angle >= 75, "crawl death never stands up: " + angle);
+                    System.out.println("YUJI_DEATH_FRAME phase=" + phase + ", tick=" + monster.deathTime + ", rootAngle=" + angle);
+                }
+            } catch (Throwable failure) { fail(failure); }
+            return;
+        }
         if (!failed && !captured && ticks >= 20 && phase.startsWith("bone_spike") && event.getEntity() instanceof BoneSpike) { frames++; return; }
         if (failed || captured || ticks < 20 || !(event.getEntity() instanceof YujiMonster monster) || !monster.kind().id().equals(phase)) return;
         try {
@@ -236,6 +262,30 @@ public final class YujiTestClient {
         } catch (Throwable failure) { fail(failure); }
     }
     @SubscribeEvent public static void render(TickEvent.RenderTickEvent event) {
+        if (phase.startsWith("death-")) {
+            if (event.phase == TickEvent.Phase.END && !failed && deathProbe != null && deathFrames > 0) {
+                try {
+                    boolean crawl = phase.equals("death-crawl");
+                    if (!deathStartCaptured) {
+                        try (var shot = Screenshot.takeScreenshot(Minecraft.getInstance().getMainRenderTarget())) {
+                            shot.writeToFile(RESULTS.resolve(phase + "-start.png"));
+                        }
+                        deathStartCaptured = true;
+                    }
+                    if (!deathEndCaptured && deathProbe.deathTime >= (phase.equals("death-standing") ? 27 : 15) && !deathProbe.isRemoved()) {
+                        require(deathFrames >= 3 && deathMaxAngle >= 85, "death animation reaches the collapsed pose");
+                        if (!crawl) require(deathMinAngle < 20, "standing death begins upright");
+                        try (var shot = Screenshot.takeScreenshot(Minecraft.getInstance().getMainRenderTarget())) {
+                            shot.writeToFile(RESULTS.resolve(phase + "-end.png"));
+                        }
+                        pass(phase, "renderedFrames=" + deathFrames + ", rootAngleRange=" + deathMinAngle + ".." + deathMaxAngle
+                                + ", finalDeathTime=" + deathProbe.deathTime + ", deathTimePositive=true");
+                        deathEndCaptured = true;
+                    }
+                } catch (Throwable failure) { fail(failure); }
+            }
+            return;
+        }
         if (event.phase == TickEvent.Phase.START && !captured && !phase.isEmpty()
                 && !phase.startsWith("ai-") && !phase.startsWith("audio-") && !phase.equals("ready") && !phase.equals("cleanup")) {
             int delay = Integer.getInteger("yuji.qa.frameDelayMs", 0);

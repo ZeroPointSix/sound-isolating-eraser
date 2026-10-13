@@ -26,6 +26,28 @@ def texture(reference):
     return struct.unpack(">II", data[16:24])
 
 
+def validate_death_animations(kind, animations):
+    durations = {"yuchi": 1.2, "shasheng": 1.0, "toudao": 0.8, "ekou": 1.0,
+                 "wangyu": 1.2, "liangshe": 1.0, "xieyin": 1.0, "qiyu": 1.4,
+                 "tanyu": 1.3, "chennu": 2.0, "shifotou": 3.0}
+    if kind not in durations:
+        return
+    death = animations[f"animation.{kind}.death"]
+    require(death["animation_length"] == durations[kind], f"Death lifetime contract: {kind}")
+    require(death["loop"] == "hold_on_last_frame", f"Death pose must hold: {kind}")
+    if kind == "yuchi":
+        crawl = animations["animation.yuchi.crawl"]["bones"]["root"]
+        death = animations["animation.yuchi.crawl_death"]
+        require(death["animation_length"] == 0.6 and death["loop"] == "hold_on_last_frame",
+                "Crawl death must finish in 12 ticks and hold")
+        root = death["bones"]["root"]
+        for channel in ("rotation", "position"):
+            require(root[channel]["0.0"] == crawl[channel]["0.0"], f"Crawl death start pose: {channel}")
+        require(all(-90 <= frame[0] <= -80 for frame in root["rotation"].values()),
+                "Crawl death must never stand up")
+        require(root["rotation"]["0.6"] == [-90, 0, 0], "Crawl death ends prone")
+
+
 def main():
     stats = read(ROOT / "art/yuji_fodu/data/model_stats.json")
     require(len(stats) == 12, "Expected 11 mobs and one projectile")
@@ -72,6 +94,7 @@ def main():
             require(texture(f"qihai:entity/{kind}_glowmask") == (expected["tex"], expected["tex"]), f"Glow size: {kind}")
         animations = read(ASSETS / "animations" / f"{kind}.animation.json")["animations"]
         require(set(animations) == {f"animation.{kind}.{action}" for action in expected["anims"]}, f"Animation set: {kind}")
+        validate_death_animations(kind, animations)
         for name, animation in animations.items():
             require(set(animation.get("bones", {})) <= set(bones), f"Animation bone reference: {name}")
         for action, events in cues.get(kind, {}).items():

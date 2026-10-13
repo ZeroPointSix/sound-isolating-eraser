@@ -68,6 +68,7 @@ public final class YujiMonster extends Monster implements GeoEntity {
     private static final EntityDataAccessor<Integer> ACTION_SERIAL = SynchedEntityData.defineId(YujiMonster.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<ItemStack> LOOT = SynchedEntityData.defineId(YujiMonster.class, EntityDataSerializers.ITEM_STACK);
     private static final EntityDataAccessor<Boolean> WHITE_ROBE = SynchedEntityData.defineId(YujiMonster.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Boolean> CRAWL_DEATH = SynchedEntityData.defineId(YujiMonster.class, EntityDataSerializers.BOOLEAN);
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
     private final ServerBossEvent boss = new ServerBossEvent(Component.translatable("entity.qihai.shifotou"), BossEvent.BossBarColor.RED, BossEvent.BossBarOverlay.PROGRESS);
     private final List<ItemStack> hoard = new ArrayList<>();
@@ -76,7 +77,8 @@ public final class YujiMonster extends Monster implements GeoEntity {
     private int attackCooldown, skillCooldown = 20, actionTicks, actionLength, burstCooldown, fleeTicks, followTicks, startledTicks;
     private UUID actionTarget;
     private Vec3 falseVoice;
-    private int voiceWindow, missedVoices, deathAge, animationSerial = -1;
+    private int voiceWindow, missedVoices, animationSerial = -1;
+    @Nullable private String lastLivingAnimation, visibleDeathAnimation;
     private boolean stompBurst;
     /** Qiyu summoning: cast interval, alive cap per summoner, scan radius. */
     public static final int SUMMON_INTERVAL = 200, SUMMON_CAP = 4;
@@ -144,7 +146,15 @@ public final class YujiMonster extends Monster implements GeoEntity {
     public ItemStack displayedLoot() { return entityData.get(LOOT); }
     public String action() { return entityData.get(ACTION); }
     public int actionSerial() { return entityData.get(ACTION_SERIAL); }
-    public boolean crawling() { return kind == YujiKind.YUCHI && getHealth() < getMaxHealth() * .3F; }
+    public boolean crawling() {
+        return kind == YujiKind.YUCHI && (getHealth() > 0 ? getHealth() < getMaxHealth() * .3F : entityData.get(CRAWL_DEATH));
+    }
+    @Override public void setHealth(float health) {
+        // Freeze and sync the living pose before lethal damage turns every health check into zero.
+        if (kind == YujiKind.YUCHI && !level().isClientSide && getHealth() > 0 && health <= 0)
+            entityData.set(CRAWL_DEATH, crawling() && action().isEmpty());
+        super.setHealth(health);
+    }
     public static boolean vulnerable(Player p) { return p.isAlive() && !p.isCreative() && !p.isSpectator(); }
 
     @Override protected void defineSynchedData() {
@@ -152,6 +162,7 @@ public final class YujiMonster extends Monster implements GeoEntity {
         entityData.define(LAYERS, 2); entityData.define(ACTION, "");
         entityData.define(ACTION_SERIAL, 0); entityData.define(LOOT, ItemStack.EMPTY);
         entityData.define(WHITE_ROBE, false);
+        entityData.define(CRAWL_DEATH, false);
     }
     @Override protected void registerGoals() {
         goalSelector.addGoal(0, new FloatGoal(this));
@@ -537,6 +548,7 @@ public final class YujiMonster extends Monster implements GeoEntity {
     @Override public void addAdditionalSaveData(CompoundTag tag) {
         super.addAdditionalSaveData(tag); tag.putInt("YujiLayers", layers()); tag.putInt("YujiFlee", fleeTicks);
         tag.putBoolean("YujiWhiteRobe", whiteRobe());
+        tag.putBoolean("YujiCrawlDeath", entityData.get(CRAWL_DEATH));
         tag.putInt("YujiFollow", followTicks); if (summoner != null) tag.putUUID("YujiSummoner", summoner); if (grudge != null) tag.putUUID("YujiGrudge", grudge);
         ListTag items = new ListTag(); hoard.forEach(stack -> items.add(stack.save(new CompoundTag()))); tag.put("YujiHoard", items);
     }
@@ -544,6 +556,7 @@ public final class YujiMonster extends Monster implements GeoEntity {
         if (kind == YujiKind.TANYU) setLayers(tag.contains("YujiLayers") ? tag.getInt("YujiLayers") : 2, false);
         super.readAdditionalSaveData(tag);
         setWhiteRobe(tag.getBoolean("YujiWhiteRobe"));
+        entityData.set(CRAWL_DEATH, tag.getBoolean("YujiCrawlDeath"));
         if (kind == YujiKind.TANYU && !tag.contains("Health")) setHealth(getMaxHealth());
         fleeTicks = Mth.clamp(tag.getInt("YujiFlee"), 0, 200); followTicks = Mth.clamp(tag.getInt("YujiFollow"), 0, 1000);
         grudge = tag.hasUUID("YujiGrudge") ? tag.getUUID("YujiGrudge") : null;
@@ -578,8 +591,29 @@ public final class YujiMonster extends Monster implements GeoEntity {
     private SoundEvent sound(String action) { return YujiContent.sound("entity.qihai." + kind.id() + "." + action); }
     @Override protected void playStepSound(BlockPos pos, BlockState state) { if (kind != YujiKind.TOUDAO && sound("step") != null) playSound(sound("step"), .5F, 1); }
     @Override public int getAmbientSoundInterval() { return kind == YujiKind.QIYU ? 298 : 160; }
-    @Override protected void tickDeath() { if (++deathAge >= (kind.giant() ? 60 : 16)) super.tickDeath(); }
+    public String deathAnimation() { return kind == YujiKind.YUCHI && entityData.get(CRAWL_DEATH) ? "crawl_death" : "death"; }
+    private int deathDurationTicks() {
+        int animationTicks = switch (kind) {
+            case YUCHI -> entityData.get(CRAWL_DEATH) ? 12 : 24;
+            case TOUDAO -> 16;
+            case SHASHENG, EKOU, LIANGSHE, XIEYIN -> 20;
+            case WANGYU -> 24;
+            case TANYU -> 26;
+            case QIYU -> 28;
+            case CHENNU -> 40;
+            case SHIFOTOU -> 60;
+        };
+        return animationTicks + 6;
+    }
+    @Override protected void tickDeath() {
+        ++deathTime;
+        if (deathTime >= deathDurationTicks() && !level().isClientSide && !isRemoved()) {
+            level().broadcastEntityEvent(this, (byte) 60);
+            remove(RemovalReason.KILLED);
+        }
+    }
     public String locomotion(boolean moving) {
+        if (crawling()) return "crawl";
         if (!moving) return kind == YujiKind.QIYU ? "idle_play" : "idle";
         return switch (kind) {
             case SHASHENG -> "run"; case TOUDAO -> "scuttle"; case QIYU -> "glide";
@@ -590,8 +624,22 @@ public final class YujiMonster extends Monster implements GeoEntity {
     }
     @Override public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
         controllers.add(new AnimationController<>(this, "body", 3, state -> {
-            String action = isDeadOrDying() ? "death" : !action().isEmpty() ? action() : locomotion(state.isMoving());
-            if (animationSerial != actionSerial()) { state.getController().forceAnimationReset(); animationSerial = actionSerial(); }
+            boolean dying = isDeadOrDying();
+            String action;
+            if (dying) {
+                // The death event can reach a client before the final entity-data packet.
+                if (visibleDeathAnimation == null) visibleDeathAnimation = lastLivingAnimation == null ? deathAnimation()
+                        : kind == YujiKind.YUCHI && lastLivingAnimation.equals("crawl") ? "crawl_death" : "death";
+                action = visibleDeathAnimation;
+            } else {
+                visibleDeathAnimation = null;
+                action = lastLivingAnimation = !action().isEmpty() ? action() : locomotion(state.isMoving());
+            }
+            if (!dying && animationSerial != actionSerial()) { state.getController().forceAnimationReset(); animationSerial = actionSerial(); }
+            // Two lethal hits in one server tick can leave a client on its standing pose.
+            // Finish that fall within the server's shorter crawl-death lifetime without changing clips.
+            state.getController().setAnimationSpeed(dying && kind == YujiKind.YUCHI
+                    && entityData.get(CRAWL_DEATH) && action.equals("death") ? 2 : 1);
             String animation = "animation." + kind.id() + "." + action;
             return state.setAndContinue(isDeadOrDying() ? RawAnimation.begin().thenPlayAndHold(animation)
                     : !action().isEmpty() ? RawAnimation.begin().thenPlay(animation) : RawAnimation.begin().thenLoop(animation));

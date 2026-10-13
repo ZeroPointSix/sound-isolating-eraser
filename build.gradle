@@ -101,15 +101,20 @@ minecraft {
         // By default, the server will crash when no gametests are provided.
         // The gametest system is also enabled by default for other run configs under the /test command.
         gameTestServer {
+            if (project.hasProperty('yujiDeathOnly')) {
+                workingDirectory project.file(providers.gradleProperty('yujiDeathRunDir')
+                        .getOrElse('run-yuji-death'))
+            }
             if (project.hasProperty('shadowMeleeOnly')) {
                 workingDirectory project.file(providers.gradleProperty('shadowMeleeRunDir')
                         .getOrElse('run-shadow-melee'))
             }
-            property 'forge.enabledGameTestNamespaces', project.hasProperty('yujiOnly') ? 'yuji_tests' :
-                    project.hasProperty('coreOnly') ? "${mod_id},yuji_tests" :
+            property 'forge.enabledGameTestNamespaces', project.hasProperty('yujiDeathOnly') ? 'yuji_death_tests' :
+                    project.hasProperty('yujiOnly') ? 'yuji_tests,yuji_death_tests' :
+                    project.hasProperty('coreOnly') ? "${mod_id},yuji_tests,yuji_death_tests" :
                     project.hasProperty('blinkOnly') ? 'wings_blink_tests' :
                     project.hasProperty('shadowMeleeOnly') ? 'shadow_melee_tests' :
-                    project.hasProperty('nightOnly') ? 'eternal_night_tests' : "${mod_id},eternal_night_tests,shadow_melee_tests,yuji_tests"
+                    project.hasProperty('nightOnly') ? 'eternal_night_tests' : "${mod_id},eternal_night_tests,shadow_melee_tests,yuji_tests,yuji_death_tests"
         }
 
         data {
@@ -186,6 +191,9 @@ tasks.named('processResources', ProcessResources).configure {
     from('src/main/resources/data/sound_isolating_eraser/structures/empty.nbt') {
         into 'data/yuji_tests/structures'
     }
+    from('src/main/resources/data/sound_isolating_eraser/structures/empty.nbt') {
+        into 'data/yuji_death_tests/structures'
+    }
     from(layout.buildDirectory.file('generated/brickrot-test-resources/data/sound_isolating_eraser/structures/brickrot_empty.nbt')) {
         into 'data/wings_blink_tests/structures'
     }
@@ -214,6 +222,7 @@ tasks.named('jar', Jar).configure {
     exclude 'data/sound_isolating_eraser/structures/shadow_arena.nbt'
     exclude 'data/eternal_night_tests/**'
     exclude 'data/yuji_tests/**'
+    exclude 'data/yuji_death_tests/**'
     exclude 'data/wings_blink_tests/**'
     exclude 'data/shadow_melee_tests/**'
 

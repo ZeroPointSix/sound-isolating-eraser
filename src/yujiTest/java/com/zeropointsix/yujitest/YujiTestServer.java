@@ -143,7 +143,29 @@ public final class YujiTestServer {
                         current.hurt(current.damageSources().genericKill(), Float.MAX_VALUE);
                     }
                     require(elapsed < 160, "actual death sound playback timed out: " + current.kind());
-                    if (clientDone("audio-" + current.kind().id())) advance(player);
+                    if (clientDone("audio-" + current.kind().id())) {
+                        if (current.kind() == YujiKind.YUCHI) startDeathPose(player, "death-standing");
+                        else advance(player);
+                    }
+                }
+                case "death-standing", "death-crawl", "death-rapid" -> {
+                    String phase = mode;
+                    if (!current.isDeadOrDying()) {
+                        require(++elapsed < 400, "living death-probe pose rendered: " + phase);
+                        if (clientDone("ready-" + phase)) {
+                            if (phase.equals("death-rapid")) current.setHealth(8);
+                            current.hurt(current.damageSources().genericKill(), Float.MAX_VALUE);
+                            elapsed = 0;
+                        }
+                    } else {
+                        require(++elapsed < 100, "death-probe client completed: " + phase);
+                        if (current.isRemoved() && clientDone(phase)) {
+                            pass(phase, "server removal deathTime=" + current.deathTime + ", animation=" + current.deathAnimation());
+                            if (phase.equals("death-standing")) startDeathPose(player, "death-crawl");
+                            else if (phase.equals("death-crawl")) startDeathPose(player, "death-rapid");
+                            else advance(player);
+                        }
+                    }
                 }
                 case "bone-gallery" -> {
                     if (clientDone("bone_spike")) {
@@ -337,5 +359,18 @@ public final class YujiTestServer {
         // Stay within the 16-block attenuation of entity sounds even for the 30-block-wide boss.
         player.teleportTo(player.serverLevel(), current.getX(), current.getY(), current.getZ() + Math.min(12, Math.max(5, current.getBbWidth() + 2)), 180, 0);
         mode = "audio"; elapsed = 0; signal(player, "audio-" + current.kind().id());
+    }
+
+    private static void startDeathPose(ServerPlayer player, String phase) {
+        current.discard();
+        current = YujiContent.MOBS.get(YujiKind.YUCHI).get().create(player.serverLevel());
+        current.setNoAi(true); current.setNoGravity(true); current.setPersistenceRequired();
+        current.moveTo(.5, 65, .5, 0, 0); current.setYBodyRot(0);
+        if (phase.equals("death-crawl")) current.setHealth(8);
+        player.serverLevel().addFreshEntity(current);
+        player.setGameMode(GameType.CREATIVE); player.setNoGravity(true);
+        player.teleportTo(player.serverLevel(), 4.5, 65.2, 4.5, 135, 13);
+        mode = phase;
+        elapsed = 0; signal(player, mode);
     }
 }
