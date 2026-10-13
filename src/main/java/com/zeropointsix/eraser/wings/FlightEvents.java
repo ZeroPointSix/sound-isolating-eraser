@@ -71,6 +71,11 @@ public final class FlightEvents {
         if (wasDeployed || (want && lastPositions.containsKey(p.getUUID()))) {
             settleMovement(p);
         }
+        if (wasDeployed && !want) {
+            // Stow ends the high-tier target immediately, even if another deploy
+            // arrives before END. Keep earned inertia and already-spent credit.
+            transitionSpeed(p, WingsState.tier(p), WingsState.HOVER);
+        }
         WingsState.setDeployed(p, want);
         if (want) {
             p.setNoGravity(true);
@@ -119,11 +124,15 @@ public final class FlightEvents {
         int previous = WingsState.tier(p);
         if (previous == next) return;
         settleMovement(p);
+        transitionSpeed(p, previous, next);
+        WingsState.setTier(p, next);
+    }
+
+    private static void transitionSpeed(ServerPlayer p, int previous, int next) {
         WingsConfig.Server cfg = WingsConfig.SERVER;
         speedTransitions.computeIfAbsent(p.getUUID(), ignored -> new FlightSpeedTransition())
                 .change(cfg.tierSpeed(previous), cfg.tierSpeed(next), cfg.accelLerp.get(),
                         p.level().getGameTime());
-        WingsState.setTier(p, next);
     }
 
     public static void serverBlink(ServerPlayer p) {
@@ -261,7 +270,11 @@ public final class FlightEvents {
             // Only an actual stowed tick allows a later deployment to re-anchor.
             lastPositions.remove(p.getUUID());
             lastMovementTicks.remove(p.getUUID());
-            speedTransitions.remove(p.getUUID());
+            // Stow already lowered the target. Preserve its finite decay across
+            // short stowed intervals too, without restarting it on redeploy.
+            FlightSpeedTransition transition = speedTransitions.get(p.getUUID());
+            if (transition != null && transition.speed(cfg.hoverMaxSpeed.get(), p.level().getGameTime())
+                    <= cfg.hoverMaxSpeed.get() * 1.001) speedTransitions.remove(p.getUUID());
             wallApproaches.remove(p.getUUID());
             if (p.tickCount % 40 == 0) {
                 // 未部署也要周期性同步：客户端手势判定依赖 WingInfo（首次展开前没有包会发）

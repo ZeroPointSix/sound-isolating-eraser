@@ -7,9 +7,11 @@ import shlex
 import socket
 import subprocess
 import time
+import sys
 
 ROOT = Path(__file__).resolve().parents[1]
-RESULTS = ROOT / "build/wings-e2e"
+MOTION_ONLY = "--motion-only" in sys.argv
+RESULTS = ROOT / ("build/wings-motion-e2e" if MOTION_ONLY else "build/wings-e2e")
 # Fresh world every run: player NBT (deployed wings, food, position) must not carry over.
 if RESULTS.exists():
     RESULTS.rename(RESULTS.with_name("wings-e2e-previous-" + str(time.time_ns())))
@@ -64,6 +66,7 @@ def launch(name, role, display=None):
                  "--width", "960", "--height", "540", "--quickPlayMultiplayer", "127.0.0.1:25566"]
     wings_role = {"server": "server", "wearer": "wingswearer", "observer": "wingsobserver"}[role]
     command = ["java", "-Xmx1G",
+               f"-Dwings.qa.motionOnly={str(MOTION_ONLY).lower()}",
                f"-Dwings.qa.results={RESULTS}", f"-Dwings.qa.role={wings_role}",
                f"-Dgravity.qa.results={RESULTS}", f"-Dgravity.qa.role={role}"]
     command += shlex.split(expand(config["vmArgs"]))
@@ -98,6 +101,8 @@ try:
     required = ("wings-wearer", "wings-observer", "wings-server", "wings-controls", "wings-key-conflicts",
                 "wings-input-rebinding", "wings-animation", "wings-audio", "wings-network",
                 "wings-network-server")
+    if MOTION_ONLY:
+        required = ("wings-motion-wingswearer", "wings-motion-wingsobserver", "wings-motion-server")
     while not all((RESULTS / f"{role}.pass").exists() for role in required):
         failures = list(RESULTS.glob("wings-*.failed"))
         if failures:
@@ -114,6 +119,9 @@ try:
         elif now >= gameplay_deadline:
             raise TimeoutError("Two-client wings gameplay validation exceeded 600 seconds after readiness")
         time.sleep(1)
+    if MOTION_ONLY:
+        print("REAL_TWO_CLIENT_WINGS_MOTION_PASSED (actual travel, configuration speeds, release/jump, stow/redeploy, simultaneous flight)", flush=True)
+        sys.exit(0)
     audio = json.loads((RESULTS / "wings-audio.json").read_text())
     assert all(count > 0 for count in audio["sourcePlaying"].values()), audio
     network = json.loads((RESULTS / "wings-network-client.json").read_text())

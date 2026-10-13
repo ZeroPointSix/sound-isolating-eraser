@@ -768,6 +768,93 @@ public final class WingsReviewRegressionTests {
         }
     }
 
+    @GameTest(template = "empty", timeoutTicks = 300)
+    public static void reviewEarnedStormStowRedeployExpires(GameTestHelper h) {
+        assertEarnedStormStow(h, false, false);
+    }
+
+    @GameTest(template = "empty", timeoutTicks = 300)
+    public static void reviewRepeatedEarnedStormStowRedeployCannotRenew(GameTestHelper h) {
+        assertEarnedStormStow(h, true, false);
+    }
+
+    @GameTest(template = "empty", timeoutTicks = 160)
+    public static void reviewEarnedStormStowRedeployPreservesLegalInertia(GameTestHelper h) {
+        assertEarnedStormStow(h, false, true);
+    }
+
+    @GameTest(template = "empty", timeoutTicks = 120)
+    public static void reviewShortStowedIntervalKeepsFiniteInertia(GameTestHelper h) {
+        FakePlayer player = winged(h, h.absoluteVec(new Vec3(2.5, 80.5, 2.5)), WingsState.HOVER);
+        FlightEvents.serverCycleTier(player);
+        FlightEvents.serverCycleTier(player);
+        FlightEvents.serverCycleTier(player);
+        h.runAfterDelay(40, () -> {
+            FlightEvents.serverSetDeployed(player, false);
+            tick(player);
+            h.runAfterDelay(3, () -> {
+                FlightEvents.serverSetDeployed(player, true);
+                Vec3 expected = player.position().add(4, 0, 0);
+                player.setPos(expected);
+                FlightEvents.settleClientMovement(player);
+                assertAccepted(h, player, expected, "short stowed interval retains decaying legal inertia");
+                h.runAfterDelay(60, () -> {
+                    player.setPos(expected.add(6, 0, 0));
+                    FlightEvents.settleClientMovement(player);
+                    assertRejectedAt(h, player, expected, "short stowed interval cannot retain permanent inertia");
+                    h.succeed();
+                });
+            });
+        });
+    }
+
+    private static void assertEarnedStormStow(GameTestHelper h, boolean repeat, boolean legal) {
+        assertDefaultTransitionConfig(h);
+        FakePlayer player = winged(h, h.absoluteVec(new Vec3(2.5, 80.5, 2.5)), WingsState.HOVER);
+        FlightEvents.serverCycleTier(player);
+        h.runAfterDelay(20, () -> FlightEvents.serverCycleTier(player));
+        h.runAfterDelay(40, () -> FlightEvents.serverCycleTier(player));
+        h.runAfterDelay(100, () -> {
+            h.assertTrue(WingsState.tier(player) == WingsState.STORM, "real G history reaches STORM");
+            Vec3 pending = player.position().add(6, 0, 0);
+            player.setPos(pending);
+            FlightEvents.serverSetDeployed(player, false);
+            FlightEvents.serverSetDeployed(player, true);
+            assertAccepted(h, player, pending, "stow must settle pending STORM movement first");
+            float exhaustion = player.getFoodData().getExhaustionLevel();
+            double[] speed = {6};
+            int[] accepted = {0};
+            int steps = legal ? 40 : 180;
+            for (int i = 1; i <= steps; i++) {
+                int step = i;
+                h.runAfterDelay(step, () -> {
+                    if (repeat) {
+                        FlightEvents.serverSetDeployed(player, false);
+                        FlightEvents.serverSetDeployed(player, true);
+                    }
+                    if (legal) speed[0] *= 0.875;
+                    Vec3 before = player.position();
+                    Vec3 attempt = before.add(speed[0], 0, 0);
+                    player.setPos(attempt);
+                    FlightEvents.settleClientMovement(player);
+                    boolean moved = player.position().distanceTo(attempt) < 0.001;
+                    if (moved) accepted[0]++;
+                    if (legal) assertAccepted(h, player, attempt, "legal stow inertia step " + step);
+                    else if (step >= 30) assertRejectedAt(h, player, before, "expired stow inertia " + step);
+                    tick(player);
+                    assertHoverExhaustion(h, player, exhaustion, step);
+                    if (step == steps) {
+                        h.assertTrue(legal || accepted[0] < 30, "stow cannot preserve permanent STORM credit");
+                        System.out.println("WINGS_REVIEW_STOW_HISTORY repeat=" + repeat + " legal=" + legal
+                                + " accepted=" + accepted[0] + "/" + steps + " exhaustion="
+                                + (player.getFoodData().getExhaustionLevel() - exhaustion));
+                        h.succeed();
+                    }
+                });
+            }
+        });
+    }
+
     private static void assertDefaultTransitionConfig(GameTestHelper h) {
         h.assertTrue(WingsConfig.SERVER.stormSpeed.get() == 120.0
                         && WingsConfig.SERVER.hoverMaxSpeed.get() == 5.0

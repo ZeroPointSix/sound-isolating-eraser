@@ -110,6 +110,10 @@ public final class WingsQaServer {
             return;
         }
         try {
+            if (Boolean.getBoolean("wings.qa.motionOnly")) {
+                WingsMotionQaServer.tick(server, results());
+                return;
+            }
             if (!networkScenario.isEmpty() && wearerRef != null) {
                 networkMaxStep = Math.max(networkMaxStep, Math.abs(wearerRef.getX() - networkPreviousX));
                 if (NETWORK_TRACE.size() < 6000) {
@@ -239,6 +243,10 @@ public final class WingsQaServer {
         if (!ready) {
             source.sendFailure(Component.literal("WINGS_QA_NOT_READY"));
             return 0;
+        }
+        if (Boolean.getBoolean("wings.qa.motionOnly")) {
+            WingsMotionQaServer.phase(source, next, results());
+            return 1;
         }
         switch (next) {
             case "visualSetup" -> {

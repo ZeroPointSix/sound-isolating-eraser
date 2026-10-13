@@ -66,6 +66,9 @@ jobs:
         env:
           LP_NUM_THREADS: '2'
         run: python3 tools/wings-showcase.py
+      - name: Verify native wing speed and simultaneous flight
+        if: ${{ !cancelled() && steps.driver.outcome == 'success' }}
+        run: python3 tools/wings-e2e.py --motion-only
       - name: Preserve build and test evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -85,6 +88,11 @@ jobs:
             build/wings-e2e/*.pass
             build/wings-e2e/*.failed
             build/wings-e2e/*.json
+            build/wings-motion-e2e/*.log
+            build/wings-motion-e2e/*.json
+            build/wings-motion-e2e/*.png
+            build/wings-motion-e2e/*.pass
+            build/wings-motion-e2e/*.failed
             build/wings-showcase/*.log
             build/wings-showcase/*.png
             build/wings-showcase/*.pass

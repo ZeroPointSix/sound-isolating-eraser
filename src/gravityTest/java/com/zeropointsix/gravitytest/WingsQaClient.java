@@ -75,6 +75,10 @@ public final class WingsQaClient {
             if (stage > 0 && ++totalTicks > 9000) throw new AssertionError("Timed out in stage " + stage
                     + " controlStep=" + controlStep + " phase=" + phase);
             if (mc.player == null || mc.level == null) return;
+            if (Boolean.getBoolean("wings.qa.motionOnly")) {
+                WingsMotionQaClient.tick(mc, RESULTS, ROLE, phase);
+                return;
+            }
             if (stage == 0) {
                 if (!phase.equals("ready")) return;
                 if (SHOWCASE && !Files.exists(RESULTS.resolve("recording.ready"))) return;
