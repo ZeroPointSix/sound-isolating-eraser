@@ -13,10 +13,16 @@ import net.minecraft.world.level.pathfinder.Path;
 import net.minecraft.world.phys.Vec3;
 
 public final class FleeLightGoal extends Goal {
+    public static final int POSITIONS_PER_TICK = 1024;
+    public static final int PATH_TARGETS_PER_TICK = 64;
     private static final List<BlockPos> SEARCH_OFFSETS = offsets();
     private final ShadowTanglerEntity mob;
     private int nextSearch;
     private BlockPos destination;
+    private BlockPos searchOrigin;
+    private int searchCursor;
+    private int lastSearchPositions;
+    private int lastPathTargets;
 
     public FleeLightGoal(ShadowTanglerEntity mob) {
         this.mob = mob;
@@ -41,21 +47,34 @@ public final class FleeLightGoal extends Goal {
         mob.setTarget(null);
         mob.getNavigation().stop();
         destination = null;
+        resetSearch();
         nextSearch = 0;
     }
 
     @Override
     public void tick() {
+        lastSearchPositions = 0;
+        lastPathTargets = 0;
         mob.setTarget(null);
         if (--nextSearch > 0) return;
-        nextSearch = 20;
-        if (destination != null && mob.brightnessAt(destination) <= 6 && !mob.getNavigation().isDone()) return;
+        if (destination != null && mob.brightnessAt(destination) <= 6 && !mob.getNavigation().isDone()) {
+            nextSearch = 20;
+            return;
+        }
         // createPath may otherwise reuse the old path when its target becomes bright.
         mob.getNavigation().stop();
+        destination = null;
         BlockPos origin = mob.blockPosition();
+        if (!origin.equals(searchOrigin)) {
+            searchOrigin = origin.immutable();
+            searchCursor = 0;
+        }
         Set<BlockPos> candidates = new LinkedHashSet<>();
-        for (BlockPos offsetPos : SEARCH_OFFSETS) {
-            BlockPos pos = origin.offset(offsetPos);
+        // Continue the same nearest-first search across ticks, including sealed refuges.
+        while (searchCursor < SEARCH_OFFSETS.size() && lastSearchPositions < POSITIONS_PER_TICK
+                && candidates.size() < PATH_TARGETS_PER_TICK) {
+            BlockPos pos = searchOrigin.offset(SEARCH_OFFSETS.get(searchCursor++));
+            lastSearchPositions++;
             if (!mob.level().hasChunkAt(pos) || !mob.level().isInWorldBounds(pos)
                     || mob.brightnessAt(pos) > 6) continue;
             var support = mob.level().getBlockState(pos.below()).getCollisionShape(mob.level(), pos.below());
@@ -65,20 +84,34 @@ public final class FleeLightGoal extends Goal {
             if (!mob.level().noCollision(mob, mob.getBoundingBox().move(offset))) continue;
             candidates.add(pos);
         }
-        // One bounded multi-target search avoids spending seconds on nearer but sealed dark spaces.
+        lastPathTargets = candidates.size();
+        // Bound both the world scan and the multi-target pathfinder's heuristic work.
         Path path = candidates.isEmpty() ? null : mob.getNavigation().createPath(candidates, 0);
         if (path != null && path.canReach() && mob.brightnessAt(path.getTarget()) <= 6
                 && mob.getNavigation().moveTo(path, 1D)) {
             destination = path.getTarget();
+            resetSearch();
+            nextSearch = 20;
             return;
         }
-        destination = null;
-        mob.getNavigation().stop();
+        if (searchCursor == SEARCH_OFFSETS.size()) {
+            resetSearch();
+            nextSearch = 20;
+        }
     }
 
     @Override
     public void stop() {
         mob.getNavigation().stop();
         destination = null;
+        resetSearch();
+    }
+
+    public int lastSearchPositions() { return lastSearchPositions; }
+    public int lastPathTargets() { return lastPathTargets; }
+
+    private void resetSearch() {
+        searchOrigin = null;
+        searchCursor = 0;
     }
 }
