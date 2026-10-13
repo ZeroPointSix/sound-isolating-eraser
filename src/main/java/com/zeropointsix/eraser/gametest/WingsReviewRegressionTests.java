@@ -818,29 +818,33 @@ public final class WingsReviewRegressionTests {
                     + " deployed=" + WingsState.deployed(player) + " food=" + player.getFoodData().getFoodLevel());
             FlightEvents.serverCycleTier(player);
             h.assertTrue(WingsState.tier(player) == WingsState.BOOST, "second G reaches BOOST");
-            h.runAfterDelay(20, () -> {
-                System.out.println("WINGS_STOW_HISTORY beforeStorm tier=" + WingsState.tier(player)
-                        + " deployed=" + WingsState.deployed(player) + " food=" + player.getFoodData().getFoodLevel());
-                FlightEvents.serverCycleTier(player);
-                h.assertTrue(WingsState.tier(player) == WingsState.STORM, "third G reaches STORM");
-            });
         });
+        h.runAfterDelay(40, () -> {
+            FlightEvents.serverCycleTier(player);
+            h.assertTrue(WingsState.tier(player) == WingsState.STORM, "third G reaches STORM");
+        });
+        float[] exhaustion = {0};
+        double[] speed = {6};
+        int[] accepted = {0};
+        int steps = legal ? 40 : 180;
         h.runAfterDelay(100, () -> {
             h.assertTrue(WingsState.tier(player) == WingsState.STORM, "real G history reaches STORM, actual="
                     + WingsState.tier(player) + " deployed=" + WingsState.deployed(player)
                     + " food=" + player.getFoodData().getFoodLevel());
             Vec3 pending = player.position().add(6, 0, 0);
             player.setPos(pending);
+            long actionTick = h.getLevel().getGameTime();
             FlightEvents.serverSetDeployed(player, false);
             FlightEvents.serverSetDeployed(player, true);
+            h.assertTrue(h.getLevel().getGameTime() == actionTick, "stow and redeploy share one server tick");
             assertAccepted(h, player, pending, "stow must settle pending STORM movement first");
-            float exhaustion = player.getFoodData().getExhaustionLevel();
-            double[] speed = {6};
-            int[] accepted = {0};
-            int steps = legal ? 40 : 180;
-            for (int i = 1; i <= steps; i++) {
-                int step = i;
-                h.runAfterDelay(step, () -> {
+            exhaustion[0] = player.getFoodData().getExhaustionLevel();
+        });
+        // Register before GameTestInfo iterates its fastutil task map: growing
+        // that map inside a callback can rehash the currently iterated entries.
+        for (int i = 1; i <= steps; i++) {
+            int step = i;
+            h.runAfterDelay(100 + step, () -> {
                     if (repeat) {
                         FlightEvents.serverSetDeployed(player, false);
                         FlightEvents.serverSetDeployed(player, true);
@@ -855,17 +859,16 @@ public final class WingsReviewRegressionTests {
                     if (legal) assertAccepted(h, player, attempt, "legal stow inertia step " + step);
                     else if (step >= 30) assertRejectedAt(h, player, before, "expired stow inertia " + step);
                     tick(player);
-                    assertHoverExhaustion(h, player, exhaustion, step);
+                    assertHoverExhaustion(h, player, exhaustion[0], step);
                     if (step == steps) {
                         h.assertTrue(legal || accepted[0] < 30, "stow cannot preserve permanent STORM credit");
                         System.out.println("WINGS_REVIEW_STOW_HISTORY repeat=" + repeat + " legal=" + legal
                                 + " accepted=" + accepted[0] + "/" + steps + " exhaustion="
-                                + (player.getFoodData().getExhaustionLevel() - exhaustion));
+                                + (player.getFoodData().getExhaustionLevel() - exhaustion[0]));
                         h.succeed();
                     }
-                });
-            }
-        });
+            });
+        }
     }
 
     private static void assertDefaultTransitionConfig(GameTestHelper h) {
