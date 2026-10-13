@@ -1,5 +1,6 @@
 package com.zeropointsix.gravitytest;
 
+import com.zeropointsix.eraser.wings.WingsState;
 import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.platform.InputConstants;
 import com.zeropointsix.eraser.client.WingsClientData;
@@ -222,10 +223,14 @@ public final class WingsQaClient {
             case 361 -> nativeInput("keydown", "w");
             case 367 -> capture(mc, "storm-flight");
             case 371 -> nativeInput("keyup", "w");
+            case 373 -> nativeInput("key", "h");
+            case 385 -> require(info(p) != null && info(p).tier() == WingsState.HOVER,
+                    "water fixture starts in real-key HOVER after STORM capture");
             case 390 -> command(mc, "flood"); // after observer since>35 timeout (~t368)
             case 398 -> require(p.isInWater()
                             && info(p) != null && info(p).deployed(),
-                    "entering water while deployed keeps wings open (Notion §4.6)");
+                    "entering water while deployed keeps wings open (Notion §4.6) pos="
+                            + p.position() + " water=" + p.isInWater() + " state=" + info(p));
             case 400 -> command(mc, "itemDrop");
             case 410 -> {
                 command(mc, "controlsSetup");

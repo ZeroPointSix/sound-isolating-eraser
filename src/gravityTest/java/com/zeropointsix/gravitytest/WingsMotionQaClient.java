@@ -13,7 +13,7 @@ import net.minecraft.client.Screenshot;
 
 /** No setPos/move/velocity override: actual LocalPlayer travel and actual TCP. */
 final class WingsMotionQaClient {
-    private static int scenario = -1, step, ticks, remoteSamples;
+    private static int scenario = -1, preparing = -1, step, ticks, remoteSamples;
     private static double startX, remoteX, recentX;
     private static long startedAt;
     private static boolean requested;
@@ -25,6 +25,16 @@ final class WingsMotionQaClient {
         if (scenario == -1 && phase.equals("ready")) {
             Files.writeString(results.resolve(leader ? "wings-wearer.ready" : "wings-observer.ready"), "ready\n");
             if (leader && !requested) { command(mc, "motionSetup0"); requested = true; }
+        }
+        if (phase.startsWith("motionPrepare")) {
+            int next = Integer.parseInt(phase.substring("motionPrepare".length()));
+            if (next != preparing) {
+                preparing = next;
+                mc.options.keyJump.setDown(false);
+                mc.options.keyUp.setDown(false);
+                command(mc, "motionPrepared" + next);
+            }
+            return;
         }
         if (phase.startsWith("motionSetup")) {
             int next = Integer.parseInt(phase.substring("motionSetup".length()));
@@ -38,7 +48,8 @@ final class WingsMotionQaClient {
             }
         }
         if (scenario < 0 || step == 4) return;
-        if ((System.nanoTime() - startedAt) / 1e9 > 90) throw new AssertionError("motion timeout " + scenario + " step=" + step);
+        if ((System.nanoTime() - startedAt) / 1e9 > 90) throw new AssertionError("motion timeout " + scenario
+                + " step=" + step + " pos=" + mc.player.position() + " info=" + WingsClientData.get(mc.player));
         var info = WingsClientData.get(mc.player);
         if (step == 0) {
             if (info == null || !info.deployed() || info.tier() != (scenario < 8 ? scenario % 4 : 3)

@@ -22,6 +22,7 @@ final class WingsMotionQaServer {
     private static int scenario = -1;
     private static boolean running;
     private static final Set<String> ready = new HashSet<>();
+    private static final Set<String> prepared = new HashSet<>();
     private static final Map<String, Sample> starts = new HashMap<>();
     private static final Set<String> ended = new HashSet<>();
     private static final List<String> observations = new ArrayList<>();
@@ -31,10 +32,20 @@ final class WingsMotionQaServer {
     static void phase(CommandSourceStack source, String word, Path results) throws Exception {
         MinecraftServer server = source.getServer();
         if (word.startsWith("motionSetup")) {
+            prepared.clear();
+            announce(server, "motionPrepare" + word.substring("motionSetup".length()));
+        } else if (word.startsWith("motionPrepared")) {
+            prepared.add(source.getPlayerOrException().getGameProfile().getName());
+            if (prepared.size() != 2) return;
+            word = "motionSetup" + word.substring("motionPrepared".length());
             scenario = Integer.parseInt(word.substring("motionSetup".length()));
             ready.clear(); starts.clear(); ended.clear(); running = false;
             boolean custom = scenario >= 4 && scenario < 8;
             configure(custom);
+            // Finish blocking chunk work before teleporting either client.
+            if (scenario == 0) {
+                for (int x = -1; x <= 100; x++) server.overworld().getChunk(x, 0);
+            }
             int index = 0;
             for (String name : List.of(WingsQaServer.WEARER, WingsQaServer.OBSERVER)) {
                 ServerPlayer p = server.getPlayerList().getPlayerByName(name);
@@ -53,8 +64,6 @@ final class WingsMotionQaServer {
                 for (int i = 0; i < target; i++) FlightEvents.serverCycleTier(p);
                 WingsNet.syncToTracking(p);
             }
-            // Preload the entire straight measurement corridor, not a moving fixture.
-            for (int x = -1; x <= 100; x++) server.overworld().getChunk(x, 0);
             announce(server, word);
         } else if (word.equals("motionBegin")) {
             ready.add(source.getPlayerOrException().getGameProfile().getName());
