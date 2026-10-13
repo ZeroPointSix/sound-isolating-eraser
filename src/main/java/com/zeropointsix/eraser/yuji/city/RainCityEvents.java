@@ -51,7 +51,7 @@ public final class RainCityEvents {
         if (city == null || city.players().isEmpty()) return;
         RainCityData data = RainCityData.get(city);
         List<ServerPlayer> players = city.players().stream().filter(p -> p.isAlive() && !p.isSpectator()).toList();
-        long elapsed = players.isEmpty() ? city.getDayTime() : 0;
+        long elapsed = players.isEmpty() ? data.cityTime : 0;
         for (ServerPlayer p : players) {
             CompoundTag state = data.players.get(p.getUUID());
             if (state == null || !state.getBoolean("Active")) {
@@ -64,9 +64,9 @@ public final class RainCityEvents {
             }
             elapsed = Math.max(elapsed, Math.max(0, city.getGameTime() - state.getLong("Entered")));
         }
-        city.setDayTime(elapsed);
+        // ServerLevel#setDayTime/#setWeatherParameters are no-ops here (DerivedLevelData); keep the clock in saved data.
+        if (data.cityTime != elapsed) { data.cityTime = elapsed; data.setDirty(); }
         if (city.getGameTime() % 20 == 0) {
-            city.setWeatherParameters(0, 24000, true, false);
             for (ServerPlayer p : city.players()) RainCityNetwork.send(p, elapsed, data.bellAt < 0 ? -1 : city.getGameTime() - data.bellAt);
             ensureScene(city, data);
         }
@@ -152,7 +152,7 @@ public final class RainCityEvents {
         if (!(e.getLevel() instanceof ServerLevel level) || !RainCityContent.isCity(level) || e.loadedFromDisk()
                 || !(e.getEntity() instanceof YujiMonster mob)) return;
         if (RainCityData.get(level).ringing()) { e.setCanceled(true); return; }
-        int day = RainCityRules.day(level.getDayTime());
+        int day = RainCityRules.day(RainCityData.get(level).cityTime);
         if (!mob.getPersistentData().contains("YujiCityDay")) {
             if (mob.kind() == YujiKind.TANYU) mob.setLayers(RainCityRules.layers(day), false);
             RainCitySpawns.grow(mob, day);

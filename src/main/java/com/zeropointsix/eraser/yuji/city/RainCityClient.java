@@ -119,6 +119,13 @@ public final class RainCityClient {
             if (e.phase != TickEvent.Phase.END) return;
             if (!inCity()) { elapsed = 0; bellAge = -1; }
             else if (!Minecraft.getInstance().isPaused()) { elapsed++; if (bellAge >= 0) bellAge++; }
+            if (inCity()) {
+                // The server's per-level time/weather for an extra dimension mirrors the overworld,
+                // so drive this client level's sky clock and rain from the synced city clock.
+                ClientLevel level = Minecraft.getInstance().level;
+                level.setDayTime(elapsed);
+                level.setRainLevel(1F);
+            }
         }
         @SubscribeEvent public static void fog(ViewportEvent.RenderFog e) {
             if (!airFog(e.getCamera())) return;

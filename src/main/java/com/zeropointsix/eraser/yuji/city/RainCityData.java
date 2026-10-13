@@ -15,6 +15,8 @@ public final class RainCityData extends SavedData {
     public boolean guardiansSpawned;
     public int guardianMask;
     public UUID buddha;
+    /** City clock in ticks. Extra dimensions share the overworld's DerivedLevelData, whose setDayTime is a no-op. */
+    public long cityTime;
     public static RainCityData get(ServerLevel level) {
         return level.getServer().overworld().getDataStorage().computeIfAbsent(RainCityData::load, RainCityData::new, "qihai_yuji_city");
     }
@@ -28,6 +30,7 @@ public final class RainCityData extends SavedData {
         data.guardiansSpawned = tag.getBoolean("Guardians");
         data.guardianMask = tag.getInt("GuardianMask");
         if (tag.hasUUID("Buddha")) data.buddha = tag.getUUID("Buddha");
+        data.cityTime = tag.getLong("CityTime");
         return data;
     }
     public boolean ringing() { return bellAt >= 0; }
@@ -38,6 +41,7 @@ public final class RainCityData extends SavedData {
         tag.put("Players", list); tag.putLong("BellAt", bellAt); tag.putBoolean("Guardians", guardiansSpawned);
         tag.putInt("GuardianMask", guardianMask);
         if (buddha != null) tag.putUUID("Buddha", buddha);
+        tag.putLong("CityTime", cityTime);
         return tag;
     }
 }
