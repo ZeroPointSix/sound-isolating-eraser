@@ -101,10 +101,6 @@ minecraft {
         // By default, the server will crash when no gametests are provided.
         // The gametest system is also enabled by default for other run configs under the /test command.
         gameTestServer {
-            if (project.hasProperty('yujiDeathOnly')) {
-                workingDirectory project.file(providers.gradleProperty('yujiDeathRunDir')
-                        .getOrElse('run-yuji-death'))
-            }
             if (project.hasProperty('shadowMeleeOnly')) {
                 workingDirectory project.file(providers.gradleProperty('shadowMeleeRunDir')
                         .getOrElse('run-shadow-melee'))

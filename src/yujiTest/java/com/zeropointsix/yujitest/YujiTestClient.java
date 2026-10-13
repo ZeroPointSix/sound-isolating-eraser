@@ -229,13 +229,13 @@ public final class YujiTestClient {
                 && monster.kind() == YujiKind.YUCHI) {
             try {
                 double angle = Math.abs(Math.toDegrees(event.getModel().getBone("root").orElseThrow().getRotX()));
-                deathProbe = monster;
                 boolean crawl = phase.equals("death-crawl");
                 if (!monster.isDeadOrDying()) {
+                    if (deathProbe != monster) { deathProbe = monster; livingDeathFrames = 0; }
                     if ((crawl && angle >= 75 && angle <= 85) || (!crawl && angle < 10)) livingDeathFrames++;
                     if (livingDeathFrames == 10) pass("ready-" + phase, "living root angle=" + angle);
                 } else {
-                    if (monster.deathTime == 0) return;
+                    if (monster != deathProbe || livingDeathFrames < 10 || monster.deathTime == 0) return;
                     if (monster.deathTime >= 2) require(monster.deathAnimation().equals(phase.equals("death-standing") ? "death" : "crawl_death"), "synced death animation selection");
                     deathFrames++;
                     deathMinAngle = Math.min(deathMinAngle, angle); deathMaxAngle = Math.max(deathMaxAngle, angle);
