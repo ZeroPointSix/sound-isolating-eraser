@@ -101,11 +101,17 @@ minecraft {
         // By default, the server will crash when no gametests are provided.
         // The gametest system is also enabled by default for other run configs under the /test command.
         gameTestServer {
+            if (project.hasProperty('performanceOnly')) {
+                workingDirectory project.file('run-performance')
+                jvmArgs '-Xmx1G', '-XX:StartFlightRecording=filename=flee-light.jfr,settings=profile,dumponexit=true,maxsize=64m',
+                        '-Xlog:gc*:file=gc.log:time,uptime,level,tags'
+            }
             if (project.hasProperty('shadowMeleeOnly')) {
                 workingDirectory project.file(providers.gradleProperty('shadowMeleeRunDir')
                         .getOrElse('run-shadow-melee'))
             }
-            property 'forge.enabledGameTestNamespaces', project.hasProperty('yujiOnly') ? 'yuji_tests' :
+            property 'forge.enabledGameTestNamespaces', project.hasProperty('performanceOnly') ? 'qijie_performance' :
+                    project.hasProperty('yujiOnly') ? 'yuji_tests' :
                     project.hasProperty('coreOnly') ? "${mod_id},yuji_tests" :
                     project.hasProperty('blinkOnly') ? 'wings_blink_tests' :
                     project.hasProperty('shadowMeleeOnly') ? 'shadow_melee_tests' :
