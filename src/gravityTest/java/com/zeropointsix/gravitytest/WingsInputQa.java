@@ -14,6 +14,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicIntegerArray;
+import java.util.concurrent.atomic.AtomicReference;
+import net.minecraft.Util;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.AbstractWidget;
@@ -31,6 +33,7 @@ final class WingsInputQa {
     private static final String MONITOR = "wings-input-qa";
     // WingsNet 的四个 PLAY_TO_SERVER 消息编号：收展、切档、悬停、雷遁。
     private static final AtomicIntegerArray PACKETS = new AtomicIntegerArray(4);
+    private static final AtomicReference<DeployObservation> LAST_DEPLOY = new AtomicReference<>();
     private static final List<SavedBinding> SAVED = new ArrayList<>();
     private static final ArrayDeque<Step> STEPS = new ArrayDeque<>();
     private static Channel channel;
@@ -38,9 +41,12 @@ final class WingsInputQa {
     private static int elapsed;
     private static int[] before;
     private static int beforeTier;
+    private static boolean beforeDeployed;
+    private static long inputFinishedAt;
     private static Vec3 beforePosition;
 
     private record SavedBinding(KeyMapping mapping, InputConstants.Key key, KeyModifier modifier) { }
+    private record DeployObservation(int sequence, boolean deployed, long sentAt) { }
     private record Step(String name, Action input, Action check, int delay, int packet, int count) { }
     @FunctionalInterface
     private interface Action { void run() throws Exception; }
@@ -57,6 +63,10 @@ final class WingsInputQa {
                 if (message instanceof ServerboundCustomPayloadPacket packet && WINGS.equals(packet.getIdentifier())) {
                     FriendlyByteBuf payload = new FriendlyByteBuf(packet.getData().duplicate());
                     int id = payload.readVarInt();
+                    if (id == 0) {
+                        LAST_DEPLOY.set(new DeployObservation(PACKETS.get(0) + 1,
+                                payload.readBoolean(), Util.getMillis()));
+                    }
                     if (id >= 0 && id < PACKETS.length()) PACKETS.incrementAndGet(id);
                 }
                 super.write(ctx, message, promise);
@@ -166,16 +176,39 @@ final class WingsInputQa {
             elapsed = 0;
             before = counts();
             beforeTier = info(mc).tier();
+            beforeDeployed = info(mc).deployed();
             beforePosition = mc.player.position();
             active.input().run();
+            inputFinishedAt = Util.getMillis();
             return false;
         }
-        if (++elapsed < active.delay()) return false;
+        long now = Util.getMillis();
+        long settlingMillis = active.delay() * 50L;
+        // xdotool blocks the render thread; catch-up ticks are not server response time.
+        if (++elapsed < active.delay() || now - inputFinishedAt < settlingMillis) return false;
         int[] delta = counts();
+        DeployObservation deployment = LAST_DEPLOY.get();
+        boolean hasDeployment = deployment != null && deployment.sequence() > before[0];
+        boolean excessPackets = false;
         for (int i = 0; i < delta.length; i++) {
             delta[i] -= before[i];
+            excessPackets |= delta[i] > (i == active.packet() ? active.count() : 0);
+        }
+        if (!excessPackets && active.packet() == 0 && hasDeployment
+                && now - deployment.sentAt() < settlingMillis) return false;
+        System.out.println("WINGS_INPUT_OBSERVE " + active.name() + " packets=" + Arrays.toString(delta)
+                + " elapsedMillis=" + (now - inputFinishedAt) + " ticks=" + elapsed
+                + " deployRequest=" + (hasDeployment ? deployment.deployed() : "none")
+                + " requestAgeMillis=" + (hasDeployment ? now - deployment.sentAt() : -1)
+                + " beforeDeployed=" + beforeDeployed + " syncedDeployed=" + info(mc).deployed());
+        for (int i = 0; i < delta.length; i++) {
             require(delta[i] == (i == active.packet() ? active.count() : 0),
                     active.name() + " packet=" + i + " actual=" + delta[i]);
+        }
+        if (active.packet() == 0) {
+            require(hasDeployment && deployment.sequence() == before[0] + 1
+                            && deployment.deployed() == !beforeDeployed,
+                    active.name() + " deploy request must toggle the prior synchronized state");
         }
         active.check().run();
         System.out.println("WINGS_INPUT_ASSERT " + active.name() + " packets=" + Arrays.toString(delta)
