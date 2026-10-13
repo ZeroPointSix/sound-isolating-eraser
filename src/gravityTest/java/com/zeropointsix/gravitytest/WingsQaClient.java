@@ -1,10 +1,13 @@
 package com.zeropointsix.gravitytest;
 
 import com.mojang.blaze3d.platform.NativeImage;
+import com.mojang.blaze3d.platform.InputConstants;
 import com.zeropointsix.eraser.client.WingsClientData;
+import com.zeropointsix.eraser.client.WingsKeys;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import net.minecraft.client.Camera;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -45,6 +48,11 @@ public final class WingsQaClient {
     private static int deployAnimFrame = -1;
     private static String reviewPhase = "";
     private static int reviewPhaseTicks;
+    private static int controlStep;
+    private static Vec3 controlStart;
+    private static double hoverError;
+    private static long previousCharge;
+    private static InputConstants.Key originalCycleKey;
 
     @SubscribeEvent
     public static void chat(ClientChatReceivedEvent event) {
@@ -63,7 +71,8 @@ public final class WingsQaClient {
         if (ROLE == null || event.phase != TickEvent.Phase.END || finished) return;
         Minecraft mc = Minecraft.getInstance();
         try {
-            if (++totalTicks > 9000) throw new AssertionError("Timed out in stage " + stage);
+            if (++totalTicks > 9000) throw new AssertionError("Timed out in stage " + stage
+                    + " controlStep=" + controlStep + " phase=" + phase);
             if (mc.player == null || mc.level == null) return;
             if (stage == 0) {
                 if (!phase.equals("ready")) return;
@@ -82,12 +91,23 @@ public final class WingsQaClient {
             if (stage == 50) {
                 if (SHOWCASE) showcaseObserver(mc); else exerciseObserver(mc);
             }
+            if (stage == 60) exerciseControls(mc);
+            if (stage == 70 && WingsInputQa.tick(mc, RESULTS)) {
+                capture(mc, "input-rebinding-complete");
+                stage = 99;
+            }
             if (stage == 99 && Files.exists(RESULTS.resolve("wings-observer.pass"))) {
                 mc.player.connection.sendCommand("wingsqa finish");
                 mark("wings-wearer.pass");
                 finished = true;
             }
         } catch (Throwable failure) {
+            restoreCycleBinding();
+            try {
+                WingsInputQa.restore(mc);
+            } catch (Throwable cleanupFailure) {
+                failure.addSuppressed(cleanupFailure);
+            }
             failure.printStackTrace();
             try {
                 capture(mc, "failed");
@@ -115,15 +135,21 @@ public final class WingsQaClient {
                 capture(mc, "deployed");
                 foodAtDeploy = p.getFoodData().getFoodLevel();
             }
-            case 95 -> require(info(p) != null && info(p).tier() == 1,
-                    "C cycles tier hover→cruise (synced)");
+            case 95 -> {
+                require(info(p) != null && info(p).tier() == 1,
+                        "G cycles tier hover→cruise (synced)");
+                require(mc.screen == null, "native G must not also open Curios: " + mc.screen);
+            }
             case 200 -> {
                 require(p.getFoodData().getFoodLevel() < foodAtDeploy,
                         "flight drains real hunger (food " + foodAtDeploy + "→"
                                 + p.getFoodData().getFoodLevel() + ")");
                 command(mc, "hungerDone");
             }
-            case 205 -> { mark(p); nativeInput("key", "r"); }
+            case 205 -> {
+                require(mc.screen == null, "native R starts in game, not inside a GUI: " + mc.screen);
+                mark(p); nativeInput("key", "r");
+            }
             case 225 -> require(moved(p) > 10,
                     "R blinks forward ~24 blocks (real teleport, client-authoritative)"
                             + " moved=" + moved(p));
@@ -170,7 +196,11 @@ public final class WingsQaClient {
                             && info(p) != null && info(p).deployed(),
                     "entering water while deployed keeps wings open (Notion §4.6)");
             case 400 -> command(mc, "itemDrop");
-            case 410 -> stage = 99;
+            case 410 -> {
+                command(mc, "controlsSetup");
+                stage = 60;
+                ticks = 0;
+            }
             default -> {
                 // xdotool 原生输入偶发丢失：重发按键，成功即止。重试间隔 ≥20t，保证
                 // 上一轮 sync 已回——间隔过近的双击会读到过期状态把展开切换成收起。
@@ -179,7 +209,7 @@ public final class WingsQaClient {
                     nativeInput("key", "--delay", "150", "space", "space");
                 } else if (ticks >= 75 && ticks <= 85 && ticks % 5 == 0
                         && info(p) != null && info(p).tier() == 0) {
-                    nativeInput("key", "c");
+                    nativeInput("key", "g");
                 } else if (ticks > 205 && ticks < 225 && ticks % 6 == 1 && moved(p) < 5) {
                     nativeInput("key", "r");
                 } else if (ticks == 262 && moved(p) < 30) {
@@ -195,6 +225,120 @@ public final class WingsQaClient {
                 }
             }
         }
+    }
+
+    private static void exerciseControls(Minecraft mc) throws Exception {
+        Player p = mc.player;
+        if (controlStep == 0) {
+            if (!phase.equals("controlsSetup") || p.position().distanceTo(new Vec3(0.5, 100, 0.5)) > 3
+                    || info(p) == null || info(p).tier() != 1) return;
+            controlStep = 1;
+            ticks = 0;
+            return;
+        }
+        if (controlStep == 1) {
+            if (ticks > 60 && ticks <= 100) hoverError = Math.max(hoverError, Math.abs(p.getY() - controlStart.y));
+            switch (ticks) {
+                case 1 -> nativeInput("key", "h");
+                case 30 -> require(info(p).tier() == 0, "native H selects hover");
+                case 60 -> { controlStart = p.position(); hoverError = 0; }
+                case 100 -> require(hoverError < 0.1, "hover holds height within 0.1 blocks for 40 client ticks: " + hoverError);
+                case 101 -> { controlStart = p.position(); nativeInput("keydown", "w"); }
+                case 121 -> nativeInput("keyup", "w");
+                case 130 -> require(p.getX() - controlStart.x > 1 && Math.abs(p.getZ() - controlStart.z) < 0.75,
+                        "hover W follows -90 degree heading, not world south: " + p.position().subtract(controlStart));
+                case 135 -> nativeInput("key", "h");
+                case 155 -> {
+                    require(info(p).tier() == 1, "native H restores cruise");
+                    controlStart = p.position(); nativeInput("keydown", "Shift_L");
+                }
+                case 165 -> nativeInput("keyup", "Shift_L");
+                case 170 -> {
+                    require(controlStart.y - p.getY() > 1, "native Shift descends while cruising");
+                    nativeInput("key", "h");
+                }
+                case 190 -> nativeInput("key", "h");
+                case 200 -> nativeInput("key", "g");
+                case 220 -> require(info(p).tier() == 2, "native G selects boost");
+                case 225 -> nativeInput("key", "g");
+                case 245 -> require(info(p).tier() == 3, "native G selects storm");
+                case 250 -> nativeInput("key", "g");
+                case 270 -> require(info(p).tier() == 0, "native G completes all four tiers");
+                case 275 -> { command(mc, "voidSetup"); controlStep = 2; ticks = 0; }
+                default -> { }
+            }
+        } else if (controlStep == 2) {
+            if (!phase.equals("voidSetup") || p.getY() > 0) return;
+            controlStart = p.position(); controlStep = 3; ticks = 0;
+        } else if (controlStep == 3 && ticks == 50) {
+            require(p.getFoodData().getFoodLevel() == 0 && info(p).tier() == 0,
+                    "void rescue runs with empty hunger in hover");
+            require(p.getY() > mc.level.getMinBuildHeight() + 5 && p.getY() > controlStart.y + 1,
+                    "starving hover climbs out of void margin without being pulled back");
+            command(mc, "voidDone"); controlStep = 4; ticks = 0;
+        } else if (controlStep == 4) {
+            if (!phase.equals("voidDone") || p.getY() < 90) return;
+            previousCharge = info(p).chargedUntil();
+            command(mc, "zap"); controlStep = 5; ticks = 0;
+        } else if (controlStep == 5 && info(p).chargedUntil() > previousCharge
+                && info(p).chargedUntil() > mc.level.getGameTime()) {
+            require(true, "new real lightning charge is synchronized before expiry measurement");
+            command(mc, "chargeStart"); controlStep = 6; ticks = 0;
+        } else if (controlStep == 6) {
+            if (!phase.equals("chargeStart")) return;
+            mark(p); nativeInput("key", "r"); controlStep = 7; ticks = 0;
+        } else if (controlStep == 7 && ticks == 30) {
+            require(moved(p) > 10, "charged native R performs real displacement");
+            command(mc, "chargeBlinkDone"); controlStep = 8; ticks = 0;
+        } else if (controlStep == 8 && Files.exists(RESULTS.resolve("wings-controls.pass"))) {
+            capture(mc, "controls-complete");
+            nativeInput("key", "--delay", "150", "space", "space");
+            controlStep = 9; ticks = 0;
+        } else if (controlStep == 9 && ticks == 30) {
+            require(!info(p).deployed(), "native double-space stows wings before Curios control check");
+            nativeInput("key", "g"); controlStep = 10; ticks = 0;
+        } else if (controlStep == 10 && ticks == 20) {
+            requireCuriosScreen(mc, "G still opens Curios with stowed wings");
+            capture(mc, "curios-stowed");
+            nativeInput("key", "Escape"); controlStep = 11; ticks = 0;
+        } else if (controlStep == 11 && ticks == 10) {
+            require(mc.screen == null, "native Escape closes Curios before redeploying");
+            command(mc, "controlsSetup"); controlStep = 12; ticks = 0;
+        } else if (controlStep == 12) {
+            if (!phase.equals("controlsSetup") || info(p) == null || !info(p).deployed()
+                    || info(p).tier() != 1 || p.position().distanceTo(new Vec3(0.5, 100, 0.5)) > 3) return;
+            originalCycleKey = WingsKeys.CYCLE_TIER.getKey();
+            WingsKeys.CYCLE_TIER.setKey(InputConstants.Type.KEYSYM.getOrCreate(GLFW.GLFW_KEY_K));
+            KeyMapping.resetMapping();
+            nativeInput("key", "g"); controlStep = 13; ticks = 0;
+        } else if (controlStep == 13 && ticks == 20) {
+            requireCuriosScreen(mc, "G belongs to Curios when the wing key is rebound to K");
+            require(info(p).tier() == 1, "old G must not cycle the rebound wing key");
+            capture(mc, "curios-rebound");
+            nativeInput("key", "Escape"); controlStep = 14; ticks = 0;
+        } else if (controlStep == 14 && ticks == 10) {
+            require(mc.screen == null, "native Escape returns to game before rebound K");
+            nativeInput("key", "k"); controlStep = 15; ticks = 0;
+        } else if (controlStep == 15 && ticks == 20) {
+            require(mc.screen == null && info(p).tier() == 2,
+                    "rebound native K cycles wings without opening Curios");
+            restoreCycleBinding();
+            mark("wings-key-conflicts.pass");
+            WingsInputQa.begin(mc);
+            stage = 70;
+        }
+    }
+
+    private static void restoreCycleBinding() {
+        if (originalCycleKey == null) return;
+        WingsKeys.CYCLE_TIER.setKey(originalCycleKey);
+        KeyMapping.resetMapping();
+        originalCycleKey = null;
+    }
+
+    private static void requireCuriosScreen(Minecraft mc, String message) {
+        require(mc.screen != null && mc.screen.getClass().getName().startsWith("top.theillusivec4.curios."),
+                message + ": " + mc.screen);
     }
 
     /**

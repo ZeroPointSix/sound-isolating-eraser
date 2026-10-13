@@ -148,15 +148,14 @@ public final class NightTestServer {
                     say(owner, "RESTART"); say(observer, "RESTART"); phase = 98;
                 } else { say(owner, "WALK"); phase = 4; }
             } else if (phase == 4 && owner.level().dimension().equals(Level.OVERWORLD)) {
-                // Allow a few ticks for the post-teleport position to settle before asserting:
-                // a stale movement packet can briefly report the pre-teleport coordinates.
-                if (homeWait++ < 5) return;
                 assertHome(owner);
+                // Observe consecutive connection ticks, not one lucky teleport frame.
+                if (homeWait++ < 20) return;
                 observer.teleportTo(observer.serverLevel(), door.getX() + 0.5, door.getY(), door.getZ() - 2.5, 0, 12);
                 say(observer, "WALK"); homeWait = 0; phase = 5;
             } else if (phase == 5 && observer.level().dimension().equals(Level.OVERWORLD)) {
-                if (homeWait++ < 5) return;
                 assertHome(observer);
+                if (homeWait++ < 20) return;
                 var city = owner.server.getLevel(EternalNightContent.LEVEL);
                 require(CitySavedData.get(city).active(door, city.getGameTime()), "exit remains shared after both returns");
                 Files.writeString(RESULTS.resolve("server-cycle.pass"), "PASS: native bed clicks and deep sleep, responsive cold-world same-night entry, native 100th door, shared exit, distinct beds, inventory and counter reset; max entry tick gap " + longestEntryTick / 1_000_000 + " ms\n");

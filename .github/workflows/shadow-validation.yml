@@ -9,6 +9,7 @@ on:
       - '**/shadow_tangler*'
       - 'src/shadowTest/**'
       - 'tools/shadow-e2e.py'
+      - 'tools/shadow-melee-comparison.py'
       - 'gradle/shadow-e2e.gradle'
       - 'build.gradle'
       - 'gradle.properties'
@@ -33,8 +34,15 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v4
+      - name: Compare 64 fixed melee seeds before and after the fixture fix
+        run: python3 tools/shadow-melee-comparison.py
       - name: Build and run real Forge regressions
-        run: bash ./gradlew --no-daemon --max-workers=2 build runGameTestServer
+        env:
+          JAVA_TOOL_OPTIONS: -Dshadow.escape.seeds=16 -Dshadow.melee.seeds=64
+        run: |
+          set -o pipefail
+          mkdir -p build/reports
+          bash ./gradlew --no-daemon --max-workers=2 build runGameTestServer | tee build/reports/shadow-gametests.log
       - name: Verify production jar boundary
         run: |
           jar_file="$(find build/libs -maxdepth 1 -type f -name '*.jar' -print -quit)"

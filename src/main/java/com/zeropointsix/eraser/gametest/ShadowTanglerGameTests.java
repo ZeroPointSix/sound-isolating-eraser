@@ -6,9 +6,13 @@ import com.zeropointsix.eraser.registry.ModItems;
 import com.zeropointsix.eraser.shadow.ShadowLight;
 import com.zeropointsix.eraser.shadow.ShadowTanglerEntity;
 import com.zeropointsix.eraser.shaxia.ShaxiaTargets;
+import java.util.ArrayList;
+import java.util.Collection;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTest;
+import net.minecraft.gametest.framework.GameTestGenerator;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.gametest.framework.TestFunction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.effect.MobEffects;
@@ -201,17 +205,67 @@ public final class ShadowTanglerGameTests {
 
     @GameTest(template = "shadow_arena", timeoutTicks = 400)
     public static void shadowEscapesBrightArea(GameTestHelper h) {
+        escapeToDarkRefuge(h, false, null);
+    }
+
+    @GameTestGenerator
+    public static Collection<TestFunction> shadowEscapeSeedRegressions() {
+        Collection<TestFunction> tests = new ArrayList<>();
+        int seeds = Math.max(0, Math.min(64, Integer.getInteger("shadow.escape.seeds", 0)));
+        for (long seed = 0; seed < seeds; seed++) {
+            long fixedSeed = seed;
+            for (boolean glass : new boolean[] {false, true}) {
+                String name = "shadowescape_" + (glass ? "glass" : "stone") + "_seed_" + seed;
+                tests.add(new TestFunction("shadow_escape_stress", name,
+                        ModMain.MOD_ID + ":shadow_arena", 400, 0L, true,
+                        h -> escapeToDarkRefuge(h, glass, fixedSeed)));
+            }
+        }
+        return tests;
+    }
+
+    private static void escapeToDarkRefuge(GameTestHelper h, boolean glass, Long seed) {
+        if (glass) {
+            for (int x = 1; x < 24; x++) for (int z = 1; z < 24; z++) {
+                h.setBlock(new BlockPos(x, 1, z), Blocks.GLASS);
+            }
+        }
         ShadowTanglerEntity mob = spawn(h, 15, false);
+        if (seed != null) mob.getRandom().setSeed(seed);
         var origin = mob.position();
         mob.getAttribute(Attributes.MAX_HEALTH).setBaseValue(200);
         mob.setHealth(200);
-        h.runAtTickTime(60, () -> assertPromptEscape(h, mob, origin));
-        h.runAtTickTime(100, () -> h.assertTrue(mob.position().subtract(origin).horizontalDistanceSqr() >= 1
-                || mob.getLightTier() == ShadowLight.DARK, "escape continues beyond one block: " + escapeState(mob)));
-        h.runAtTickTime(300, () -> {
-            h.assertTrue(mob.isAlive() && mob.getLightTier() == ShadowLight.DARK, "real navigation reaches a dark refuge");
-            h.succeed();
-        });
+        boolean[] sawBright = {false};
+        int[] firstDarkTick = {-1}, recoveredTick = {-1};
+        for (int t = 1; t <= 300; t++) {
+            final int tick = t;
+            h.runAtTickTime(tick, () -> {
+                int light = mob.brightnessAt(mob.blockPosition());
+                if (mob.getLightTier() == ShadowLight.BRIGHT && light >= 11) sawBright[0] = true;
+                // Initial synced tier is DARK. Require actual escape from a lit, unlocked spawn.
+                if (firstDarkTick[0] < 0 && sawBright[0] && !mob.isSpawning()
+                        && mob.getLightTier() == ShadowLight.DARK && light <= 6
+                        && mob.position().subtract(origin).horizontalDistanceSqr() >= 1) {
+                    firstDarkTick[0] = tick;
+                }
+                if (firstDarkTick[0] >= 0 && recoveredTick[0] < 0 && !mob.isRetreating()) {
+                    recoveredTick[0] = tick;
+                }
+                if (tick == 60) assertPromptEscape(h, mob, origin);
+                if (tick == 100) h.assertTrue(mob.position().subtract(origin).horizontalDistanceSqr() >= 1
+                        || mob.getLightTier() == ShadowLight.DARK,
+                        "escape continues beyond one block: " + escapeState(mob));
+                if (tick == 300) {
+                    String evidence = "glass=" + glass + " seed=" + seed + " firstDarkTick=" + firstDarkTick[0]
+                            + " recoveredTick=" + recoveredTick[0] + " " + escapeState(mob);
+                    com.mojang.logging.LogUtils.getLogger().info("Shadow escape evidence: {}", evidence);
+                    // After the dark cooldown, normal wandering may legally return to dim light.
+                    h.assertTrue(mob.isAlive() && firstDarkTick[0] >= 0,
+                            "real navigation reaches a dark refuge by tick 300: " + evidence);
+                    h.succeed();
+                }
+            });
+        }
     }
 
     @GameTest(template = "empty")
@@ -256,45 +310,77 @@ public final class ShadowTanglerGameTests {
 
     @GameTest(template = "shadow_arena", timeoutTicks = 400)
     public static void shadowEscapesAcrossGlass(GameTestHelper h) {
-        for (int x = 1; x < 24; x++) for (int z = 1; z < 24; z++) {
-            h.setBlock(new BlockPos(x, 1, z), Blocks.GLASS);
-        }
-        ShadowTanglerEntity mob = spawn(h, 15, false);
-        var origin = mob.position();
-        mob.getAttribute(Attributes.MAX_HEALTH).setBaseValue(200);
-        mob.setHealth(200);
-        h.runAtTickTime(60, () -> assertPromptEscape(h, mob, origin));
-        h.runAtTickTime(100, () -> h.assertTrue(mob.position().subtract(origin).horizontalDistanceSqr() >= 1
-                || mob.getLightTier() == ShadowLight.DARK, "glass escape continues beyond one block: " + escapeState(mob)));
-        h.runAtTickTime(300, () -> {
-            h.assertTrue(mob.isAlive() && mob.getLightTier() == ShadowLight.DARK, "glass floor is a valid dark refuge");
-            h.succeed();
-        });
+        escapeToDarkRefuge(h, true, null);
     }
 
     @GameTest(template = "shadow_arena", timeoutTicks = 160)
     public static void shadowMeleeWindupAndInterval(GameTestHelper h) {
+        meleeWindupAndInterval(h, null);
+    }
+
+    @GameTestGenerator
+    public static Collection<TestFunction> shadowMeleeSeedRegressions() {
+        Collection<TestFunction> tests = new ArrayList<>();
+        int seeds = Math.max(0, Math.min(128, Integer.getInteger("shadow.melee.seeds", 0)));
+        for (long seed = 0; seed < seeds; seed++) {
+            long fixedSeed = seed;
+            tests.add(new TestFunction("shadow_melee_stress", "shadowmelee_seed_" + seed,
+                    "shadow_melee_tests:shadow_arena", 160, 0L, true,
+                    h -> meleeWindupAndInterval(h, fixedSeed)));
+        }
+        return tests;
+    }
+
+    private static void meleeWindupAndInterval(GameTestHelper h, Long seed) {
         ShadowTanglerEntity mob = spawn(h, 0, false);
+        if (seed != null) mob.getRandom().setSeed(seed);
         var target = h.spawn(EntityType.VILLAGER, new BlockPos(13, 2, 12));
         target.setNoAi(true);
         target.getAttribute(Attributes.MAX_HEALTH).setBaseValue(200);
         target.getAttribute(Attributes.KNOCKBACK_RESISTANCE).setBaseValue(1);
         target.setHealth(200);
+        // The negative control restores only the pre-6516a51 random discovery delay.
+        // Both modes retain real AI, damage, windup, cooldown and goal restart checks.
+        boolean legacyTarget = Boolean.getBoolean("shadow.melee.legacyTarget");
+        if (!legacyTarget) {
+            h.runAtTickTime(26, () -> {
+                h.assertTrue(!mob.isSpawning(), "melee fixture assigns its target after the spawn lock");
+                h.assertTrue(mob.getLightTier() == ShadowLight.DARK && mob.brightnessAt(mob.blockPosition()) <= 6,
+                        "melee fixture remains dark: " + escapeState(mob));
+                h.assertTrue(target.isAlive(), "melee fixture target is alive before pursuit");
+                mob.setTarget(target);
+                h.assertTrue(mob.getTarget() == target, "melee fixture accepts its own living target");
+            });
+        }
         int[] lastSwing = {-1}, previousHit = {-1}, hits = {0};
         boolean[] swinging = {false};
         boolean[] interrupted = {false};
+        int[] firstTargetTick = {-1}, interruptedTick = {-1};
+        var swingTicks = new ArrayList<Integer>();
+        var hitTicks = new ArrayList<Integer>();
         var meleeGoal = mob.goalSelector.getAvailableGoals().stream()
                 .filter(goal -> goal.getGoal() instanceof MeleeAttackGoal).findFirst().orElseThrow();
         float[] previousHealth = {200};
         for (int t = 1; t <= 130; t++) {
             final int tick = t;
             h.runAtTickTime(t, () -> {
+                h.assertTrue(mob.getTarget() == null || mob.getTarget() == target,
+                        "melee fixture has no leftover target: expected=" + target
+                                + ", selected=" + mob.getTarget() + ", seed=" + seed + ", tick=" + tick);
+                if (firstTargetTick[0] < 0 && mob.getTarget() == target) firstTargetTick[0] = tick;
                 if (mob.swinging && !swinging[0]) {
                     h.assertTrue(lastSwing[0] < 0 || tick - lastSwing[0] >= 20,
                             "swing interval never falls below 20 ticks: " + (tick - lastSwing[0]));
                     lastSwing[0] = tick;
+                    swingTicks.add(tick);
                 }
                 swinging[0] = mob.swinging;
+                if (tick % 10 == 0) System.out.println("SHADOW_MELEE_DIAGNOSTIC tick=" + tick
+                        + " seed=" + seed + " hits=" + hits[0] + " interrupted=" + interrupted[0]
+                        + " firstTarget=" + firstTargetTick[0] + " interruption=" + interruptedTick[0]
+                        + " swings=" + swingTicks + " hitTicks=" + hitTicks
+                        + " goalRunning=" + meleeGoal.isRunning() + " " + escapeState(mob)
+                        + " victim=" + target + " selected=" + mob.getTarget());
                 if (target.getHealth() < previousHealth[0]) {
                     h.assertTrue(lastSwing[0] >= 24 && Math.abs(tick - lastSwing[0] - 5) <= 1,
                             "native AI waits for spawn and five-tick attack windup");
@@ -304,6 +390,7 @@ public final class ShadowTanglerGameTests {
                     previousHit[0] = tick;
                     previousHealth[0] = target.getHealth();
                     hits[0]++;
+                    hitTicks.add(tick);
                 }
                 if (!interrupted[0] && hits[0] >= 2 && tick - previousHit[0] == 5) {
                     meleeGoal.stop();
@@ -311,10 +398,20 @@ public final class ShadowTanglerGameTests {
                     meleeGoal.start();
                     h.assertTrue(meleeGoal.isRunning(), "real melee goal restarted");
                     interrupted[0] = true;
+                    interruptedTick[0] = tick;
                 }
                 if (tick == 130) {
+                    System.out.println("SHADOW_MELEE_RESULT mode=" + (legacyTarget ? "before" : "after")
+                            + " seed=" + seed + " status=" + (interrupted[0] && hits[0] >= 3 ? "PASS" : "FAIL")
+                            + " hits=" + hits[0] + " firstTarget=" + firstTargetTick[0]
+                            + " interruption=" + interruptedTick[0] + " swings=" + swingTicks
+                            + " hitTicks=" + hitTicks);
                     h.assertTrue(interrupted[0] && hits[0] >= 3,
-                            "native AI resumes attacks after pursuit interruption: hits=" + hits[0]);
+                            "native AI resumes attacks after pursuit interruption: seed=" + seed + " hits=" + hits[0]
+                                    + " firstTarget=" + firstTargetTick[0] + " interruption=" + interruptedTick[0]
+                                    + " swings=" + swingTicks + " hitTicks=" + hitTicks
+                                    + " goalRunning=" + meleeGoal.isRunning() + " " + escapeState(mob)
+                                    + " victim=" + target.position() + " selected=" + mob.getTarget());
                     h.succeed();
                 }
             });

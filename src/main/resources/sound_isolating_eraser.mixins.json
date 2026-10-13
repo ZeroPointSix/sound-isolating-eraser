@@ -9,7 +9,8 @@
     "CityPlayerInteractionMixin",
     "CityDoorMixin",
     "CityScheduledTickMixin",
-    "CityBlockTickMixin"
+    "CityBlockTickMixin",
+    "WingsFlightConnectionMixin"
   ],
   "injectors": {
     "defaultRequire": 1

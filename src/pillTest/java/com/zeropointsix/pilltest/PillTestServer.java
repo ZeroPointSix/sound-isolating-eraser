@@ -1,6 +1,7 @@
 package com.zeropointsix.pilltest;
 
 import com.zeropointsix.eraser.config.CommonConfig;
+import com.zeropointsix.eraser.gametest.GameTestConfigs;
 import com.zeropointsix.eraser.pill.PillProvider;
 import com.zeropointsix.eraser.pill.PillState;
 import com.zeropointsix.eraser.registry.ModItems;
@@ -17,6 +18,7 @@ import net.minecraft.world.level.GameRules;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.event.server.ServerStoppingEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.server.ServerLifecycleHooks;
@@ -28,6 +30,8 @@ public final class PillTestServer {
     private static int phaseTicks;
     private static boolean sawUse;
     private static boolean finished;
+    private static int expectedDoseTicks = 400;
+    private static GameTestConfigs.LiveConfig liveConfig;
 
     private static PillState state(ServerPlayer player) {
         return player.getCapability(PillProvider.CAPABILITY).resolve().orElseThrow();
@@ -37,13 +41,38 @@ public final class PillTestServer {
         if (!value) throw new AssertionError(text);
     }
 
+    private static String clockEvidence(ServerPlayer player) {
+        PillState clock = state(player);
+        return "alive=" + player.isAlive() + " health=" + player.getHealth()
+                + " activeDuration=" + clock.activeDuration() + " remaining=" + clock.remainingTicks()
+                + " withdrawalDuration=" + clock.withdrawalDuration() + " withdrawal=" + clock.withdrawalTicks()
+                + " configuredDose=" + CommonConfig.PILL_DURATION.get()
+                + " configuredWithdrawal=" + CommonConfig.WITHDRAWAL_DURATION.get();
+    }
+
+    private static void requireConfiguredDose(ServerPlayer player) {
+        PillState clock = state(player);
+        require(clock.activeDuration() == expectedDoseTicks && clock.remainingTicks() > 0
+                        && clock.remainingTicks() <= expectedDoseTicks && clock.withdrawalDuration() == 2000,
+                "native swallow uses the isolated fixture durations: " + clockEvidence(player));
+    }
+
+    @SubscribeEvent
+    public static void stopping(ServerStoppingEvent event) {
+        if (liveConfig != null) {
+            liveConfig.close();
+            liveConfig = null;
+        }
+    }
+
     private static void phase(String next) {
         phase = next;
         phaseTicks = 0;
         for (ServerPlayer player : ServerLifecycleHooks.getCurrentServer().getPlayerList().getPlayers()) {
             player.sendSystemMessage(Component.literal("PILL_QA:" + next));
         }
-        System.out.println("PILL_QA_PHASE=" + next);
+        ServerPlayer user = ServerLifecycleHooks.getCurrentServer().getPlayerList().getPlayerByName("PillUser");
+        System.out.println("PILL_QA_PHASE=" + next + " " + clockEvidence(user));
     }
 
     @SubscribeEvent
@@ -56,12 +85,18 @@ public final class PillTestServer {
         if (a == null || b == null) return;
         try {
             phaseTicks++;
-            require(phaseTicks < 2400, "phase timed out: " + phase);
+            require(phaseTicks < 2400, "phase timed out: " + phase + " " + clockEvidence(a));
+            require(a.isAlive() && b.isAlive(), "native fixture players remain alive: user " + clockEvidence(a)
+                    + "; observer " + clockEvidence(b));
             if (phase.equals("waiting")) {
-                CommonConfig.PILL_DURATION.set(400);
+                // Live ConfigValue.set() autosaves and can race Forge's asynchronous file reload.
+                liveConfig = GameTestConfigs.sandbox(CommonConfig.SPEC);
+                CommonConfig.PILL_DURATION.set(expectedDoseTicks);
                 CommonConfig.WITHDRAWAL_DURATION.set(2000);
                 if (Boolean.getBoolean("pill.qa.restart")) {
                     require(state(a).active() && state(a).remainingTicks() <= 4000, "real server restart retains active capability");
+                    require(state(a).activeDuration() == 4000 && state(a).withdrawalDuration() == 2000,
+                            "real restart retains the consumed durations: " + clockEvidence(a));
                     require(a.getInventory().getItem(0).is(ModItems.EMPTY_PILL_PACK.get()), "empty pack persists through restart");
                     require(!state(b).active() && !state(b).withdrawing(), "observer remains clean after restart");
                     phase("restarted");
@@ -91,7 +126,12 @@ public final class PillTestServer {
                 phase("cancel");
                 return;
             }
+            require(CommonConfig.PILL_DURATION.get() == expectedDoseTicks && CommonConfig.WITHDRAWAL_DURATION.get() == 2000,
+                    "fixture durations remain isolated from file reload: " + clockEvidence(a));
             require(!state(b).active() && !state(b).withdrawing(), "A's dose never changes B's authoritative state");
+            if (phase.equals("active") && phaseTicks >= 400) {
+                require(state(a).withdrawing(), "configured active clock reaches withdrawal within 400 ticks: " + clockEvidence(a));
+            }
             if (phase.equals("active") && phaseTicks == 80) {
                 float health = a.getHealth();
                 require(a.hurt(a.damageSources().generic(), 5) && a.getHealth() < health,
@@ -104,6 +144,7 @@ public final class PillTestServer {
                     phase("eat");
                 }
             } else if (phase.equals("eat") && state(a).active()) {
+                requireConfiguredDose(a);
                 require(a.getInventory().getItem(0).getDamageValue() == 11, "native full swallow consumes exactly one");
                 require(!a.addEffect(new MobEffectInstance(MobEffects.POISON, 200)), "A rejects poison during active phase");
                 require(b.addEffect(new MobEffectInstance(MobEffects.POISON, 60)), "B is not immune");
@@ -119,9 +160,11 @@ public final class PillTestServer {
                 phase("milk_wait");
             } else if (phase.equals("milk_wait") && phaseTicks >= 42) {
                 require(state(a).withdrawing() && a.hasEffect(MobEffects.DARKNESS), "withdrawal returns within two seconds after milk");
-                CommonConfig.PILL_DURATION.set(4000);
+                expectedDoseTicks = 4000;
+                CommonConfig.PILL_DURATION.set(expectedDoseTicks);
                 phase("redose");
             } else if (phase.equals("redose") && state(a).active()) {
+                requireConfiguredDose(a);
                 require(!state(a).withdrawing() && !a.hasEffect(MobEffects.DARKNESS), "redose clears withdrawal");
                 require(a.getInventory().getItem(0).is(ModItems.EMPTY_PILL_PACK.get()), "last native dose replaces pack with empty item");
                 server.getPlayerList().saveAll();
