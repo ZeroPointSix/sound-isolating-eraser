@@ -812,10 +812,23 @@ public final class WingsReviewRegressionTests {
         assertDefaultTransitionConfig(h);
         FakePlayer player = winged(h, h.absoluteVec(new Vec3(2.5, 80.5, 2.5)), WingsState.HOVER);
         FlightEvents.serverCycleTier(player);
-        h.runAfterDelay(20, () -> FlightEvents.serverCycleTier(player));
-        h.runAfterDelay(40, () -> FlightEvents.serverCycleTier(player));
+        h.assertTrue(WingsState.tier(player) == WingsState.CRUISE, "first G reaches CRUISE");
+        h.runAfterDelay(20, () -> {
+            System.out.println("WINGS_STOW_HISTORY beforeBoost tier=" + WingsState.tier(player)
+                    + " deployed=" + WingsState.deployed(player) + " food=" + player.getFoodData().getFoodLevel());
+            FlightEvents.serverCycleTier(player);
+            h.assertTrue(WingsState.tier(player) == WingsState.BOOST, "second G reaches BOOST");
+            h.runAfterDelay(20, () -> {
+                System.out.println("WINGS_STOW_HISTORY beforeStorm tier=" + WingsState.tier(player)
+                        + " deployed=" + WingsState.deployed(player) + " food=" + player.getFoodData().getFoodLevel());
+                FlightEvents.serverCycleTier(player);
+                h.assertTrue(WingsState.tier(player) == WingsState.STORM, "third G reaches STORM");
+            });
+        });
         h.runAfterDelay(100, () -> {
-            h.assertTrue(WingsState.tier(player) == WingsState.STORM, "real G history reaches STORM");
+            h.assertTrue(WingsState.tier(player) == WingsState.STORM, "real G history reaches STORM, actual="
+                    + WingsState.tier(player) + " deployed=" + WingsState.deployed(player)
+                    + " food=" + player.getFoodData().getFoodLevel());
             Vec3 pending = player.position().add(6, 0, 0);
             player.setPos(pending);
             FlightEvents.serverSetDeployed(player, false);
