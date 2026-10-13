@@ -151,7 +151,8 @@ public final class RoundTwoTestServer {
                     entity.setHealth(entity.getMaxHealth());
                     entity.setDeltaMovement(Vec3.ZERO);
                     if (entity instanceof Mob mob) {
-                        mob.setNoAi(true);
+                        mob.setNoAi(i != 1);
+                        mob.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(0);
                         mob.setNoGravity(i != 1);
                         mob.setPos(positions.get(i));
                         level.addFreshEntity(mob);

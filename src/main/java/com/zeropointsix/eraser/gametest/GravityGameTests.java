@@ -217,6 +217,8 @@ public final class GravityGameTests {
         var aggressor = EntityType.WOLF.create(h.getLevel());
         List<LivingEntity> entities = List.of(player, pet, horse, wild, cow, villager, iron, snow, aggressor);
         for (int i = 0; i < entities.size(); i++) stationary(h, entities.get(i), center.add(i * .4, 0, 0));
+        // Earlier weather tests may leave rain active; protect this passive fixture normally.
+        h.getLevel().setBlockAndUpdate(snow.blockPosition().above(3), Blocks.STONE.defaultBlockState());
         aggressor.setTarget(player);
         h.runAtTickTime(22, () -> {
             for (LivingEntity ally : List.of(player, pet, horse)) {
@@ -226,7 +228,9 @@ public final class GravityGameTests {
                 ally.setPos(center.add(18, 0, 0));
             }
             for (LivingEntity neutral : List.of(wild, cow, villager, iron, snow)) {
-                h.assertTrue(neutral.getActiveEffects().isEmpty() && neutral.getHealth() == neutral.getMaxHealth(), "passive unaffected: " + neutral.getType());
+                h.assertTrue(neutral.getActiveEffects().isEmpty() && neutral.getHealth() == neutral.getMaxHealth(),
+                        "passive unaffected: " + neutral.getType() + " health=" + neutral.getHealth()
+                                + " effects=" + neutral.getActiveEffects());
             }
             h.assertTrue(aggressor.hasEffect(MobEffects.MOVEMENT_SLOWDOWN), "neutral attacking ally is hostile");
             field.discard();
@@ -247,7 +251,8 @@ public final class GravityGameTests {
         h.getLevel().setBlockAndUpdate(floor.offset(18, 0, 0), Blocks.STONE.defaultBlockState());
         var zombie = EntityType.ZOMBIE.create(h.getLevel());
         zombie.setPos(center);
-        zombie.setNoAi(true);
+        // NoAI also disables travel(), so keep physics active while preventing walking.
+        zombie.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(0);
         zombie.getAttribute(Attributes.MAX_HEALTH).setBaseValue(300);
         zombie.setHealth(300);
         zombie.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.DIAMOND_HELMET));
@@ -255,7 +260,8 @@ public final class GravityGameTests {
         GravityFieldEntity field = field(h, center);
         h.runAtTickTime(85, () -> {
             double height = zombie.getY() - center.y;
-            h.assertTrue(height > 2.5 && height <= 3.3, "bounded hover near 3 blocks: " + height);
+            h.assertTrue(height > 2.5 && height <= 3.3, "bounded hover near 3 blocks: " + height
+                    + " fieldRemoved=" + field.isRemoved() + " motion=" + zombie.getDeltaMovement());
             h.assertTrue(zombie.getEffect(MobEffects.MOVEMENT_SLOWDOWN).getAmplifier() == 4, "slowness V");
             zombie.setPos(center.add(18, 3, 0));
             zombie.setDeltaMovement(Vec3.ZERO);
