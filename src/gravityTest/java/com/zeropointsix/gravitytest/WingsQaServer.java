@@ -59,6 +59,7 @@ public final class WingsQaServer {
     private static String networkScenario = "";
     private static double networkPreviousX, networkMaxStep;
     private static final java.util.List<String> NETWORK_OBSERVATIONS = new java.util.ArrayList<>();
+    private static final java.util.List<String> NETWORK_TRACE = new java.util.ArrayList<>();
 
     @SubscribeEvent
     public static void registerCommands(RegisterCommandsEvent event) {
@@ -111,6 +112,15 @@ public final class WingsQaServer {
         try {
             if (!networkScenario.isEmpty() && wearerRef != null) {
                 networkMaxStep = Math.max(networkMaxStep, Math.abs(wearerRef.getX() - networkPreviousX));
+                if (NETWORK_TRACE.size() < 6000) {
+                    NETWORK_TRACE.add("{\"scenario\":\"" + networkScenario + "\",\"tick\":"
+                            + wearerRef.level().getGameTime() + ",\"x\":" + wearerRef.getX()
+                            + ",\"y\":" + wearerRef.getY() + ",\"z\":" + wearerRef.getZ()
+                            + ",\"dx\":" + (wearerRef.getX() - networkPreviousX)
+                            + ",\"health\":" + wearerRef.getHealth()
+                            + ",\"speedFlag\":" + WingsState.speedFlagAt(wearerRef)
+                            + ",\"wallHit\":" + WingsState.wallHitAt(wearerRef) + "}");
+                }
                 networkPreviousX = wearerRef.getX();
             }
             // Server-side asserts run on phase commands from the clients, not on
@@ -264,6 +274,18 @@ public final class WingsQaServer {
             }
             case "netCruiseCheck", "netHoverCheck", "netRepeatCheck" -> {
                 boolean repeat = next.equals("netRepeatCheck");
+                // Preserve observations even when the subsequent acceptance assertion fails.
+                NETWORK_OBSERVATIONS.add("{\"scenario\":\"" + next + "\",\"serverTick\":" + wearerRef.level().getGameTime()
+                        + ",\"x\":" + wearerRef.getX() + ",\"y\":" + wearerRef.getY()
+                        + ",\"beforeHealth\":" + networkHealth
+                        + ",\"afterHealth\":" + wearerRef.getHealth() + ",\"beforeSpeedFlag\":" + networkSpeedFlag
+                        + ",\"afterSpeedFlag\":" + WingsState.speedFlagAt(wearerRef)
+                        + ",\"largestServerTickDisplacement\":" + networkMaxStep
+                        + ",\"beforeWallHit\":" + networkWallHit + ",\"afterWallHit\":" + WingsState.wallHitAt(wearerRef) + "}");
+                Files.writeString(results().resolve("wings-network-server.json"), "[\n"
+                        + String.join(",\n", NETWORK_OBSERVATIONS) + "\n]\n");
+                Files.writeString(results().resolve("wings-network-trace.json"), "[\n"
+                        + String.join(",\n", NETWORK_TRACE) + "\n]\n");
                 check(WingsState.speedFlagAt(wearerRef) == networkSpeedFlag,
                         next + " actual delayed movement did not trigger speed rollback");
                 if (next.equals("netHoverCheck")) {
@@ -285,15 +307,7 @@ public final class WingsQaServer {
                     check(WingsState.wallHitAt(wearerRef) == networkWallHit && wearerRef.getHealth() == networkHealth,
                             next + " no false wall damage from batched CRUISE or HOVER transition");
                 }
-                NETWORK_OBSERVATIONS.add("{\"scenario\":\"" + next + "\",\"serverTick\":" + wearerRef.level().getGameTime()
-                        + ",\"x\":" + wearerRef.getX() + ",\"beforeHealth\":" + networkHealth
-                        + ",\"afterHealth\":" + wearerRef.getHealth() + ",\"beforeSpeedFlag\":" + networkSpeedFlag
-                        + ",\"afterSpeedFlag\":" + WingsState.speedFlagAt(wearerRef)
-                        + ",\"largestServerTickDisplacement\":" + networkMaxStep
-                        + ",\"beforeWallHit\":" + networkWallHit + ",\"afterWallHit\":" + WingsState.wallHitAt(wearerRef) + "}");
                 networkScenario = "";
-                Files.writeString(results().resolve("wings-network-server.json"), "[\n"
-                        + String.join(",\n", NETWORK_OBSERVATIONS) + "\n]\n");
                 if (repeat) Files.writeString(results().resolve("wings-network-server.pass"),
                         "PASS real connected survival player: batched CRUISE wall, STORM-to-HOVER, repeated deploy collision health damage\n");
             }

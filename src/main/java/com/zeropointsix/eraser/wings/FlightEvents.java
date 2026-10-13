@@ -49,6 +49,8 @@ public final class FlightEvents {
     private static final Map<UUID, FlightSpeedBudget> speedBudgets = new WeakHashMap<>();
     private static final Map<UUID, Long> lastMovementTicks = new WeakHashMap<>();
     private static final Map<UUID, FlightSpeedTransition> speedTransitions = new WeakHashMap<>();
+    private static final Map<UUID, WallApproach> wallApproaches = new WeakHashMap<>();
+    private record WallApproach(Vec3 direction, double speed, long tick) {}
     /** 超速告警节流（仅提示用，不落盘）。 */
     private static final Map<UUID, Long> lastSpeedWarnAt = new WeakHashMap<>();
 
@@ -85,6 +87,7 @@ public final class FlightEvents {
             }
         } else {
             p.stopFallFlying();
+            wallApproaches.remove(p.getUUID());
         }
         WingsNet.syncToTracking(p);
     }
@@ -220,6 +223,7 @@ public final class FlightEvents {
             lastPositions.remove(p.getUUID());
             lastMovementTicks.remove(p.getUUID());
             speedTransitions.remove(p.getUUID());
+            wallApproaches.remove(p.getUUID());
             return;
         }
 
@@ -258,6 +262,7 @@ public final class FlightEvents {
             lastPositions.remove(p.getUUID());
             lastMovementTicks.remove(p.getUUID());
             speedTransitions.remove(p.getUUID());
+            wallApproaches.remove(p.getUUID());
             if (p.tickCount % 40 == 0) {
                 // 未部署也要周期性同步：客户端手势判定依赖 WingInfo（首次展开前没有包会发）
                 WingsNet.syncToTracking(p);
@@ -282,6 +287,7 @@ public final class FlightEvents {
         if (prev == null) {
             lastPositions.put(id, p.position());
             lastMovementTicks.put(id, now);
+            wallApproaches.remove(id);
             return;
         }
         WingsConfig.Server cfg = WingsConfig.SERVER;
@@ -298,6 +304,7 @@ public final class FlightEvents {
             p.setPos(prev.x, prev.y, prev.z);
             p.setDeltaMovement(Vec3.ZERO);
             lastMovementTicks.put(id, now);
+            wallApproaches.remove(id);
             Long lastWarn = lastSpeedWarnAt.get(id);
             if (lastWarn == null || now - lastWarn > 100) {
                 lastSpeedWarnAt.put(id, now);
@@ -306,7 +313,12 @@ public final class FlightEvents {
             }
             return;
         }
-        if (distance <= 1.0e-9) return;
+        if (distance <= 1.0e-9) {
+            // Empty server ticks are not movement samples; an explicit stopped
+            // client position must not preserve an earlier approach velocity.
+            if (clientStep) wallApproaches.remove(id);
+            return;
+        }
         // Empty server ticks do not consume the sample time of delayed client movement.
         long elapsed = clientStep ? 1
                 : Math.max(1, Math.min(2, now - lastMovementTicks.getOrDefault(id, now)));
@@ -321,10 +333,22 @@ public final class FlightEvents {
         long now = level.getGameTime();
         double dx = p.getX() - prev.x, dz = p.getZ() - prev.z;
         double distance = Math.hypot(dx, dz);
+        if (distance <= 1.0e-9) {
+            wallApproaches.remove(p.getUUID());
+            return;
+        }
         double speedMs = distance * 20.0 / elapsed;
+        Vec3 dir = new Vec3(dx / distance, 0, dz / distance);
+        WallApproach approach = wallApproaches.put(p.getUUID(), new WallApproach(dir, speedMs, now));
+        // Collision clips the final position step, not the incoming velocity.
+        // Reuse only the immediately preceding accepted segment, never the
+        // inferred impact speed itself, and preserve its elapsed-time sampling.
+        if (approach != null && now >= approach.tick() && now - approach.tick() <= 2) {
+            double alignment = dir.dot(approach.direction());
+            if (alignment >= 0.9) speedMs = Math.max(speedMs, approach.speed() * alignment);
+        }
         if (!cfg.wallDamageEnabled.get() || speedMs <= cfg.wallDamageThresholdSpeed.get()
                 || (WingsState.wallHitAt(p) != 0 && now < WingsState.wallHitAt(p) + 20)) return;
-        Vec3 dir = new Vec3(dx / distance, 0, dz / distance);
         Vec3 eyeFrom = prev.add(0, p.getEyeHeight(), 0);
         BlockHitResult hit = level.clip(new ClipContext(eyeFrom,
                 eyeFrom.add(dir.scale(distance + 0.35)),
@@ -380,6 +404,7 @@ public final class FlightEvents {
         lastMovementTicks.put(p.getUUID(), p.level().getGameTime());
         speedBudgets.remove(p.getUUID());
         speedTransitions.remove(p.getUUID());
+        wallApproaches.remove(p.getUUID());
     }
 
     /** 原版/指令传送（/tp、末影珍珠、紫颂果等）同样属于授权位移。 */
@@ -389,6 +414,7 @@ public final class FlightEvents {
         speedBudgets.remove(event.getEntity().getUUID());
         lastMovementTicks.remove(event.getEntity().getUUID());
         speedTransitions.remove(event.getEntity().getUUID());
+        wallApproaches.remove(event.getEntity().getUUID());
     }
 
     @SubscribeEvent
@@ -397,6 +423,7 @@ public final class FlightEvents {
         speedBudgets.remove(event.getEntity().getUUID());
         lastMovementTicks.remove(event.getEntity().getUUID());
         speedTransitions.remove(event.getEntity().getUUID());
+        wallApproaches.remove(event.getEntity().getUUID());
     }
 
     @SubscribeEvent
@@ -405,6 +432,7 @@ public final class FlightEvents {
         speedBudgets.remove(event.getEntity().getUUID());
         lastMovementTicks.remove(event.getEntity().getUUID());
         speedTransitions.remove(event.getEntity().getUUID());
+        wallApproaches.remove(event.getEntity().getUUID());
     }
 
     /** 登录即发初始 WingInfo，否则客户端连一次部署手势都无法判定。 */
@@ -414,6 +442,7 @@ public final class FlightEvents {
         speedBudgets.remove(event.getEntity().getUUID());
         lastMovementTicks.remove(event.getEntity().getUUID());
         speedTransitions.remove(event.getEntity().getUUID());
+        wallApproaches.remove(event.getEntity().getUUID());
         if (event.getEntity() instanceof ServerPlayer sp) WingsNet.syncToTracking(sp);
     }
 

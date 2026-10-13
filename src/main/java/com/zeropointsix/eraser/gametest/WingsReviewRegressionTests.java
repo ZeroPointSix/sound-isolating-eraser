@@ -391,6 +391,208 @@ public final class WingsReviewRegressionTests {
         });
     }
 
+    @GameTest(template = "empty", timeoutTicks = 60)
+    public static void reviewClippedStormImpactUsesRecentAcceptedApproach(GameTestHelper h) {
+        Vec3 direction = wallDirection(h);
+        Vec3 wall = h.absoluteVec(new Vec3(5, 3.5, 2.5));
+        ImpactPlayer player = impactPlayer(h, wall.subtract(direction.scale(5.31)));
+        Vec3 approachEnd = player.position().add(direction.scale(4.0));
+        player.setPos(approachEnd);
+        FlightEvents.settleClientMovement(player);
+        assertAccepted(h, player, approachEnd, "80 m/s approach before the clipped wall step");
+        h.assertTrue(player.wallImpactCalls == 0, "the approach must stop short of the collision probe");
+        Vec3 clippedEnd = approachEnd.add(direction);
+        player.setPos(clippedEnd);
+        FlightEvents.settleClientMovement(player);
+        FlightEvents.serverSetDeployed(player, true);
+        tick(player);
+        assertAccepted(h, player, clippedEnd, "one-block collision-clipped final step");
+        h.assertTrue(WingsState.wallHitAt(player) > 0 && player.wallImpactCalls == 1,
+                "the clipped 20 m/s final segment must retain the preceding real 80 m/s impact");
+        h.assertTrue(Math.abs(player.wallImpactDamage - 4.0) < 0.001,
+                "impact damage must use accepted approach speed, not the STORM tier maximum");
+        h.succeed();
+    }
+
+    @GameTest(template = "empty", timeoutTicks = 60)
+    public static void reviewClippedCruiseApproachRemainsHarmless(GameTestHelper h) {
+        Vec3 direction = wallDirection(h);
+        Vec3 wall = h.absoluteVec(new Vec3(5, 3.5, 2.5));
+        ImpactPlayer player = impactPlayer(h, wall.subtract(direction.scale(2.81)));
+        WingsState.setTier(player, WingsState.CRUISE);
+        Vec3 approachEnd = player.position().add(direction.scale(1.5));
+        player.setPos(approachEnd);
+        FlightEvents.settleClientMovement(player);
+        Vec3 clippedEnd = approachEnd.add(direction);
+        player.setPos(clippedEnd);
+        FlightEvents.settleClientMovement(player);
+        assertAccepted(h, player, clippedEnd, "30 m/s CRUISE approach with a clipped final step");
+        h.assertTrue(WingsState.wallHitAt(player) == 0 && player.wallImpactCalls == 0,
+                "a 30 m/s approach must not turn the clipped 20 m/s segment into an impact");
+        h.succeed();
+    }
+
+    @GameTest(template = "empty", timeoutTicks = 60)
+    public static void reviewBatchedCruiseApproachKeepsElapsedSamplingWhenClipped(GameTestHelper h) {
+        Vec3 direction = wallDirection(h);
+        Vec3 wall = h.absoluteVec(new Vec3(5, 3.5, 2.5));
+        ImpactPlayer player = impactPlayer(h, wall.subtract(direction.scale(4.31)));
+        WingsState.setTier(player, WingsState.CRUISE);
+        Vec3 start = player.position();
+        h.runAfterDelay(2, () -> {
+            Vec3 approachEnd = start.add(direction.scale(3.0));
+            player.setPos(approachEnd);
+            tick(player);
+            assertAccepted(h, player, approachEnd, "three-block CRUISE sample over two server ticks");
+            Vec3 clippedEnd = approachEnd.add(direction);
+            player.setPos(clippedEnd);
+            FlightEvents.settleClientMovement(player);
+            assertAccepted(h, player, clippedEnd, "clipped step after a batched CRUISE approach");
+            h.assertTrue(WingsState.wallHitAt(player) == 0 && player.wallImpactCalls == 0,
+                    "cached approach speed must stay 30 m/s, not reinterpret the old batch as 60 m/s");
+            h.succeed();
+        });
+    }
+
+    @GameTest(template = "empty", timeoutTicks = 60)
+    public static void reviewClippedApproachSurvivesTwoTickPacketDelay(GameTestHelper h) {
+        Vec3 direction = wallDirection(h);
+        Vec3 wall = h.absoluteVec(new Vec3(5, 3.5, 2.5));
+        ImpactPlayer player = impactPlayer(h, wall.subtract(direction.scale(5.31)));
+        Vec3 approachEnd = player.position().add(direction.scale(4.0));
+        player.setPos(approachEnd);
+        FlightEvents.settleClientMovement(player);
+        h.runAfterDelay(1, () -> tick(player));
+        h.runAfterDelay(2, () -> {
+            Vec3 clippedEnd = approachEnd.add(direction);
+            player.setPos(clippedEnd);
+            FlightEvents.settleClientMovement(player);
+            assertAccepted(h, player, clippedEnd, "clipped approach after two real server ticks");
+            h.assertTrue(player.wallImpactCalls == 1 && WingsState.wallHitAt(player) > 0,
+                    "the bounded two-tick delay must still retain the preceding accepted approach");
+            h.succeed();
+        });
+    }
+
+    @GameTest(template = "empty", timeoutTicks = 60)
+    public static void reviewExpiredApproachCannotCreateClippedImpact(GameTestHelper h) {
+        Vec3 direction = wallDirection(h);
+        Vec3 wall = h.absoluteVec(new Vec3(5, 3.5, 2.5));
+        ImpactPlayer player = impactPlayer(h, wall.subtract(direction.scale(5.31)));
+        Vec3 approachEnd = player.position().add(direction.scale(4.0));
+        player.setPos(approachEnd);
+        FlightEvents.settleClientMovement(player);
+        h.runAfterDelay(1, () -> tick(player));
+        h.runAfterDelay(2, () -> tick(player));
+        h.runAfterDelay(3, () -> {
+            Vec3 clippedEnd = approachEnd.add(direction);
+            player.setPos(clippedEnd);
+            FlightEvents.settleClientMovement(player);
+            assertAccepted(h, player, clippedEnd, "low-speed wall contact after expired momentum");
+            h.assertTrue(WingsState.wallHitAt(player) == 0 && player.wallImpactCalls == 0,
+                    "empty server ticks must not refresh an approach older than two ticks");
+            h.succeed();
+        });
+    }
+
+    @GameTest(template = "empty", timeoutTicks = 60)
+    public static void reviewReversedApproachCannotCreateClippedImpact(GameTestHelper h) {
+        Vec3 direction = h.absoluteVec(new Vec3(1, 0, 0)).subtract(h.absoluteVec(Vec3.ZERO)).normalize();
+        Vec3 wall = h.absoluteVec(new Vec3(5, 3.5, 2.5));
+        ImpactPlayer player = impactPlayer(h, wall.add(direction.scale(2.69)));
+        Vec3 approachEnd = player.position().subtract(direction.scale(4.0));
+        player.setPos(approachEnd);
+        FlightEvents.settleClientMovement(player);
+        assertAccepted(h, player, approachEnd, "accepted fast movement away from the future wall");
+        // A wall placed behind the player must not reverse its old approach vector.
+        wallDirection(h);
+        Vec3 clippedEnd = approachEnd.add(direction);
+        player.setPos(clippedEnd);
+        FlightEvents.settleClientMovement(player);
+        assertAccepted(h, player, clippedEnd, "slow reversed movement into the newly placed wall");
+        h.assertTrue(WingsState.wallHitAt(player) == 0 && player.wallImpactCalls == 0,
+                "oppositely directed accepted movement must not supply collision momentum");
+        h.succeed();
+    }
+
+    @GameTest(template = "empty", timeoutTicks = 60)
+    public static void reviewRejectedMovementClearsClippedApproach(GameTestHelper h) {
+        Vec3 direction = wallDirection(h);
+        Vec3 wall = h.absoluteVec(new Vec3(5, 3.5, 2.5));
+        ImpactPlayer player = impactPlayer(h, wall.subtract(direction.scale(5.31)));
+        Vec3 approachEnd = player.position().add(direction.scale(4.0));
+        player.setPos(approachEnd);
+        FlightEvents.settleClientMovement(player);
+        player.setPos(approachEnd.subtract(direction.scale(100.0)));
+        FlightEvents.settleClientMovement(player);
+        assertRejectedAt(h, player, approachEnd, "invalid movement following a legitimate fast approach");
+        h.runAfterDelay(1, () -> {
+            Vec3 clippedEnd = approachEnd.add(direction);
+            player.setPos(clippedEnd);
+            FlightEvents.settleClientMovement(player);
+            h.assertTrue(player.position().distanceTo(clippedEnd) < 0.001,
+                    "the next normal STORM tick must refill enough budget for a one-block step");
+            h.assertTrue(WingsState.wallHitAt(player) == 0 && player.wallImpactCalls == 0,
+                    "rejected movement must clear rather than bank the older accepted approach");
+            h.succeed();
+        });
+    }
+
+    @GameTest(template = "empty", timeoutTicks = 60)
+    public static void reviewTeleportClearsClippedApproach(GameTestHelper h) {
+        Vec3 direction = wallDirection(h);
+        Vec3 wall = h.absoluteVec(new Vec3(5, 3.5, 2.5));
+        ImpactPlayer player = impactPlayer(h, wall.subtract(direction.scale(5.31)));
+        Vec3 approachEnd = player.position().add(direction.scale(4.0));
+        player.setPos(approachEnd);
+        FlightEvents.settleClientMovement(player);
+        FlightEvents.markTeleported(player);
+        Vec3 clippedEnd = approachEnd.add(direction);
+        player.setPos(clippedEnd);
+        FlightEvents.settleClientMovement(player);
+        assertAccepted(h, player, clippedEnd, "low-speed contact after authorized position re-anchoring");
+        h.assertTrue(WingsState.wallHitAt(player) == 0 && player.wallImpactCalls == 0,
+                "authorized teleport re-anchoring must discard the previous approach momentum");
+        h.succeed();
+    }
+
+    @GameTest(template = "empty", timeoutTicks = 60)
+    public static void reviewStoppedClientPositionClearsClippedApproach(GameTestHelper h) {
+        Vec3 direction = wallDirection(h);
+        Vec3 wall = h.absoluteVec(new Vec3(5, 3.5, 2.5));
+        ImpactPlayer player = impactPlayer(h, wall.subtract(direction.scale(5.31)));
+        Vec3 approachEnd = player.position().add(direction.scale(4.0));
+        player.setPos(approachEnd);
+        FlightEvents.settleClientMovement(player);
+        FlightEvents.settleClientMovement(player);
+        Vec3 clippedEnd = approachEnd.add(direction);
+        player.setPos(clippedEnd);
+        FlightEvents.settleClientMovement(player);
+        assertAccepted(h, player, clippedEnd, "slow movement after an explicit stopped client position");
+        h.assertTrue(WingsState.wallHitAt(player) == 0 && player.wallImpactCalls == 0,
+                "a stopped client position must clear old momentum without waiting for expiry");
+        h.succeed();
+    }
+
+    @GameTest(template = "empty", timeoutTicks = 60)
+    public static void reviewClippedApproachCannotPropagateThroughSlowSegments(GameTestHelper h) {
+        Vec3 direction = wallDirection(h);
+        Vec3 wall = h.absoluteVec(new Vec3(5, 3.5, 2.5));
+        ImpactPlayer player = impactPlayer(h, wall.subtract(direction.scale(6.31)));
+        Vec3 approachEnd = player.position().add(direction.scale(4.0));
+        player.setPos(approachEnd);
+        FlightEvents.settleClientMovement(player);
+        for (int i = 1; i <= 2; i++) {
+            Vec3 expected = approachEnd.add(direction.scale(i));
+            player.setPos(expected);
+            FlightEvents.settleClientMovement(player);
+            assertAccepted(h, player, expected, "slow post-approach segment " + i);
+        }
+        h.assertTrue(WingsState.wallHitAt(player) == 0 && player.wallImpactCalls == 0,
+                "a prior inferred approach must not be copied into subsequent raw movement samples");
+        h.succeed();
+    }
+
     @GameTest(template = "empty", timeoutTicks = 100)
     public static void reviewHungerCoastingDecelerationAcceptedOverTime(GameTestHelper h) {
         h.assertTrue(WingsConfig.SERVER.minFoodForFastTiers.get() > 1,
@@ -683,6 +885,7 @@ public final class WingsReviewRegressionTests {
 
     private static final class ImpactPlayer extends FakePlayer {
         private int wallImpactCalls;
+        private float wallImpactDamage;
 
         private ImpactPlayer(ServerLevel level) {
             super(level, new GameProfile(UUID.randomUUID(), "WingReviewImpact"));
@@ -690,7 +893,10 @@ public final class WingsReviewRegressionTests {
 
         @Override
         public boolean hurt(DamageSource source, float amount) {
-            if (source.is(DamageTypes.FLY_INTO_WALL)) wallImpactCalls++;
+            if (source.is(DamageTypes.FLY_INTO_WALL)) {
+                wallImpactCalls++;
+                wallImpactDamage += amount;
+            }
             // FakePlayer is invulnerable; count settlement calls instead of asserting health loss.
             return super.hurt(source, amount);
         }
