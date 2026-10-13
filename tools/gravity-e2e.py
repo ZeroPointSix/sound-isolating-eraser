@@ -126,8 +126,6 @@ try:
         raise AssertionError("; ".join(path.read_text() for path in failures))
     print("REAL_TWO_CLIENT_E2E_PASSED", flush=True)
 finally:
-    if profile:
-        (RESULTS / "process-samples.json").write_text(json.dumps(samples, indent=2))
     for process in reversed(processes):
         if process.poll() is None:
             process.terminate()
@@ -139,6 +137,8 @@ finally:
             process.wait()
     for log in logs:
         log.close()
+    if profile:
+        (RESULTS / "process-samples.json").write_text(json.dumps(samples, indent=2))
     for path in RESULTS.glob("*.log"):
         print(f"--- {path.name}: final log lines ---")
         print("\n".join(path.read_text(errors="replace").splitlines()[-35:]))
