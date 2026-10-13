@@ -15,17 +15,22 @@ import net.minecraftforge.gametest.GameTestHolder;
 import net.minecraftforge.gametest.PrefixGameTestTemplate;
 import net.minecraftforge.registries.ForgeRegistries;
 
-@GameTestHolder(ModMain.MOD_ID)
+@GameTestHolder("qijie_tests")
 @PrefixGameTestTemplate(false)
 public final class CreativeTabGameTests {
-    @GameTest(template = "empty")
+    @GameTest(template = ModMain.MOD_ID + ":empty")
     public static void creativeTabContainsAllItemsAndDefaultData(GameTestHelper helper) {
         var tab = ModCreativeTabs.QIJIE.get();
         var parameters = new CreativeModeTab.ItemDisplayParameters(
                 FeatureFlags.DEFAULT_FLAGS, true, helper.getLevel().registryAccess());
         Set<ResourceLocation> expected = new HashSet<>();
-        ForgeRegistries.ITEMS.getKeys().stream().filter(ModCreativeTabs::owns).forEach(expected::add);
-        helper.assertTrue(!expected.isEmpty(), "mod items are registered before building the tab");
+        Set<String> namespaces = Set.of(ModMain.MOD_ID, "qihai");
+        ForgeRegistries.ITEMS.getKeys().stream()
+                .filter(id -> namespaces.contains(id.getNamespace())).forEach(expected::add);
+        for (String namespace : namespaces) {
+            helper.assertTrue(expected.stream().anyMatch(id -> namespace.equals(id.getNamespace())),
+                    "items are registered in namespace: " + namespace);
+        }
         for (int pass = 0; pass < 2; pass++) {
             tab.buildContents(parameters);
             Set<ResourceLocation> actual = new HashSet<>();

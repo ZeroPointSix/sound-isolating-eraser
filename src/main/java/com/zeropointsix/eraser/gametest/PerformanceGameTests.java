@@ -13,40 +13,150 @@ import net.minecraft.world.level.block.LightBlock;
 import net.minecraftforge.gametest.GameTestHolder;
 import net.minecraftforge.gametest.PrefixGameTestTemplate;
 
-@GameTestHolder(ModMain.MOD_ID)
+@GameTestHolder("qijie_tests")
 @PrefixGameTestTemplate(false)
 public final class PerformanceGameTests {
-    @GameTest(template = "shadow_arena", timeoutTicks = 100)
+    private static final BlockPos CENTER = new BlockPos(12, 2, 12);
+
+    @GameTest(template = ModMain.MOD_ID + ":shadow_arena", timeoutTicks = 100)
     public static void fleeLightSearchHasPerTickBudgets(GameTestHelper helper) {
-        ShadowTanglerEntity mob = ModEntities.SHADOW_TANGLER.get().create(helper.getLevel());
-        BlockPos origin = helper.absolutePos(new BlockPos(12, 2, 12));
-        mob.moveTo(origin, 0, 0);
-        mob.setNoAi(true);
-        mob.getAttribute(Attributes.MAX_HEALTH).setBaseValue(200);
-        mob.setHealth(200);
-        helper.getLevel().addFreshEntity(mob);
-        helper.setBlock(new BlockPos(12, 2, 12),
-                Blocks.LIGHT.defaultBlockState().setValue(LightBlock.LEVEL, 15));
+        // Keep every reachable floor position bright so a successful path cannot reset the cursor.
+        for (int x = 1; x < 24; x++) for (int z = 1; z < 24; z++) {
+            helper.setBlock(new BlockPos(x, 2, z),
+                    Blocks.LIGHT.defaultBlockState().setValue(LightBlock.LEVEL, 15));
+        }
+        ShadowTanglerEntity mob = stationaryShadow(helper);
+        BlockPos origin = helper.absolutePos(CENTER);
         FleeLightGoal goal = new FleeLightGoal(mob);
-        int[] visited = {0};
+        int[] firstCursor = {0};
         helper.runAtTickTime(30, goal::start);
         for (int tick = 31; tick <= 70; tick++) {
             final int now = tick;
             helper.runAtTickTime(tick, () -> {
+                if (now == 32) mob.moveTo(origin.east(), 0, 0);
+                if (now == 33) mob.moveTo(origin.east(9), 0, 0);
                 goal.tick();
-                helper.assertTrue(goal.lastSearchPositions() <= FleeLightGoal.POSITIONS_PER_TICK,
-                        "position scan respects tick budget");
-                helper.assertTrue(goal.lastPathTargets() <= FleeLightGoal.PATH_TARGETS_PER_TICK,
-                        "multi-target pathfinder respects tick budget");
-                visited[0] += goal.lastSearchPositions();
+                assertBudgets(helper, goal);
+                if (now == 31) {
+                    firstCursor[0] = (Integer) searchState(goal, "searchCursor");
+                    helper.assertTrue(firstCursor[0] > 0 && mob.getNavigation().isDone(),
+                            "bright fixture leaves an unfinished search after its first batch");
+                }
+                if (now == 32) {
+                    helper.assertTrue(origin.equals(searchState(goal, "searchOrigin")),
+                            "crossing one block preserves this search's anchor");
+                    helper.assertTrue((Integer) searchState(goal, "searchCursor")
+                                    == firstCursor[0] + goal.lastSearchPositions()
+                                    && goal.lastSearchPositions() > 0,
+                            "the next batch advances instead of rescanning its first positions");
+                }
+                if (now == 33) {
+                    helper.assertTrue(origin.east(9).equals(searchState(goal, "searchOrigin")),
+                            "a displacement greater than eight blocks starts a fresh search");
+                    helper.assertTrue((Integer) searchState(goal, "searchCursor") == goal.lastSearchPositions(),
+                            "a fresh anchor starts at the first batch");
+                }
                 if (now == 70) {
-                    helper.assertTrue(visited[0] > FleeLightGoal.POSITIONS_PER_TICK,
-                            "search continues beyond its first batch");
                     goal.stop();
                     mob.discard();
                     helper.succeed();
                 }
             });
+        }
+    }
+
+    @GameTest(template = ModMain.MOD_ID + ":shadow_arena", timeoutTicks = 400)
+    public static void fleeLightSearchPassesSealedRefugeToReachLaterBatch(GameTestHelper helper) {
+        // Light the exterior so the sealed room cannot cast an accessible near shadow.
+        for (int x = 7; x <= 11; x++) for (int z = 10; z <= 14; z++) {
+            helper.setBlock(new BlockPos(x, 2, z),
+                    Blocks.LIGHT.defaultBlockState().setValue(LightBlock.LEVEL, 15));
+        }
+        for (int x = 8; x <= 10; x++) for (int y = 1; y <= 4; y++) for (int z = 11; z <= 13; z++) {
+            boolean shell = x == 8 || x == 10 || y == 1 || y == 4 || z == 11 || z == 13;
+            helper.setBlock(new BlockPos(x, y, z), shell ? Blocks.STONE : Blocks.AIR);
+        }
+        helper.setBlock(CENTER, Blocks.LIGHT.defaultBlockState().setValue(LightBlock.LEVEL, 15));
+        ShadowTanglerEntity mob = stationaryShadow(helper);
+        BlockPos sealed = helper.absolutePos(new BlockPos(9, 2, 12));
+        var initialPosition = mob.position();
+        FleeLightGoal goal = new FleeLightGoal(mob);
+        boolean[] foundReachablePath = {false};
+        boolean[] reachedDark = {false};
+        int[] previousCursor = {0};
+        helper.runAtTickTime(30, () -> {
+            helper.assertTrue(goal.canUse() && mob.brightnessAt(sealed) <= 6,
+                    "adult bright mob has a nearby dark sealed refuge");
+            goal.start();
+        });
+        helper.runAtTickTime(31, () -> {
+            goal.tick();
+            assertBudgets(helper, goal);
+            previousCursor[0] = (Integer) searchState(goal, "searchCursor");
+            helper.assertTrue(goal.lastPathTargets() > 0 && previousCursor[0] > 0
+                            && mob.getNavigation().isDone(),
+                    "first batch considers dark candidates but cannot enter the sealed refuge");
+        });
+        for (int tick = 32; tick <= 300; tick++) {
+            final int now = tick;
+            helper.runAtTickTime(tick, () -> {
+                if (!foundReachablePath[0]) {
+                    goal.tick();
+                    assertBudgets(helper, goal);
+                    var path = mob.getNavigation().getPath();
+                    if (path != null && path.canReach() && !mob.getNavigation().isDone()) {
+                        helper.assertTrue(!path.getTarget().equals(sealed)
+                                        && mob.brightnessAt(path.getTarget()) <= 6
+                                        && path.getTarget().distSqr(mob.blockPosition()) <= 256,
+                                "a later batch selects a reachable dark target inside the current radius");
+                        foundReachablePath[0] = true;
+                        // Resume the real goal selector and movement, not just a path-existence check.
+                        mob.setNoAi(false);
+                    } else {
+                        int cursor = (Integer) searchState(goal, "searchCursor");
+                        helper.assertTrue(cursor > previousCursor[0],
+                                "unreachable near candidates do not restart or exhaust a search before the reachable refuge");
+                        previousCursor[0] = cursor;
+                    }
+                }
+                if (foundReachablePath[0] && mob.brightnessAt(mob.blockPosition()) <= 6
+                        && mob.position().subtract(initialPosition).horizontalDistanceSqr() >= 1) {
+                    reachedDark[0] = true;
+                }
+                if (now == 70) helper.assertTrue(foundReachablePath[0], "a later search batch finds a reachable refuge");
+                if (now == 300) {
+                    helper.assertTrue(mob.isAlive() && reachedDark[0],
+                            "real navigation escapes into darkness after skipping the sealed refuge");
+                    goal.stop();
+                    mob.discard();
+                    helper.succeed();
+                }
+            });
+        }
+    }
+
+    private static ShadowTanglerEntity stationaryShadow(GameTestHelper helper) {
+        ShadowTanglerEntity mob = helper.spawn(ModEntities.SHADOW_TANGLER.get(), CENTER);
+        mob.setNoAi(true);
+        mob.getAttribute(Attributes.MAX_HEALTH).setBaseValue(200);
+        mob.setHealth(200);
+        return mob;
+    }
+
+    private static void assertBudgets(GameTestHelper helper, FleeLightGoal goal) {
+        helper.assertTrue(goal.lastSearchPositions() <= FleeLightGoal.POSITIONS_PER_TICK,
+                "position scan respects tick budget");
+        helper.assertTrue(goal.lastPathTargets() <= FleeLightGoal.PATH_TARGETS_PER_TICK,
+                "multi-target pathfinder respects tick budget");
+    }
+
+    private static Object searchState(FleeLightGoal goal, String name) {
+        try {
+            var field = FleeLightGoal.class.getDeclaredField(name);
+            field.setAccessible(true);
+            return field.get(goal);
+        } catch (ReflectiveOperationException exception) {
+            throw new IllegalStateException("Cannot inspect flee-light search state: " + name, exception);
         }
     }
 

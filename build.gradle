@@ -111,11 +111,12 @@ minecraft {
                         .getOrElse('run-shadow-melee'))
             }
             property 'forge.enabledGameTestNamespaces', project.hasProperty('performanceOnly') ? 'qijie_performance' :
+                    project.hasProperty('qijieOnly') ? 'qijie_tests' :
                     project.hasProperty('yujiOnly') ? 'yuji_tests' :
-                    project.hasProperty('coreOnly') ? "${mod_id},yuji_tests" :
+                    project.hasProperty('coreOnly') ? "${mod_id},yuji_tests,qijie_tests" :
                     project.hasProperty('blinkOnly') ? 'wings_blink_tests' :
                     project.hasProperty('shadowMeleeOnly') ? 'shadow_melee_tests' :
-                    project.hasProperty('nightOnly') ? 'eternal_night_tests' : "${mod_id},eternal_night_tests,shadow_melee_tests,yuji_tests"
+                    project.hasProperty('nightOnly') ? 'eternal_night_tests' : "${mod_id},eternal_night_tests,shadow_melee_tests,yuji_tests,qijie_tests"
         }
 
         data {

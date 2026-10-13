@@ -3,7 +3,7 @@ package com.zeropointsix.eraser.client;
 import com.zeropointsix.eraser.ModMain;
 import com.zeropointsix.eraser.gravity.GravityFieldEntity;
 import java.util.Collections;
-import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.Set;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.event.entity.EntityJoinLevelEvent;
@@ -15,7 +15,8 @@ import net.minecraftforge.fml.common.Mod;
 
 @Mod.EventBusSubscriber(modid = ModMain.MOD_ID, value = Dist.CLIENT)
 public final class GravityFieldIndex {
-    private static final Set<GravityFieldEntity> FIELDS = new HashSet<>();
+    // ClientLevel can join a replacement before firing leave for the old same-ID entity.
+    private static final Set<GravityFieldEntity> FIELDS = Collections.newSetFromMap(new IdentityHashMap<>());
     private static final Set<GravityFieldEntity> VIEW = Collections.unmodifiableSet(FIELDS);
 
     @SubscribeEvent(priority = EventPriority.LOWEST)

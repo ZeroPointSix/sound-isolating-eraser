@@ -65,7 +65,8 @@ public final class FleeLightGoal extends Goal {
         mob.getNavigation().stop();
         destination = null;
         BlockPos origin = mob.blockPosition();
-        if (!origin.equals(searchOrigin)) {
+        // Small pushes must not keep restarting the nearest-first search.
+        if (searchOrigin == null || origin.distSqr(searchOrigin) > 64) {
             searchOrigin = origin.immutable();
             searchCursor = 0;
         }
@@ -75,7 +76,7 @@ public final class FleeLightGoal extends Goal {
                 && candidates.size() < PATH_TARGETS_PER_TICK) {
             BlockPos pos = searchOrigin.offset(SEARCH_OFFSETS.get(searchCursor++));
             lastSearchPositions++;
-            if (!mob.level().hasChunkAt(pos) || !mob.level().isInWorldBounds(pos)
+            if (pos.distSqr(origin) > 256 || !mob.level().hasChunkAt(pos) || !mob.level().isInWorldBounds(pos)
                     || mob.brightnessAt(pos) > 6) continue;
             var support = mob.level().getBlockState(pos.below()).getCollisionShape(mob.level(), pos.below());
             if (support.isEmpty()) continue;
