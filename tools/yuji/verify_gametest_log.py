@@ -4,8 +4,9 @@ import re
 import sys
 
 root = Path(__file__).resolve().parents[2]
-source = (root / "src/main/java/com/zeropointsix/eraser/gametest/YujiGameTests.java").read_text()
-expected = len(re.findall(r"@GameTest\(", source))
+test_sources = root / "src/main/java/com/zeropointsix/eraser/gametest"
+expected = sum(len(re.findall(r"@GameTest\(", (test_sources / name).read_text()))
+               for name in ("YujiGameTests.java", "YujiDeathGameTests.java"))
 log = Path(sys.argv[1]).read_text(errors="replace")
 batches = re.findall(r"Running test batch 'yuji:\d+' \((\d+) tests\)", log)
 completed = re.findall(r"All (\d+) required tests passed", log)

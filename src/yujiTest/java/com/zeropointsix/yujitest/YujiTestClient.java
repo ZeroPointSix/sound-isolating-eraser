@@ -272,8 +272,8 @@ public final class YujiTestClient {
                         }
                         deathStartCaptured = true;
                     }
-                    if (!deathEndCaptured && deathProbe.deathTime >= (phase.equals("death-standing") ? 27 : 15) && !deathProbe.isRemoved()) {
-                        require(deathFrames >= 3 && deathMaxAngle >= 85, "death animation reaches the collapsed pose");
+                    if (!deathEndCaptured && deathMaxAngle >= (crawl ? 89.75 : 87.75) && !deathProbe.isRemoved()) {
+                        require(deathFrames >= 3, "death animation renders multiple frames before its final pose");
                         if (!crawl) require(deathMinAngle < 20, "standing death begins upright");
                         try (var shot = Screenshot.takeScreenshot(Minecraft.getInstance().getMainRenderTarget())) {
                             shot.writeToFile(RESULTS.resolve(phase + "-end.png"));
@@ -282,6 +282,7 @@ public final class YujiTestClient {
                                 + ", finalDeathTime=" + deathProbe.deathTime + ", deathTimePositive=true");
                         deathEndCaptured = true;
                     }
+                    require(deathEndCaptured || !deathProbe.isRemoved(), "death animation reaches its final pose before removal");
                 } catch (Throwable failure) { fail(failure); }
             }
             return;
