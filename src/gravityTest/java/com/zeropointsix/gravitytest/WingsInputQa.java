@@ -86,7 +86,7 @@ final class WingsInputQa {
                 restoreBindings();
                 // Held Shift is also a real descent input; leave enough altitude in BOOST.
                 mc.player.connection.sendCommand("wingsqa phase inputSetup");
-            }, () -> require(info(mc).deployed() && info(mc).tier() == 1 && mc.player.getY() > 195,
+            }, () -> require(info(mc).deployed() && info(mc).tier() == 1 && mc.player.getY() > 995,
                     "fixture reset before held Shift"), 30, -1, 0);
             add(label + " bare K rejected", () -> {
                 restoreBindings();
@@ -124,7 +124,7 @@ final class WingsInputQa {
         add("R4 overlapping bindings reset airborne fixture", () -> {
             restoreBindings();
             mc.player.connection.sendCommand("wingsqa phase inputSetup");
-        }, () -> require(info(mc).deployed() && info(mc).tier() == 1 && mc.player.getY() > 195,
+        }, () -> require(info(mc).deployed() && info(mc).tier() == 1 && mc.player.getY() > 995,
                 "R4 fixture is deployed/cruise"), 40, -1, 0);
         add("R4 Shift+K selects blink without bare K cycle", () -> {
             bind(WingsKeys.CYCLE_TIER, KeyModifier.NONE, InputConstants.Type.KEYSYM.getOrCreate(GLFW.GLFW_KEY_K));
@@ -290,7 +290,9 @@ final class WingsInputQa {
                 + " elapsedMillis=" + (now - inputFinishedAt) + " ticks=" + elapsed
                 + " deployRequest=" + (hasDeployment ? deployment.deployed() : "none")
                 + " requestAgeMillis=" + (hasDeployment ? now - deployment.sentAt() : -1)
-                + " beforeDeployed=" + beforeDeployed + " syncedDeployed=" + info(mc).deployed());
+                + " beforeDeployed=" + beforeDeployed + " syncedDeployed=" + info(mc).deployed()
+                + " position=" + mc.player.position() + " onGround=" + mc.player.onGround()
+                + " velocity=" + mc.player.getDeltaMovement());
         // Restore the R4 bindings after input settles, even when its packet assertion fails.
         if (restoreBindingsAfterObservation) {
             restoreBindingsAfterObservation = false;
