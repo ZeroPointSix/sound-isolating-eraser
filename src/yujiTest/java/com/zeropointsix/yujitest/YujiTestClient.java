@@ -56,7 +56,7 @@ public final class YujiTestClient {
     private static boolean audioDone;
     private static int deathFrames, livingDeathFrames;
     private static double deathMinAngle, deathMaxAngle;
-    private static boolean deathStartCaptured, deathEndCaptured;
+    private static boolean deathStartCaptured, deathEndCaptured, deathMetadataSeen;
     private static YujiMonster deathProbe;
     private static String lastTanyuAction = "";
     private static int stalledSerial = -1;
@@ -81,7 +81,7 @@ public final class YujiTestClient {
         if (!text.startsWith("YUJI_QA:")) return;
         phase = text.substring(8); ticks = 0; frames = 0; captured = false; audioDone = false; poses.clear();
         deathFrames = 0; livingDeathFrames = 0; deathMinAngle = 180; deathMaxAngle = 0;
-        deathStartCaptured = false; deathEndCaptured = false; deathProbe = null;
+        deathStartCaptured = false; deathEndCaptured = false; deathMetadataSeen = false; deathProbe = null;
         // Pin only the gallery camera; survival interactions use normal gravity on both sides.
         if (Minecraft.getInstance().player != null)
             Minecraft.getInstance().player.setNoGravity(!phase.startsWith("ai-") && !phase.startsWith("audio-"));
@@ -236,11 +236,14 @@ public final class YujiTestClient {
                     if (livingDeathFrames == 10) pass("ready-" + phase, "living root angle=" + angle);
                 } else {
                     if (monster != deathProbe || livingDeathFrames < 10 || monster.deathTime == 0) return;
-                    if (monster.deathTime >= 2) require(monster.deathAnimation().equals(phase.equals("death-standing") ? "death" : "crawl_death"), "synced death animation selection");
+                    boolean synced = monster.deathAnimation().equals(phase.equals("death-standing") ? "death" : "crawl_death");
+                    require(!deathMetadataSeen || synced, "synced death animation remains stable");
+                    deathMetadataSeen |= synced;
                     deathFrames++;
                     deathMinAngle = Math.min(deathMinAngle, angle); deathMaxAngle = Math.max(deathMaxAngle, angle);
                     if (crawl) require(angle >= 75, "crawl death never stands up: " + angle);
-                    System.out.println("YUJI_DEATH_FRAME phase=" + phase + ", tick=" + monster.deathTime + ", rootAngle=" + angle);
+                    System.out.println("YUJI_DEATH_FRAME phase=" + phase + ", tick=" + monster.deathTime + ", rootAngle=" + angle
+                            + ", syncedAnimation=" + monster.deathAnimation());
                 }
             } catch (Throwable failure) { fail(failure); }
             return;
@@ -272,17 +275,19 @@ public final class YujiTestClient {
                         }
                         deathStartCaptured = true;
                     }
-                    if (!deathEndCaptured && deathMaxAngle >= (crawl ? 89.75 : 87.75) && !deathProbe.isRemoved()) {
+                    if (!deathEndCaptured && deathMetadataSeen && deathMaxAngle >= (crawl ? 89.75 : 87.75)
+                            && deathProbe.deathAnimation().equals(phase.equals("death-standing") ? "death" : "crawl_death")
+                            && !deathProbe.isRemoved()) {
                         require(deathFrames >= 3, "death animation renders multiple frames before its final pose");
                         if (!crawl) require(deathMinAngle < 20, "standing death begins upright");
                         try (var shot = Screenshot.takeScreenshot(Minecraft.getInstance().getMainRenderTarget())) {
                             shot.writeToFile(RESULTS.resolve(phase + "-end.png"));
                         }
                         pass(phase, "renderedFrames=" + deathFrames + ", rootAngleRange=" + deathMinAngle + ".." + deathMaxAngle
-                                + ", finalDeathTime=" + deathProbe.deathTime + ", deathTimePositive=true");
+                                + ", finalDeathTime=" + deathProbe.deathTime + ", deathTimePositive=true, syncedAnimation=" + deathProbe.deathAnimation());
                         deathEndCaptured = true;
                     }
-                    require(deathEndCaptured || !deathProbe.isRemoved(), "death animation reaches its final pose before removal");
+                    require(deathEndCaptured || !deathProbe.isRemoved(), "death animation syncs and reaches its final pose before removal");
                 } catch (Throwable failure) { fail(failure); }
             }
             return;
