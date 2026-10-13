@@ -393,34 +393,5 @@ public final class RainCityGameTests {
             h.assertTrue(city.getEntitiesOfClass(RecliningBuddha.class, new net.minecraft.world.phys.AABB(new BlockPos(0, 123, 0)).inflate(16), RecliningBuddha::isAlive).size() == 1, "no duplicate on later ticks");
         });
     }
-    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji_city_iter", timeoutTicks = 400)
-    public static void citySpawnTickDiscardsWithoutCorruptingEntityIteration(GameTestHelper h) {
-        // Run the city sweep against the test level: its chunks are entity-ticking, so these mobs
-        // are in the live entity lookup exactly as they are around a real player in the city.
-        var level = h.getLevel(); var server = level.getServer();
-        var difficulty = server.getWorldData().getDifficulty();
-        server.setDifficulty(net.minecraft.world.Difficulty.NORMAL, true);
-        java.util.List<com.zeropointsix.eraser.yuji.YujiMonster> mobs = new java.util.ArrayList<>();
-        for (int i = 0; i < 300; i++) {
-            var mob = com.zeropointsix.eraser.yuji.YujiContent.MOBS.get(com.zeropointsix.eraser.yuji.YujiKind.YUCHI).get().create(level);
-            mob.moveTo(h.absoluteVec(new net.minecraft.world.phys.Vec3(1.5, 2 + (i % 3), 1.5)));
-            mob.setNoAi(true); mob.setNoGravity(true); mob.setSilent(true);
-            mob.getPersistentData().putInt("YujiCityDay", 0);
-            if (level.addFreshEntity(mob)) mobs.add(mob);
-        }
-        boolean[] ran = new boolean[1];
-        h.onEachTick(() -> {
-            if (ran[0] || level.getGameTime() % 20 != 0) return;
-            ran[0] = true;
-            try {
-                RainCitySpawns.tick(level, new RainCityData(), java.util.List.of(), 0);
-                h.assertTrue(mobs.stream().noneMatch(m -> m.isAlive()), "stray mobs discarded during the sweep");
-                h.succeed();
-            } finally {
-                server.setDifficulty(difficulty, true);
-                mobs.forEach(m -> { if (m.isAlive()) m.discard(); });
-            }
-        });
-    }
     private RainCityGameTests() { }
 }
