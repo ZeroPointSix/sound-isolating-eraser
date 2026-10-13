@@ -18,7 +18,7 @@ import net.minecraftforge.gametest.PrefixGameTestTemplate;
 public final class PerformanceGameTests {
     private static final BlockPos CENTER = new BlockPos(12, 2, 12);
 
-    @GameTest(template = ModMain.MOD_ID + ":shadow_arena", timeoutTicks = 100)
+    @GameTest(template = "shadow_arena", timeoutTicks = 100)
     public static void fleeLightSearchHasPerTickBudgets(GameTestHelper helper) {
         // Keep every reachable floor position bright so a successful path cannot reset the cursor.
         for (int x = 1; x < 24; x++) for (int z = 1; z < 24; z++) {
@@ -65,7 +65,7 @@ public final class PerformanceGameTests {
         }
     }
 
-    @GameTest(template = ModMain.MOD_ID + ":shadow_arena", timeoutTicks = 400)
+    @GameTest(template = "shadow_arena", timeoutTicks = 400)
     public static void fleeLightSearchPassesSealedRefugeToReachLaterBatch(GameTestHelper helper) {
         // Light the exterior so the sealed room cannot cast an accessible near shadow.
         for (int x = 7; x <= 11; x++) for (int z = 10; z <= 14; z++) {

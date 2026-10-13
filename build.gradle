@@ -199,6 +199,13 @@ tasks.named('processResources', ProcessResources).configure {
     from('src/main/resources/data/sound_isolating_eraser/structures/shadow_arena.nbt') {
         into 'data/shadow_melee_tests/structures'
     }
+    from('src/main/resources/data/sound_isolating_eraser/structures/shadow_arena.nbt') {
+        into 'data/qijie_performance/structures'
+    }
+    from('src/main/resources/data/sound_isolating_eraser/structures') {
+        include 'empty.nbt', 'shadow_arena.nbt'
+        into 'data/qijie_tests/structures'
+    }
     var replaceProperties = [
             minecraft_version: minecraft_version, minecraft_version_range: minecraft_version_range,
             forge_version: forge_version, forge_version_range: forge_version_range,
@@ -223,6 +230,8 @@ tasks.named('jar', Jar).configure {
     exclude 'data/yuji_tests/**'
     exclude 'data/wings_blink_tests/**'
     exclude 'data/shadow_melee_tests/**'
+    exclude 'data/qijie_performance/**'
+    exclude 'data/qijie_tests/**'
 
     manifest {
         attributes([

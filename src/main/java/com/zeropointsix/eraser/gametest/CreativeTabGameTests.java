@@ -18,7 +18,7 @@ import net.minecraftforge.registries.ForgeRegistries;
 @GameTestHolder("qijie_tests")
 @PrefixGameTestTemplate(false)
 public final class CreativeTabGameTests {
-    @GameTest(template = ModMain.MOD_ID + ":empty")
+    @GameTest(template = "empty")
     public static void creativeTabContainsAllItemsAndDefaultData(GameTestHelper helper) {
         var tab = ModCreativeTabs.QIJIE.get();
         var parameters = new CreativeModeTab.ItemDisplayParameters(

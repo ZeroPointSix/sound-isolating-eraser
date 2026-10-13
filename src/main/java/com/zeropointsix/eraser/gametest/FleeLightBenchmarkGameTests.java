@@ -17,7 +17,7 @@ import net.minecraftforge.gametest.PrefixGameTestTemplate;
 @GameTestHolder("qijie_performance")
 @PrefixGameTestTemplate(false)
 public final class FleeLightBenchmarkGameTests {
-    @GameTest(template = "sound_isolating_eraser:shadow_arena", timeoutTicks = 280)
+    @GameTest(template = "shadow_arena", timeoutTicks = 280)
     public static void concurrentFleeSearches(GameTestHelper helper) {
         List<FleeLightGoal> goals = new ArrayList<>();
         BlockPos center = new BlockPos(12, 2, 12);
