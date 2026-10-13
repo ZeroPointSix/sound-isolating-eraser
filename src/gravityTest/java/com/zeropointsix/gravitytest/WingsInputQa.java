@@ -44,6 +44,7 @@ final class WingsInputQa {
     private static boolean beforeDeployed;
     private static long inputFinishedAt;
     private static Vec3 beforePosition;
+    private static boolean restoreBindingsAfterObservation;
 
     private record SavedBinding(KeyMapping mapping, InputConstants.Key key, KeyModifier modifier) { }
     private record DeployObservation(int sequence, boolean deployed, long sentAt) { }
@@ -118,6 +119,26 @@ final class WingsInputQa {
                 input("keyup", "Control_L");
             }, () -> { }, 10, packet, 1);
         }
+        add("R4 overlapping bindings reset airborne fixture", () -> {
+            restoreBindings();
+            mc.player.connection.sendCommand("wingsqa phase inputSetup");
+        }, () -> require(info(mc).deployed() && info(mc).tier() == 1 && mc.player.getY() > 195,
+                "R4 fixture is deployed/cruise"), 40, -1, 0);
+        add("R4 Shift+K selects blink without bare K cycle", () -> {
+            bind(WingsKeys.CYCLE_TIER, KeyModifier.NONE, InputConstants.Type.KEYSYM.getOrCreate(GLFW.GLFW_KEY_K));
+            bind(WingsKeys.BLINK, KeyModifier.SHIFT, InputConstants.Type.KEYSYM.getOrCreate(GLFW.GLFW_KEY_K));
+            restoreBindingsAfterObservation = true;
+            try {
+                input("key", "shift+k");
+            } catch (Exception | Error failure) {
+                restoreBindingsAfterObservation = false;
+                restore(mc);
+                throw failure;
+            }
+        }, () -> {
+            require(mc.screen == null, "R4 input stays in game");
+            require(info(mc).tier() == beforeTier, "R4 modified blink must not cycle the bare binding");
+        }, 10, 3, 1);
         add("modified G still leaves bare G to Curios", () -> {
             restoreBindings();
             bind(WingsKeys.CYCLE_TIER, KeyModifier.SHIFT, InputConstants.Type.KEYSYM.getOrCreate(GLFW.GLFW_KEY_G));
@@ -201,6 +222,11 @@ final class WingsInputQa {
                 + " deployRequest=" + (hasDeployment ? deployment.deployed() : "none")
                 + " requestAgeMillis=" + (hasDeployment ? now - deployment.sentAt() : -1)
                 + " beforeDeployed=" + beforeDeployed + " syncedDeployed=" + info(mc).deployed());
+        // Restore the R4 bindings after input settles, even when its packet assertion fails.
+        if (restoreBindingsAfterObservation) {
+            restoreBindingsAfterObservation = false;
+            restoreBindings();
+        }
         for (int i = 0; i < delta.length; i++) {
             require(delta[i] == (i == active.packet() ? active.count() : 0),
                     active.name() + " packet=" + i + " actual=" + delta[i]);
@@ -290,3 +316,4 @@ final class WingsInputQa {
 
     private WingsInputQa() { }
 }
+
