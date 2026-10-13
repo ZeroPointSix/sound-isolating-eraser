@@ -7,24 +7,33 @@ public final class FlightSpeedTransition {
     private double target;
     private double retention;
     private long graceUntil;
+    private long changedAt;
     private boolean initialized;
 
     public double speed(double targetSpeed, long tick) {
         if (!initialized) return targetSpeed;
-        long elapsed = Math.max(0, tick - graceUntil);
-        double inherited = target + Math.max(0, initialSpeed - target) * Math.pow(retention, elapsed);
-        return Math.max(targetSpeed, inherited);
+        return Math.max(targetSpeed, inertia(tick));
+    }
+
+    private double inertia(long tick) {
+        long start = initialSpeed > target ? graceUntil : changedAt;
+        long elapsed = Math.max(0, tick - start);
+        return target + (initialSpeed - target) * Math.pow(retention, elapsed);
     }
 
     public void change(double oldSpeed, double newSpeed, double acceleration, long tick) {
-        double inherited = speed(oldSpeed, tick);
-        // Carry an existing decay deadline through lower-tier switches. Otherwise
-        // toggling HOVER/CRUISE could renew the old STORM grace forever.
-        boolean fresh = !initialized || inherited <= oldSpeed + 1.0e-6;
-        initialSpeed = Math.max(newSpeed, inherited);
+        if (initialized) tick = Math.max(tick, changedAt);
+        double inherited = initialized ? inertia(tick) : oldSpeed;
+        // A higher target authorizes its tier, but only elapsed server ticks can
+        // turn it into inertia that survives a later downgrade. Same-tick H/H
+        // therefore preserves both the speed history and its decay deadline.
+        boolean accelerated = initialized && target > initialSpeed && tick > changedAt;
+        boolean fresh = !initialized || accelerated;
+        initialSpeed = inherited;
         target = newSpeed;
         retention = 1.0 - Math.max(0.0, Math.min(1.0, acceleration / 20.0));
         graceUntil = fresh ? tick + SYNC_GRACE_TICKS : Math.max(tick, graceUntil);
-        initialized = initialSpeed > newSpeed;
+        changedAt = tick;
+        initialized = true;
     }
 }

@@ -25,24 +25,27 @@ final class WingsNetworkQa {
     private static final String[] SCENARIOS = {"netCruise", "netHover", "netRepeat"};
     private static int scenario;
     private static int step;
+    private static int elapsedTicks;
     private static long startedAt;
     private static Channel channel;
     private static Delay delay;
 
     static void begin(Minecraft mc) {
         scenario = 0;
-        step = 0;
-        startedAt = System.nanoTime();
+        enterStep(0);
         command(mc, SCENARIOS[scenario]);
     }
 
     static boolean tick(Minecraft mc, Path results, String phase) throws Exception {
         long elapsedMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedAt);
-        if (elapsedMs > 20000) throw new AssertionError("Network QA timed out: " + SCENARIOS[scenario] + " step=" + step);
+        elapsedTicks++;
+        if (elapsedMs > 60000) throw new AssertionError("Network QA timed out: " + SCENARIOS[scenario]
+                + " step=" + step + " elapsedTicks=" + elapsedTicks);
         if (step == 0) {
             var info = WingsClientData.get(mc.player);
             double z = scenario * 32 + 0.5;
             if (!phase.equals(SCENARIOS[scenario]) || info == null || !info.deployed()
+                    || info.tier() != (scenario == 0 ? 1 : 3)
                     || Math.abs(mc.player.getX() - 0.5) > 2 || Math.abs(mc.player.getZ() - z) > 2) return false;
             if (delay == null) {
                 channel = mc.getConnection().getConnection().channel();
@@ -50,33 +53,27 @@ final class WingsNetworkQa {
                 channel.pipeline().addLast(HANDLER, delay);
             }
             mc.options.keyUp.setDown(true);
-            step = 1;
-            startedAt = System.nanoTime();
+            enterStep(1);
         } else if (step == 1) {
             if (scenario == 2) WingsNet.CHANNEL.sendToServer(new SetDeployedPacket(true));
-            if (scenario == 1 && elapsedMs >= 1800) {
+            if (scenario == 1 && elapsedMs >= 1800 && elapsedTicks >= 36) {
                 WingsNet.CHANNEL.sendToServer(new HoverTogglePacket());
-                step = 2;
-                startedAt = System.nanoTime();
-            } else if (scenario != 1 && elapsedMs >= 5000) {
+                enterStep(2);
+            } else if (scenario != 1 && elapsedMs >= 5000 && elapsedTicks >= 100) {
                 mc.options.keyUp.setDown(false);
-                step = 3;
-                startedAt = System.nanoTime();
+                enterStep(3);
             }
-        } else if (step == 2 && elapsedMs >= 3000) {
+        } else if (step == 2 && elapsedMs >= 3000 && elapsedTicks >= 60) {
             require(WingsClientData.get(mc.player).tier() == 0, "delayed HOVER action synchronized");
             mc.options.keyUp.setDown(false);
-            step = 3;
-            startedAt = System.nanoTime();
-        } else if (step == 3 && elapsedMs >= 700) {
+            enterStep(3);
+        } else if (step == 3 && elapsedMs >= 700 && elapsedTicks >= 14) {
             command(mc, SCENARIOS[scenario] + "Check");
-            step = 4;
-            startedAt = System.nanoTime();
+            enterStep(4);
         } else if (step == 4 && phase.equals(SCENARIOS[scenario] + "Check")) {
             if (++scenario < SCENARIOS.length) {
                 command(mc, SCENARIOS[scenario]);
-                step = 0;
-                startedAt = System.nanoTime();
+                enterStep(0);
             } else {
                 String metrics = channel.eventLoop().submit(() -> delay.report()).syncUninterruptibly().getNow();
                 Files.writeString(results.resolve("wings-network-client.json"), metrics);
@@ -88,6 +85,12 @@ final class WingsNetworkQa {
             }
         }
         return false;
+    }
+
+    private static void enterStep(int value) {
+        step = value;
+        elapsedTicks = 0;
+        startedAt = System.nanoTime();
     }
 
     static void restore(Minecraft mc) {

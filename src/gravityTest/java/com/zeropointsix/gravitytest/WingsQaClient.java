@@ -52,6 +52,8 @@ public final class WingsQaClient {
     private static double hoverError;
     private static long previousCharge;
     private static InputConstants.Key originalCycleKey;
+    private static long firstCycleAt;
+    private static int firstCycleWaitTicks;
 
     @SubscribeEvent
     public static void chat(ClientChatReceivedEvent event) {
@@ -70,7 +72,7 @@ public final class WingsQaClient {
         if (ROLE == null || event.phase != TickEvent.Phase.END || finished) return;
         Minecraft mc = Minecraft.getInstance();
         try {
-            if (++totalTicks > 9000) throw new AssertionError("Timed out in stage " + stage
+            if (stage > 0 && ++totalTicks > 9000) throw new AssertionError("Timed out in stage " + stage
                     + " controlStep=" + controlStep + " phase=" + phase);
             if (mc.player == null || mc.level == null) return;
             if (stage == 0) {
@@ -79,6 +81,7 @@ public final class WingsQaClient {
                 mc.setScreen(null);
                 GLFW.glfwFocusWindow(mc.getWindow().getWindow());
                 mc.mouseHandler.grabMouse();
+                mark(ROLE.equals("wingswearer") ? "wings-wearer.ready" : "wings-observer.ready");
                 stage = ROLE.equals("wingswearer") ? 1 : 50;
                 ticks = 0;
                 return;
@@ -144,9 +147,24 @@ public final class WingsQaClient {
                 capture(mc, "deployed");
                 foodAtDeploy = p.getFoodData().getFoodLevel();
             }
+            case 75 -> {
+                require(info(p) != null && info(p).tier() == 0,
+                        "first G starts from synchronized hover: " + info(p));
+                nativeInput("key", "g");
+                firstCycleAt = System.nanoTime();
+                firstCycleWaitTicks = 0;
+            }
             case 95 -> {
-                require(info(p) != null && info(p).tier() == 1,
-                        "G cycles tier hover→cruise (synced)");
+                WingsClientData.WingInfo w = info(p);
+                long elapsedMs = java.util.concurrent.TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - firstCycleAt);
+                if (w != null && w.tier() == 0 && ++firstCycleWaitTicks < 400 && elapsedMs < 20000) {
+                    // Do not resend a non-idempotent action while its sync is in flight.
+                    ticks = 94;
+                    return;
+                }
+                require(w != null && w.tier() == 1,
+                        "single native G cycles hover->cruise (synced), tier=" + (w == null ? "missing" : w.tier())
+                                + " phase=" + phase + " elapsedMs=" + elapsedMs);
                 require(mc.screen == null, "native G must not also open Curios: " + mc.screen);
             }
             case 200 -> {
@@ -216,9 +234,6 @@ public final class WingsQaClient {
                 if ((ticks == 8 || ticks == 30 || ticks == 50)
                         && (info(p) == null || !info(p).deployed())) {
                     nativeInput("key", "--delay", "150", "space", "space");
-                } else if (ticks >= 75 && ticks <= 85 && ticks % 5 == 0
-                        && info(p) != null && info(p).tier() == 0) {
-                    nativeInput("key", "g");
                 } else if (ticks > 205 && ticks < 225 && ticks % 6 == 1 && moved(p) < 5) {
                     nativeInput("key", "r");
                 } else if (ticks == 262 && moved(p) < 30) {

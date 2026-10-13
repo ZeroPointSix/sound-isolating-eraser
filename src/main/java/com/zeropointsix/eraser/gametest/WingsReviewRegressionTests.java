@@ -436,6 +436,177 @@ public final class WingsReviewRegressionTests {
         }
     }
 
+    @GameTest(template = "empty", timeoutTicks = 60)
+    public static void reviewSameTickDoubleHoverCannotCreateStormAllowance(GameTestHelper h) {
+        FakePlayer player = rememberedStormHover(h);
+        Vec3 accepted = player.position().add(1.0, 0, 0);
+        player.setPos(accepted);
+        FlightEvents.settleClientMovement(player);
+        assertAccepted(h, player, accepted, "initial HOVER movement before double H");
+        float exhaustion = player.getFoodData().getExhaustionLevel();
+        long toggleTick = h.getLevel().getGameTime();
+        doubleHover(h, player);
+        h.assertTrue(h.getLevel().getGameTime() == toggleTick,
+                "both H actions must execute in the same server tick");
+        player.setPos(accepted.add(0.5, 0, 0));
+        FlightEvents.settleClientMovement(player);
+        assertRejectedAt(h, player, accepted, "same-tick double H cannot refill spent HOVER credit");
+        tick(player);
+        assertHoverExhaustion(h, player, exhaustion, 1);
+        h.runAfterDelay(1, () -> {
+            player.setPos(accepted.add(6.0, 0, 0));
+            FlightEvents.settleClientMovement(player);
+            assertRejectedAt(h, player, accepted,
+                    "instantaneous STORM selection cannot authorize the following HOVER tick");
+            tick(player);
+            assertHoverExhaustion(h, player, exhaustion, 2);
+            h.succeed();
+        });
+    }
+
+    @GameTest(template = "empty", timeoutTicks = 100)
+    public static void reviewEveryTickDoubleHoverCannotMaintainStormSpeed(GameTestHelper h) {
+        assertDefaultTransitionConfig(h);
+        FakePlayer player = winged(h, h.absoluteVec(new Vec3(2.5, 80.5, 2.5)), WingsState.STORM);
+        FlightEvents.serverToggleHover(player);
+        float exhaustion = player.getFoodData().getExhaustionLevel();
+        double[] acceptedDistance = {0};
+        for (int i = 1; i <= 60; i++) {
+            int step = i;
+            h.runAfterDelay(step, () -> {
+                Vec3 before = player.position();
+                doubleHover(h, player);
+                Vec3 attempt = before.add(6.0, 0, 0);
+                player.setPos(attempt);
+                FlightEvents.settleClientMovement(player);
+                boolean accepted = player.position().distanceTo(attempt) < 0.001;
+                if (accepted) acceptedDistance[0] += 6.0;
+                else assertRejectedAt(h, player, before, "double H over-budget movement step " + step);
+                if (step >= 30) {
+                    h.assertTrue(!accepted,
+                            "double H every tick must not preserve full STORM movement at step " + step);
+                }
+                tick(player);
+                assertHoverExhaustion(h, player, exhaustion, step);
+                if (step == 60) {
+                    // The unrenewed default decay and initial two-tick credit allow <160 blocks.
+                    h.assertTrue(acceptedDistance[0] <= 160,
+                            "double H must remain within the finite original transition budget");
+                    System.out.println("WINGS_REVIEW_DOUBLE_H ticks=" + step
+                            + " acceptedDistance=" + acceptedDistance[0]
+                            + " tier=" + WingsState.tier(player)
+                            + " exhaustion=" + (player.getFoodData().getExhaustionLevel() - exhaustion));
+                    h.succeed();
+                }
+            });
+        }
+    }
+
+    @GameTest(template = "empty", timeoutTicks = 120)
+    public static void reviewDoubleHoverAfterDecayCannotRearmStormAllowance(GameTestHelper h) {
+        assertDefaultTransitionConfig(h);
+        FakePlayer player = winged(h, h.absoluteVec(new Vec3(2.5, 80.5, 2.5)), WingsState.STORM);
+        FlightEvents.serverToggleHover(player);
+        h.runAfterDelay(80, () -> {
+            Vec3 accepted = player.position().add(1.0, 0, 0);
+            player.setPos(accepted);
+            FlightEvents.settleClientMovement(player);
+            assertAccepted(h, player, accepted, "settled HOVER movement after original STORM decay");
+            float exhaustion = player.getFoodData().getExhaustionLevel();
+            doubleHover(h, player);
+            player.setPos(accepted.add(0.5, 0, 0));
+            FlightEvents.settleClientMovement(player);
+            assertRejectedAt(h, player, accepted, "expired-history double H preserves remaining credit");
+            tick(player);
+            assertHoverExhaustion(h, player, exhaustion, 1);
+            h.runAfterDelay(1, () -> {
+                player.setPos(accepted.add(6.0, 0, 0));
+                FlightEvents.settleClientMovement(player);
+                assertRejectedAt(h, player, accepted,
+                        "double H after complete decay must not renew a STORM-speed grace period");
+                tick(player);
+                assertHoverExhaustion(h, player, exhaustion, 2);
+                h.succeed();
+            });
+        });
+    }
+
+    @GameTest(template = "empty", timeoutTicks = 110)
+    public static void reviewRealStormAccelerationRetainsHoverInertia(GameTestHelper h) {
+        FakePlayer player = rememberedStormHover(h);
+        float exhaustion = player.getFoodData().getExhaustionLevel();
+        FlightEvents.serverToggleHover(player);
+        h.assertTrue(WingsState.tier(player) == WingsState.STORM,
+                "the positive control must actually remain in STORM while accelerating");
+        double[] speed = {WingsConfig.SERVER.hoverMaxSpeed.get() / 20.0};
+        double lerp = WingsConfig.SERVER.accelLerp.get() / 20.0;
+        for (int i = 1; i <= 70; i++) {
+            int step = i;
+            h.runAfterDelay(step, () -> {
+                double target = step <= 40 ? WingsConfig.SERVER.stormSpeed.get() / 20.0 : 0;
+                speed[0] += (target - speed[0]) * lerp;
+                Vec3 expected = player.position().add(speed[0], 0, 0);
+                player.setDeltaMovement(new Vec3(speed[0], 0, 0));
+                player.setPos(expected);
+                FlightEvents.settleClientMovement(player);
+                tick(player);
+                assertAccepted(h, player, expected, "real-time acceleration/deceleration step " + step);
+                if (step == 40) FlightEvents.serverToggleHover(player);
+                h.assertTrue(WingsState.tier(player) == (step < 40 ? WingsState.STORM : WingsState.HOVER),
+                        "positive-control tiers must follow real-time flight rather than instantaneous toggles");
+                if (step == 70) {
+                    double expectedExhaustion = 40 * WingsConfig.SERVER.stormExhaustPerSec.get() / 20.0
+                            + 30 * WingsConfig.SERVER.hoverExhaustPerSec.get() / 20.0;
+                    h.assertTrue(Math.abs(player.getFoodData().getExhaustionLevel()
+                                    - exhaustion - expectedExhaustion) < 0.0001,
+                            "real STORM acceleration must pay STORM exhaustion before HOVER deceleration");
+                    h.succeed();
+                }
+            });
+        }
+    }
+
+    private static void assertDefaultTransitionConfig(GameTestHelper h) {
+        h.assertTrue(WingsConfig.SERVER.stormSpeed.get() == 120.0
+                        && WingsConfig.SERVER.hoverMaxSpeed.get() == 5.0
+                        && WingsConfig.SERVER.accelLerp.get() == 2.5,
+                "double-H regressions require the default STORM/HOVER speeds and deceleration");
+    }
+
+    private static FakePlayer rememberedStormHover(GameTestHelper h) {
+        assertDefaultTransitionConfig(h);
+        FakePlayer player = winged(h, h.absoluteVec(new Vec3(2.5, 80.5, 2.5)), WingsState.HOVER);
+        // Seed only the remembered H target, without granting any actual high-tier flight time.
+        WingsState.setTier(player, WingsState.STORM);
+        WingsState.setTier(player, WingsState.HOVER);
+        return player;
+    }
+
+    private static void doubleHover(GameTestHelper h, FakePlayer player) {
+        h.assertTrue(WingsState.tier(player) == WingsState.HOVER
+                        && WingsState.prevTier(player) == WingsState.STORM,
+                "double-H fixture must start in HOVER with STORM as its remembered tier");
+        FlightEvents.serverToggleHover(player);
+        h.assertTrue(WingsState.tier(player) == WingsState.STORM, "the first H must select STORM");
+        FlightEvents.serverToggleHover(player);
+        h.assertTrue(WingsState.tier(player) == WingsState.HOVER, "the second H must return to HOVER");
+    }
+
+    private static void assertRejectedAt(GameTestHelper h, FakePlayer player, Vec3 accepted, String label) {
+        h.assertTrue(WingsState.speedFlagAt(player) > 0, label + " must raise a speed flag");
+        h.assertTrue(player.position().distanceTo(accepted) < 0.001,
+                label + " must roll back to the last accepted position");
+    }
+
+    private static void assertHoverExhaustion(GameTestHelper h, FakePlayer player,
+            float before, int ticks) {
+        h.assertTrue(WingsState.tier(player) == WingsState.HOVER,
+                "zero-duration STORM toggles must finish in HOVER");
+        double expected = ticks * WingsConfig.SERVER.hoverExhaustPerSec.get() / 20.0;
+        h.assertTrue(Math.abs(player.getFoodData().getExhaustionLevel() - before - expected) < 0.0001,
+                "HOVER ticks must retain their normal exhaustion cost, without subsidized STORM speed");
+    }
+
     private static void assertPreTransitionMovement(GameTestHelper h, int expectedTier,
             Consumer<FakePlayer> transition, String label) {
         h.assertTrue(WingsConfig.SERVER.stormSpeed.get() == 120.0,

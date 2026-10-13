@@ -95,12 +95,77 @@ public final class FlightSpeedBudgetCheck {
         }
         check(toggles.speed(tierSpeed, 200) <= 30.001,
                 "lower-tier toggles cannot indefinitely renew the old STORM envelope");
+        for (double acceleration : new double[]{0.05, 2.5, 20.0}) {
+            FlightSpeedTransition uninterrupted = new FlightSpeedTransition();
+            FlightSpeedTransition doubleHover = new FlightSpeedTransition();
+            uninterrupted.change(120, 5, acceleration, 0);
+            doubleHover.change(120, 5, acceleration, 0);
+            FlightSpeedBudget doubleHoverBudget = new FlightSpeedBudget();
+            double doubleHoverAccepted = 0;
+            double authorizedCredit = 2 * movementAllowance(uninterrupted.speed(5, 0));
+            for (int tick = 0; tick < 4000; tick++) {
+                double expected = uninterrupted.speed(5, tick);
+                // FlightEvents settles the current low-tier budget before each action.
+                double allowance = movementAllowance(doubleHover.speed(5, tick));
+                check(doubleHoverBudget.accept(0, allowance, tick), "pre-toggle settlement");
+                doubleHover.change(5, 120, acceleration, tick);
+                check(doubleHoverBudget.accept(0, movementAllowance(doubleHover.speed(120, tick)), tick),
+                        "raising the tier without movement keeps existing credit");
+                doubleHover.change(120, 5, acceleration, tick);
+                check(Math.abs(doubleHover.speed(5, tick) - expected) < 1.0e-9,
+                        "same-tick HOVER/STORM/HOVER must preserve the original decay curve");
+                if (tick > 0) authorizedCredit += movementAllowance(expected);
+                if (doubleHoverBudget.accept(6, movementAllowance(doubleHover.speed(5, tick)), tick)) {
+                    doubleHoverAccepted += 6;
+                }
+                check(doubleHoverAccepted <= authorizedCredit + 1.0e-7,
+                        "per-tick double H cannot mint cumulative STORM movement credit");
+            }
+            check(doubleHover.speed(5, 4000) < 5.01,
+                    "double H every tick cannot keep STORM inertia alive even at minimum acceleration");
+            double settledSpeed = doubleHover.speed(5, 100_000);
+            for (int repeat = 0; repeat < 100; repeat++) {
+                doubleHover.change(5, 120, acceleration, 100_000);
+                doubleHover.change(120, 5, acceleration, 100_000);
+                check(Math.abs(doubleHover.speed(5, 100_000) - settledSpeed) < 1.0e-9,
+                        "double H after complete decay cannot resurrect old STORM inertia");
+            }
+            check(!new FlightSpeedBudget().accept(6,
+                            movementAllowance(doubleHover.speed(5, 100_001)), 100_001),
+                    "expired double-H history cannot authorize a new six-block HOVER step");
+
+            for (int fastTicks : new int[]{1, 2, 8, 40, 4000}) {
+                FlightSpeedTransition accelerated = new FlightSpeedTransition();
+                accelerated.change(5, 120, acceleration, 0);
+                double client = 5;
+                for (int tick = 1; tick <= fastTicks; tick++) {
+                    client += (120 - client) * acceleration / 20.0;
+                }
+                accelerated.change(120, 5, acceleration, fastTicks);
+                check(Math.abs(accelerated.speed(5, fastTicks) - client) < 1.0e-9,
+                        "real time in STORM must preserve earned acceleration on downgrade");
+                for (int tick = fastTicks; tick < fastTicks + 100; tick++) {
+                    check(accelerated.speed(5, tick) + 1.0e-9 >= client,
+                            "legitimate accelerated flight retains its later deceleration envelope");
+                    client += (5 - client) * acceleration / 20.0;
+                }
+            }
+        }
+        FlightSpeedTransition instantStorm = new FlightSpeedTransition();
+        instantStorm.change(5, 120, 2.5, 0);
+        instantStorm.change(120, 5, 2.5, 0);
+        check(instantStorm.speed(5, 0) == 5 && instantStorm.speed(5, 1) == 5,
+                "first-ever instantaneous STORM selection must not create inertia");
         FlightSpeedBudget transitionBudget = new FlightSpeedBudget();
         check(transitionBudget.accept(18.5, 9.25, 0), "consume storm credit");
         transition.change(120, 5, 2.5, 0);
         check(!transitionBudget.accept(0.1, (transition.speed(5, 0) * 1.5 + 5) / 20, 0),
                 "transition does not mint same-tick movement credit");
         System.out.println("WINGS_SPEED_BUDGET_PASSED assertions=" + assertions);
+    }
+
+    private static double movementAllowance(double speed) {
+        return (speed * 1.5 + 5) / 20;
     }
 
     private static void check(boolean condition, String message) {

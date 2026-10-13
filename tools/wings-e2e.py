@@ -91,7 +91,10 @@ try:
             time.sleep(1)
     wearer = launch("runClient", "wearer", ":93")
     observer = launch("runClient", "observer", ":94")
-    deadline = time.monotonic() + 600
+    # Class/resource loading must not consume the gameplay acceptance budget.
+    # Both waits remain bounded even when one client never joins or gets ready.
+    startup_deadline = time.monotonic() + 600
+    gameplay_deadline = None
     required = ("wings-wearer", "wings-observer", "wings-server", "wings-controls", "wings-key-conflicts",
                 "wings-input-rebinding", "wings-animation", "wings-audio", "wings-network",
                 "wings-network-server")
@@ -101,8 +104,15 @@ try:
             raise AssertionError("; ".join(path.read_text() for path in failures))
         if any(process.poll() is not None for process in (server, wearer, observer)):
             raise RuntimeError("A Minecraft process exited before validation completed")
-        if time.monotonic() >= deadline:
-            raise TimeoutError("Two-client wings validation timed out")
+        now = time.monotonic()
+        if gameplay_deadline is None:
+            if all((RESULTS / f"wings-{role}.ready").exists() for role in ("wearer", "observer")):
+                gameplay_deadline = now + 600
+                print("WINGS_CLIENTS_READY: starting bounded 600-second gameplay validation", flush=True)
+            elif now >= startup_deadline:
+                raise TimeoutError("Two-client wings startup did not reach ready within 600 seconds")
+        elif now >= gameplay_deadline:
+            raise TimeoutError("Two-client wings gameplay validation exceeded 600 seconds after readiness")
         time.sleep(1)
     audio = json.loads((RESULTS / "wings-audio.json").read_text())
     assert all(count > 0 for count in audio["sourcePlaying"].values()), audio
