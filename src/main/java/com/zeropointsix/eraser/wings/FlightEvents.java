@@ -47,6 +47,8 @@ public final class FlightEvents {
     /** 上一 tick 位置（服务端速度校验/撞墙探测用；玩家对象弱引用，离线自动回收）。 */
     private static final Map<UUID, Vec3> lastPositions = new WeakHashMap<>();
     private static final Map<UUID, FlightSpeedBudget> speedBudgets = new WeakHashMap<>();
+    private static final Map<UUID, Long> lastMovementTicks = new WeakHashMap<>();
+    private static final Map<UUID, FlightSpeedTransition> speedTransitions = new WeakHashMap<>();
     /** 超速告警节流（仅提示用，不落盘）。 */
     private static final Map<UUID, Long> lastSpeedWarnAt = new WeakHashMap<>();
 
@@ -65,7 +67,7 @@ public final class FlightEvents {
         // Settle movement before changing flight state. Same-tick stow/deploy
         // requests must not erase unchecked movement or refill the budget.
         if (wasDeployed || (want && lastPositions.containsKey(p.getUUID()))) {
-            acceptMovement(p);
+            settleMovement(p);
         }
         WingsState.setDeployed(p, want);
         if (want) {
@@ -73,11 +75,14 @@ public final class FlightEvents {
             // 部署瞬间可能带着落体惯性——把超速治理基准锚在部署点，
             // 否则下一 tick 的合法速度余量会被误判拉回
             lastPositions.putIfAbsent(p.getUUID(), p.position());
+            lastMovementTicks.putIfAbsent(p.getUUID(), p.level().getGameTime());
             // 标记为鞘翅式飞行：原版服务器 floating 踢人与客户端动画都按 fall-flying 处理
             p.startFallFlying();
             WingsState.setHoverAnchor(p, p.getY());
-            p.level().playSound(null, p.blockPosition(), SoundEvents.ARMOR_EQUIP_ELYTRA,
-                    SoundSource.PLAYERS, 1.0f, 1.0f);
+            if (!wasDeployed) {
+                p.level().playSound(null, p.blockPosition(), SoundEvents.ARMOR_EQUIP_ELYTRA,
+                        SoundSource.PLAYERS, 1.0f, 1.0f);
+            }
         } else {
             p.stopFallFlying();
         }
@@ -92,19 +97,30 @@ public final class FlightEvents {
             p.displayClientMessage(Component.translatable("message.sound_isolating_eraser.hungry"), true);
             next = WingsState.CRUISE;
         }
-        WingsState.setTier(p, next);
+        changeTier(p, next);
         WingsNet.syncToTracking(p);
     }
 
     public static void serverToggleHover(ServerPlayer p) {
         if (!WingsState.deployed(p)) return;
         if (WingsState.tier(p) == WingsState.HOVER) {
-            WingsState.setTier(p, WingsState.prevTier(p));
+            changeTier(p, WingsState.prevTier(p));
         } else {
-            WingsState.setTier(p, WingsState.HOVER);
+            changeTier(p, WingsState.HOVER);
         }
         WingsState.setHoverAnchor(p, p.getY());
         WingsNet.syncToTracking(p);
+    }
+
+    private static void changeTier(ServerPlayer p, int next) {
+        int previous = WingsState.tier(p);
+        if (previous == next) return;
+        settleMovement(p);
+        WingsConfig.Server cfg = WingsConfig.SERVER;
+        speedTransitions.computeIfAbsent(p.getUUID(), ignored -> new FlightSpeedTransition())
+                .change(cfg.tierSpeed(previous), cfg.tierSpeed(next), cfg.accelLerp.get(),
+                        p.level().getGameTime());
+        WingsState.setTier(p, next);
     }
 
     public static void serverBlink(ServerPlayer p) {
@@ -123,6 +139,8 @@ public final class FlightEvents {
         }
         if (times.length == 0 && now < WingsState.blinkCooldownUntil(p)) return;
 
+        settleMovement(p);
+        if (!p.isAlive()) return;
         var destination = BlinkDestination.find(p, cfg.blinkDistance.get());
         if (destination.isEmpty()) return;
         Vec3 target = destination.get();
@@ -200,6 +218,8 @@ public final class FlightEvents {
                 serverSetDeployed(p, false);
             }
             lastPositions.remove(p.getUUID());
+            lastMovementTicks.remove(p.getUUID());
+            speedTransitions.remove(p.getUUID());
             return;
         }
 
@@ -218,49 +238,17 @@ public final class FlightEvents {
             if (food <= 0) {
                 // starving: auto-drop to hover + slow fall
                 if (WingsState.tier(p) != WingsState.HOVER) {
-                    WingsState.setTier(p, WingsState.HOVER);
+                    changeTier(p, WingsState.HOVER);
                     WingsNet.syncToTracking(p);
                 }
                 p.addEffect(new MobEffectInstance(MobEffects.SLOW_FALLING, 40, 0, true, false));
             } else if (food < cfg.minFoodForFastTiers.get()
                     && WingsState.tier(p) >= WingsState.BOOST) {
-                WingsState.setTier(p, WingsState.CRUISE);
+                changeTier(p, WingsState.CRUISE);
                 p.displayClientMessage(Component.translatable("message.sound_isolating_eraser.hungry"), true);
                 WingsNet.syncToTracking(p);
             }
-            // 服务端速度/位移校验（Notion 要求服务端权威）+ 撞墙伤害。
-            // 客户端权威飞行下 horizontalCollision 不可信，统一用每 tick 位置增量。
-            // 大位移不再有豁免档：合法传送/重生/跨维度在事件里显式 markTeleported 重置基准。
-            {
-                Vec3 prev = acceptMovement(p);
-                if (prev != null) {
-                    ServerLevel level = p.serverLevel();
-                    long now = level.getGameTime();
-                    double dx = p.getX() - prev.x, dz = p.getZ() - prev.z;
-                    double speedBpt = Math.hypot(dx, dz);
-                    if (cfg.wallDamageEnabled.get()
-                            && speedBpt * 20.0 > cfg.wallDamageThresholdSpeed.get()
-                            && (WingsState.wallHitAt(p) == 0
-                                    || now >= WingsState.wallHitAt(p) + 20)) {
-                        // 扫掠碰撞：沿本 tick 实际水平位移向前扫（含 0.35 贴脸余量），
-                        // 且命中面法线必须迎向运动方向——靠近墙面刹停/贴墙滑行都不算撞墙
-                        Vec3 dir = new Vec3(dx / speedBpt, 0, dz / speedBpt);
-                        Vec3 eyeFrom = prev.add(0, p.getEyeHeight(), 0);
-                        BlockHitResult hit = level.clip(new ClipContext(eyeFrom,
-                                eyeFrom.add(dir.scale(speedBpt + 0.35)),
-                                ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, p));
-                        if (hit.getType() != HitResult.Type.MISS
-                                && dir.dot(Vec3.atLowerCornerOf(
-                                        hit.getDirection().getNormal())) < -0.3) {
-                            WingsState.setWallHitAt(p, now);
-                            double speedMs = speedBpt * 20.0;
-                            p.hurt(level.damageSources().flyIntoWall(),
-                                    (float) Math.min(cfg.wallDamageCap.get(),
-                                            (speedMs - cfg.wallDamageThresholdSpeed.get()) / 10.0));
-                        }
-                    }
-                }
-            }
+            settleMovement(p);
             // periodic state sync for late trackers
             if (p.tickCount % 40 == 0) {
                 WingsNet.syncToTracking(p);
@@ -268,6 +256,8 @@ public final class FlightEvents {
         } else {
             // Only an actual stowed tick allows a later deployment to re-anchor.
             lastPositions.remove(p.getUUID());
+            lastMovementTicks.remove(p.getUUID());
+            speedTransitions.remove(p.getUUID());
             if (p.tickCount % 40 == 0) {
                 // 未部署也要周期性同步：客户端手势判定依赖 WingInfo（首次展开前没有包会发）
                 WingsNet.syncToTracking(p);
@@ -275,29 +265,77 @@ public final class FlightEvents {
         }
     }
 
-    /** Returns the previous accepted position, or null on initialization/rollback. */
-    private static Vec3 acceptMovement(ServerPlayer p) {
-        Vec3 prev = lastPositions.put(p.getUUID(), p.position());
-        if (prev == null) return null;
-        long now = p.serverLevel().getGameTime();
-        double allowedMs = WingsConfig.SERVER.tierSpeed(WingsState.tier(p)) * 1.5 + 5.0;
-        FlightSpeedBudget budget = speedBudgets.computeIfAbsent(p.getUUID(),
-                ignored -> new FlightSpeedBudget());
-        if (budget.accept(p.position().distanceTo(prev), allowedMs / 20.0, now)) return prev;
+    /** Validate and settle each observed segment once, before changing its flight state. */
+    private static void settleMovement(ServerPlayer p) {
+        settleMovement(p, false);
+    }
 
-        WingsState.setSpeedFlagAt(p, now);
-        p.teleportToWithTicket(prev.x, prev.y, prev.z);
-        // FakePlayer's connection teleport does not update its server position.
-        p.setPos(prev.x, prev.y, prev.z);
-        p.setDeltaMovement(Vec3.ZERO);
-        lastPositions.put(p.getUUID(), p.position());
-        Long lastWarn = lastSpeedWarnAt.get(p.getUUID());
-        if (lastWarn == null || now - lastWarn > 100) {
-            lastSpeedWarnAt.put(p.getUUID(), now);
-            p.displayClientMessage(Component.translatable(
-                    "message.sound_isolating_eraser.speed_cap"), true);
+    /** Each accepted position packet represents one client movement step, even in a TCP batch. */
+    public static void settleClientMovement(ServerPlayer p) {
+        if (WingsState.deployed(p) && WingsState.wearing(p)) settleMovement(p, true);
+    }
+
+    private static void settleMovement(ServerPlayer p, boolean clientStep) {
+        UUID id = p.getUUID();
+        Vec3 prev = lastPositions.get(id);
+        long now = p.serverLevel().getGameTime();
+        if (prev == null) {
+            lastPositions.put(id, p.position());
+            lastMovementTicks.put(id, now);
+            return;
         }
-        return null;
+        WingsConfig.Server cfg = WingsConfig.SERVER;
+        double speed = cfg.tierSpeed(WingsState.tier(p));
+        FlightSpeedTransition transition = speedTransitions.get(id);
+        if (transition != null) speed = transition.speed(speed, now);
+        double allowedMs = speed * 1.5 + 5.0;
+        FlightSpeedBudget budget = speedBudgets.computeIfAbsent(id, ignored -> new FlightSpeedBudget());
+        double distance = p.position().distanceTo(prev);
+        if (!budget.accept(distance, allowedMs / 20.0, now)) {
+            WingsState.setSpeedFlagAt(p, now);
+            p.teleportToWithTicket(prev.x, prev.y, prev.z);
+            // FakePlayer's connection teleport does not update its server position.
+            p.setPos(prev.x, prev.y, prev.z);
+            p.setDeltaMovement(Vec3.ZERO);
+            lastMovementTicks.put(id, now);
+            Long lastWarn = lastSpeedWarnAt.get(id);
+            if (lastWarn == null || now - lastWarn > 100) {
+                lastSpeedWarnAt.put(id, now);
+                p.displayClientMessage(Component.translatable(
+                        "message.sound_isolating_eraser.speed_cap"), true);
+            }
+            return;
+        }
+        if (distance <= 1.0e-9) return;
+        // Empty server ticks do not consume the sample time of delayed client movement.
+        long elapsed = clientStep ? 1
+                : Math.max(1, Math.min(2, now - lastMovementTicks.getOrDefault(id, now)));
+        lastPositions.put(id, p.position());
+        lastMovementTicks.put(id, now);
+        settleWallImpact(p, prev, elapsed);
+    }
+
+    private static void settleWallImpact(ServerPlayer p, Vec3 prev, long elapsed) {
+        WingsConfig.Server cfg = WingsConfig.SERVER;
+        ServerLevel level = p.serverLevel();
+        long now = level.getGameTime();
+        double dx = p.getX() - prev.x, dz = p.getZ() - prev.z;
+        double distance = Math.hypot(dx, dz);
+        double speedMs = distance * 20.0 / elapsed;
+        if (!cfg.wallDamageEnabled.get() || speedMs <= cfg.wallDamageThresholdSpeed.get()
+                || (WingsState.wallHitAt(p) != 0 && now < WingsState.wallHitAt(p) + 20)) return;
+        Vec3 dir = new Vec3(dx / distance, 0, dz / distance);
+        Vec3 eyeFrom = prev.add(0, p.getEyeHeight(), 0);
+        BlockHitResult hit = level.clip(new ClipContext(eyeFrom,
+                eyeFrom.add(dir.scale(distance + 0.35)),
+                ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, p));
+        if (hit.getType() != HitResult.Type.MISS
+                && dir.dot(Vec3.atLowerCornerOf(hit.getDirection().getNormal())) < -0.3) {
+            WingsState.setWallHitAt(p, now);
+            p.hurt(level.damageSources().flyIntoWall(),
+                    (float) Math.min(cfg.wallDamageCap.get(),
+                            (speedMs - cfg.wallDamageThresholdSpeed.get()) / 10.0));
+        }
     }
 
     // ------------------------------------------------------------ world events
@@ -339,7 +377,9 @@ public final class FlightEvents {
     /** 服务端发起的位移（雷瞬/拉回等）调用：重置速度基准，下一 tick 不判超速。 */
     public static void markTeleported(Player p) {
         lastPositions.put(p.getUUID(), p.position());
+        lastMovementTicks.put(p.getUUID(), p.level().getGameTime());
         speedBudgets.remove(p.getUUID());
+        speedTransitions.remove(p.getUUID());
     }
 
     /** 原版/指令传送（/tp、末影珍珠、紫颂果等）同样属于授权位移。 */
@@ -347,18 +387,24 @@ public final class FlightEvents {
     public static void onTeleport(EntityTeleportEvent event) {
         lastPositions.remove(event.getEntity().getUUID());
         speedBudgets.remove(event.getEntity().getUUID());
+        lastMovementTicks.remove(event.getEntity().getUUID());
+        speedTransitions.remove(event.getEntity().getUUID());
     }
 
     @SubscribeEvent
     public static void onRespawn(PlayerEvent.PlayerRespawnEvent event) {
         lastPositions.remove(event.getEntity().getUUID());
         speedBudgets.remove(event.getEntity().getUUID());
+        lastMovementTicks.remove(event.getEntity().getUUID());
+        speedTransitions.remove(event.getEntity().getUUID());
     }
 
     @SubscribeEvent
     public static void onDimensionChange(PlayerEvent.PlayerChangedDimensionEvent event) {
         lastPositions.remove(event.getEntity().getUUID());
         speedBudgets.remove(event.getEntity().getUUID());
+        lastMovementTicks.remove(event.getEntity().getUUID());
+        speedTransitions.remove(event.getEntity().getUUID());
     }
 
     /** 登录即发初始 WingInfo，否则客户端连一次部署手势都无法判定。 */
@@ -366,6 +412,8 @@ public final class FlightEvents {
     public static void onLogin(PlayerEvent.PlayerLoggedInEvent event) {
         lastPositions.remove(event.getEntity().getUUID());
         speedBudgets.remove(event.getEntity().getUUID());
+        lastMovementTicks.remove(event.getEntity().getUUID());
+        speedTransitions.remove(event.getEntity().getUUID());
         if (event.getEntity() instanceof ServerPlayer sp) WingsNet.syncToTracking(sp);
     }
 

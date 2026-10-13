@@ -45,7 +45,6 @@ public final class WingsQaClient {
     private static double markX = Double.NaN;
     private static double markZ = Double.NaN;
     private static NativeImage stowedFrame;
-    private static int deployAnimFrame = -1;
     private static String reviewPhase = "";
     private static int reviewPhaseTicks;
     private static int controlStep;
@@ -94,6 +93,14 @@ public final class WingsQaClient {
             if (stage == 60) exerciseControls(mc);
             if (stage == 70 && WingsInputQa.tick(mc, RESULTS)) {
                 capture(mc, "input-rebinding-complete");
+                WingsPresentationQa.begin(mc, RESULTS);
+                stage = 80;
+            }
+            if (stage == 80 && WingsPresentationQa.tick(mc, phase)) {
+                WingsNetworkQa.begin(mc);
+                stage = 90;
+            }
+            if (stage == 90 && WingsNetworkQa.tick(mc, RESULTS, phase)) {
                 stage = 99;
             }
             if (stage == 99 && Files.exists(RESULTS.resolve("wings-observer.pass"))) {
@@ -105,6 +112,8 @@ public final class WingsQaClient {
             restoreCycleBinding();
             try {
                 WingsInputQa.restore(mc);
+                WingsNetworkQa.restore(mc);
+                WingsPresentationQa.restore(mc);
             } catch (Throwable cleanupFailure) {
                 failure.addSuppressed(cleanupFailure);
             }
@@ -215,13 +224,6 @@ public final class WingsQaClient {
                 } else if (ticks == 262 && moved(p) < 30) {
                     // 整串重发：上一串若部分丢失，链窗已过期可重新开始
                     nativeInput("key", "--delay", "80", "r", "r", "r", "r");
-                }
-                // 收展连续帧：展开动画过渡中逐 tick 截图（deployAnim 0→1 ≈ 6 tick）
-                WingsClientData.WingInfo w = info(p);
-                if (w != null && w.deployed() && w.deployAnim() > 0.01f
-                        && w.deployAnim() < 0.99f && deployAnimFrame < 3) {
-                    deployAnimFrame++;
-                    capture(mc, "deploy-frame-" + deployAnimFrame);
                 }
             }
         }

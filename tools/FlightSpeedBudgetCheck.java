@@ -1,4 +1,5 @@
 import com.zeropointsix.eraser.wings.FlightSpeedBudget;
+import com.zeropointsix.eraser.wings.FlightSpeedTransition;
 import java.util.Random;
 
 public final class FlightSpeedBudgetCheck {
@@ -60,6 +61,45 @@ public final class FlightSpeedBudgetCheck {
             }
             check(accepted <= HOVER * (tick + 2) + 1.0e-7, "cumulative server-tick bound");
         }
+        for (double acceleration : new double[]{0.05, 2.5, 20.0}) {
+            for (double target : new double[]{5, 30, 60}) {
+                FlightSpeedTransition transition = new FlightSpeedTransition();
+                transition.change(120, target, acceleration, 100);
+                double client = 120;
+                double prior = 120;
+                for (int tick = 100; tick < 4100; tick++) {
+                    double envelope = transition.speed(target, tick);
+                    check(envelope <= prior + 1.0e-9, "transition allowance never grows with time");
+                    check(envelope + 1.0e-9 >= client, "legal client inertia fits authorized envelope");
+                    check(envelope >= target, "transition cannot undershoot target speed");
+                    prior = envelope;
+                    client += (target - client) * acceleration / 20.0;
+                }
+                check(prior < target + 0.01, "even minimum acceleration has a finite decay tail");
+            }
+        }
+        FlightSpeedTransition transition = new FlightSpeedTransition();
+        transition.change(120, 5, 2.5, 0);
+        double inherited = transition.speed(5, 10);
+        transition.change(5, 30, 2.5, 10);
+        check(Math.abs(transition.speed(30, 10) - Math.max(30, inherited)) < 1.0e-9,
+                "changing tier during deceleration inherits only the remaining envelope");
+        check(transition.speed(30, 1000) < 30.001, "repeated transition still expires");
+        FlightSpeedTransition toggles = new FlightSpeedTransition();
+        toggles.change(120, 5, 2.5, 0);
+        double tierSpeed = 5;
+        for (int tick = 2; tick <= 200; tick += 2) {
+            double nextSpeed = tierSpeed == 5 ? 30 : 5;
+            toggles.change(tierSpeed, nextSpeed, 2.5, tick);
+            tierSpeed = nextSpeed;
+        }
+        check(toggles.speed(tierSpeed, 200) <= 30.001,
+                "lower-tier toggles cannot indefinitely renew the old STORM envelope");
+        FlightSpeedBudget transitionBudget = new FlightSpeedBudget();
+        check(transitionBudget.accept(18.5, 9.25, 0), "consume storm credit");
+        transition.change(120, 5, 2.5, 0);
+        check(!transitionBudget.accept(0.1, (transition.speed(5, 0) * 1.5 + 5) / 20, 0),
+                "transition does not mint same-tick movement credit");
         System.out.println("WINGS_SPEED_BUDGET_PASSED assertions=" + assertions);
     }
 

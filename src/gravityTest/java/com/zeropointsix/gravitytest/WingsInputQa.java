@@ -44,6 +44,7 @@ final class WingsInputQa {
     private static boolean beforeDeployed;
     private static long inputFinishedAt;
     private static Vec3 beforePosition;
+    private static boolean restoreBindingsAfterObservation;
 
     private record SavedBinding(KeyMapping mapping, InputConstants.Key key, KeyModifier modifier) { }
     private record DeployObservation(int sequence, boolean deployed, long sentAt) { }
@@ -56,6 +57,8 @@ final class WingsInputQa {
                 WingsKeys.BLINK, mc.options.keyJump)) {
             SAVED.add(new SavedBinding(key, key.getKey(), key.getKeyModifier()));
         }
+        KeyMapping curios = curiosBinding(mc);
+        SAVED.add(new SavedBinding(curios, curios.getKey(), curios.getKeyModifier()));
         channel = mc.getConnection().getConnection().channel();
         channel.pipeline().addLast(MONITOR, new ChannelOutboundHandlerAdapter() {
             @Override
@@ -118,6 +121,66 @@ final class WingsInputQa {
                 input("keyup", "Control_L");
             }, () -> { }, 10, packet, 1);
         }
+        add("R4 overlapping bindings reset airborne fixture", () -> {
+            restoreBindings();
+            mc.player.connection.sendCommand("wingsqa phase inputSetup");
+        }, () -> require(info(mc).deployed() && info(mc).tier() == 1 && mc.player.getY() > 195,
+                "R4 fixture is deployed/cruise"), 40, -1, 0);
+        add("R4 Shift+K selects blink without bare K cycle", () -> {
+            bind(WingsKeys.CYCLE_TIER, KeyModifier.NONE, InputConstants.Type.KEYSYM.getOrCreate(GLFW.GLFW_KEY_K));
+            bind(WingsKeys.BLINK, KeyModifier.SHIFT, InputConstants.Type.KEYSYM.getOrCreate(GLFW.GLFW_KEY_K));
+            restoreBindingsAfterObservation = true;
+            try {
+                input("key", "shift+k");
+            } catch (Exception | Error failure) {
+                restoreBindingsAfterObservation = false;
+                restore(mc);
+                throw failure;
+            }
+        }, () -> {
+            require(mc.screen == null, "R4 input stays in game");
+            require(info(mc).tier() == beforeTier, "R4 modified blink must not cycle the bare binding");
+        }, 10, 3, 1);
+        add("R4 held Shift does not disable unrelated bare G", () -> input("key", "shift+g"),
+                () -> checkAction(mc, 1), 10, 1, 1);
+        add("R4 Shift+K selects cycle without bare K blink", () -> {
+            bind(WingsKeys.CYCLE_TIER, KeyModifier.SHIFT, InputConstants.Type.KEYSYM.getOrCreate(GLFW.GLFW_KEY_K));
+            bind(WingsKeys.BLINK, KeyModifier.NONE, InputConstants.Type.KEYSYM.getOrCreate(GLFW.GLFW_KEY_K));
+            restoreBindingsAfterObservation = true;
+            input("key", "shift+k");
+        }, () -> checkAction(mc, 1), 10, 1, 1);
+        add("R4 Ctrl+K selects hover without bare K cycle", () -> {
+            bind(WingsKeys.CYCLE_TIER, KeyModifier.NONE, InputConstants.Type.KEYSYM.getOrCreate(GLFW.GLFW_KEY_K));
+            bind(WingsKeys.HOVER_TOGGLE, KeyModifier.CONTROL, InputConstants.Type.KEYSYM.getOrCreate(GLFW.GLFW_KEY_K));
+            restoreBindingsAfterObservation = true;
+            input("key", "ctrl+k");
+        }, () -> checkAction(mc, 2), 10, 2, 1);
+        add("R4 mouse overlap reset airborne fixture", () -> {
+            restoreBindings();
+            mc.player.connection.sendCommand("wingsqa phase inputSetup");
+        }, () -> require(info(mc).deployed() && info(mc).tier() == 1 && mc.player.getY() > 195,
+                "R4 mouse fixture is deployed/cruise"), 40, -1, 0);
+        add("R4 Ctrl+mouse selects blink without bare mouse cycle", () -> {
+            bind(WingsKeys.CYCLE_TIER, KeyModifier.NONE, InputConstants.Type.MOUSE.getOrCreate(GLFW.GLFW_MOUSE_BUTTON_4));
+            bind(WingsKeys.BLINK, KeyModifier.CONTROL, InputConstants.Type.MOUSE.getOrCreate(GLFW.GLFW_MOUSE_BUTTON_4));
+            restoreBindingsAfterObservation = true;
+            input("keydown", "Control_L");
+            input("click", "8");
+            input("keyup", "Control_L");
+        }, () -> {
+            checkAction(mc, 3);
+            require(info(mc).tier() == beforeTier, "R4 modified mouse blink must not cycle the bare binding");
+        }, 10, 3, 1);
+        add("R4 Shift+mouse selects cycle without bare mouse blink", () -> {
+            bind(WingsKeys.CYCLE_TIER, KeyModifier.SHIFT, InputConstants.Type.MOUSE.getOrCreate(GLFW.GLFW_MOUSE_BUTTON_4));
+            bind(WingsKeys.BLINK, KeyModifier.NONE, InputConstants.Type.MOUSE.getOrCreate(GLFW.GLFW_MOUSE_BUTTON_4));
+            restoreBindingsAfterObservation = true;
+            input("keydown", "Shift_L");
+            input("click", "8");
+            input("keyup", "Shift_L");
+        }, () -> checkAction(mc, 1), 10, 1, 1);
+        add("R4 mouse overlap cannot replay on keyboard", () -> input("key", "F8"),
+                () -> { }, 10, -1, 0);
         add("modified G still leaves bare G to Curios", () -> {
             restoreBindings();
             bind(WingsKeys.CYCLE_TIER, KeyModifier.SHIFT, InputConstants.Type.KEYSYM.getOrCreate(GLFW.GLFW_KEY_G));
@@ -127,6 +190,26 @@ final class WingsInputQa {
         add("close Curios before modified G", () -> input("key", "Escape"), () -> { }, 8, -1, 0);
         add("Shift+G cycles without Curios", () -> input("key", "shift+g"),
                 () -> checkAction(mc, 1), 10, 1, 1);
+        add("R4 modified Curios leaves bare G to cycle", () -> {
+            restoreBindings();
+            bind(curios, KeyModifier.SHIFT, InputConstants.Type.KEYSYM.getOrCreate(GLFW.GLFW_KEY_G));
+            input("key", "g");
+        }, () -> checkAction(mc, 1), 10, 1, 1);
+        add("R4 Shift+G selects Curios without bare G cycle", () -> input("key", "shift+g"),
+                () -> require(mc.screen != null && mc.screen.getClass().getName().startsWith("top.theillusivec4.curios."),
+                        "R4 modified Curios owns Shift+G"), 10, -1, 0);
+        add("R4 close modified Curios", () -> {
+            input("key", "Escape");
+            restoreBindings();
+        }, () -> require(mc.screen == null, "R4 modified Curios closed without replay"), 8, -1, 0);
+        add("R4 modified blink wins over bare cycle and Curios", () -> {
+            bind(WingsKeys.BLINK, KeyModifier.SHIFT, InputConstants.Type.KEYSYM.getOrCreate(GLFW.GLFW_KEY_G));
+            restoreBindingsAfterObservation = true;
+            input("key", "shift+g");
+        }, () -> {
+            require(mc.screen == null, "R4 modified blink must consume the bare Curios click");
+            require(info(mc).tier() == beforeTier, "R4 modified blink must not cycle G");
+        }, 10, 3, 1);
         add("mouse binding pause menu", () -> {
             restoreBindings();
             bind(WingsKeys.CYCLE_TIER, KeyModifier.NONE, InputConstants.Type.MOUSE.getOrCreate(GLFW.GLFW_MOUSE_BUTTON_LEFT));
@@ -137,6 +220,13 @@ final class WingsInputQa {
         add("next in-game left click works exactly once", () -> input("click", "1"),
                 () -> checkAction(mc, 1), 10, 1, 1);
         add("restore controls before jump rebind", WingsInputQa::restoreBindings, () -> { }, 10, -1, 0);
+        add("R4 modified skill does not double-press bare jump", () -> {
+            bind(mc.options.keyJump, KeyModifier.NONE, InputConstants.Type.KEYSYM.getOrCreate(GLFW.GLFW_KEY_K));
+            bind(WingsKeys.BLINK, KeyModifier.SHIFT, InputConstants.Type.KEYSYM.getOrCreate(GLFW.GLFW_KEY_K));
+            restoreBindingsAfterObservation = true;
+            input("key", "--delay", "100", "shift+k", "shift+k");
+        }, () -> require(info(mc).deployed() == beforeDeployed,
+                "R4 modified skill must not seed the bare jump double press"), 10, 3, 2);
         add("jump K ignores old Space double press", () -> {
             bind(mc.options.keyJump, KeyModifier.NONE, InputConstants.Type.KEYSYM.getOrCreate(GLFW.GLFW_KEY_K));
             input("key", "--delay", "100", "space", "space");
@@ -201,6 +291,11 @@ final class WingsInputQa {
                 + " deployRequest=" + (hasDeployment ? deployment.deployed() : "none")
                 + " requestAgeMillis=" + (hasDeployment ? now - deployment.sentAt() : -1)
                 + " beforeDeployed=" + beforeDeployed + " syncedDeployed=" + info(mc).deployed());
+        // Restore the R4 bindings after input settles, even when its packet assertion fails.
+        if (restoreBindingsAfterObservation) {
+            restoreBindingsAfterObservation = false;
+            restoreBindings();
+        }
         for (int i = 0; i < delta.length; i++) {
             require(delta[i] == (i == active.packet() ? active.count() : 0),
                     active.name() + " packet=" + i + " actual=" + delta[i]);
@@ -228,6 +323,12 @@ final class WingsInputQa {
     }
 
     private static WingsClientData.WingInfo info(Minecraft mc) { return WingsClientData.get(mc.player); }
+
+    private static KeyMapping curiosBinding(Minecraft mc) {
+        return Arrays.stream(mc.options.keyMappings)
+                .filter(mapping -> mapping.getName().equals("key.curios.open.desc"))
+                .findFirst().orElseThrow(() -> new AssertionError("Curios key binding missing"));
+    }
 
     private static int[] counts() {
         int[] values = new int[PACKETS.length()];

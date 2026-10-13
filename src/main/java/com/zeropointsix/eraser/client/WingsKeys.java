@@ -51,22 +51,34 @@ public final class WingsKeys {
     @Mod.EventBusSubscriber(modid = "sound_isolating_eraser", value = Dist.CLIENT)
     public static final class InputHandler {
         private static boolean mouseStartedInGame;
-        private static void consumeConflictingCuriosClick(Minecraft mc) {
+        private static void consumeConflictingCuriosClick(Minecraft mc, InputConstants.Key input) {
+            if (!ownsSkillBinding(mc)) return;
             for (KeyMapping key : mc.options.keyMappings) {
-                if (!key.getName().equals("key.curios.open.desc") || !cycleOwnsBinding(mc, key)) continue;
+                if (!key.getName().equals("key.curios.open.desc") || !key.getKey().equals(input)) continue;
                 // Forge 47.2 queues all same-key bindings regardless of conflict context.
                 // Consume only the wing-owned click before Curios handles its END tick.
                 while (key.consumeClick()) { }
             }
         }
 
-        private static boolean cycleOwnsBinding(Minecraft mc, KeyMapping other) {
+        private static boolean ownsSkillBinding(Minecraft mc) {
             if (mc.player == null || mc.screen != null
                     || !WingsState.wearing(mc.player)) return false;
             WingsClientData.WingInfo info = WingsClientData.get(mc.player);
-            return info != null && info.deployed()
-                    && CYCLE_TIER.getKey().equals(other.getKey())
-                    && CYCLE_TIER.isActiveAndMatches(other.getKey());
+            return info != null && info.deployed();
+        }
+
+        private static boolean hasModifiedBinding(Minecraft mc, InputConstants.Key input) {
+            for (KeyMapping key : mc.options.keyMappings) {
+                if (key.getKeyModifier() != KeyModifier.NONE && key.isActiveAndMatches(input)) return true;
+            }
+            return false;
+        }
+
+        private static boolean matches(KeyMapping mapping, InputConstants.Key input, boolean modified) {
+            // NONE remains active in-game with a modifier held. Only suppress its same-key fallback.
+            return mapping.isActiveAndMatches(input)
+                    && (!modified || mapping.getKeyModifier() != KeyModifier.NONE);
         }
 
         @SubscribeEvent
@@ -119,18 +131,22 @@ public final class WingsKeys {
                 return;
             }
             if (action != GLFW.GLFW_PRESS) return;
-            if (CYCLE_TIER.isActiveAndMatches(input)) {
-                consumeConflictingCuriosClick(mc);
+            boolean modified = hasModifiedBinding(mc, input);
+            boolean cycle = matches(CYCLE_TIER, input, modified);
+            boolean hover = matches(HOVER_TOGGLE, input, modified);
+            boolean blink = matches(BLINK, input, modified);
+            if (cycle || hover || blink) consumeConflictingCuriosClick(mc, input);
+            if (cycle) {
                 WingsNet.CHANNEL.sendToServer(new CycleTierPacket());
             }
-            if (HOVER_TOGGLE.isActiveAndMatches(input)) {
+            if (hover) {
                 WingsNet.CHANNEL.sendToServer(new HoverTogglePacket());
             }
-            if (BLINK.isActiveAndMatches(input)) {
+            if (blink) {
                 WingsNet.CHANNEL.sendToServer(new BlinkPacket());
             }
             KeyMapping jump = mc.options.keyJump;
-            if (jump.isActiveAndMatches(input)) {
+            if (matches(jump, input, modified)) {
                 if (!mc.player.onGround()) {
                     long now = Util.getMillis();
                     WingsClientData.WingInfo w = WingsClientData.localOrFallback(mc.player);
@@ -148,6 +164,8 @@ public final class WingsKeys {
                 } else {
                     lastJumpPress = -1;
                 }
+            } else if (jump.getKey().equals(input)) {
+                lastJumpPress = -1;
             }
         }
     }

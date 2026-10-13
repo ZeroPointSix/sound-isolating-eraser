@@ -84,6 +84,7 @@ jobs:
             build/wings-e2e/*.png
             build/wings-e2e/*.pass
             build/wings-e2e/*.failed
+            build/wings-e2e/*.json
             build/wings-showcase/*.log
             build/wings-showcase/*.png
             build/wings-showcase/*.pass

@@ -128,8 +128,11 @@ public final class WingsFlight {
         }
         Vec3 flat = inputToWorld(p, input, p.getYRot());
         if (flat.lengthSqr() < 1.0e-4) {
-            // no input: keep current heading, slight decay handled by caller
-            return p.getDeltaMovement();
+            // Preserve heading, but let interpolation shed old-tier speed after
+            // a downgrade even while coasting or holding only jump.
+            Vec3 drift = p.getDeltaMovement();
+            return drift.lengthSqr() > maxSpeed * maxSpeed
+                    ? drift.normalize().scale(maxSpeed) : drift;
         }
         // banked turn: steer current velocity toward input heading
         Vec3 cur = p.getDeltaMovement();
