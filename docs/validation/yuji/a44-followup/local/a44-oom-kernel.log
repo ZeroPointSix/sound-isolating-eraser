@@ -1,0 +1,2 @@
+Oct 13 06:33:07 SG236587 kernel: oom-kill:constraint=CONSTRAINT_NONE,nodemask=(null),cpuset=ssh.service,mems_allowed=0,global_oom,task_memcg=/user.slice/user-0.slice/session-8050.scope,task=java,pid=2690955,uid=0
+Oct 13 06:33:07 SG236587 kernel: Out of memory: Killed process 2690955 (java) total-vm:6987664kB, anon-rss:3598444kB, file-rss:3296kB, shmem-rss:0kB, UID:0 pgtables:7564kB oom_score_adj:0
