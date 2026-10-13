@@ -14,6 +14,8 @@ import net.minecraft.world.level.block.BushBlock;
 import net.minecraft.world.level.block.VineBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.util.Mth;
 import net.minecraftforge.common.ForgeHooks;
 
 public final class GravityTerrainCrush {
@@ -22,16 +24,18 @@ public final class GravityTerrainCrush {
     public static final TagKey<Block> SURFACE = TagKey.create(Registries.BLOCK,
             new ResourceLocation(ModMain.MOD_ID, "gravity_surface_fragile"));
 
-    public static void crush(ServerLevel level, ServerPlayer player, AABB box, double chance) {
+    public static void crush(ServerLevel level, ServerPlayer player, Vec3 center, double radius, AABB box, double chance) {
         if (!player.mayBuild()) return;
         List<BlockPos> fragile = new ArrayList<>();
         List<BlockPos> soil = new ArrayList<>();
         // Snapshot both sets before neighbor updates can expose a second layer.
-        for (int x = (int) box.minX; x < box.maxX; x++) {
-            for (int z = (int) box.minZ; z < box.maxZ; z++) {
+        for (int x = Mth.floor(box.minX); x < box.maxX; x++) {
+            for (int z = Mth.floor(box.minZ); z < box.maxZ; z++) {
+                if (!GravityGeometry.inCircle(center, radius, x + 0.5, z + 0.5)) continue;
                 boolean selected = false;
-                for (int y = (int) box.maxY - 1; y >= box.minY; y--) {
+                for (int y = Mth.ceil(box.maxY) - 1; y >= Mth.floor(box.minY); y--) {
                     BlockPos pos = new BlockPos(x, y, z);
+                    if (!level.getWorldBorder().isWithinBounds(pos) || !level.hasChunkAt(pos)) continue;
                     BlockState state = level.getBlockState(pos);
                     if (state.is(SURFACE)) {
                         if (!selected && exposed(level.getBlockState(pos.above()))) {

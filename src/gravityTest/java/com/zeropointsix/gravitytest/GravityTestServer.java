@@ -167,8 +167,8 @@ public final class GravityTestServer {
         ServerLevel level = server.overworld();
         level.setDayTime(18000);
         level.getGameRules().getRule(GameRules.RULE_NATURAL_REGENERATION).set(false, server);
-        for (int x = -5; x <= 8; x++) {
-            for (int z = -2; z <= 12; z++) {
+        for (int x = -22; x <= 22; x++) {
+            for (int z = -20; z <= 20; z++) {
                 level.setBlockAndUpdate(new BlockPos(x, 64, z), Blocks.STONE.defaultBlockState());
                 for (int y = 65; y <= 70; y++) {
                     level.setBlockAndUpdate(new BlockPos(x, y, z), Blocks.AIR.defaultBlockState());
@@ -253,6 +253,10 @@ public final class GravityTestServer {
             return 0;
         }
         switch (next) {
+            case "reset-cooldown" -> {
+                // Test-only reset after the first full lifecycle, to verify a rebound key.
+                preparePlayer(wearer, server.overworld(), 0.5, 0);
+            }
             case "stress" -> {
                 if (stressItems.isEmpty()) {
                     for (int i = 0; i < 200; i++) {
@@ -331,9 +335,10 @@ public final class GravityTestServer {
         ServerPlayer wearer = server.getPlayerList().getPlayerByName(WEARER);
         ServerPlayer observer = server.getPlayerList().getPlayerByName(OBSERVER);
         if (wearer == null || observer == null) return;
-        Vec3 center = testField.fieldBounds().getCenter();
+        Vec3 center = testField.position();
         if (elapsed == 55) {
             wearer.setGameMode(GameType.SURVIVAL);
+            observer.setGameMode(GameType.SURVIVAL);
             wearer.setHealth(20);
             wearer.teleportTo(level, center.x, 65, center.z, 0, 0);
             observer.setHealth(20);
@@ -346,6 +351,7 @@ public final class GravityTestServer {
             effectZombie = EntityType.ZOMBIE.create(level);
             effectZombie.setNoAi(true);
             effectZombie.setNoGravity(true);
+            effectZombie.setItemSlot(net.minecraft.world.entity.EquipmentSlot.HEAD, new ItemStack(Items.DIAMOND_HELMET));
             effectZombie.setPos(center.x, 65, center.z + 1);
             level.addFreshEntity(effectZombie);
             cowHealth = effectCow.getHealth();
@@ -353,26 +359,35 @@ public final class GravityTestServer {
             playerHealth = wearer.getHealth();
         }
         if (elapsed == 96) {
-            for (LivingEntity entity : List.of(effectCow, effectZombie, wearer, observer)) {
-                check(entity.hasEffect(MobEffects.MOVEMENT_SLOWDOWN)
-                        && entity.getEffect(MobEffects.MOVEMENT_SLOWDOWN).getAmplifier() == 2,
-                        "Slowness III for " + entity.getType());
+            for (LivingEntity entity : List.of(wearer, observer)) {
+                check(!entity.hasEffect(MobEffects.MOVEMENT_SLOWDOWN)
+                        && entity.getEffect(MobEffects.MOVEMENT_SPEED).getAmplifier() == 2
+                        && entity.getEffect(MobEffects.JUMP).getAmplifier() == 2,
+                        "Speed III / Jump III without slowness for " + entity.getType());
             }
-            check(effectCow.getHealth() == cowHealth - 2, "Cow receives two 1-damage pulses");
-            check(effectZombie.getHealth() < zombieHealth && effectZombie.getHealth() > zombieHealth - 2,
-                    "Zombie receives periodic damage with vanilla armor mitigation");
-            check(wearer.getHealth() == playerHealth - 2, "Survival caster receives two 1-damage pulses");
-            check(observer.getHealth() == 20, "Creative observer retains vanilla damage immunity");
-            effectCow.setPos(-5, 65, 0);
-            effectZombie.setPos(-4, 65, 0);
-            wearer.teleportTo(level, 0.5, 65, 0.5, 0, 0);
-            observer.teleportTo(level, 5.5, 65, 0.5, 30, 0);
+            check(effectCow.getHealth() == cowHealth && !effectCow.hasEffect(MobEffects.MOVEMENT_SLOWDOWN), "Passive cow unaffected");
+            check(Math.abs(effectZombie.getHealth() - (zombieHealth - 8)) < 0.01,
+                    "Armored zombie receives two exact 4-damage pulses");
+            check(effectZombie.getEffect(MobEffects.MOVEMENT_SLOWDOWN).getAmplifier() == 4, "Hostile receives Slowness V");
+            check(wearer.getHealth() == playerHealth && observer.getHealth() == 20, "Both players remain unharmed");
+            effectCow.setPos(center.x + 18, 65, center.z);
+            effectZombie.setPos(center.x - 18, 65, center.z);
+            wearer.teleportTo(level, center.x + 18, 65, center.z + 1, 0, 0);
+            observer.teleportTo(level, center.x + 19, 65, center.z + 1, 30, 0);
             wearer.setGameMode(GameType.CREATIVE);
+            observer.setGameMode(GameType.CREATIVE);
         }
         if (elapsed == 106) {
             for (LivingEntity entity : List.of(effectCow, effectZombie, wearer, observer)) {
                 check(!entity.hasEffect(MobEffects.MOVEMENT_SLOWDOWN), "Slowness expires after leaving: " + entity.getType());
             }
+            check(wearer.hasEffect(MobEffects.MOVEMENT_SPEED) && observer.hasEffect(MobEffects.JUMP), "Ally buffs linger outside the circle");
+        }
+        if (elapsed == 171) {
+            check(wearer.hasEffect(MobEffects.MOVEMENT_SPEED) && observer.hasEffect(MobEffects.JUMP), "Ally buffs still present 75 ticks after leaving");
+        }
+        if (elapsed == 180) {
+            check(!wearer.hasEffect(MobEffects.MOVEMENT_SPEED) && !observer.hasEffect(MobEffects.JUMP), "Ally buffs expire after 80 ticks outside");
             Files.writeString(Path.of(System.getProperty("gravity.qa.results"), "server-effects.pass"), "passed\n");
         }
     }

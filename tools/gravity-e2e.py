@@ -87,7 +87,7 @@ try:
     observer = launch("runClient", "observer", ":92")
     deadline = time.monotonic() + int(os.environ.get("GRAVITY_QA_TEST_SECONDS", "600"))
     required = ("wearer", "observer", "server-effects", "wearer-stress",
-                "wearer-preview-pixels", "wearer-active-pixels", "observer-active-pixels",
+                "wearer-cast", "wearer-remap", "wearer-active-pixels", "observer-active-pixels",
                 "server-pressure", "server-eraser", "wearer-eraser", "observer-eraser",
                 "server-atomic", "server-isolation")
     while not all((RESULTS / f"{role}.pass").exists() for role in required):

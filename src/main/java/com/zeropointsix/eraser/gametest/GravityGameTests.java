@@ -4,17 +4,23 @@ import com.mojang.authlib.GameProfile;
 import com.zeropointsix.eraser.ModMain;
 import com.zeropointsix.eraser.gravity.*;
 import com.zeropointsix.eraser.registry.ModItems;
+import java.util.List;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.animal.Cow;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
-import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -31,20 +37,89 @@ public final class GravityGameTests {
     private static FakePlayer player(GameTestHelper h) {
         FakePlayer player = FakePlayerFactory.get(h.getLevel(), new GameProfile(UUID.randomUUID(), "GravityQA"));
         player.setGameMode(GameType.SURVIVAL);
-        player.setPos(Vec3.atCenterOf(h.absolutePos(new BlockPos(3, 3, 3))));
+        player.setPos(Vec3.atBottomCenterOf(h.absolutePos(new BlockPos(3, 6, 3))));
+        player.getAbilities().mayBuild = false;
         return player;
     }
 
+    private static void equip(FakePlayer player) {
+        CuriosApi.getCuriosInventory(player).resolve().orElseThrow().getStacksHandler("necklace")
+                .orElseThrow().getStacks().setStackInSlot(0, new ItemStack(ModItems.GRAVITY_JADE_PENDANT.get()));
+    }
+
+    private static void loadArea(GameTestHelper h, Vec3 center) {
+        BlockPos pos = BlockPos.containing(center);
+        for (int x = (pos.getX() >> 4) - 2; x <= (pos.getX() >> 4) + 2; x++) {
+            for (int z = (pos.getZ() >> 4) - 2; z <= (pos.getZ() >> 4) + 2; z++) h.getLevel().getChunk(x, z);
+        }
+    }
+
+    private static GravityFieldEntity field(GameTestHelper h, Vec3 center) {
+        loadArea(h, center);
+        GravityFieldEntity field = GravityFieldEntity.create(h.getLevel(), UUID.randomUUID(), center);
+        h.getLevel().addFreshEntity(field);
+        return field;
+    }
+
+    private static void stationary(GameTestHelper h, LivingEntity entity, Vec3 position) {
+        entity.setPos(position);
+        entity.setNoGravity(true);
+        entity.noPhysics = true;
+        if (entity instanceof Mob mob) mob.setNoAi(true);
+        h.getLevel().addFreshEntity(entity);
+    }
+
     @GameTest(template = "empty")
-    public static void geometryAndNegativeSnapping(GameTestHelper h) {
-        BlockPos center = new BlockPos(-8, 70, -3);
-        AABB box = GravityGeometry.bounds(center, 5);
-        h.assertTrue(box.getXsize() == 5 && box.getYsize() == 5 && box.getZsize() == 5, "field must be 5 cubed");
-        h.assertTrue(box.minX == -10 && box.maxX == -5, "negative coordinates must use exact grid bounds");
-        h.assertTrue(GravityGeometry.bounds(center, 8).getYsize() == 8, "configured height must be exact");
-        h.assertTrue(GravityGeometry.target(new Vec3(0.1, 70, 0), new Vec3(-1, 0, 0), 3)
-                .equals(new BlockPos(-3, 70, 0)), "target must floor, not truncate");
-        h.assertTrue(!GravityGeometry.inRange(Vec3.ZERO, new BlockPos(30, 0, 0), 3, 20), "remote targets must fail");
+    public static void percentageCurveAnchorsAndInvalidConfiguration(GameTestHelper h) {
+        double[][] anchors = {{12,2.4},{20,4},{24,4.8},{30,6},{50,10},{60,8.85},
+                {100,6.28},{300,3},{500,2.13},{12000,0.25}};
+        for (double[] pair : anchors) {
+            h.assertTrue(Math.abs(GravityDamage.curve(pair[0], .2, 10, 300, .01) - pair[1]) <= .01,
+                    "curve anchor " + pair[0]);
+        }
+        for (double reference : new double[]{0, 20, 50, Double.NaN, Double.POSITIVE_INFINITY}) {
+            float damage = GravityDamage.curve(300, .2, 10, reference, .01);
+            h.assertTrue(Float.isFinite(damage) && damage >= 0 && damage <= 10, "invalid reference safely bounded");
+        }
+        h.assertTrue(GravityDamage.curve(300, .2, 10, 300, .5) == 10, "increasing tail falls back to capped curve");
+        h.assertTrue(GravityDamage.curve(20, .2, 0, 300, .01) == 0, "zero cap disables damage");
+        h.assertTrue(GravityDamage.curve(Double.NaN) == 0, "invalid health never propagates NaN");
+        h.assertTrue(GravityConfig.COOLDOWN.get() == 1200 && GravityConfig.DURATION.get() == 300, "default timers");
+        h.succeed();
+    }
+
+    @GameTest(template = "empty", batch = "gravity_geometry")
+    public static void cylinderClipsHeightBorderAndNegativeCoordinates(GameTestHelper h) {
+        Vec3 center = new Vec3(-24.25, 70, -23.75);
+        AABB box = GravityGeometry.bounds(h.getLevel(), center, 16, 8, 16);
+        h.assertTrue(box.getXsize() == 32 && box.getYsize() == 24 && box.getZsize() == 32, "cylinder broad bounds");
+        h.assertTrue(GravityGeometry.contains(center, 16, box, center.add(15.9, 0, 0)), "15.9 included");
+        h.assertTrue(GravityGeometry.contains(center, 16, box, center.add(16, 0, 0)), "exact circular boundary included");
+        h.assertTrue(!GravityGeometry.contains(center, 16, box, center.add(16.1, 0, 0)), "16.1 excluded");
+        h.assertTrue(!GravityGeometry.contains(center, 16, box, center.add(12, 0, 12)), "square corner excluded");
+        var border = h.getLevel().getWorldBorder();
+        double x = border.getCenterX(), z = border.getCenterZ(), size = border.getSize();
+        try {
+            border.setCenter(-24, -24);
+            border.setSize(20);
+            FakePlayer p = player(h);
+            equip(p);
+            p.setPos(-24.25, h.getLevel().getMinBuildHeight() + 1, -23.75);
+            loadArea(h, p.position());
+            h.assertTrue(GravityFieldController.activate(p), "border and bottom clipped cast succeeds");
+            var fields = h.getLevel().getEntitiesOfClass(GravityFieldEntity.class, p.getBoundingBox().inflate(20));
+            h.assertTrue(fields.size() == 1, "one clipped field");
+            AABB clipped = fields.get(0).fieldBounds();
+            h.assertTrue(clipped.minX == -34 && clipped.maxX == -14
+                    && clipped.minY == h.getLevel().getMinBuildHeight(), "border/build floor exact");
+            fields.forEach(GravityFieldEntity::discard);
+            Vec3 top = new Vec3(-24, h.getLevel().getMaxBuildHeight() - 1, -24);
+            h.assertTrue(GravityGeometry.bounds(h.getLevel(), top, 16, 8, 16).maxY
+                    == h.getLevel().getMaxBuildHeight(), "build ceiling clipped");
+        } finally {
+            border.setCenter(x, z);
+            border.setSize(size);
+        }
         h.succeed();
     }
 
@@ -53,145 +128,236 @@ public final class GravityGameTests {
         FakePlayer player = player(h);
         ItemStack jade = new ItemStack(ModItems.GRAVITY_JADE_PENDANT.get());
         player.setItemInHand(InteractionHand.MAIN_HAND, jade);
-        h.assertTrue(!GravityEquipment.isEquipped(player), "holding the jade must not grant its power");
         player.setItemInHand(InteractionHand.OFF_HAND, jade.copy());
         player.getInventory().setItem(10, jade.copy());
-        h.assertTrue(!GravityEquipment.isEquipped(player), "offhand and backpack must not grant power");
+        h.assertTrue(!GravityEquipment.isEquipped(player), "held/backpack jade never grants power");
         h.assertTrue(ModItems.GRAVITY_JADE_PENDANT.get().canEquip(new SlotContext("necklace", player, 0, false, true), jade), "necklace allowed");
-        h.assertTrue(!ModItems.GRAVITY_JADE_PENDANT.get().canEquip(new SlotContext("curio", player, 0, false, true), jade), "generic curio slot rejected");
+        h.assertTrue(!ModItems.GRAVITY_JADE_PENDANT.get().canEquip(new SlotContext("curio", player, 0, false, true), jade), "curio rejected");
         h.assertTrue(!ModItems.GRAVITY_JADE_PENDANT.get().canEquip(new SlotContext("ring", player, 0, false, true), jade), "ring rejected");
-        var inventory = CuriosApi.getCuriosInventory(player).resolve().orElseThrow();
-        var handler = inventory.getStacksHandler("necklace").orElseThrow();
+        var handler = CuriosApi.getCuriosInventory(player).resolve().orElseThrow().getStacksHandler("necklace").orElseThrow();
         handler.getStacks().setStackInSlot(0, jade);
-        h.assertTrue(GravityEquipment.isEquipped(player), "real necklace slot grants power");
+        h.assertTrue(GravityEquipment.isEquipped(player), "real necklace grants power");
         handler.getStacks().setStackInSlot(0, ItemStack.EMPTY);
-        h.assertTrue(!GravityEquipment.isEquipped(player), "unequipping revokes power immediately");
         handler.getCosmeticStacks().setStackInSlot(0, jade);
-        h.assertTrue(!GravityEquipment.isEquipped(player), "cosmetic necklace must not grant power");
+        h.assertTrue(!GravityEquipment.isEquipped(player), "cosmetic necklace never grants power");
         h.succeed();
     }
 
-    @GameTest(template = "empty")
-    public static void invalidCastsAndRepeatedPacketsDoNotBypassCooldown(GameTestHelper h) {
-        FakePlayer player = player(h);
-        player.setPos(Vec3.atCenterOf(h.absolutePos(new BlockPos(3, 30, 3))));
-        var dimension = h.getLevel().dimension().location();
-        CuriosApi.getCuriosInventory(player).resolve().orElseThrow().getStacksHandler("necklace")
-                .orElseThrow().getStacks().setStackInSlot(0, new ItemStack(ModItems.GRAVITY_JADE_PENDANT.get()));
-        BlockPos tooNear = BlockPos.containing(player.getEyePosition());
-        BlockPos tooFar = BlockPos.containing(player.getEyePosition().add(0, 0, 21));
-        BlockPos valid = GravityGeometry.target(player.getEyePosition(), player.getLookAngle(), 8);
-        h.assertTrue(!GravityFieldController.activate(player, dimension, tooNear), "too near rejected");
-        h.assertTrue(!GravityFieldController.activate(player, dimension, tooFar), "too far rejected");
-        h.assertTrue(!GravityFieldController.activate(player, Level.NETHER.location(), valid), "wrong dimension rejected");
-        h.assertTrue(GravityFieldController.remainingCooldown(player) == 0, "invalid casts never start cooldown");
-        h.assertTrue(GravityFieldController.activate(player, dimension, valid), "valid equipped cast succeeds");
-        h.assertTrue(GravityFieldController.remainingCooldown(player) == 600, "successful cast starts 600 tick cooldown");
-        h.assertTrue(!GravityFieldController.activate(player, dimension, valid), "repeated packet cannot bypass cooldown");
-        h.getLevel().getEntitiesOfClass(GravityFieldEntity.class, player.getBoundingBox().inflate(24))
-                .forEach(GravityFieldEntity::discard);
-        h.succeed();
-    }
-
-    @GameTest(template = "empty")
-    public static void serverUsesClientPreviewCenterNotCurrentLook(GameTestHelper h) {
-        FakePlayer player = player(h);
-        player.setPos(Vec3.atCenterOf(h.absolutePos(new BlockPos(3, 8, 3))));
-        player.setYRot(0);
-        player.setXRot(0);
-        var dimension = h.getLevel().dimension().location();
-        CuriosApi.getCuriosInventory(player).resolve().orElseThrow().getStacksHandler("necklace")
-                .orElseThrow().getStacks().setStackInSlot(0, new ItemStack(ModItems.GRAVITY_JADE_PENDANT.get()));
-        BlockPos alongLook = GravityGeometry.target(player.getEyePosition(), player.getLookAngle(), 8);
-        Vec3 look = player.getLookAngle();
-        Vec3 perpendicular = Math.abs(look.x) > 0.5 ? new Vec3(0, 0, 1) : new Vec3(1, 0, 0);
-        BlockPos preview = GravityGeometry.target(player.getEyePosition(), perpendicular, 8);
-        h.assertTrue(!preview.equals(alongLook), "fixture look must differ from preview axis");
-        h.assertTrue(GravityFieldController.activate(player, dimension, preview), "server accepts client preview cell");
-        AABB search = GravityGeometry.bounds(preview, 5).inflate(2);
-        var fields = h.getLevel().getEntitiesOfClass(GravityFieldEntity.class, search);
-        h.assertTrue(fields.size() == 1, "one field spawned near preview, found " + fields.size());
-        h.assertTrue(fields.get(0).fieldBounds().equals(GravityGeometry.bounds(preview, 5)),
-                "field must match preview BlockPos, not the player's current look");
+    @GameTest(template = "empty", batch = "gravity_cast")
+    public static void serverPositionAndRejectedCastsKeepCooldownSafe(GameTestHelper h) {
+        FakePlayer p = player(h);
+        h.assertTrue(!GravityFieldController.activate(p), "unequipped rejected");
+        equip(p);
+        p.setGameMode(GameType.SPECTATOR);
+        h.assertTrue(!GravityFieldController.activate(p), "spectator rejected");
+        p.setGameMode(GameType.SURVIVAL);
+        p.getAbilities().mayBuild = false;
+        Vec3 center = p.position();
+        p.setPos(1234567.25, 70, -1234567.75);
+        h.assertTrue(!GravityFieldController.activate(p), "unloaded chunks rejected without loading");
+        h.assertTrue(GravityFieldController.remainingCooldown(p) == 0, "rejection never consumes cooldown");
+        p.setPos(center);
+        loadArea(h, center);
+        p.setYRot(157);
+        p.setXRot(-80);
+        h.assertTrue(GravityFieldController.activate(p), "one request immediately casts");
+        var fields = h.getLevel().getEntitiesOfClass(GravityFieldEntity.class, p.getBoundingBox().inflate(2));
+        h.assertTrue(fields.size() == 1 && fields.get(0).position().equals(center), "exact server feet, not look or block snap");
+        h.assertTrue(GravityFieldController.remainingCooldown(p) == 1200, "60 second cooldown");
+        h.assertTrue(!GravityFieldController.activate(p), "repeated intent blocked");
+        p.setPos(center.add(4, 0, 0));
+        h.assertTrue(fields.get(0).position().equals(center), "field remains fixed");
+        h.assertTrue(!fields.get(0).shouldBeSaved(), "unload cannot save a delayed slam");
         fields.forEach(GravityFieldEntity::discard);
         h.succeed();
     }
 
     @GameTest(template = "empty")
-    public static void rejectsUnequippedAndWrongDimension(GameTestHelper h) {
-        FakePlayer player = player(h);
-        BlockPos center = BlockPos.containing(player.getEyePosition().add(0, 0, 8));
-        h.assertTrue(!GravityFieldController.canActivate(player, h.getLevel().dimension().location(), center), "no necklace must reject");
-        CuriosApi.getCuriosInventory(player).resolve().orElseThrow().getStacksHandler("necklace")
-                .orElseThrow().getStacks().setStackInSlot(0, new ItemStack(ModItems.GRAVITY_JADE_PENDANT.get()));
-        h.assertTrue(!GravityFieldController.canActivate(player, Level.NETHER.location(), center), "stale dimension must reject");
-        h.assertTrue(!GravityFieldController.canActivate(player, h.getLevel().dimension().location(), center.offset(1000, 0, 0)), "remote packet rejected");
-        h.succeed();
+    public static void armorAndSameTickHitCannotAbsorbCrush(GameTestHelper h) {
+        var zombie = EntityType.ZOMBIE.create(h.getLevel());
+        zombie.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.DIAMOND_HELMET));
+        zombie.setItemSlot(EquipmentSlot.CHEST, new ItemStack(Items.DIAMOND_CHESTPLATE));
+        zombie.setItemSlot(EquipmentSlot.LEGS, new ItemStack(Items.DIAMOND_LEGGINGS));
+        zombie.setItemSlot(EquipmentSlot.FEET, new ItemStack(Items.DIAMOND_BOOTS));
+        stationary(h, zombie, Vec3.atBottomCenterOf(h.absolutePos(new BlockPos(3, 6, 3))));
+        // Equipment attributes are installed by the first living-entity tick.
+        h.runAtTickTime(2, () -> {
+            h.assertTrue(zombie.getArmorValue() >= 20, "full diamond armor fixture");
+            zombie.hurt(h.getLevel().damageSources().playerAttack(h.makeMockSurvivalPlayer()), 1);
+            h.assertTrue(zombie.invulnerableTime > 0, "same-tick player hit establishes invulnerability");
+            float before = zombie.getHealth();
+            Vec3 velocity = new Vec3(.1, .2, -.1);
+            zombie.setDeltaMovement(velocity);
+            DamageSource crush = new DamageSource(h.getLevel().registryAccess().registryOrThrow(Registries.DAMAGE_TYPE)
+                    .getHolderOrThrow(GravityFieldEntity.DAMAGE_TYPE));
+            GravityDamage.hurt(zombie, crush, GravityDamage.curve(20));
+            h.assertTrue(Math.abs(zombie.getHealth() - (before - 4)) < .001, "full 4 points through armor and invulnerability");
+            h.assertTrue(zombie.getDeltaMovement().equals(velocity), "crush preserves hover velocity");
+            zombie.discard();
+            h.succeed();
+        });
+    }
+
+    @GameTest(template = "empty", batch = "gravity_allies", timeoutTicks = 130)
+    public static void alliesLingerPassivesIgnoreAndAggressorsAreHostile(GameTestHelper h) {
+        Vec3 center = Vec3.atBottomCenterOf(h.absolutePos(new BlockPos(3, 7, 3)));
+        GravityFieldEntity field = field(h, center);
+        var player = h.makeMockSurvivalPlayer();
+        var pet = EntityType.WOLF.create(h.getLevel());
+        pet.setTame(true);
+        pet.setOwnerUUID(player.getUUID());
+        var horse = EntityType.HORSE.create(h.getLevel());
+        horse.setTamed(true);
+        horse.setHealth(horse.getMaxHealth());
+        var wild = EntityType.WOLF.create(h.getLevel());
+        var cow = EntityType.COW.create(h.getLevel());
+        var villager = EntityType.VILLAGER.create(h.getLevel());
+        var iron = EntityType.IRON_GOLEM.create(h.getLevel());
+        var snow = EntityType.SNOW_GOLEM.create(h.getLevel());
+        var aggressor = EntityType.WOLF.create(h.getLevel());
+        List<LivingEntity> entities = List.of(player, pet, horse, wild, cow, villager, iron, snow, aggressor);
+        for (int i = 0; i < entities.size(); i++) stationary(h, entities.get(i), center.add(i * .4, 0, 0));
+        aggressor.setTarget(player);
+        h.runAtTickTime(22, () -> {
+            for (LivingEntity ally : List.of(player, pet, horse)) {
+                h.assertTrue(ally.hasEffect(MobEffects.MOVEMENT_SPEED) && ally.getEffect(MobEffects.MOVEMENT_SPEED).getAmplifier() == 2, "ally speed III");
+                h.assertTrue(ally.hasEffect(MobEffects.JUMP) && ally.getEffect(MobEffects.JUMP).getAmplifier() == 2, "ally jump III");
+                h.assertTrue(!ally.hasEffect(MobEffects.MOVEMENT_SLOWDOWN) && ally.getHealth() == ally.getMaxHealth(), "ally unharmed");
+                ally.setPos(center.add(18, 0, 0));
+            }
+            for (LivingEntity neutral : List.of(wild, cow, villager, iron, snow)) {
+                h.assertTrue(neutral.getActiveEffects().isEmpty() && neutral.getHealth() == neutral.getMaxHealth(), "passive unaffected: " + neutral.getType());
+            }
+            h.assertTrue(aggressor.hasEffect(MobEffects.MOVEMENT_SLOWDOWN), "neutral attacking ally is hostile");
+            field.discard();
+        });
+        h.runAtTickTime(95, () -> h.assertTrue(player.hasEffect(MobEffects.MOVEMENT_SPEED) && pet.hasEffect(MobEffects.JUMP), "buff still present before four seconds"));
+        h.runAtTickTime(105, () -> {
+            h.assertTrue(!player.hasEffect(MobEffects.MOVEMENT_SPEED) && !pet.hasEffect(MobEffects.JUMP), "buff expires after four seconds");
+            entities.forEach(LivingEntity::discard);
+            h.succeed();
+        });
+    }
+
+    @GameTest(template = "empty", batch = "gravity_hover", timeoutTicks = 160)
+    public static void hostileHoversThenFallsOutsideCylinder(GameTestHelper h) {
+        Vec3 center = Vec3.atBottomCenterOf(h.absolutePos(new BlockPos(3, 7, 3)));
+        BlockPos floor = BlockPos.containing(center).below();
+        h.getLevel().setBlockAndUpdate(floor, Blocks.STONE.defaultBlockState());
+        h.getLevel().setBlockAndUpdate(floor.offset(18, 0, 0), Blocks.STONE.defaultBlockState());
+        var zombie = EntityType.ZOMBIE.create(h.getLevel());
+        zombie.setPos(center);
+        zombie.setNoAi(true);
+        zombie.getAttribute(Attributes.MAX_HEALTH).setBaseValue(300);
+        zombie.setHealth(300);
+        zombie.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.DIAMOND_HELMET));
+        h.getLevel().addFreshEntity(zombie);
+        GravityFieldEntity field = field(h, center);
+        h.runAtTickTime(85, () -> {
+            double height = zombie.getY() - center.y;
+            h.assertTrue(height > 2.5 && height <= 3.3, "bounded hover near 3 blocks: " + height);
+            h.assertTrue(zombie.getEffect(MobEffects.MOVEMENT_SLOWDOWN).getAmplifier() == 4, "slowness V");
+            zombie.setPos(center.add(18, 3, 0));
+            zombie.setDeltaMovement(Vec3.ZERO);
+        });
+        h.runAtTickTime(115, () -> {
+            h.assertTrue(!zombie.hasEffect(MobEffects.MOVEMENT_SLOWDOWN), "hostile debuff fades outside");
+            h.assertTrue(zombie.onGround() && zombie.getY() <= center.y + .01, "natural gravity after leaving");
+            field.discard();
+            zombie.discard();
+            h.succeed();
+        });
+    }
+
+    @GameTest(template = "empty", batch = "gravity_early")
+    public static void earlyRemovalNeverSlams(GameTestHelper h) {
+        Vec3 center = Vec3.atBottomCenterOf(h.absolutePos(new BlockPos(3, 7, 3)));
+        var zombie = EntityType.ZOMBIE.create(h.getLevel());
+        stationary(h, zombie, center);
+        zombie.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.DIAMOND_HELMET));
+        GravityFieldEntity field = field(h, center);
+        h.runAtTickTime(5, () -> field.discard());
+        h.runAtTickTime(15, () -> {
+            h.assertTrue(zombie.getHealth() == 20 && zombie.getDeltaMovement().y > -1, "early removal causes no slam or damage");
+            zombie.discard();
+            h.succeed();
+        });
     }
 
     @GameTest(template = "empty")
-    public static void terrainOnlyCrushesOneExposedLayer(GameTestHelper h) {
+    public static void terrainOnlyCrushesCylinderAndOneExposedLayer(GameTestHelper h) {
         var level = h.getLevel();
         BlockPos soil = h.absolutePos(new BlockPos(2, 2, 2));
         level.setBlockAndUpdate(soil.below(), Blocks.DIRT.defaultBlockState());
         level.setBlockAndUpdate(soil, Blocks.GRASS_BLOCK.defaultBlockState());
         level.setBlockAndUpdate(soil.above(), Blocks.GRASS.defaultBlockState());
-        BlockPos leaves = soil.offset(1, 0, 0);
-        BlockPos stone = soil.offset(2, 0, 0);
-        BlockPos chest = soil.offset(3, 0, 0);
-        level.setBlockAndUpdate(leaves, Blocks.OAK_LEAVES.defaultBlockState());
-        level.setBlockAndUpdate(stone, Blocks.STONE.defaultBlockState());
-        level.setBlockAndUpdate(chest, Blocks.CHEST.defaultBlockState());
-        BlockPos flower = soil.offset(0, 0, 1);
+        BlockPos leaves = soil.offset(1, 0, 0), stone = soil.offset(-1, 0, 0), chest = soil.offset(0, 0, -1);
+        BlockPos outside = soil.offset(2, 0, 2), flower = soil.offset(0, 0, 1);
         BlockPos tallGrass = soil.offset(1, 0, 1);
-        level.setBlockAndUpdate(flower.below(), Blocks.DIRT.defaultBlockState());
         level.setBlockAndUpdate(tallGrass.below(), Blocks.DIRT.defaultBlockState());
-        level.setBlockAndUpdate(flower, Blocks.DANDELION.defaultBlockState());
         level.setBlockAndUpdate(tallGrass, Blocks.TALL_GRASS.defaultBlockState());
         level.setBlockAndUpdate(tallGrass.above(), Blocks.TALL_GRASS.defaultBlockState()
                 .setValue(net.minecraft.world.level.block.DoublePlantBlock.HALF,
                         net.minecraft.world.level.block.state.properties.DoubleBlockHalf.UPPER));
-        GravityTerrainCrush.crush(level, player(h), new AABB(soil.offset(0, -1, 0), soil.offset(4, 3, 2)), 1);
-        h.assertTrue(level.isEmptyBlock(soil), "exposed soil must break with probability 1");
-        h.assertTrue(level.getBlockState(soil.below()).is(Blocks.DIRT), "lower soil must remain");
-        h.assertTrue(level.isEmptyBlock(leaves), "tagged leaves must break");
-        h.assertTrue(level.isEmptyBlock(flower), "tagged flowers must break");
-        h.assertTrue(level.isEmptyBlock(tallGrass) && level.isEmptyBlock(tallGrass.above()), "both tall grass halves must break");
-        h.assertTrue(level.getBlockState(stone).is(Blocks.STONE), "stone must remain");
-        h.assertTrue(level.getBlockState(chest).is(Blocks.CHEST), "chest must remain");
+        level.setBlockAndUpdate(leaves, Blocks.OAK_LEAVES.defaultBlockState());
+        level.setBlockAndUpdate(outside, Blocks.OAK_LEAVES.defaultBlockState());
+        level.setBlockAndUpdate(stone, Blocks.STONE.defaultBlockState());
+        level.setBlockAndUpdate(chest, Blocks.CHEST.defaultBlockState());
+        level.setBlockAndUpdate(flower.below(), Blocks.DIRT.defaultBlockState());
+        level.setBlockAndUpdate(flower, Blocks.DANDELION.defaultBlockState());
+        FakePlayer p = player(h);
+        p.getAbilities().mayBuild = true;
+        AABB box = new AABB(soil.offset(-2, -1, -2), soil.offset(4, 3, 4));
+        GravityTerrainCrush.crush(level, p, Vec3.atCenterOf(soil), 1.5, box, 1);
+        h.assertTrue(level.isEmptyBlock(soil) && level.isEmptyBlock(leaves) && level.isEmptyBlock(flower), "fragile and exposed soil break");
+        h.assertTrue(level.isEmptyBlock(tallGrass) && level.isEmptyBlock(tallGrass.above()), "both tall grass halves break");
+        h.assertTrue(level.getBlockState(soil.below()).is(Blocks.DIRT), "lower layer remains");
+        h.assertTrue(level.getBlockState(outside).is(Blocks.OAK_LEAVES), "square corner is outside cylinder");
+        h.assertTrue(level.getBlockState(stone).is(Blocks.STONE) && level.getBlockState(chest).is(Blocks.CHEST), "stone and block entity preserved");
         level.setBlockAndUpdate(soil, Blocks.DIRT.defaultBlockState());
-        GravityTerrainCrush.crush(level, player(h), new AABB(soil, soil.offset(1, 1, 1)), 0);
-        h.assertTrue(level.getBlockState(soil).is(Blocks.DIRT), "probability zero must never break soil");
+        GravityTerrainCrush.crush(level, p, Vec3.atCenterOf(soil), 2, box, 0);
+        h.assertTrue(level.getBlockState(soil).is(Blocks.DIRT), "zero chance never breaks soil");
+        level.setBlockAndUpdate(leaves, Blocks.OAK_LEAVES.defaultBlockState());
+        p.getAbilities().mayBuild = false;
+        GravityTerrainCrush.crush(level, p, Vec3.atCenterOf(soil), 2, box, 1);
+        h.assertTrue(level.getBlockState(leaves).is(Blocks.OAK_LEAVES), "mayBuild protection retained");
+        p.getAbilities().mayBuild = true;
+        java.util.function.Consumer<net.minecraftforge.event.level.BlockEvent.BreakEvent> deny = event -> {
+            if (event.getPos().equals(leaves)) event.setCanceled(true);
+        };
+        net.minecraftforge.common.MinecraftForge.EVENT_BUS.addListener(deny);
+        try {
+            GravityTerrainCrush.crush(level, p, Vec3.atCenterOf(soil), 2, box, 1);
+            h.assertTrue(level.getBlockState(leaves).is(Blocks.OAK_LEAVES), "Forge protection cancellation retained");
+        } finally {
+            net.minecraftforge.common.MinecraftForge.EVENT_BUS.unregister(deny);
+        }
         h.succeed();
     }
 
-    @GameTest(template = "empty", timeoutTicks = 340)
-    public static void fieldSlowsHurtsAndExpires(GameTestHelper h) {
-        var level = h.getLevel();
-        BlockPos center = h.absolutePos(new BlockPos(3, 4, 3));
-        Cow cow = EntityType.COW.create(level);
-        cow.setPos(Vec3.atCenterOf(center));
-        cow.setNoAi(true);
-        cow.setNoGravity(true);
-        level.addFreshEntity(cow);
-        GravityFieldEntity field = GravityFieldEntity.create(level, UUID.randomUUID(), center);
-        level.addFreshEntity(field);
-        BlockPos replanted = center.offset(2, 0, 2);
-        level.setBlockAndUpdate(replanted, Blocks.OAK_LEAVES.defaultBlockState()
+    @GameTest(template = "empty", batch = "gravity_boundary", timeoutTicks = 50)
+    public static void realHostilesRespectCircleAndTerrainIsNotRepeated(GameTestHelper h) {
+        Vec3 center = Vec3.atBottomCenterOf(h.absolutePos(new BlockPos(3, 7, 3)));
+        var inside = EntityType.ZOMBIE.create(h.getLevel());
+        var outside = EntityType.ZOMBIE.create(h.getLevel());
+        var corner = EntityType.ZOMBIE.create(h.getLevel());
+        List<LivingEntity> mobs = List.of(inside, outside, corner);
+        List<Vec3> positions = List.of(center.add(15.9, 0, 0), center.add(16.1, 0, 0), center.add(12, 0, 12));
+        for (int i = 0; i < mobs.size(); i++) {
+            stationary(h, mobs.get(i), positions.get(i));
+            mobs.get(i).setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.DIAMOND_HELMET));
+        }
+        GravityFieldEntity field = field(h, center);
+        BlockPos replanted = BlockPos.containing(center).offset(2, 0, 2);
+        h.getLevel().setBlockAndUpdate(replanted, Blocks.OAK_LEAVES.defaultBlockState()
                 .setValue(net.minecraft.world.level.block.LeavesBlock.PERSISTENT, true));
-        float health = cow.getHealth();
         h.runAtTickTime(22, () -> {
-            h.assertTrue(cow.hasEffect(MobEffects.MOVEMENT_SLOWDOWN), "field continuously applies slowness");
-            h.assertTrue(cow.getEffect(MobEffects.MOVEMENT_SLOWDOWN).getAmplifier() == 2, "slowness III amplifier");
-            h.assertTrue(cow.getHealth() == health - 1, "one damage pulse after 20 ticks");
-            cow.setPos(Vec3.atCenterOf(center.offset(6, 0, 0)));
-        });
-        h.runAtTickTime(34, () -> h.assertTrue(!cow.hasEffect(MobEffects.MOVEMENT_SLOWDOWN), "slowness expires quickly after leaving"));
-        h.runAtTickTime(42, () -> h.assertTrue(level.getBlockState(replanted).is(Blocks.OAK_LEAVES),
-                "an active field does not repeatedly crush newly placed fragile blocks"));
-        h.runAtTickTime(302, () -> {
-            h.assertTrue(field.isRemoved(), "field must expire after 300 ticks");
-            cow.discard();
+            h.assertTrue(inside.getHealth() == 16 && inside.hasEffect(MobEffects.MOVEMENT_SLOWDOWN), "15.9-block hostile affected");
+            h.assertTrue(outside.getHealth() == 20 && !outside.hasEffect(MobEffects.MOVEMENT_SLOWDOWN), "16.1-block hostile unaffected");
+            h.assertTrue(corner.getHealth() == 20 && !corner.hasEffect(MobEffects.MOVEMENT_SLOWDOWN), "AABB corner hostile unaffected");
+            h.assertTrue(h.getLevel().getBlockState(replanted).is(Blocks.OAK_LEAVES), "active field never repeatedly crushes terrain");
+            field.discard();
+            mobs.forEach(LivingEntity::discard);
             h.succeed();
         });
     }

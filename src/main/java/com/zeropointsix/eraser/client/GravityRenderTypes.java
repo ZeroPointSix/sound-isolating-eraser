@@ -33,13 +33,6 @@ public final class GravityRenderTypes extends RenderType {
                     .setDepthTestState(THROUGH_WALL).setWriteMaskState(COLOR_WRITE)
                     .setOutputState(MAIN_TARGET)
                     .setCullState(NO_CULL).createCompositeState(false));
-    public static final RenderType FILL = create("gravity_fill", DefaultVertexFormat.POSITION_COLOR,
-            VertexFormat.Mode.QUADS, 256, false, true, CompositeState.builder()
-                    .setShaderState(POSITION_COLOR_SHADER)
-                    .setTransparencyState(TRANSLUCENT_TRANSPARENCY)
-                    .setDepthTestState(THROUGH_WALL).setWriteMaskState(COLOR_WRITE)
-                    .setOutputState(MAIN_TARGET)
-                    .setCullState(NO_CULL).createCompositeState(false));
 
     private GravityRenderTypes(String name, VertexFormat format, VertexFormat.Mode mode, int size,
             boolean crumbling, boolean sorting, Runnable setup, Runnable clear) {

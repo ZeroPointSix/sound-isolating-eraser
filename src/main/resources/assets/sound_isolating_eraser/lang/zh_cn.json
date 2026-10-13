@@ -31,7 +31,7 @@
   "block.sound_isolating_eraser.eraser_anchor": "橡皮锚点",
   "block.sound_isolating_eraser.eraser_barrier": "橡皮屏障",
   "item.sound_isolating_eraser.gravity_jade_pendant": "重力玉佩",
-  "key.sound_isolating_eraser.gravity_target": "重力场瞄准",
+  "key.sound_isolating_eraser.gravity_target": "释放重力场",
   "key.categories.sound_isolating_eraser": "风雷翅",
   "death.attack.gravity_crush": "%1$s 被重力压垮了",
   "death.attack.gravity_crush.player": "%1$s 被 %2$s 的重力场压垮了",

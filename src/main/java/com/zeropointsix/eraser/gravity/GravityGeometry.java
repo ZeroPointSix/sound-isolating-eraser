@@ -1,34 +1,44 @@
 package com.zeropointsix.eraser.gravity;
 
-import net.minecraft.core.BlockPos;
+import net.minecraft.util.Mth;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 public final class GravityGeometry {
-    public static AABB bounds(BlockPos center, int height) {
-        int bottom = center.getY() - height / 2;
-        return new AABB(center.getX() - 2, bottom, center.getZ() - 2,
-                center.getX() + 3, bottom + height, center.getZ() + 3);
+    public static AABB bounds(Level level, Vec3 center, double radius, int below, int above) {
+        var border = level.getWorldBorder();
+        double x = Math.max(center.x - radius, border.getMinX());
+        double y = Math.max(center.y - below, level.getMinBuildHeight());
+        double z = Math.max(center.z - radius, border.getMinZ());
+        return new AABB(x, y, z,
+                Math.max(x, Math.min(center.x + radius, border.getMaxX())),
+                Math.max(y, Math.min(center.y + above, level.getMaxBuildHeight())),
+                Math.max(z, Math.min(center.z + radius, border.getMaxZ())));
     }
 
-    public static BlockPos target(Vec3 eye, Vec3 direction, double distance) {
-        return BlockPos.containing(eye.add(direction.scale(distance)));
+    public static boolean inCircle(Vec3 center, double radius, double x, double z) {
+        double dx = x - center.x, dz = z - center.z;
+        return dx * dx + dz * dz <= radius * radius;
     }
 
-    public static boolean inRange(Vec3 eye, BlockPos center, double min, double max) {
-        // Validate the selected cell, not its center: floor-snapping can move a point by almost a block.
-        double near = 0;
-        double far = 0;
-        double[] eyes = {eye.x, eye.y, eye.z};
-        int[] cells = {center.getX(), center.getY(), center.getZ()};
-        for (int axis = 0; axis < 3; axis++) {
-            double low = cells[axis] - eyes[axis];
-            double high = low + 1;
-            double closest = low > 0 ? low : Math.min(high, 0);
-            near += closest * closest;
-            far += Math.max(low * low, high * high);
+    public static boolean contains(Vec3 center, double radius, AABB bounds, Vec3 point) {
+        return point.x >= bounds.minX && point.x <= bounds.maxX
+                && point.z >= bounds.minZ && point.z <= bounds.maxZ
+                && point.y >= bounds.minY && point.y < bounds.maxY
+                && inCircle(center, radius, point.x, point.z);
+    }
+
+    public static boolean chunksLoaded(Level level, Vec3 center, double radius, AABB box) {
+        if (box.getXsize() <= 0 || box.getYsize() <= 0 || box.getZsize() <= 0) return false;
+        for (int x = Mth.floor(box.minX) >> 4; x <= (Mth.floor(Math.nextDown(box.maxX)) >> 4); x++) {
+            for (int z = Mth.floor(box.minZ) >> 4; z <= (Mth.floor(Math.nextDown(box.maxZ)) >> 4); z++) {
+                double nearX = Mth.clamp(center.x, x * 16.0, x * 16.0 + 16);
+                double nearZ = Mth.clamp(center.z, z * 16.0, z * 16.0 + 16);
+                if (inCircle(center, radius, nearX, nearZ) && !level.hasChunk(x, z)) return false;
+            }
         }
-        return near <= max * max + 1.0e-6 && far >= min * min - 1.0e-6;
+        return true;
     }
 
     private GravityGeometry() { }

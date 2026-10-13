@@ -22,55 +22,61 @@ import net.minecraftforge.gametest.PrefixGameTestTemplate;
 @GameTestHolder(ModMain.MOD_ID)
 @PrefixGameTestTemplate(false)
 public final class GravityRoundTwoTests {
-    @GameTest(template = "empty", timeoutTicks = 340)
-    public static void fifteenPulsesKeepZombieCowAndPlayerInField(GameTestHelper h) {
+    @GameTest(template = "empty", batch = "gravity_expiry", timeoutTicks = 340)
+    public static void fifteenPulsesAndOneNaturalSlamRespectHeavyTag(GameTestHelper h) {
         var level = h.getLevel();
-        BlockPos center = h.absolutePos(new BlockPos(8, 4, 8));
-        var cow = EntityType.COW.create(level);
+        Vec3 center = Vec3.atBottomCenterOf(h.absolutePos(new BlockPos(8, 8, 8)));
+        BlockPos cell = BlockPos.containing(center);
+        for (int x = (cell.getX() >> 4) - 2; x <= (cell.getX() >> 4) + 2; x++) {
+            for (int z = (cell.getZ() >> 4) - 2; z <= (cell.getZ() >> 4) + 2; z++) level.getChunk(x, z);
+        }
         var zombie = EntityType.ZOMBIE.create(level);
-        var player = h.makeMockSurvivalPlayer();
-        player.getFoodData().setFoodLevel(10);
-        List<LivingEntity> victims = List.of(cow, zombie, player);
-        List<Vec3> positions = List.of(Vec3.atCenterOf(center).add(-1.2,0,0),
-                Vec3.atCenterOf(center).add(1.2,0,0), Vec3.atCenterOf(center).add(0,0,1.2));
+        var heavy = EntityType.WARDEN.create(level);
+        List<LivingEntity> victims = List.of(zombie, heavy);
         for (int i = 0; i < victims.size(); i++) {
             var entity = victims.get(i);
-            entity.getAttribute(Attributes.MAX_HEALTH).setBaseValue(100);
-            entity.getAttribute(Attributes.ARMOR).setBaseValue(0);
-            entity.setHealth(100);
+            entity.getAttribute(Attributes.MAX_HEALTH).setBaseValue(300);
+            entity.setHealth(300);
             entity.setNoGravity(true);
-            if (entity instanceof Mob mob) mob.setNoAi(true);
-            entity.setPos(positions.get(i));
+            entity.noPhysics = true;
+            ((Mob) entity).setNoAi(true);
+            entity.setPos(center.add(i * 3, 0, 0));
             level.addFreshEntity(entity);
-            level.setBlockAndUpdate(entity.blockPosition().above(3), Blocks.STONE.defaultBlockState());
         }
-        var owner = h.spawn(EntityType.ARMOR_STAND, new BlockPos(14, 4, 8));
-        owner.setNoGravity(true);
-        GravityFieldEntity field = GravityFieldEntity.create(level, owner.getUUID(), center);
+        zombie.setItemSlot(net.minecraft.world.entity.EquipmentSlot.HEAD,
+                new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIAMOND_HELMET));
+        GravityFieldEntity field = GravityFieldEntity.create(level, java.util.UUID.randomUUID(), center);
         level.addFreshEntity(field);
-        for (int pulse = 1; pulse <= 15; pulse++) {
+        for (int pulse = 1; pulse <= 14; pulse++) {
             final int count = pulse;
             h.runAtTickTime(pulse * 20 + 1, () -> {
-                for (int i = 0; i < victims.size(); i++) {
-                    var entity = victims.get(i);
-                    h.assertTrue(Math.abs(entity.getHealth() - (100 - count)) < 0.01,
-                            "pulse " + count + " deducts health for " + entity.getType());
-                    h.assertTrue(entity.position().distanceToSqr(positions.get(i)) < 0.001,
-                            "gravity damage does not move " + entity.getType() + " at pulse " + count);
-                    h.assertTrue(field.fieldBounds().contains(entity.position()), "victim remains within field");
-                    h.assertTrue(entity.hasEffect(MobEffects.MOVEMENT_SLOWDOWN)
-                            && entity.getEffect(MobEffects.MOVEMENT_SLOWDOWN).getAmplifier() == 2,
-                            "Slowness III refreshed throughout all 15 pulses");
+                for (var entity : victims) {
+                    h.assertTrue(Math.abs(entity.getHealth() - (300 - count * 3)) < .01, "full periodic curve damage");
+                    h.assertTrue(entity.getEffect(MobEffects.MOVEMENT_SLOWDOWN).getAmplifier() == 4, "slowness V");
                 }
+                h.assertTrue(Math.abs(heavy.getY() - center.y) < .001, "heavy never lifted");
             });
         }
-        h.runAtTickTime(310, () -> {
-            h.assertTrue(field.isRemoved(), "field expires after 300 ticks");
+        h.runAtTickTime(290, () -> {
+            GravityFieldEntity overlap = GravityFieldEntity.create(level, java.util.UUID.randomUUID(), center);
+            level.addFreshEntity(overlap);
+        });
+        h.runAtTickTime(301, () -> {
+            h.assertTrue(field.isRemoved(), "natural expiry at 300 ticks");
             for (var entity : victims) {
-                h.assertTrue(!entity.hasEffect(MobEffects.MOVEMENT_SLOWDOWN), "slowness clears within 10 ticks of expiry");
+                h.assertTrue(Math.abs(entity.getHealth() - 246) < .01, "15 pulses plus exactly one curve x3 slam");
+            }
+            h.assertTrue(zombie.getDeltaMovement().y < -2, "slam wins over an active overlapping field");
+            h.assertTrue(Math.abs(heavy.getY() - center.y) < .001
+                    && Math.abs(heavy.getDeltaMovement().y) < .001, "heavy receives slam damage without motion");
+            level.getEntitiesOfClass(GravityFieldEntity.class, new net.minecraft.world.phys.AABB(center, center).inflate(32))
+                    .forEach(GravityFieldEntity::discard);
+        });
+        h.runAtTickTime(313, () -> {
+            for (var entity : victims) {
+                h.assertTrue(Math.abs(entity.getHealth() - 246) < .01, "no duplicate slam after removal");
                 entity.discard();
             }
-            owner.discard();
             h.succeed();
         });
     }

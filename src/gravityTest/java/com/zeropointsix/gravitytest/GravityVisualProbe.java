@@ -2,6 +2,7 @@ package com.zeropointsix.gravitytest;
 
 import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.zeropointsix.eraser.gravity.GravityFieldEntity;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -24,21 +25,21 @@ import org.joml.Vector4f;
 public final class GravityVisualProbe {
     private static final Path RESULTS = Path.of(System.getProperty("gravity.qa.results"));
     private static final String ROLE = System.getProperty("gravity.qa.role");
-    private static final int[][] EDGES = {{0,1},{0,2},{0,4},{1,3},{1,5},{2,3},
-            {2,6},{3,7},{4,5},{4,6},{5,7},{6,7}};
     private static String pending;
     private static AABB bounds;
-    private static boolean fill;
+    private static Vec3 center;
+    private static double radius;
     private static NativeImage before;
     private static NativeImage after;
     private static List<double[]> edges;
     private static Matrix4f cameraView;
 
-    public static void request(String name, AABB box, boolean expectsFill) {
+    public static void request(String name, GravityFieldEntity field) {
         if (pending != null) throw new AssertionError("Unfinished visual probe " + pending);
         pending = name;
-        bounds = box;
-        fill = expectsFill;
+        bounds = field.fieldBounds();
+        center = field.position();
+        radius = field.radius();
     }
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
@@ -103,8 +104,8 @@ public final class GravityVisualProbe {
                     samples++;
                     boolean hit = false, hitFinal = false;
                     for (int dy = -3; dy <= 3; dy++) for (int dx = -3; dx <= 3; dx++) {
-                        if (delta(before.getPixelRGBA(x + dx, y + dy), after.getPixelRGBA(x + dx, y + dy)) >= (fill ? 40 : 8)) hit = true;
-                        if (positiveDelta(frame.getPixelRGBA(x + dx, y + dy), before.getPixelRGBA(x + dx, y + dy)) >= (fill ? 40 : 8)) hitFinal = true;
+                        if (delta(before.getPixelRGBA(x + dx, y + dy), after.getPixelRGBA(x + dx, y + dy)) >= 8) hit = true;
+                        if (positiveDelta(frame.getPixelRGBA(x + dx, y + dy), before.getPixelRGBA(x + dx, y + dy)) >= 8) hitFinal = true;
                     }
                     if (hit) visible++;
                     if (unobscured(x, y)) {
@@ -127,9 +128,8 @@ public final class GravityVisualProbe {
                     + " retainedContrast=" + persistent + "/" + checkedFinal;
             System.out.println(result);
             Files.writeString(RESULTS.resolve(prefix + "-pixels.log"), result + "\n");
-            check(testedEdges >= 6 && visibleEdges >= 6, "at least six projected world-space edges must be visible");
-            check(!fill || interior >= 2000, "preview must contain a translucent face, not just entity outlines");
-            check(testedFinalEdges >= 6 && finalEdges >= 6, "at least six world-space edges must remain in the final screenshot");
+            check(testedEdges >= 6 && visibleEdges >= 6, "at least six projected cylinder segments must be visible");
+            check(testedFinalEdges >= 6 && finalEdges >= 6, "at least six cylinder segments must remain in the final screenshot");
             check(checkedFinal >= 100 && persistent >= checkedFinal * 0.85, "world overlay must survive final frame composition");
             Files.writeString(RESULTS.resolve(prefix + "-pixels.pass"), result + "\n");
         } catch (Throwable failure) { fail(failure); }
@@ -138,21 +138,32 @@ public final class GravityVisualProbe {
 
     private static List<double[]> projectEdges(RenderLevelStageEvent event, int width, int height) {
         Vec3 camera = event.getCamera().getPosition();
-        double[][] points = new double[8][];
-        for (int i = 0; i < 8; i++) {
-            Vector4f point = new Vector4f((float) (((i & 1) == 0 ? bounds.minX : bounds.maxX) - camera.x),
-                    (float) (((i & 2) == 0 ? bounds.minY : bounds.maxY) - camera.y),
-                    (float) (((i & 4) == 0 ? bounds.minZ : bounds.maxZ) - camera.z), 1);
-            point.mul(cameraView).mul(event.getProjectionMatrix());
-            if (point.w > 0) points[i] = new double[]{(point.x / point.w + 1) * width / 2,
-                    (1 - point.y / point.w) * height / 2};
-        }
         List<double[]> result = new ArrayList<>();
-        for (int[] edge : EDGES) {
-            double[] a = points[edge[0]], b = points[edge[1]];
-            if (a != null && b != null) result.add(new double[]{a[0], a[1], b[0], b[1]});
+        for (double y : new double[]{center.y + 0.05, bounds.minY + 0.03, bounds.maxY - 0.03}) {
+            for (int i = 0; i < 96; i++) {
+                double angle = i * Math.PI * 2 / 96;
+                double next = (i + 1) * Math.PI * 2 / 96;
+                addEdge(result, event, camera, width, height,
+                        new Vec3(center.x + Math.cos(angle) * radius, y, center.z + Math.sin(angle) * radius),
+                        new Vec3(center.x + Math.cos(next) * radius, y, center.z + Math.sin(next) * radius));
+            }
         }
         return result;
+    }
+
+    private static void addEdge(List<double[]> result, RenderLevelStageEvent event, Vec3 camera,
+            int width, int height, Vec3 a, Vec3 b) {
+        double[][] projected = new double[2][];
+        Vec3[] endpoints = {a, b};
+        for (int i = 0; i < 2; i++) {
+            Vec3 point = endpoints[i].subtract(camera);
+            Vector4f clip = new Vector4f((float) point.x, (float) point.y, (float) point.z, 1);
+            clip.mul(cameraView).mul(event.getProjectionMatrix());
+            if (clip.w <= 0) return;
+            projected[i] = new double[]{(clip.x / clip.w + 1) * width / 2,
+                    (1 - clip.y / clip.w) * height / 2};
+        }
+        result.add(new double[]{projected[0][0], projected[0][1], projected[1][0], projected[1][1]});
     }
 
     private static double edgeDistance(double x, double y) {

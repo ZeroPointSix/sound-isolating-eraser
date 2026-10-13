@@ -1,0 +1,11 @@
+{
+  "replace": false,
+  "values": [
+    { "id": "#forge:bosses", "required": false },
+    { "id": "qihai:shifotou", "required": false },
+    { "id": "qihai:chennu", "required": false },
+    "minecraft:ender_dragon",
+    "minecraft:wither",
+    "minecraft:warden"
+  ]
+}
