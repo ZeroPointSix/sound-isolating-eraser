@@ -15,6 +15,8 @@ import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
 
 public final class RainCityTemplates {
+    private static final org.slf4j.Logger LOGGER = org.slf4j.LoggerFactory.getLogger(RainCityTemplates.class);
+    private static final java.util.Set<String> MISSING = java.util.concurrent.ConcurrentHashMap.newKeySet();
     public static final int GROUND = RainCityGenerator.SURFACE;
     public static final BlockPos HOSPITAL = new BlockPos(80, GROUND, 80);
     public static final BlockPos BELL = new BlockPos(0, 12, 0);
@@ -102,9 +104,19 @@ public final class RainCityTemplates {
     private static void placeOne(WorldGenRegion region, Piece piece, BoundingBox clip) {
         placeResource(region, "yuji/" + piece.name, piece.pos, piece.rotation, clip);
     }
+    /** Resolves a city template; a missing or unreadable one is logged once and skipped instead of crashing worldgen. */
+    public static java.util.Optional<net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate> lookup(
+            net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager manager, String resource) {
+        java.util.Optional<net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate> found;
+        try { found = manager.get(YujiContent.id(resource)); }
+        catch (RuntimeException failure) { found = java.util.Optional.empty(); }
+        if (found.isEmpty() && MISSING.add(resource)) LOGGER.warn("Missing Yuji city template {}; skipping it", resource);
+        return found;
+    }
     private static void placeResource(WorldGenRegion region, String resource, BlockPos pos, Rotation rotation, BoundingBox clip) {
-        var template = region.getLevel().getStructureManager().get(YujiContent.id(resource))
-                .orElseThrow(() -> new IllegalStateException("Missing city template " + resource));
+        var found = lookup(region.getLevel().getStructureManager(), resource);
+        if (found.isEmpty()) return;
+        var template = found.get();
         var settings = new StructurePlaceSettings().setIgnoreEntities(true).setKeepLiquids(false).setKnownShape(true).setRotation(rotation);
         BlockPos adjusted = template.getZeroPositionWithTransform(pos, Mirror.NONE, rotation);
         if (!template.getBoundingBox(settings, adjusted).intersects(clip)) return;
