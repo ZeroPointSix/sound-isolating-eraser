@@ -41,6 +41,7 @@ public final class NightEvents {
     public static final String PLAYER_TAG = "EternalNightCity";
     private static final Map<UUID, SleepAttempt> SLEEP = new HashMap<>();
     private static final Map<UUID, Vec3> PREVIOUS_POSITION = new HashMap<>();
+    private static final Set<UUID> PENDING_RETURNS = new HashSet<>();
     private record SleepAttempt(long restTicks, boolean attempted) { }
 
     private NightEvents() { }
@@ -85,7 +86,9 @@ public final class NightEvents {
                 if (crossedDoor(previous, player.position(), pos, state.getValue(DoorBlock.FACING))
                         || player.getBoundingBox().intersects(new AABB(pos.getX(), pos.getY(), pos.getZ(),
                                 pos.getX() + 1, pos.getY() + 2, pos.getZ() + 1).inflate(0.05, 0, 0.05))) {
-                    returnHome(player);
+                    // The connection tick restores its pre-player-tick position.
+                    // Transfer after that tick so it cannot overwrite the home coordinates.
+                    PENDING_RETURNS.add(player.getUUID());
                     break;
                 }
             }
@@ -256,16 +259,26 @@ public final class NightEvents {
         UUID id = event.getEntity().getUUID();
         CityEntryQueue.cancel(id);
         SLEEP.remove(id); PREVIOUS_POSITION.remove(id);
+        PENDING_RETURNS.remove(id);
     }
     @SubscribeEvent public static void serverStopping(net.minecraftforge.event.server.ServerStoppingEvent event) {
         CityEntryQueue.clear();
     }
     @SubscribeEvent public static void serverStopped(net.minecraftforge.event.server.ServerStoppedEvent event) {
         SLEEP.clear(); PREVIOUS_POSITION.clear(); CityDoorActions.clear();
+        PENDING_RETURNS.clear();
     }
 
     @SubscribeEvent public static void serverTick(TickEvent.ServerTickEvent event) {
-        if (event.phase == TickEvent.Phase.END) CityEntryQueue.tick(event.getServer());
+        if (event.phase != TickEvent.Phase.END) return;
+        CityEntryQueue.tick(event.getServer());
+        for (UUID id : Set.copyOf(PENDING_RETURNS)) {
+            PENDING_RETURNS.remove(id);
+            ServerPlayer player = event.getServer().getPlayerList().getPlayer(id);
+            if (player != null && player.isAlive() && EternalNightContent.isCity(player.level())) {
+                returnHome(player);
+            }
+        }
     }
 
     @SubscribeEvent public static void levelTick(TickEvent.LevelTickEvent event) {

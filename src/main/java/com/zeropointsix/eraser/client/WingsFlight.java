@@ -64,7 +64,8 @@ public final class WingsFlight {
         // void guard: below minY+5 force up (Notion §4.6)
         int minY = p.level().getMinBuildHeight();
         if (p.getY() < minY + WingsConfig.SERVER.voidPushMargin.get()) {
-            next = new Vec3(next.x * 0.3, 2.0, next.z * 0.3);
+            Vec3 rescue = new Vec3(next.x * 0.3, Math.min(2.0, maxSpeed), next.z * 0.3);
+            next = rescue.normalize().scale(Math.min(rescue.length(), maxSpeed));
         }
 
         p.setDeltaMovement(next);
@@ -103,13 +104,13 @@ public final class WingsFlight {
 
     private static Vec3 hoverWish(LocalPlayer p, Input input, WingsClientData.WingInfo info) {
         double maxH = WingsConfig.SERVER.hoverMaxSpeed.get() / 20.0; // m/s → bpt
-        Vec3 flat = inputToWorld(p, input, 0).scale(maxH * 0.5);
+        Vec3 flat = inputToWorld(p, input, p.getYRot()).scale(maxH * 0.5);
         double vy;
         if (input.jumping) vy = 0.3;      // 6 m/s 上升
         else if (input.shiftKeyDown) vy = -0.25; // 5 m/s 下降
         else {
-            // 锚点轻微上下浮动：既有悬停呼吸感，周期性下坠也让原版 floating 踢人计数被重置
-            double anchor = info.hoverY() + 0.35 * Mth.sin(p.level().getGameTime() * 0.18f);
+            double safeY = p.level().getMinBuildHeight() + WingsConfig.SERVER.voidPushMargin.get() + 0.5;
+            double anchor = Math.max(info.hoverY(), safeY);
             vy = Mth.clamp((anchor - p.getY()) * 0.4, -0.15, 0.15);
         }
         return new Vec3(flat.x, vy, flat.z).normalize().scale(Math.min(
@@ -117,6 +118,10 @@ public final class WingsFlight {
     }
 
     private static Vec3 flightWish(LocalPlayer p, Input input, double maxSpeed) {
+        if (input.shiftKeyDown) {
+            Vec3 flat = inputToWorld(p, input, p.getYRot());
+            return new Vec3(flat.x, -1, flat.z).normalize().scale(maxSpeed);
+        }
         if (input.up) {
             // forward = look direction (3D), allows climb/dive
             return p.getLookAngle().normalize().scale(maxSpeed);
