@@ -1,6 +1,9 @@
 package com.zeropointsix.gravitytest;
 
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.zeropointsix.eraser.client.GravityFieldIndex;
+import com.zeropointsix.eraser.client.WingsItemRenderer;
 import com.zeropointsix.eraser.gravity.GravityFieldEntity;
 import com.zeropointsix.eraser.registry.ModCreativeTabs;
 import com.zeropointsix.eraser.registry.ModEntities;
@@ -9,17 +12,22 @@ import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.renderer.LightTexture;
+import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.CreativeModeTabs;
+import net.minecraft.world.item.ItemDisplayContext;
+import net.minecraftforge.client.gui.CreativeTabsScreenPage;
 import net.minecraftforge.registries.ForgeRegistries;
 
 /** Development-only probe; runs in both real clients before the existing gameplay suite. */
@@ -31,6 +39,7 @@ final class QijieInventoryProbe {
     static boolean tick(Minecraft mc, long frames, Path results, String role) throws Exception {
         if (stage == 0) {
             verifyEntityReplacement(mc);
+            verifyWingSlotBounds();
             screen = new CreativeModeInventoryScreen(mc.player, mc.player.connection.enabledFeatures(), true);
             mc.setScreen(screen);
             select(ModCreativeTabs.QIJIE.get());
@@ -67,7 +76,8 @@ final class QijieInventoryProbe {
             capture(mc, results.resolve(role + "-qijie-search.png"));
             mc.setScreen(null);
             screen = null;
-            Files.writeString(results.resolve(role + "-inventory.pass"), "all items, search and same-ID entity replacement passed\n");
+            Files.writeString(results.resolve(role + "-inventory.pass"),
+                    "all items, search, wing slot bounds and same-ID entity replacement passed\n");
             stage = 3;
         }
         return stage == 3;
@@ -95,9 +105,52 @@ final class QijieInventoryProbe {
     }
 
     private static void select(CreativeModeTab tab) throws Exception {
+        var pages = CreativeModeInventoryScreen.class.getDeclaredField("pages");
+        pages.setAccessible(true);
+        for (Object entry : (List<?>) pages.get(screen)) {
+            var page = (CreativeTabsScreenPage) entry;
+            if (page.getVisibleTabs().contains(tab)) {
+                screen.setCurrentPage(page);
+                break;
+            }
+        }
+        require(screen.getCurrentPage().getVisibleTabs().contains(tab), "selected tab is on the visible page");
         Method select = CreativeModeInventoryScreen.class.getDeclaredMethod("selectTab", CreativeModeTab.class);
         select.setAccessible(true);
         select.invoke(screen, tab);
+    }
+
+    private static void verifyWingSlotBounds() {
+        var bounds = new SlotBounds();
+        new WingsItemRenderer().renderByItem(ModItems.WIND_THUNDER_WINGS.get().getDefaultInstance(),
+                ItemDisplayContext.GUI, new PoseStack(), type -> bounds,
+                LightTexture.FULL_BRIGHT, OverlayTexture.NO_OVERLAY);
+        require(bounds.vertices > 0 && bounds.minX >= 0 && bounds.maxX <= 1
+                && bounds.minY >= 0 && bounds.maxY <= 1 && bounds.maxZ - bounds.minZ > 0.01,
+                "three-dimensional wing mesh stays inside one inventory slot");
+    }
+
+    private static final class SlotBounds implements VertexConsumer {
+        private int vertices;
+        private double minX = Double.POSITIVE_INFINITY, maxX = Double.NEGATIVE_INFINITY;
+        private double minY = Double.POSITIVE_INFINITY, maxY = Double.NEGATIVE_INFINITY;
+        private double minZ = Double.POSITIVE_INFINITY, maxZ = Double.NEGATIVE_INFINITY;
+
+        @Override public VertexConsumer vertex(double x, double y, double z) {
+            vertices++;
+            minX = Math.min(minX, x); maxX = Math.max(maxX, x);
+            minY = Math.min(minY, y); maxY = Math.max(maxY, y);
+            minZ = Math.min(minZ, z); maxZ = Math.max(maxZ, z);
+            return this;
+        }
+        @Override public VertexConsumer color(int r, int g, int b, int a) { return this; }
+        @Override public VertexConsumer uv(float u, float v) { return this; }
+        @Override public VertexConsumer overlayCoords(int u, int v) { return this; }
+        @Override public VertexConsumer uv2(int u, int v) { return this; }
+        @Override public VertexConsumer normal(float x, float y, float z) { return this; }
+        @Override public void endVertex() { }
+        @Override public void defaultColor(int r, int g, int b, int a) { }
+        @Override public void unsetDefaultColor() { }
     }
 
     private static void capture(Minecraft mc, Path path) throws Exception {
