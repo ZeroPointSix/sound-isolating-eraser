@@ -71,24 +71,26 @@ public final class CityBuildingAccess {
         doors.removeIf(info -> !info.state().hasProperty(DoorBlock.HALF)
                 || info.state().getValue(DoorBlock.HALF) != DoubleBlockHalf.LOWER);
         doors.sort(Comparator.comparingInt(info -> info.pos().getY()));
-        Approach preferred = null;
-        int best = Integer.MAX_VALUE;
+        List<Approach> ranked = new ArrayList<>();
         for (var info : doors) {
             if (!(city.getBlockState(info.pos()).getBlock() instanceof DoorBlock)) continue;
             Direction outward = info.state().getValue(DoorBlock.FACING);
-            Approach found = approachFrom(city, info.pos(), outward);
-            if (found == null) found = approachFrom(city, info.pos(), outward.getOpposite());
-            if (found == null) continue;
-            int dy = found.feet().getY() - info.pos().getY();
-            // Standing above the door walks into the facade; native 0/12 used that path.
-            if (dy > 0) continue;
-            int score = Math.abs(dy) * 10 + (CityLayout.street(found.feet().getX(), found.feet().getZ()) ? 1 : 0);
-            if (score < best) {
-                best = score;
-                preferred = found;
+            for (Direction dir : new Direction[] {outward, outward.getOpposite()}) {
+                Approach found = approachFrom(city, info.pos(), dir);
+                if (found == null) continue;
+                int dy = found.feet().getY() - info.pos().getY();
+                // Standing above the door walks into the facade; native 0/12 used that path.
+                if (dy > 0) continue;
+                ranked.add(found);
             }
         }
-        return Optional.ofNullable(preferred);
+        ranked.sort(Comparator.comparingInt(found -> {
+            int dy = Math.abs(found.feet().getY() - found.door().getY());
+            return dy * 10 + (CityLayout.street(found.feet().getX(), found.feet().getZ()) ? 1 : 0);
+        }));
+        for (Approach candidate : ranked)
+            if (entranceWalkable(city, candidate)) return Optional.of(candidate);
+        return ranked.isEmpty() ? Optional.empty() : Optional.of(ranked.get(0));
     }
 
     public static void openDoor(ServerLevel city, BlockPos door) {
