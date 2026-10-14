@@ -12,6 +12,9 @@
     "CityBlockTickMixin",
     "WingsFlightConnectionMixin"
   ],
+  "client": [
+    "WingsTravelMixin"
+  ],
   "injectors": {
     "defaultRequire": 1
   }

@@ -38,7 +38,14 @@ jobs:
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v4
       - name: Build distributable mod
+        id: build
         run: bash ./gradlew --no-daemon build
+      - name: Verify pure wing production logic
+        run: |
+          mkdir -p build/wings-pure build/reports
+          javac -d build/wings-pure src/main/java/com/zeropointsix/eraser/wings/FlightSpeedBudget.java src/main/java/com/zeropointsix/eraser/wings/FlightSpeedTransition.java src/main/java/com/zeropointsix/eraser/client/WingsMotion.java tools/FlightSpeedBudgetCheck.java tools/WingsMotionCheck.java
+          java -cp build/wings-pure FlightSpeedBudgetCheck | tee build/reports/wings-pure.log
+          java -cp build/wings-pure WingsMotionCheck | tee -a build/reports/wings-pure.log
       - name: Validate reference mesh
         run: python3 tools/validate_wings_mesh.py
       - name: Run Forge integration tests
@@ -53,8 +60,10 @@ jobs:
         run: xvfb-run -a -s '-screen 0 1280x720x24' bash tools/client-smoke.sh
       - name: Prepare isolated multiplayer test driver
         id: driver
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         run: bash ./gradlew --no-daemon -PgravityE2E writeGravityTestClasspath
       - name: Install native X11 input driver
+        if: ${{ !cancelled() && steps.driver.outcome == 'success' }}
         run: sudo apt-get update && sudo apt-get install --no-install-recommends -y xdotool ffmpeg
       - name: Exercise real two-client gameplay
         run: python3 tools/gravity-e2e.py
@@ -66,6 +75,9 @@ jobs:
         env:
           LP_NUM_THREADS: '2'
         run: python3 tools/wings-showcase.py
+      - name: Verify native wing speed and simultaneous flight
+        if: ${{ !cancelled() && steps.driver.outcome == 'success' }}
+        run: python3 tools/wings-e2e.py --motion-only
       - name: Preserve build and test evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -84,6 +96,12 @@ jobs:
             build/wings-e2e/*.png
             build/wings-e2e/*.pass
             build/wings-e2e/*.failed
+            build/wings-e2e/*.json
+            build/wings-motion-e2e/*.log
+            build/wings-motion-e2e/*.json
+            build/wings-motion-e2e/*.png
+            build/wings-motion-e2e/*.pass
+            build/wings-motion-e2e/*.failed
             build/wings-showcase/*.log
             build/wings-showcase/*.png
             build/wings-showcase/*.pass

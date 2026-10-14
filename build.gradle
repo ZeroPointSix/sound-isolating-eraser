@@ -280,6 +280,7 @@ tasks.named('check').configure { dependsOn checkWingsMotion }
 
 def compileFlightSpeedBudgetCheck = tasks.register('compileFlightSpeedBudgetCheck', JavaCompile) {
     source = files('src/main/java/com/zeropointsix/eraser/wings/FlightSpeedBudget.java',
+            'src/main/java/com/zeropointsix/eraser/wings/FlightSpeedTransition.java',
             'tools/FlightSpeedBudgetCheck.java')
     classpath = files()
     destinationDirectory = layout.buildDirectory.dir('flight-speed-budget-check')
