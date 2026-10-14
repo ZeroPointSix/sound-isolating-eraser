@@ -106,6 +106,13 @@ public final class CityTemplates {
         return Math.floorMod(CityLayout.hash(seed + 2, blockX, blockZ), 6) == 0;
     }
 
+    /** Chunk columns that receive subway tunnel/platform templates at {@link CityChunkGenerator#SUBWAY_Y}. */
+    public static boolean subwayTunnelAt(int x, int z) {
+        int lx = Math.floorMod(Math.floorDiv(x, 16), 4);
+        int lz = Math.floorMod(Math.floorDiv(z, 16), 4);
+        return lx == 0 || lz == 0 || lz == 3;
+    }
+
     private static String loot(String name) {
         return switch (name) {
             case "mall" -> "mall";

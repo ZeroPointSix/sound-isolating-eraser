@@ -15,6 +15,7 @@ import net.minecraft.stats.Stats;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.Pose;
 import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
@@ -42,6 +43,7 @@ public final class NightEvents {
     private static final Map<UUID, SleepAttempt> SLEEP = new HashMap<>();
     private static final Map<UUID, Vec3> PREVIOUS_POSITION = new HashMap<>();
     private static final Set<UUID> PENDING_RETURNS = new HashSet<>();
+    private static final Map<UUID, Integer> ARRIVAL_SLEEP = new HashMap<>();
     private record SleepAttempt(long restTicks, boolean attempted) { }
 
     private NightEvents() { }
@@ -74,6 +76,16 @@ public final class NightEvents {
         if (!EternalNightContent.isCity(player.level())) {
             PREVIOUS_POSITION.remove(player.getUUID());
             return;
+        }
+        Integer remaining = ARRIVAL_SLEEP.get(player.getUUID());
+        if (remaining != null) {
+            if (remaining <= 1) {
+                ARRIVAL_SLEEP.remove(player.getUUID());
+                if (player.isSleeping()) player.stopSleeping();
+            } else {
+                ARRIVAL_SLEEP.put(player.getUUID(), remaining - 1);
+                if (player.getPose() != Pose.SLEEPING) player.setPose(Pose.SLEEPING);
+            }
         }
         ServerLevel level = player.serverLevel();
         Vec3 current = player.position();
@@ -172,6 +184,10 @@ public final class NightEvents {
         return CityEntryQueue.request(player);
     }
 
+    public static boolean keepArrivalSleep(Player player) {
+        return ARRIVAL_SLEEP.containsKey(player.getUUID());
+    }
+
     static boolean finishEntry(ServerPlayer player, ServerLevel city, int x, int z) {
         Optional<Vec3> destination = safeStreet(city, x, z);
         if (destination.isEmpty()) return false;
@@ -182,6 +198,9 @@ public final class NightEvents {
         Vec3 pos = destination.get();
         player.teleportTo(city, pos.x, pos.y, pos.z, player.getYRot(), player.getXRot());
         player.fallDistance = 0;
+        BlockPos street = BlockPos.containing(pos.x, pos.y - 1, pos.z);
+        player.startSleeping(street);
+        ARRIVAL_SLEEP.put(player.getUUID(), 40);
         player.connection.send(new ClientboundSetTitlesAnimationPacket(20, 80, 20));
         player.connection.send(new ClientboundSetTitleTextPacket(Component.translatable("message.sound_isolating_eraser.city.arrival")));
         return true;
@@ -237,6 +256,8 @@ public final class NightEvents {
             System.out.println("NIGHT_UNSAFE_HOME " + player.getGameProfile().getName() + " fallback to shared spawn");
             player.displayClientMessage(Component.translatable("message.sound_isolating_eraser.city.unsafe_home"), true);
         }
+        ARRIVAL_SLEEP.remove(player.getUUID());
+        if (player.isSleeping()) player.stopSleeping();
         player.teleportTo(overworld, target.x, target.y, target.z, player.getRespawnAngle(), 0);
         // Door exits run inside connection.tick(), which restores firstGoodXYZ after doTick().
         player.connection.resetPosition();
@@ -283,6 +304,7 @@ public final class NightEvents {
         CityEntryQueue.cancel(id);
         SLEEP.remove(id); PREVIOUS_POSITION.remove(id);
         PENDING_RETURNS.remove(id);
+        ARRIVAL_SLEEP.remove(id);
     }
     @SubscribeEvent public static void serverStopping(net.minecraftforge.event.server.ServerStoppingEvent event) {
         CityEntryQueue.clear();
@@ -296,6 +318,7 @@ public final class NightEvents {
         SLEEP.clear();
         PREVIOUS_POSITION.clear();
         PENDING_RETURNS.clear();
+        ARRIVAL_SLEEP.clear();
         CityDoorActions.clear();
         CityEntryQueue.clear();
     }

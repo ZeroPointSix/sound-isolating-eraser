@@ -82,9 +82,8 @@ public final class CitySpawns {
                     Mob mob = spawn(level, ModEntities.NEON_TUMOR.get(), feet, size, false);
                     if (mob != null) { neonCount++; mobs.add(mob); }
                 }
-                // Notion §7: 砌腐墙 is industrial underground only, not surface industrial
-                // and not other districts' subways. Vanilla mob bans are separate.
-                if (brickrotHabitat(district, y) && attempt == 0) {
+                // Notion §6.7/§7: 砌腐墙 appears in subway tunnels and industrial underground.
+                if (brickrotHabitat(district, x, y, z) && attempt == 0) {
                     long region = CityLayout.region(x, z);
                     CitySavedData data = CitySavedData.get(level);
                     if (!data.hasBoss(region)) {
@@ -100,9 +99,19 @@ public final class CitySpawns {
         return ForgeRegistries.ENTITY_TYPES.containsKey(SHADOW) ? ForgeRegistries.ENTITY_TYPES.getValue(SHADOW) : null;
     }
 
-    /** Industrial and below the surface/subway split used by the rest of city spawning. */
-    public static boolean brickrotHabitat(CityLayout.District district, int y) {
-        return district == CityLayout.District.INDUSTRIAL && y < 56;
+    /**
+     * Notion §6.7/§7: 地铁隧道、工业区地下. Subway tunnels in every district, plus
+     * industrial space below the surface split. Not industrial rooftops, and not
+     * non-tunnel space in residential/commercial.
+     */
+    public static boolean brickrotHabitat(CityLayout.District district, int x, int y, int z) {
+        if (district == CityLayout.District.INDUSTRIAL && y < 56) return true;
+        return subwayTunnel(x, y, z);
+    }
+
+    public static boolean subwayTunnel(int x, int y, int z) {
+        return y >= CityChunkGenerator.SUBWAY_Y && y < CityChunkGenerator.SUBWAY_Y + 6
+                && CityTemplates.subwayTunnelAt(x, z);
     }
 
     public static boolean withinCountedRange(ServerPlayer player, BlockPos feet) {

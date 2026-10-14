@@ -8,6 +8,7 @@
     "LivingEntityWallVisibilityMixin",
     "CityPlayerInteractionMixin",
     "CityDoorMixin",
+    "CityArrivalSleepMixin",
     "CityScheduledTickMixin",
     "CityBlockTickMixin",
     "WingsFlightConnectionMixin"

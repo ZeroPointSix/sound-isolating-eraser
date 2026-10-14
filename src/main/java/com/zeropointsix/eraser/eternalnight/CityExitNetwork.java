@@ -5,6 +5,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.network.NetworkDirection;
@@ -24,6 +25,12 @@ public final class CityExitNetwork {
     public static void register() {
         CHANNEL.messageBuilder(Snapshot.class, 0, NetworkDirection.PLAY_TO_CLIENT)
                 .encoder(Snapshot::encode).decoder(Snapshot::decode).consumerMainThread(Snapshot::handle).add();
+        CHANNEL.messageBuilder(Fade.class, 1, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(Fade::encode).decoder(Fade::decode).consumerMainThread(Fade::handle).add();
+    }
+
+    public static void fadeIn(ServerPlayer player, int ticks) {
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new Fade(ticks, true));
     }
 
     public static void sync(ServerLevel level) {
@@ -49,6 +56,21 @@ public final class CityExitNetwork {
         }
         public static void handle(Snapshot packet, Supplier<NetworkEvent.Context> context) {
             DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> CityClientRuntime.setExits(packet.doors));
+            context.get().setPacketHandled(true);
+        }
+    }
+
+    /** {@code hold} fades to black before teleport; a later dimension change fades out. */
+    public record Fade(int ticks, boolean hold) {
+        public static void encode(Fade packet, FriendlyByteBuf buffer) {
+            buffer.writeVarInt(packet.ticks);
+            buffer.writeBoolean(packet.hold);
+        }
+        public static Fade decode(FriendlyByteBuf buffer) {
+            return new Fade(buffer.readVarInt(), buffer.readBoolean());
+        }
+        public static void handle(Fade packet, Supplier<NetworkEvent.Context> context) {
+            DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> CityClientRuntime.beginFade(packet.ticks, packet.hold));
             context.get().setPacketHandled(true);
         }
     }

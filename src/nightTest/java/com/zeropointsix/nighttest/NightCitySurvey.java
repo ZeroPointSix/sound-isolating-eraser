@@ -16,9 +16,7 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.DoorBlock;
-import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
 import net.minecraft.world.level.chunk.ChunkStatus;
-import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
 import net.minecraft.world.phys.AABB;
 import net.minecraftforge.registries.ForgeRegistries;
 import java.nio.file.Files;
@@ -54,7 +52,8 @@ final class NightCitySurvey {
         NightConfig.SPAWNING.set(true);
         NightConfig.EXIT_CHANCE.set(0.0);
         player.setGameMode(GameType.CREATIVE);
-        targets = locate(city.getSeed());
+        targets = CityBuildingAccess.locateBuildings(city.getSeed()).stream()
+                .map(p -> new Target(p.name(), p.origin(), p.district())).toList();
         next();
     }
 
@@ -157,39 +156,21 @@ final class NightCitySurvey {
     }
 
     private static boolean positionAtEntrance() {
-        var template = city.getStructureManager().get(CityTemplates.id("buildings/" + target.name())).orElseThrow();
-        var candidates = new ArrayList<net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate.StructureBlockInfo>();
-        for (var block : ForgeRegistries.BLOCKS) if (block instanceof DoorBlock)
-            candidates.addAll(template.filterBlocks(target.origin(), new StructurePlaceSettings(), block));
-        candidates.sort(Comparator.comparingInt(info -> info.pos().getY()));
-        for (boolean streetApproach : new boolean[] {true, false}) for (var info : candidates) {
-            if (info.state().getValue(DoorBlock.HALF) != DoubleBlockHalf.LOWER) continue;
-            BlockPos local = info.pos().subtract(target.origin());
-            int[] distances = {local.getZ(), template.getSize().getZ() - 1 - local.getZ(),
-                    local.getX(), template.getSize().getX() - 1 - local.getX()};
-            Direction[] outward = {Direction.NORTH, Direction.SOUTH, Direction.WEST, Direction.EAST};
-            int nearest = 0;
-            for (int n = 1; n < distances.length; n++) if (distances[n] < distances[nearest]) nearest = n;
-            if (distances[nearest] > 1) continue;
-            for (int distance = 3; distance >= 1; distance--) {
-                BlockPos approach = info.pos().relative(outward[nearest], distance);
-                if (CityLayout.street(approach.getX(), approach.getZ()) != streetApproach) continue;
-                AABB body = new AABB(approach.getX() + .2, approach.getY(), approach.getZ() + .2,
-                        approach.getX() + .8, approach.getY() + 1.8, approach.getZ() + .8);
-                if (!city.getBlockState(approach.below()).isSolid() || !city.noCollision(body)
-                        || !(city.getBlockState(info.pos()).getBlock() instanceof DoorBlock)) continue;
-                door = info.pos(); inward = outward[nearest].getOpposite();
-                current.addProperty("door", door.toShortString());
-                current.addProperty("approach", approach.toShortString());
-                current.addProperty("approachDistance", distance);
-                current.addProperty("approachIsStreet", streetApproach);
-                player.getAbilities().flying = false;
-                player.onUpdateAbilities();
-                player.teleportTo(city, approach.getX() + .5, approach.getY(), approach.getZ() + .5, inward.toYRot(), 12);
-                return true;
-            }
-        }
-        return false;
+        var approach = CityBuildingAccess.findApproach(city, target.origin(), target.name());
+        if (approach.isEmpty()) return false;
+        var found = approach.get();
+        CityBuildingAccess.openDoor(city, found.door());
+        door = found.door();
+        inward = found.inward();
+        current.addProperty("door", door.toShortString());
+        current.addProperty("approach", found.feet().toShortString());
+        current.addProperty("approachIsStreet", CityLayout.street(found.feet().getX(), found.feet().getZ()));
+        current.addProperty("doorOpenedForWalk", true);
+        player.getAbilities().flying = false;
+        player.onUpdateAbilities();
+        player.teleportTo(city, found.feet().getX() + .5, found.feet().getY(), found.feet().getZ() + .5,
+                found.yaw(), found.pitch());
+        return true;
     }
 
     private static boolean positionForObservation(Mob mob) {
@@ -217,46 +198,42 @@ final class NightCitySurvey {
 
     private static void finishTarget(String result) throws Exception {
         signal("SURVEY_STOP:" + target.name());
+        if (crossed && door != null) {
+            var template = city.getStructureManager().get(CityTemplates.id("buildings/" + target.name())).orElseThrow();
+            var size = template.getSize();
+            BlockPos interior = door.relative(inward);
+            int floors = CityBuildingAccess.floorCount(city, target.origin(), size.getX(), size.getZ(), size.getY(), interior);
+            int expected = CityBuildingAccess.expectedFloors(city, target.origin(), target.name());
+            current.addProperty("floorsReached", floors);
+            current.addProperty("expectedDoorFloors", expected);
+            current.addProperty("floorsReachedExpected", floors >= expected);
+        }
         current.addProperty("result", result);
         observations.add(current);
         System.out.println("NIGHT_CITY_SURVEY " + current);
         next();
         if (done) {
             liveConfig.close();
+            int floorsOk = 0;
+            for (var item : observations)
+                if (item.getAsJsonObject().has("floorsReachedExpected")
+                        && item.getAsJsonObject().get("floorsReachedExpected").getAsBoolean())
+                    floorsOk++;
+            boolean allFloors = floorsOk == targets.size();
             JsonObject report = new JsonObject();
             report.addProperty("scope", "one generated entrance per original building template; natural entities observed for 220 ticks per accessible sample");
             report.addProperty("surveyConfiguration", "Creative viewer, city spawning enabled, random door exits disabled during entrance survey; camera-only flight to unobstructed vantage after natural entity sampling");
             report.addProperty("templatesLocated", targets.size()); report.addProperty("nativeEntrancesPassed", walked);
-            report.addProperty("allFloorsVerified", false);
+            report.addProperty("floorsReached", floorsOk);
+            report.addProperty("allFloorsVerified", allFloors);
             report.addProperty("threeMonsterIntegrationVerified", false);
             report.add("observations", observations); report.add("nativeTrajectory", trajectory);
             Files.writeString(RESULTS.resolve("city-survey.json"), new GsonBuilder().setPrettyPrinting().create().toJson(report));
             Files.writeString(RESULTS.resolve("server-survey.complete"), "COLLECTED city survey: " + walked + "/" + targets.size()
-                    + " entrances crossed; consult deviations in city-survey.json; not full building/monster acceptance\n");
+                    + " entrances crossed, floors " + floorsOk + "/" + targets.size()
+                    + "; consult deviations in city-survey.json; not full building/monster acceptance\n");
             signal("SURVEY_DONE");
         }
-    }
-
-    private static List<Target> locate(long seed) {
-        Map<String, Target> found = new LinkedHashMap<>();
-        for (int bx = -12; bx <= 12; bx++) for (int bz = -12; bz <= 12; bz++) {
-            String civic = CityTemplates.largeCivic(seed, bx, bz);
-            for (int lx = 1; lx <= 3; lx++) for (int lz = 1; lz <= 3; lz++) {
-                String name;
-                if (civic != null && lx <= 2 && lz <= 2) {
-                    if (lx != 1 || lz != 1) continue;
-                    name = civic;
-                } else {
-                    if (lx == 3 && lz == 3 && CityTemplates.hasStation(seed, bx, bz)) continue;
-                    if (lx == 3 && lz == 1 && Math.floorMod(CityLayout.hash(seed + 3, bx, bz), 4) == 0) continue;
-                    name = CityLayout.building(seed, bx * 4 + lx, bz * 4 + lz);
-                }
-                int x = (bx * 4 + lx) * 16, z = (bz * 4 + lz) * 16;
-                found.putIfAbsent(name, new Target(name, new BlockPos(x, CityLayout.plateau(bx, bz), z), CityLayout.district(x, z)));
-            }
-        }
-        if (found.size() != CityTemplates.BUILDINGS.size()) throw new AssertionError("could not locate every original building class");
-        return List.copyOf(found.values());
     }
 
     private static void signal(String text) { player.sendSystemMessage(Component.literal("NIGHT_QA_" + text)); }

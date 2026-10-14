@@ -14,7 +14,7 @@ import org.spongepowered.asm.mixin.injection.Group;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
 // Dual MCP+SRG names with remap=false; see CityBlockTickMixin. Exactly one handler of the
-// group matches per environment, and @Group(min = 2) still fails loudly if neither does.
+// group matches per environment, and @Group(min = 3) fails if any of the three targets miss.
 @Mixin(DoorBlock.class)
 public abstract class CityDoorMixin {
     @Group(name = "citySetBlock", min = 3)
