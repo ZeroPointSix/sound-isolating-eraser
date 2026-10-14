@@ -45,3 +45,16 @@ JAVA_HOME 指向 JDK17 后
 bash ./gradlew --no-daemon --max-workers=2 -PnightE2E checkNightRules verifyCityAssets build writeNightTestClasspath runGameTestServer
 python3 tools/night-e2e.py   # 有显示/客户端 classpath 时
 ```
+
+## 本轮验证（HEAD `c77f765`）
+
+本地 JDK 17：
+
+- NightRules **666329**（含 CityDoorMixin `setOpen` / `m_153165_` 源码门禁 4 项）
+- CITY_ART_VERIFIED 87 files / 6 loot tables
+- `-PnightOnly runGameTestServer`：**19/19**
+- `-PnightE2E ... runGameTestServer`：**328/328**
+- `python3 tools/night-e2e.py`：`NIGHT_TWO_CLIENT_E2E_PASS` 与 `NIGHT_RESTART_AND_REAL_CLIENT_DEATH_PASS`
+- 成品 JAR `build/libs/sound_isolating_eraser-0.11.0.jar` 字节含 `m_153165_`，不含错误 SRG
+
+CI 以 GitHub Checks 为准。雨寂都市客户端窗口超时、重力 `hostileHoversThenFallsOutsideCylinder` 悬停高度若偶发失败，与本轮白门/栖息地/PendingClose 路径无直接调用关系，以重跑后的 HEAD 检查为准。
