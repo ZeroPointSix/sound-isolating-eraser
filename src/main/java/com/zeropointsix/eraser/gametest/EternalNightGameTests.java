@@ -298,11 +298,18 @@ public final class EternalNightGameTests {
     public static void cityGeneratedContainersAreLazyAndNeverRefill(GameTestHelper h) {
         isolate(h.getLevel());
         ServerLevel city = h.getLevel().getServer().getLevel(EternalNightContent.LEVEL);
-        int bx = 64;
-        while (Math.floorMod(CityLayout.hash(city.getSeed(), bx, 0), 4) != 0) bx++;
+        int bx = -1, bz = -1;
+        for (int i = 0; i < 400 && bx < 0; i++) {
+            int x = i % 20, z = i / 20;
+            if (CityTemplates.largeCivic(city.getSeed(), x, z) != null) {
+                bx = x;
+                bz = z;
+            }
+        }
+        h.assertTrue(bx >= 0, "sampled a commercial 3x3 civic overlay to inspect loot");
         var containers = new java.util.ArrayList<net.minecraft.world.level.block.entity.RandomizableContainerBlockEntity>();
         for (int dx = 1; dx <= 2; dx++) for (int dz = 1; dz <= 2; dz++) {
-            var chunk = city.getChunk(bx * 4 + dx, dz);
+            var chunk = city.getChunk(bx * 4 + dx, bz * 4 + dz);
             for (BlockPos pos : chunk.getBlockEntitiesPos()) {
                 var entity = city.getBlockEntity(pos);
                 if (entity instanceof net.minecraft.world.level.block.entity.RandomizableContainerBlockEntity container)
@@ -310,7 +317,7 @@ public final class EternalNightGameTests {
             }
         }
         h.assertTrue(containers.size() >= 1 && containers.size() <= 4,
-                "one generated large building has 1..4 containers across its four chunks; got " + containers.size());
+                "one commercial civic overlay has 1..4 containers across its four chunks; got " + containers.size());
         for (var container : containers) {
             CompoundTag before = container.saveWithFullMetadata();
             try {
