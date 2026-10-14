@@ -27,7 +27,7 @@ public final class CityExitNetwork {
     }
 
     public static void sync(ServerLevel level) {
-        var exits = CitySavedData.get(level).activeExits(level.getGameTime()).keySet();
+        var exits = CitySavedData.get(level).activeExits(level, level.getGameTime()).keySet();
         for (var player : level.players()) {
             List<BlockPos> nearby = exits.stream().map(BlockPos::of)
                     .filter(pos -> pos.distToCenterSqr(player.position()) <= 64 * 64).limit(256).toList();

@@ -76,23 +76,46 @@ public final class NightEvents {
             return;
         }
         ServerLevel level = player.serverLevel();
-        Vec3 previous = PREVIOUS_POSITION.put(player.getUUID(), player.position());
-        if (previous != null && previous.distanceToSqr(player.position()) < 16) {
-            for (long packed : CitySavedData.get(level).activeExits(level.getGameTime()).keySet()) {
-                BlockPos pos = BlockPos.of(packed);
-                if (pos.distToCenterSqr(player.position()) > 25 || !level.hasChunkAt(pos)) continue;
-                BlockState state = level.getBlockState(pos);
-                if (!(state.getBlock() instanceof DoorBlock) || !state.getValue(DoorBlock.OPEN)) continue;
-                if (crossedDoor(previous, player.position(), pos, state.getValue(DoorBlock.FACING))
-                        || player.getBoundingBox().intersects(new AABB(pos.getX(), pos.getY(), pos.getZ(),
-                                pos.getX() + 1, pos.getY() + 2, pos.getZ() + 1).inflate(0.05, 0, 0.05))) {
-                    // The connection tick restores its pre-player-tick position.
-                    // Transfer after that tick so it cannot overwrite the home coordinates.
-                    PENDING_RETURNS.add(player.getUUID());
-                    break;
-                }
+        Vec3 current = player.position();
+        Vec3 previous = PREVIOUS_POSITION.put(player.getUUID(), current);
+        considerReturn(player, level, previous, current, player.getBoundingBox());
+    }
+
+    /**
+     * Shared-exit return is based on the white plane volume and the movement
+     * segment, not on the leaf staying open. Closed leaves, lag spikes longer
+     * than four blocks, and standing inside the doorway all still send the
+     * visitor home while the SavedData window is active.
+     */
+    public static void considerReturn(ServerPlayer player, ServerLevel level, Vec3 previous, Vec3 current, AABB box) {
+        if (PENDING_RETURNS.contains(player.getUUID()) || !player.isAlive()) return;
+        for (long packed : CitySavedData.get(level).activeExits(level, level.getGameTime()).keySet()) {
+            BlockPos pos = BlockPos.of(packed);
+            if (!level.hasChunkAt(pos)) continue;
+            if (throughExit(previous, current, box, pos, exitFacing(level, pos))) {
+                // Connection.tick restores pre-doTick coordinates; teleport after that.
+                PENDING_RETURNS.add(player.getUUID());
+                return;
             }
         }
+    }
+
+    static Direction exitFacing(ServerLevel level, BlockPos pos) {
+        BlockState state = level.getBlockState(pos);
+        return state.getBlock() instanceof DoorBlock ? state.getValue(DoorBlock.FACING) : Direction.NORTH;
+    }
+
+    public static AABB exitVolume(BlockPos lower) {
+        return new AABB(lower.getX(), lower.getY(), lower.getZ(),
+                lower.getX() + 1, lower.getY() + 2, lower.getZ() + 1).inflate(0.15, 0.05, 0.15);
+    }
+
+    public static boolean throughExit(Vec3 previous, Vec3 current, AABB box, BlockPos lower, Direction facing) {
+        AABB volume = exitVolume(lower);
+        if (box != null && box.intersects(volume)) return true;
+        if (previous == null || current == null) return false;
+        if (volume.clip(previous, current).isPresent()) return true;
+        return crossedDoor(previous, current, lower, facing);
     }
 
     public static boolean crossedDoor(Vec3 previous, Vec3 current, BlockPos lower, Direction facing) {
@@ -265,16 +288,37 @@ public final class NightEvents {
         CityEntryQueue.clear();
     }
     @SubscribeEvent public static void serverStopped(net.minecraftforge.event.server.ServerStoppedEvent event) {
-        SLEEP.clear(); PREVIOUS_POSITION.clear(); CityDoorActions.clear();
+        clearTransientState();
+    }
+
+    /** Drops in-memory visit/sleep/exit state so GameTests cannot leak across cases. */
+    public static void clearTransientState() {
+        SLEEP.clear();
+        PREVIOUS_POSITION.clear();
         PENDING_RETURNS.clear();
+        CityDoorActions.clear();
+        CityEntryQueue.clear();
     }
 
     @SubscribeEvent public static void serverTick(TickEvent.ServerTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
-        CityEntryQueue.tick(event.getServer());
+        var server = event.getServer();
+        CityEntryQueue.tick(server);
+        // Backup scan: embedded GameTest channels and awaitingTeleport skips can
+        // omit PlayerTickEvent, so also inspect city visitors here.
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            if (!EternalNightContent.isCity(player.level())) continue;
+            Vec3 current = player.position();
+            Vec3 previous = PREVIOUS_POSITION.get(player.getUUID());
+            considerReturn(player, player.serverLevel(), previous, current, player.getBoundingBox());
+        }
+        flushReturns(server);
+    }
+
+    public static void flushReturns(net.minecraft.server.MinecraftServer server) {
         for (UUID id : Set.copyOf(PENDING_RETURNS)) {
             PENDING_RETURNS.remove(id);
-            ServerPlayer player = event.getServer().getPlayerList().getPlayer(id);
+            ServerPlayer player = server.getPlayerList().getPlayer(id);
             if (player != null && player.isAlive() && EternalNightContent.isCity(player.level())) {
                 returnHome(player);
             }
@@ -286,7 +330,7 @@ public final class NightEvents {
                 || !EternalNightContent.isCity(level)) return;
         if (level.getGameTime() % 20 == 0) {
             CityExitNetwork.sync(level);
-            for (long packed : CitySavedData.get(level).activeExits(level.getGameTime()).keySet()) {
+            for (long packed : CitySavedData.get(level).activeExits(level, level.getGameTime()).keySet()) {
                 BlockPos pos = BlockPos.of(packed);
                 if (!level.hasChunkAt(pos)) continue;
                 level.sendParticles(ParticleTypes.END_ROD, pos.getX() + 0.5, pos.getY() + 1, pos.getZ() + 0.5,

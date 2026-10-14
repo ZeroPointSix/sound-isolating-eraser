@@ -50,9 +50,11 @@ public final class CityClientRuntime {
         buffer.begin(com.mojang.blaze3d.vertex.VertexFormat.Mode.QUADS, com.mojang.blaze3d.vertex.DefaultVertexFormat.POSITION_COLOR);
         for (var pos : exits) {
             var state = client.level.getBlockState(pos);
-            if (!(state.getBlock() instanceof net.minecraft.world.level.block.DoorBlock)
-                    || !state.getValue(net.minecraft.world.level.block.DoorBlock.OPEN)) continue;
-            var facing = state.getValue(net.minecraft.world.level.block.DoorBlock.FACING);
+            // Snapshot membership is the authority; draw the white plane even if the
+            // leaf was forced shut so walking into the visible exit still matches the server.
+            var facing = state.getBlock() instanceof net.minecraft.world.level.block.DoorBlock
+                    ? state.getValue(net.minecraft.world.level.block.DoorBlock.FACING)
+                    : net.minecraft.core.Direction.NORTH;
             float dx = facing.getStepZ() * 0.48F, dz = -facing.getStepX() * 0.48F;
             float x = pos.getX() + 0.5F, y = pos.getY(), z = pos.getZ() + 0.5F;
             buffer.vertex(matrix, x - dx, y, z - dz).color(255, 255, 255, 240).endVertex();

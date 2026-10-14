@@ -1,0 +1,40 @@
+# 永夜都市 v0.1 功能验收清单
+
+对照 Notion v0-1（<https://app.notion.com/p/v0-1-3f6463aed7e6818db813c2b77fbdc21a>）与仓库实现。本文件是 2026-10-14 续做（白门回程 + GameTest 隔离）的验收记录，不是独立 Review。
+
+- 实现基线：main 已含已合并的 [PR #20](https://github.com/ZeroPointSix/sound-isolating-eraser/pull/20)（merge HEAD `ac2c157`）。
+- 续做分支：`cursor/eternal-night-white-door-d4dc`（PR #20 已关闭，不能再更新 Draft #20）。
+- 原包：`eternal_night_city_kit.zip` 2,759,557 字节，SHA-256 `9dab6be385742ebc8a1e7c2d371db5f8b5ef6b40a1062ee376ae99f915455d24`。
+- Notion 原文：本轮 Maton 集成对该页返回 `object_not_found`（页面未共享给 Maton）。验收句来自仓库 `docs/eternal-night-v0.1.md` 中已回源摘录的对照表，以及原 Slack 线程里多次核对过的同一套条款。
+
+判定：PASS = 代码路径 + 本轮或既有可复现测试；FAIL = 实现不符且本轮可修却未修；blocked = 缺授权资源或产品原文含糊。
+
+| 需求 | 判定 | 证据 |
+| --- | --- | --- |
+| 入城公式 `min(0.02+0.08*floor(t/24000), 0.5)`，合法深睡只抽一次 | PASS | `NightRules.entryProbability`；`cityDeepSleepAndReturnPreservePlayer`；既有双客户端深睡入城 |
+| 同夜同一区域、安全街道 | PASS | `CityEntryQueue` 用主世界日数哈希中心；`safeStreet` 31×31 / 无怪 / 固体地面 |
+| 木门计数、上下半归一、重复不重抽；铁门仅按钮/拉杆 | PASS | `cityRealPlayerDoorInteractions` |
+| 每新门 1% 出口 | PASS | `NightRules.Doors.open` 的 `lucky` 分支；`cityDoorHistoryNbtAndPity` 失败骰不提前出门 |
+| 100 门保底 | blocked（产品语义） | Notion/台账原文是「100门保底」，没有写「仅第 100 扇」或「第 101 扇起仍保底」。实现是 `count >= guarantee`。本轮**不改代码**。建议后续若产品定为 pity，则改 `==` 并加第 101 门断言 |
+| 共享出口 300s SavedData，穿过回床 | PASS（本轮加锁） | `CitySavedData` Until；`cityWalkingThroughSharedExitReturnsHome`：开叶穿越、关叶仍传、>4 格滞后跳跃仍传、过期不传；窗口内不可关 + 过期自动关见 `cityExitDoorStaysOpenUntilExpiry` |
+| 死亡清史、不改原版掉落 | PASS | `cityDeathDropsAndRespawnsAtOwnBed` |
+| 分区 55/15/30、地铁、无洞穴 | PASS | `CityLayout` / `cityGeneratedSubwayAndShaftConnect` |
+| 怪物配比与原版禁令 | PASS | `CitySpawns`；`cityEventInterceptionCoversSpec`；`cityMissingShadowNeverUsesRegistryDefault`（PR #18 按指示跳过） |
+| 白面 / 粒子 / 低沉音效 | PASS（代码+既有 e2e） | `CityClientRuntime` 白面；`END_ROD` + `BEACON_AMBIENT`；既有 native 白像素对照。本轮未重跑双客户端 e2e 则不把听觉当新证据 |
+| 事件拦截（床/锚/生长/传送门/原版怪） | PASS | `cityEventInterceptionCoversSpec` |
+| 美术授权范围 | blocked（缺包） | 原包仅 `curse_glyph_0..3`，无 32 字形；无医院/警局/消防专用模板（`yuji/buildings/hospital.nbt` 属于雨寂佛都，禁止挪用）。`CityTemplates.available` 现校验 37 个已授权结构 |
+| R-1 同夜刷床再抽 | blocked（无明文） | 未改行为 |
+| R-2 旁观者穿门 | blocked（无明文） | 未改行为 |
+
+## 本轮代码改动
+
+1. **回程传送**：不再要求门叶 OPEN，也不再丢弃位移 ≥4 格的包。占用门洞体积、线段 clip、原 sign-flip 任一成立即排队 `returnHome`；服务端 tick 补扫访客，避免嵌入连接漏 `PlayerTickEvent`。
+2. **窗口门锁**：`CityDoorMixin` 拦截 `use` / `neighborChanged` / `setOpen` 的关门；过期 `activeExits(level, now)` 关叶反馈。
+3. **隔离**：每个 eternal_night 用例开头 `isolate()`：配置默认值、清空 `CitySavedData`、入口队列和 NightEvents 瞬态。
+
+## 命令
+
+```bash
+./gradlew --no-daemon -PnightOnly runGameTestServer
+python3 tools/night-e2e.py   # 有显示/客户端 classpath 时
+```

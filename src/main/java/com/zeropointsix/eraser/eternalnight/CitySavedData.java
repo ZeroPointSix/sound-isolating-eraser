@@ -5,6 +5,8 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.block.DoorBlock;
+import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
 import net.minecraft.world.level.saveddata.SavedData;
 
 import java.util.HashMap;
@@ -44,8 +46,36 @@ public final class CitySavedData extends SavedData {
     }
 
     public Map<Long, Long> activeExits(long now) {
-        if (exits.values().removeIf(until -> until <= now)) setDirty();
+        return activeExits(null, now);
+    }
+
+    /**
+     * Drops exits whose window ended. When a level is supplied the expired door
+     * is closed so players can see the shared exit disappear instead of walking
+     * through an open leaf that no longer teleports.
+     */
+    public Map<Long, Long> activeExits(ServerLevel level, long now) {
+        boolean[] removed = {false};
+        exits.entrySet().removeIf(entry -> {
+            if (entry.getValue() > now) return false;
+            removed[0] = true;
+            if (level != null) closeExpiredDoor(level, BlockPos.of(entry.getKey()));
+            return true;
+        });
+        if (removed[0]) setDirty();
         return Map.copyOf(exits);
+    }
+
+    private static void closeExpiredDoor(ServerLevel level, BlockPos pos) {
+        if (!level.isLoaded(pos)) return;
+        var state = level.getBlockState(pos);
+        if (!(state.getBlock() instanceof DoorBlock) || !state.getValue(DoorBlock.OPEN)) return;
+        level.setBlock(pos, state.setValue(DoorBlock.OPEN, false), 3);
+        BlockPos up = pos.above();
+        var upper = level.getBlockState(up);
+        if (upper.getBlock() == state.getBlock() && upper.hasProperty(DoorBlock.HALF)
+                && upper.getValue(DoorBlock.HALF) == DoubleBlockHalf.UPPER)
+            level.setBlock(up, upper.setValue(DoorBlock.OPEN, false), 3);
     }
 
     public boolean reserveBoss(long region, UUID uuid) {

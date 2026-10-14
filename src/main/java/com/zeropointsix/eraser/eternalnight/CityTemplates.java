@@ -20,10 +20,23 @@ public final class CityTemplates {
     public static final List<String> BUILDINGS = List.of("res_apartment_low", "res_apartment_mid", "res_apartment_high",
             "res_tenement", "office_dark", "office_tower", "shop_neon", "warehouse", "mall", "civic_center", "townhall", "library");
 
+    /** Every structure template the generator may place, per the supplied art pack. */
+    public static final List<String> STRUCTURES = List.of(
+            "buildings/res_apartment_low", "buildings/res_apartment_mid", "buildings/res_apartment_high",
+            "buildings/res_tenement", "buildings/office_dark", "buildings/office_tower", "buildings/shop_neon",
+            "buildings/warehouse", "buildings/mall", "buildings/civic_center", "buildings/townhall", "buildings/library",
+            "plazas/plaza_fountain", "plazas/plaza_fountain_com", "plazas/plaza_parking", "plazas/plaza_station",
+            "streets/street_bend_com", "streets/street_bend_res", "streets/street_cross_com", "streets/street_cross_res",
+            "streets/street_end_com", "streets/street_end_res", "streets/street_straight_com",
+            "streets/street_straight_ns_com", "streets/street_straight_ns_res", "streets/street_straight_res",
+            "streets/street_t_com", "streets/street_t_res",
+            "subway/station_entrance", "subway/station_platform", "subway/station_platform_stairs",
+            "subway/station_shaft", "subway/tunnel_bend", "subway/tunnel_split", "subway/tunnel_straight");
+
     private CityTemplates() { }
     public static ResourceLocation id(String path) { return new ResourceLocation("qihai", path); }
     public static boolean available(ServerLevel level) {
-        return BUILDINGS.stream().allMatch(name -> level.getStructureManager().get(id("buildings/" + name)).isPresent());
+        return STRUCTURES.stream().allMatch(name -> level.getStructureManager().get(id(name)).isPresent());
     }
 
     public static void place(WorldGenRegion region, ChunkAccess chunk) {
