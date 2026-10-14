@@ -71,18 +71,24 @@ public final class CityBuildingAccess {
         doors.removeIf(info -> !info.state().hasProperty(DoorBlock.HALF)
                 || info.state().getValue(DoorBlock.HALF) != DoubleBlockHalf.LOWER);
         doors.sort(Comparator.comparingInt(info -> info.pos().getY()));
-        Approach street = null, any = null;
+        Approach preferred = null;
+        int best = Integer.MAX_VALUE;
         for (var info : doors) {
             if (!(city.getBlockState(info.pos()).getBlock() instanceof DoorBlock)) continue;
             Direction outward = info.state().getValue(DoorBlock.FACING);
             Approach found = approachFrom(city, info.pos(), outward);
             if (found == null) found = approachFrom(city, info.pos(), outward.getOpposite());
             if (found == null) continue;
-            if (CityLayout.street(found.feet().getX(), found.feet().getZ())) {
-                if (street == null) street = found;
-            } else if (any == null) any = found;
+            int dy = found.feet().getY() - info.pos().getY();
+            // Standing above the door walks into the facade; native 0/12 used that path.
+            if (dy > 0) continue;
+            int score = Math.abs(dy) * 10 + (CityLayout.street(found.feet().getX(), found.feet().getZ()) ? 1 : 0);
+            if (score < best) {
+                best = score;
+                preferred = found;
+            }
         }
-        return Optional.ofNullable(street != null ? street : any);
+        return Optional.ofNullable(preferred);
     }
 
     public static void openDoor(ServerLevel city, BlockPos door) {
@@ -171,7 +177,7 @@ public final class CityBuildingAccess {
                 int height = city.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, column.getX(), column.getZ());
                 ground = standY(city, column.getX(), column.getZ(), height);
             }
-            if (ground == Integer.MIN_VALUE) continue;
+            if (ground == Integer.MIN_VALUE || ground > door.getY()) continue;
             BlockPos feet = new BlockPos(column.getX(), ground, column.getZ());
             AABB body = new AABB(feet.getX() + .2, feet.getY(), feet.getZ() + .2,
                     feet.getX() + .8, feet.getY() + 1.8, feet.getZ() + .8);
