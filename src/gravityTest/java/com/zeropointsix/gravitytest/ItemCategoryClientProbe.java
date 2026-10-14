@@ -22,6 +22,7 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.lwjgl.glfw.GLFW;
+import org.lwjgl.glfw.GLFWNativeX11;
 
 /** Observes native inventory hover rendering, never synthesizes a tooltip. */
 @Mod.EventBusSubscriber(modid = "gravity_qa", value = Dist.CLIENT)
@@ -39,6 +40,8 @@ public final class ItemCategoryClientProbe {
     private static int expectedColor;
     private static int renderedTooltips;
     private static long readyFrame;
+    private static long hoverStarted;
+    private static boolean mouseMoved;
     private static String observedText;
     private static Throwable renderFailure;
     private static boolean finished;
@@ -90,9 +93,24 @@ public final class ItemCategoryClientProbe {
                     ? (language.equals("zh_cn") ? "\u5947\u7269" : "Curio")
                     : (language.equals("zh_cn") ? "\u9053\u5177" : "Tool"));
             expectedColor = qiwu ? 0xFFAA00 : 0x8FAAC4;
-            openAndHover(mc);
+            screen = new InventoryScreen(mc.player);
+            mc.setScreen(screen);
             renderedTooltips = 0;
             observedText = null;
+            mouseMoved = false;
+            hoverStarted = System.nanoTime();
+            readyFrame = frames + 2;
+            return false;
+        }
+        if (System.nanoTime() - hoverStarted > 45_000_000_000L) {
+            throw new AssertionError("Native hover timeout: phase=" + PHASES[phase] + " sample=" + sample
+                    + " item=" + ForgeRegistries.ITEMS.getKey(expectedItem) + " rendered=" + renderedTooltips
+                    + " mouse=" + mc.mouseHandler.xpos() + "," + mc.mouseHandler.ypos()
+                    + " hovered=" + (screen.getSlotUnderMouse() == null ? "none" : screen.getSlotUnderMouse().getItem()));
+        }
+        if (!mouseMoved && frames >= readyFrame) {
+            moveMouse(mc);
+            mouseMoved = true;
             readyFrame = frames + 4;
             return false;
         }
@@ -154,16 +172,18 @@ public final class ItemCategoryClientProbe {
         return true;
     }
 
-    private static void openAndHover(Minecraft mc) throws Exception {
-        screen = new InventoryScreen(mc.player);
-        mc.setScreen(screen);
+    private static void moveMouse(Minecraft mc) throws Exception {
         var slot = screen.getMenu().slots.stream().filter(candidate -> candidate.getItem().is(expectedItem))
                 .findFirst().orElseThrow(() -> new AssertionError("Item missing from server-supplied inventory"));
         var window = mc.getWindow();
         GLFW.glfwFocusWindow(window.getWindow());
-        GLFW.glfwSetCursorPos(window.getWindow(),
-                (screen.getGuiLeft() + slot.x + 8) * (double) window.getScreenWidth() / window.getGuiScaledWidth(),
-                (screen.getGuiTop() + slot.y + 8) * (double) window.getScreenHeight() / window.getGuiScaledHeight());
+        int x = (screen.getGuiLeft() + slot.x + 8) * window.getScreenWidth() / window.getGuiScaledWidth();
+        int y = (screen.getGuiTop() + slot.y + 8) * window.getScreenHeight() / window.getGuiScaledHeight();
+        // Let screen-opening cursor resets settle, then deliver a real X11 motion event.
+        Process input = new ProcessBuilder("xdotool", "mousemove", "--sync", "--window",
+                Long.toString(GLFWNativeX11.glfwGetX11Window(window.getWindow())),
+                Integer.toString(x), Integer.toString(y)).inheritIO().start();
+        require(input.waitFor() == 0, "native mouse motion succeeds");
     }
 
     private static void require(boolean condition, String message) {
