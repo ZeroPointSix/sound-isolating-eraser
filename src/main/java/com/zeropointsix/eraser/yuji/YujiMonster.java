@@ -110,11 +110,18 @@ public final class YujiMonster extends Monster implements GeoEntity {
         }
 
         @Override protected void followThePath() {
-            // Fractional layer widths can round vanilla's arrival box away from its own movement target.
-            // Consume an exactly reached waypoint before the normal collision-aware path follower runs.
-            if (path != null && !path.isDone() && mob.position().equals(path.getNextEntityPos(mob))) {
-                path.advance();
-                if (path.isDone()) return;
+            if (path != null && !path.isDone()) {
+                // Use Path's width-rounded movement target with vanilla's unchanged arrival radius.
+                Vec3 target = path.getNextEntityPos(mob);
+                float width = mob.getBbWidth();
+                maxDistanceToWaypoint = width > .75F ? width / 2 : .75F - width / 2;
+                if (Math.abs(mob.getX() - target.x) <= maxDistanceToWaypoint
+                        && Math.abs(mob.getZ() - target.z) <= maxDistanceToWaypoint
+                        && Math.abs(mob.getY() - target.y) < 1) {
+                    path.advance();
+                    doStuckDetection(getTempMobPos());
+                    return;
+                }
             }
             super.followThePath();
         }
@@ -544,7 +551,11 @@ public final class YujiMonster extends Monster implements GeoEntity {
         if (kind == YujiKind.TANYU) setLayers(tag.contains("YujiLayers") ? tag.getInt("YujiLayers") : 2, false);
         super.readAdditionalSaveData(tag);
         setWhiteRobe(tag.getBoolean("YujiWhiteRobe"));
-        if (kind == YujiKind.TANYU && !tag.contains("Health")) setHealth(getMaxHealth());
+        if (kind == YujiKind.TANYU) {
+            // Vanilla restores saved attribute bases after the configured layer cap was applied.
+            setLayers(layers(), false);
+            if (!tag.contains("Health")) setHealth(getMaxHealth());
+        }
         fleeTicks = Mth.clamp(tag.getInt("YujiFlee"), 0, 200); followTicks = Mth.clamp(tag.getInt("YujiFollow"), 0, 1000);
         grudge = tag.hasUUID("YujiGrudge") ? tag.getUUID("YujiGrudge") : null;
         summoner = tag.hasUUID("YujiSummoner") ? tag.getUUID("YujiSummoner") : null;

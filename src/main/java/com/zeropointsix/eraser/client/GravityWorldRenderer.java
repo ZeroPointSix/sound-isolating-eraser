@@ -19,6 +19,8 @@ public final class GravityWorldRenderer {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.level == null) return;
         boolean equipped = GravityEquipment.isEquipped(mc.player);
+        if (GravityFieldIndex.fields().isEmpty()
+                && (!equipped || GravitySense.targets().isEmpty())) return;
         Vec3 camera = event.getCamera().getPosition();
         var buffers = mc.renderBuffers().bufferSource();
         float[] color = RenderSystem.getShaderColor().clone();
@@ -26,8 +28,11 @@ public final class GravityWorldRenderer {
         pose.pushPose();
         pose.translate(-camera.x, -camera.y, -camera.z);
         try {
-            for (Entity entity : mc.level.entitiesForRendering()) {
-                if (entity instanceof GravityFieldEntity field && !field.isRemoved()
+            // Public fields must not depend on the viewer wearing the pendant or on the
+            // logical entity's 0.1-block physical size used by vanilla distance culling.
+            for (GravityFieldEntity field : GravityFieldIndex.fields()) {
+                if (field.level() == mc.level && !field.isRemoved()
+                        && mc.level.getEntity(field.getId()) == field
                         && event.getFrustum().isVisible(field.fieldBounds())) {
                     cylinder(pose, buffers.getBuffer(GravityRenderTypes.LINES), field);
                 }

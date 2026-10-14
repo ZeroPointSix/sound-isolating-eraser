@@ -3,9 +3,7 @@ package com.zeropointsix.eraser.brickrot;
 import com.zeropointsix.eraser.ModMain;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
-import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.Item;
-import net.minecraftforge.event.BuildCreativeModeTabContentsEvent;
 import net.minecraftforge.event.entity.EntityAttributeCreationEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.registries.DeferredRegister;
@@ -30,14 +28,10 @@ public final class BrickrotContent {
         ENTITIES.register(bus);
         ITEMS.register(bus);
         bus.addListener(BrickrotContent::attributes);
-        bus.addListener(BrickrotContent::creative);
     }
 
     private static void attributes(EntityAttributeCreationEvent event) {
         event.put(WALL.get(), BrickrotWallEntity.attributes().build());
     }
 
-    private static void creative(BuildCreativeModeTabContentsEvent event) {
-        if (event.getTabKey() == CreativeModeTabs.SPAWN_EGGS) event.accept(EGG.get());
-    }
 }

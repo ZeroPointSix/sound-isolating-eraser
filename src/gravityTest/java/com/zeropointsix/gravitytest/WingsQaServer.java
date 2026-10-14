@@ -54,6 +54,12 @@ public final class WingsQaServer {
     private static boolean chargeMeasured, chargedBlinkChecked, controlsDone;
     private static boolean awaitCharge;
     private static boolean tracingVoid;
+    private static long networkSpeedFlag, networkWallHit;
+    private static float networkHealth;
+    private static String networkScenario = "";
+    private static double networkPreviousX, networkMaxStep;
+    private static final java.util.List<String> NETWORK_OBSERVATIONS = new java.util.ArrayList<>();
+    private static final java.util.List<String> NETWORK_TRACE = new java.util.ArrayList<>();
 
     @SubscribeEvent
     public static void registerCommands(RegisterCommandsEvent event) {
@@ -104,6 +110,23 @@ public final class WingsQaServer {
             return;
         }
         try {
+            if (Boolean.getBoolean("wings.qa.motionOnly")) {
+                WingsMotionQaServer.tick(server, results());
+                return;
+            }
+            if (!networkScenario.isEmpty() && wearerRef != null) {
+                networkMaxStep = Math.max(networkMaxStep, Math.abs(wearerRef.getX() - networkPreviousX));
+                if (NETWORK_TRACE.size() < 6000) {
+                    NETWORK_TRACE.add("{\"scenario\":\"" + networkScenario + "\",\"tick\":"
+                            + wearerRef.level().getGameTime() + ",\"x\":" + wearerRef.getX()
+                            + ",\"y\":" + wearerRef.getY() + ",\"z\":" + wearerRef.getZ()
+                            + ",\"dx\":" + (wearerRef.getX() - networkPreviousX)
+                            + ",\"health\":" + wearerRef.getHealth()
+                            + ",\"speedFlag\":" + WingsState.speedFlagAt(wearerRef)
+                            + ",\"wallHit\":" + WingsState.wallHitAt(wearerRef) + "}");
+                }
+                networkPreviousX = wearerRef.getX();
+            }
             // Server-side asserts run on phase commands from the clients, not on
             // tick positions — llvmpipe clients tick slower than the server.
             if (awaitCharge && wearerRef != null && WingsState.charged(wearerRef)) {
@@ -215,15 +238,90 @@ public final class WingsQaServer {
         }
     }
 
-    private static int changePhase(CommandSourceStack source, String next) {
+    private static int changePhase(CommandSourceStack source, String next) throws Exception {
         MinecraftServer server = source.getServer();
         if (!ready) {
             source.sendFailure(Component.literal("WINGS_QA_NOT_READY"));
             return 0;
         }
+        if (Boolean.getBoolean("wings.qa.motionOnly")) {
+            WingsMotionQaServer.phase(source, next, results());
+            return 1;
+        }
         switch (next) {
+            case "visualSetup" -> {
+                controlFixture(server, wearerRef, 240);
+                FlightEvents.serverSetDeployed(wearerRef, false);
+            }
+            case "netCruise", "netHover", "netRepeat" -> {
+                int scenario = next.equals("netCruise") ? 0 : next.equals("netHover") ? 1 : 2;
+                ServerLevel level = server.overworld();
+                int z = scenario * 32;
+                int wallX = scenario == 0 ? 30 : 60;
+                if (scenario != 1) {
+                    for (BlockPos pos : BlockPos.betweenClosed(wallX, 197, z - 4, wallX, 205, z + 4)) {
+                        level.setBlockAndUpdate(pos, Blocks.STONE.defaultBlockState());
+                    }
+                }
+                controlFixture(server, wearerRef, 200);
+                wearerRef.teleportTo(level, 0.5, 200, z + 0.5, -90, 0);
+                FlightEvents.markTeleported(wearerRef);
+                wearerRef.setHealth(wearerRef.getMaxHealth());
+                wearerRef.invulnerableTime = 0;
+                wearerRef.clearFire();
+                wearerRef.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
+                WingsState.setTier(wearerRef, scenario == 0 ? WingsState.CRUISE : WingsState.STORM);
+                WingsState.setChargedUntil(wearerRef, level.getGameTime() + 1200);
+                networkSpeedFlag = WingsState.speedFlagAt(wearerRef);
+                networkWallHit = WingsState.wallHitAt(wearerRef);
+                networkHealth = wearerRef.getHealth();
+                networkScenario = next;
+                networkPreviousX = wearerRef.getX();
+                networkMaxStep = 0;
+                com.zeropointsix.eraser.wings.net.WingsNet.syncToTracking(wearerRef);
+            }
+            case "netCruiseCheck", "netHoverCheck", "netRepeatCheck" -> {
+                boolean repeat = next.equals("netRepeatCheck");
+                // Preserve observations even when the subsequent acceptance assertion fails.
+                NETWORK_OBSERVATIONS.add("{\"scenario\":\"" + next + "\",\"serverTick\":" + wearerRef.level().getGameTime()
+                        + ",\"x\":" + wearerRef.getX() + ",\"y\":" + wearerRef.getY()
+                        + ",\"beforeHealth\":" + networkHealth
+                        + ",\"afterHealth\":" + wearerRef.getHealth() + ",\"beforeSpeedFlag\":" + networkSpeedFlag
+                        + ",\"afterSpeedFlag\":" + WingsState.speedFlagAt(wearerRef)
+                        + ",\"largestServerTickDisplacement\":" + networkMaxStep
+                        + ",\"beforeWallHit\":" + networkWallHit + ",\"afterWallHit\":" + WingsState.wallHitAt(wearerRef) + "}");
+                Files.writeString(results().resolve("wings-network-server.json"), "[\n"
+                        + String.join(",\n", NETWORK_OBSERVATIONS) + "\n]\n");
+                Files.writeString(results().resolve("wings-network-trace.json"), "[\n"
+                        + String.join(",\n", NETWORK_TRACE) + "\n]\n");
+                check(WingsState.speedFlagAt(wearerRef) == networkSpeedFlag,
+                        next + " actual delayed movement did not trigger speed rollback");
+                if (next.equals("netHoverCheck")) {
+                    check(WingsState.tier(wearerRef) == WingsState.HOVER && wearerRef.getX() > 10,
+                            "real STORM motion settles before delayed HOVER and safely decelerates");
+                } else {
+                    double wallX = repeat ? 60 : 30;
+                    check(wearerRef.getX() >= wallX - 1.5 && wearerRef.getX() < wallX,
+                            next + " real client reached the collision wall: " + wearerRef.position());
+                }
+                if (next.equals("netCruiseCheck")) {
+                    check(networkMaxStep > 2.0,
+                            "server actually observed batched CRUISE displacement >2 blocks in one tick: " + networkMaxStep);
+                }
+                if (repeat) {
+                    check(WingsState.wallHitAt(wearerRef) > networkWallHit && wearerRef.getHealth() < networkHealth,
+                            "repeated real deploy packets preserve actual STORM collision health damage");
+                } else {
+                    check(WingsState.wallHitAt(wearerRef) == networkWallHit && wearerRef.getHealth() == networkHealth,
+                            next + " no false wall damage from batched CRUISE or HOVER transition");
+                }
+                networkScenario = "";
+                if (repeat) Files.writeString(results().resolve("wings-network-server.pass"),
+                        "PASS real connected survival player: batched CRUISE wall, STORM-to-HOVER, repeated deploy collision health damage\n");
+            }
             case "controlsSetup", "inputSetup" -> {
-                controlFixture(server, wearerRef, next.equals("inputSetup") ? 200 : 100);
+                // Leave descent room while keeping blink destinations inside build height.
+                controlFixture(server, wearerRef, next.equals("inputSetup") ? 300 : 100);
                 WingsState.setTier(wearerRef, WingsState.CRUISE);
                 com.zeropointsix.eraser.wings.net.WingsNet.syncToTracking(wearerRef);
             }
@@ -508,6 +606,10 @@ public final class WingsQaServer {
         if (stopAt >= 0) return 1;
         if (!SHOWCASE && !controlsDone) {
             fail(server, "WINGS_CONTROLS_NOT_VERIFIED");
+            return 0;
+        }
+        if (!SHOWCASE && !Files.exists(results().resolve("wings-network-server.pass"))) {
+            fail(server, "WINGS_IMPAIRED_NETWORK_NOT_VERIFIED");
             return 0;
         }
         LOGGER.info("WINGS_QA_SERVER_FINISHED");

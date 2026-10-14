@@ -177,6 +177,8 @@ public final class WingsBlinkGameTests {
             }
             h.assertTrue(relativeWall != null,
                     "fixture must align the collision entry with the shared sweep endpoint");
+            // The server moved the fixture to align its body, not via a client movement packet.
+            FlightEvents.markTeleported(p);
             h.setBlock(relativeWall, Blocks.STONE);
             Vec3 before = p.position();
             FlightEvents.serverBlink(p);
@@ -260,6 +262,7 @@ public final class WingsBlinkGameTests {
             BlinkPlayer p = player(h, new Vec3(2.5, 3, 2.5));
             BlockPos wall = h.absolutePos(new BlockPos(2, 3, 3));
             p.setPos(p.getX(), p.getY(), wall.getZ() - p.getBbWidth() / 2.0);
+            FlightEvents.markTeleported(p);
             h.setBlock(new BlockPos(2, 3, 3), Blocks.STONE);
             h.setBlock(new BlockPos(2, 4, 3), Blocks.STONE);
             assertRejected(h, p);
@@ -341,10 +344,32 @@ public final class WingsBlinkGameTests {
         try (var saved = config()) {
             BlinkPlayer p = player(h, new Vec3(2.5, 3, 2.5));
             p.setPos(1000000.5, 100, 1000000.5);
+            // Establish an authorized origin without loading or ticketing the remote chunk.
+            FlightEvents.markTeleported(p);
             BlockPos destination = BlockPos.containing(p.position().add(p.getLookAngle().scale(4)));
             h.assertTrue(!h.getLevel().hasChunkAt(destination), "test destination must start unloaded");
             assertRejected(h, p);
             h.assertTrue(!h.getLevel().hasChunkAt(destination), "rejected blink must not load the chunk");
+            h.succeed();
+        }
+    }
+
+    @GameTest(template = "empty", timeoutTicks = 40)
+    public static void blinkUnauthorizedPositionCannotBypassMovementSettlement(GameTestHelper h) {
+        try (var saved = config()) {
+            BlinkPlayer p = player(h, new Vec3(2.5, 3, 2.5));
+            Vec3 accepted = p.position();
+            Vec3 direction = p.getLookAngle();
+            Vec3 expected = accepted.add(direction.scale(4));
+            // Deliberately do not mark this move: it represents unchecked client displacement.
+            p.setPos(accepted.add(direction.scale(30)));
+            FlightEvents.serverBlink(p);
+            h.assertTrue(WingsState.speedFlagAt(p) > 0,
+                    "blink must validate and flag unauthorized movement before choosing its origin");
+            h.assertTrue(p.teleports == 2 && p.position().distanceTo(expected) < 0.001,
+                    "blink must first roll back, then find its destination from the last accepted position");
+            h.assertTrue(h.getLevel().noCollision(p, p.getBoundingBox()),
+                    "a blink after movement rollback must still land in collision-free space");
             h.succeed();
         }
     }

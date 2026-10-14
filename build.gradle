@@ -101,15 +101,22 @@ minecraft {
         // By default, the server will crash when no gametests are provided.
         // The gametest system is also enabled by default for other run configs under the /test command.
         gameTestServer {
+            if (project.hasProperty('performanceOnly')) {
+                workingDirectory project.file('run-performance')
+                jvmArgs '-Xmx1G', '-XX:StartFlightRecording=filename=flee-light.jfr,settings=profile,dumponexit=true,maxsize=64m',
+                        '-Xlog:gc*:file=gc.log:time,uptime,level,tags'
+            }
             if (project.hasProperty('shadowMeleeOnly')) {
                 workingDirectory project.file(providers.gradleProperty('shadowMeleeRunDir')
                         .getOrElse('run-shadow-melee'))
             }
-            property 'forge.enabledGameTestNamespaces', project.hasProperty('yujiOnly') ? 'yuji_tests' :
-                    project.hasProperty('coreOnly') ? "${mod_id},yuji_tests" :
+            property 'forge.enabledGameTestNamespaces', project.hasProperty('performanceOnly') ? 'qijie_performance' :
+                    project.hasProperty('qijieOnly') ? 'qijie_tests' :
+                    project.hasProperty('yujiOnly') ? 'yuji_tests' :
+                    project.hasProperty('coreOnly') ? "${mod_id},yuji_tests,qijie_tests" :
                     project.hasProperty('blinkOnly') ? 'wings_blink_tests' :
                     project.hasProperty('shadowMeleeOnly') ? 'shadow_melee_tests' :
-                    project.hasProperty('nightOnly') ? 'eternal_night_tests' : "${mod_id},eternal_night_tests,shadow_melee_tests,yuji_tests"
+                    project.hasProperty('nightOnly') ? 'eternal_night_tests' : "${mod_id},eternal_night_tests,shadow_melee_tests,yuji_tests,qijie_tests"
         }
 
         data {
@@ -192,6 +199,13 @@ tasks.named('processResources', ProcessResources).configure {
     from('src/main/resources/data/sound_isolating_eraser/structures/shadow_arena.nbt') {
         into 'data/shadow_melee_tests/structures'
     }
+    from('src/main/resources/data/sound_isolating_eraser/structures/shadow_arena.nbt') {
+        into 'data/qijie_performance/structures'
+    }
+    from('src/main/resources/data/sound_isolating_eraser/structures') {
+        include 'empty.nbt', 'shadow_arena.nbt'
+        into 'data/qijie_tests/structures'
+    }
     var replaceProperties = [
             minecraft_version: minecraft_version, minecraft_version_range: minecraft_version_range,
             forge_version: forge_version, forge_version_range: forge_version_range,
@@ -216,6 +230,8 @@ tasks.named('jar', Jar).configure {
     exclude 'data/yuji_tests/**'
     exclude 'data/wings_blink_tests/**'
     exclude 'data/shadow_melee_tests/**'
+    exclude 'data/qijie_performance/**'
+    exclude 'data/qijie_tests/**'
 
     manifest {
         attributes([
@@ -280,6 +296,7 @@ tasks.named('check').configure { dependsOn checkWingsMotion }
 
 def compileFlightSpeedBudgetCheck = tasks.register('compileFlightSpeedBudgetCheck', JavaCompile) {
     source = files('src/main/java/com/zeropointsix/eraser/wings/FlightSpeedBudget.java',
+            'src/main/java/com/zeropointsix/eraser/wings/FlightSpeedTransition.java',
             'tools/FlightSpeedBudgetCheck.java')
     classpath = files()
     destinationDirectory = layout.buildDirectory.dir('flight-speed-budget-check')
