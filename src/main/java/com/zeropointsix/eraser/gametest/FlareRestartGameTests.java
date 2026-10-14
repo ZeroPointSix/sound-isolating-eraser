@@ -16,7 +16,7 @@ import net.minecraftforge.gametest.PrefixGameTestTemplate;
 @GameTestHolder("flare_restart_tests")
 @PrefixGameTestTemplate(false)
 public final class FlareRestartGameTests {
-    @GameTest(templateNamespace = "yuji_tests", template = "empty", timeoutTicks = 1300)
+    @GameTest(templateNamespace = "flare_restart_tests", template = "empty", timeoutTicks = 1300)
     public static void flareSavedWorldSurvivesProcessRestart(GameTestHelper h) {
         var level = h.getLevel();
         BlockPos center = new BlockPos(300, 200, 300);
@@ -54,6 +54,15 @@ public final class FlareRestartGameTests {
         long remaining = deadline - level.getGameTime();
         h.assertTrue(remaining > 0 && remaining <= 1200, "saved original expiry remains intact: " + remaining);
         System.out.println("FLARE_RESTART_LOADED sources=" + positions.size() + " deadline=" + deadline + " remainingTicks=" + remaining);
+        final long originalDeadline = deadline;
+        h.assertTrue(remaining > 1, "restart leaves enough time to verify pre-expiry persistence");
+        h.runAfterDelay(remaining - 1, () -> {
+            h.assertTrue(level.getGameTime() < originalDeadline, "pre-expiry check runs before saved deadline");
+            for (BlockPos pos : positions)
+                h.assertTrue(level.getBlockState(pos).is(Blocks.LIGHT), "restarted light survives until original expiry: " + pos);
+            h.assertTrue(lights.size() == positions.size(), "saved records survive until original expiry");
+            System.out.println("FLARE_RESTART_PRE_EXPIRY_PASSED sources=" + positions.size());
+        });
         h.runAfterDelay(remaining + 15, () -> {
             for (BlockPos pos : positions) h.assertTrue(level.getBlockState(pos).isAir(), "production cleanup after process restart: " + pos);
             h.assertTrue(lights.size() == 0, "production cleanup removes persisted records");

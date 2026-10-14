@@ -33,6 +33,8 @@ for phase in ("seed", "reload"):
         seeded = record.groups()
     elif record.groups() != seeded:
         raise AssertionError(f"Restart changed source count or absolute expiry: {seeded} -> {record.groups()}")
-    if phase == "reload" and "FLARE_RESTART_CLEANUP_PASSED" not in text:
-        raise AssertionError("Missing real restarted-server cleanup evidence")
+    if phase == "reload":
+        for marker in ("FLARE_RESTART_PRE_EXPIRY_PASSED", "FLARE_RESTART_CLEANUP_PASSED"):
+            if marker not in text:
+                raise AssertionError(f"Missing real restarted-server evidence: {marker}")
 print("FLARE_TWO_PROCESS_RESTART_PASSED", flush=True)

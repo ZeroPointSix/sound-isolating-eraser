@@ -198,6 +198,9 @@ tasks.named('processResources', ProcessResources).configure {
     from('src/main/resources/data/sound_isolating_eraser/structures/empty.nbt') {
         into 'data/yuji_tests/structures'
     }
+    from('src/main/resources/data/sound_isolating_eraser/structures/empty.nbt') {
+        into 'data/flare_restart_tests/structures'
+    }
     from(layout.buildDirectory.file('generated/brickrot-test-resources/data/sound_isolating_eraser/structures/brickrot_empty.nbt')) {
         into 'data/wings_blink_tests/structures'
     }
@@ -233,6 +236,7 @@ tasks.named('jar', Jar).configure {
     exclude 'data/sound_isolating_eraser/structures/shadow_arena.nbt'
     exclude 'data/eternal_night_tests/**'
     exclude 'data/yuji_tests/**'
+    exclude 'data/flare_restart_tests/**'
     exclude 'data/wings_blink_tests/**'
     exclude 'data/shadow_melee_tests/**'
     exclude 'data/qijie_performance/**'
