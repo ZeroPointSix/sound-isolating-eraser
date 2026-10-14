@@ -22,12 +22,22 @@ import net.minecraft.world.phys.AABB;
 public final class RainCitySpawns {
     private static final UUID HEALTH = UUID.fromString("557c94c8-e8d4-443c-a860-8b075f3ea860");
     private static final UUID SPEED = UUID.fromString("557c94c8-e8d4-443c-a860-8b075f3ea861");
+    /**
+     * Copies the level's entity list. ServerLevel#getAllEntities is a live view of the entity
+     * lookup; discarding or adding an entity while iterating it corrupts the iterator
+     * (ArrayIndexOutOfBoundsException in Int2ObjectLinkedOpenHashMap).
+     */
+    public static List<net.minecraft.world.entity.Entity> snapshot(ServerLevel level) {
+        List<net.minecraft.world.entity.Entity> all = new java.util.ArrayList<>();
+        for (var entity : level.getAllEntities()) all.add(entity);
+        return all;
+    }
     public static void tick(ServerLevel city, RainCityData data, List<ServerPlayer> players, long elapsed) {
         if (city.getDifficulty() == Difficulty.PEACEFUL || !city.getGameRules().getBoolean(GameRules.RULE_DOMOBSPAWNING) || data.ringing()) return;
         int day = RainCityRules.day(elapsed), budget = RainCityConfig.SPAWN_BUDGET.get();
         List<ServerPlayer> targets = players.stream().filter(p -> !p.isCreative() && !p.isSpectator()).toList();
         boolean second = city.getGameTime() % 20 == 0;
-        if (second) for (var entity : city.getAllEntities()) if (entity instanceof YujiMonster mob && mob.getPersistentData().contains("YujiCityDay")) {
+        if (second) for (var entity : snapshot(city)) if (entity instanceof YujiMonster mob && mob.getPersistentData().contains("YujiCityDay")) {
             if (mob.getPersistentData().getInt("YujiCityDay") < day) grow(mob, day);
             if (!mob.getPersistentData().getBoolean("YujiHorde") && !mob.getPersistentData().getBoolean("YujiGuardian")
                     && targets.stream().noneMatch(p -> p.distanceToSqr(mob) <= 96 * 96) && !mob.isPersistenceRequired()) mob.discard();
