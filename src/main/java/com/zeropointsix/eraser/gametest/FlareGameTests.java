@@ -251,15 +251,23 @@ public final class FlareGameTests {
         h.assertTrue(!FlarePlacement.safeGround(h.getLevel(), pos), "canopy blocking the descent is rejected");
         h.getLevel().removeBlock(pos.above(4), false);
         h.getLevel().setBlock(pos, Blocks.WATER.defaultBlockState(), 3);
-        h.assertTrue(!FlarePlacement.safeGround(h.getLevel(), pos), "water landing rejected"); h.getLevel().removeBlock(pos, false);
+        h.assertTrue(!FlarePlacement.safeGround(h.getLevel(), pos), "water landing rejected");
+        h.getLevel().setBlock(pos, Blocks.AIR.defaultBlockState(), 3);
         fixtureBlock(h.getLevel(), pos.above(4).east(), Blocks.STONE.defaultBlockState());
         h.assertTrue(!FlarePlacement.safeGround(h.getLevel(), pos), "adjacent high rim rejects shaft"); h.getLevel().removeBlock(pos.above(4).east(), false);
-        class Guard { @SubscribeEvent public void deny(BlockEvent.EntityPlaceEvent event) { if (event.getPos().equals(pos)) event.setCanceled(true); } }
+        h.assertTrue(FlarePlacement.safeGround(h.getLevel(), pos), "cleared touchdown fixture is valid before protection");
+        class Guard {
+            int denied;
+            @SubscribeEvent public void deny(BlockEvent.EntityPlaceEvent event) {
+                if (event.getPos().equals(pos)) { denied++; event.setCanceled(true); }
+            }
+        }
         Guard guard = new Guard(); MinecraftForge.EVENT_BUS.register(guard);
         try {
             var entity = new FallingSupplyCrate(FlareContent.FALLING_CRATE.get(), h.getLevel());
             entity.prepare(pos, p.getUUID()); entity.setPos(Vec3.atBottomCenterOf(pos));
             h.assertTrue(!entity.land() && h.getLevel().getBlockState(pos).isAir(), "protection rechecked on actual touchdown");
+            h.assertTrue(guard.denied == 1, "touchdown actually reaches the protection event");
         } finally { MinecraftForge.EVENT_BUS.unregister(guard); }
         h.succeed();
     }
