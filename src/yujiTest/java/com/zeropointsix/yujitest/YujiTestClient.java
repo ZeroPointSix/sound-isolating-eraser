@@ -56,7 +56,7 @@ public final class YujiTestClient {
     private static boolean audioDone;
     private static int deathFrames, livingDeathFrames;
     private static double deathMinAngle, deathMaxAngle;
-    private static boolean deathStartCaptured, deathEndCaptured, deathMetadataSeen;
+    private static boolean deathStartCaptured, deathMidCaptured, deathEndCaptured, deathMetadataSeen;
     private static YujiMonster deathProbe;
     private static String lastTanyuAction = "";
     private static int stalledSerial = -1;
@@ -81,7 +81,7 @@ public final class YujiTestClient {
         if (!text.startsWith("YUJI_QA:")) return;
         phase = text.substring(8); ticks = 0; frames = 0; captured = false; audioDone = false; poses.clear();
         deathFrames = 0; livingDeathFrames = 0; deathMinAngle = 180; deathMaxAngle = 0;
-        deathStartCaptured = false; deathEndCaptured = false; deathMetadataSeen = false; deathProbe = null;
+        deathStartCaptured = false; deathMidCaptured = false; deathEndCaptured = false; deathMetadataSeen = false; deathProbe = null;
         // Pin only the gallery camera; survival interactions use normal gravity on both sides.
         if (Minecraft.getInstance().player != null)
             Minecraft.getInstance().player.setNoGravity(!phase.startsWith("ai-") && !phase.startsWith("audio-"));
@@ -264,25 +264,48 @@ public final class YujiTestClient {
             }
         } catch (Throwable failure) { fail(failure); }
     }
+    private static void captureDeathFrame(String frame) throws Exception {
+        try (var shot = Screenshot.takeScreenshot(Minecraft.getInstance().getMainRenderTarget())) {
+            shot.writeToFile(RESULTS.resolve(phase + "-" + frame + ".png"));
+            int width = shot.getWidth(), height = shot.getHeight(), pixels = 0;
+            int minX = width, minY = height, maxX = 0, maxY = 0;
+            // In the fixed white test arena, red death-overlay pixels isolate the model from smoke and ground.
+            for (int x = width / 3; x < width * 2 / 3; x++) for (int y = height / 5; y < height * 3 / 4; y++) {
+                int color = shot.getPixelRGBA(x, y);
+                int red = color & 255, green = color >> 8 & 255, blue = color >> 16 & 255;
+                if (red >= 50 && red * 100 >= green * 135 && red * 100 >= blue * 125) {
+                    pixels++;
+                    minX = Math.min(minX, x); maxX = Math.max(maxX, x);
+                    minY = Math.min(minY, y); maxY = Math.max(maxY, y);
+                }
+            }
+            String evidence = "phase=" + phase + ", frame=" + frame + ", redPixels=" + pixels
+                    + ", bounds=" + minX + "," + minY + "," + maxX + "," + maxY;
+            require(pixels >= 800 && maxX - minX >= 45 && maxY - minY >= 18,
+                    "death model remains visible above the floor: " + evidence);
+            System.out.println("YUJI_DEATH_VISIBLE " + evidence);
+        }
+    }
     @SubscribeEvent public static void render(TickEvent.RenderTickEvent event) {
         if (phase.startsWith("death-")) {
             if (event.phase == TickEvent.Phase.END && !failed && deathProbe != null && deathFrames > 0) {
                 try {
                     boolean crawl = phase.equals("death-crawl");
                     if (!deathStartCaptured) {
-                        try (var shot = Screenshot.takeScreenshot(Minecraft.getInstance().getMainRenderTarget())) {
-                            shot.writeToFile(RESULTS.resolve(phase + "-start.png"));
-                        }
+                        captureDeathFrame("start");
                         deathStartCaptured = true;
+                    }
+                    if (!deathMidCaptured && deathMaxAngle >= (crawl ? 85 : 35) && deathMaxAngle < (crawl ? 89.75 : 87.75)) {
+                        captureDeathFrame("middle");
+                        deathMidCaptured = true;
                     }
                     if (!deathEndCaptured && deathMetadataSeen && deathMaxAngle >= (crawl ? 89.75 : 87.75)
                             && deathProbe.deathAnimation().equals(phase.equals("death-standing") ? "death" : "crawl_death")
                             && !deathProbe.isRemoved()) {
                         require(deathFrames >= 3, "death animation renders multiple frames before its final pose");
+                        require(deathMidCaptured, "death animation visibly passes through its middle pose");
                         if (!crawl) require(deathMinAngle < 20, "standing death begins upright");
-                        try (var shot = Screenshot.takeScreenshot(Minecraft.getInstance().getMainRenderTarget())) {
-                            shot.writeToFile(RESULTS.resolve(phase + "-end.png"));
-                        }
+                        captureDeathFrame("end");
                         pass(phase, "renderedFrames=" + deathFrames + ", rootAngleRange=" + deathMinAngle + ".." + deathMaxAngle
                                 + ", finalDeathTime=" + deathProbe.deathTime + ", deathTimePositive=true, syncedAnimation=" + deathProbe.deathAnimation());
                         deathEndCaptured = true;

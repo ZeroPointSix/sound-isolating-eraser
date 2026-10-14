@@ -43,6 +43,9 @@ def validate_death_animations(kind, animations):
         root = death["bones"]["root"]
         for channel in ("rotation", "position"):
             require(root[channel]["0.0"] == crawl[channel]["0.0"], f"Crawl death start pose: {channel}")
+        for pose in (crawl, root):
+            require(all(frame == [0, 4, 4] for frame in pose["position"].values()),
+                    "Crawl and crawl death must stay above the floor at the feet-based root pivot")
         require(all(-90 <= frame[0] <= -80 for frame in root["rotation"].values()),
                 "Crawl death must never stand up")
         require(root["rotation"]["0.6"] == [-90, 0, 0], "Crawl death ends prone")
