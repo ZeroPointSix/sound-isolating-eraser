@@ -29,7 +29,7 @@
 | R-1 同夜刷床再抽 | blocked（无明文） | 未改行为 |
 | R-2 旁观者穿门 | blocked（无明文） | 未改行为 |
 | 入城演出（传送前渐黑、躺姿醒来） | partial | 判定成功后 `CityExitNetwork.fadeIn` 在传送前把客户端拉黑；到达后维度切换渐隐。`finishEntry` 以 `startSleeping` 躺在街道上约 40 tick（`CityArrivalSleepMixin` 避免无床立刻醒来）。`cityArrivalLiesDownOnStreet`。黑屏中文文案仍是到达标题，不是传送前独立黑场文案；原生视觉未在本轮重验 |
-| 12 类建筑入口与楼层 | GameTest 12/12 街道 path-clear；原生以本 SHA survey 为准 | `a91e777` 原生 **8/12**：4 栋民用楼（library/townhall/civic_center/mall）选了玻璃/混凝土幕墙后的邻地门，W 停在接近点。根因是评分给街道 +1 惩罚、且不采样接近点到室内的碰撞。现 `findApproach`：路径 AABB 采样（开门列可穿过）、街道优先、同高、轴上、距门 1–4 格、底板台阶可走。本地 JDK17 **walked=12/12 floorsReached=12/12**，12 栋均为 `street=true approachDist=1`。GameTest 楼层是碰撞 BFS+梯子，**不得写成原生爬楼 PASS**。`a91e777` 双客户端 E2E 本地 `NIGHT_TWO_CLIENT_E2E_PASS`；CI 同 SHA 在 READY 阶段超时 flake |
+| 12 类建筑入口与楼层 | GameTest 12/12 街道 path-clear；原生以本 SHA survey 为准 | `a91e777` 原生 **8/12**：4 栋民用楼（library/townhall/civic_center/mall）选了玻璃/混凝土幕墙后的邻地门，W 停在接近点。根因是评分给街道 +1 惩罚、且不采样接近点到室内的碰撞。现 `findApproach`：路径 AABB 采样（开门列可穿过）、街道优先、同高、轴上、距门 2 格（1 格会贴门碰撞、原生 W 迈不开）、底板台阶可走。本地 JDK17 **walked=12/12 floorsReached=12/12**，12 栋均为 `street=true approachDist=2`。GameTest 楼层是碰撞 BFS+梯子，**不得写成原生爬楼 PASS**。`a91e777` 双客户端 E2E 本地 `NIGHT_TWO_CLIENT_E2E_PASS`；CI 同 SHA 在 READY 阶段超时 flake |
 
 ## 本轮代码改动
 
@@ -39,7 +39,7 @@
 4. **砌腐墙**：栖息地为地铁隧道（全区）+ 工业区地下，不是「只有工业区」，也不是旧 `INDUSTRIAL \|\| y<56`。
 5. **过期关门**：对已存在的开叶门做强制加载→卸载→过期保留 PendingClose→重载关叶。
 6. **入城演出**：传送前渐黑包 + 到达躺姿；见上表 partial。
-7. **12 入口**：街道 path-clear（避开玻璃/混凝土邻地门），底板台阶可走；GameTest 打印 `approachDist` / `street` / 门 / 楼层 BFS。本地 12/12 入口全在街道、距门 1 格。`a91e777` 原生 8/12 的 4 败不是缺模板。
+7. **12 入口**：街道 path-clear（避开玻璃/混凝土邻地门），距门 2 格起跑，底板台阶可走；GameTest 打印 `approachDist` / `street` / 门 / 楼层 BFS。本地 12/12 入口全在街道。`a91e777` 原生 8/12 的 4 败不是缺模板。
 8. **文档**：结构模板 35 项；大建筑是 3×3 内部地块中的 2×2 区块。
 9. **GameTest 配置**：`isolate`/`AfterBatch` 用引用计数，避免并行 batch 提前 `close` 沙盒；`isolate` 不再清空其他用例的入城队列。Forge 真实超时 AfterBatch 仍无失败用例证据。
 
@@ -57,7 +57,7 @@ python3 tools/night-e2e.py   # 有显示/客户端 classpath 时
 
 - `NightRulesCheck PASS assertions=666329`
 - `CITY_ART_VERIFIED files=87 loot_tables=6`
-- `-PnightOnly runGameTestServer`：**22/22**，`CITY_ENTRANCE_SUMMARY walked=12/12 floorsReached=12/12`（12 栋 `street=true approachDist=1`）
+- `-PnightOnly runGameTestServer`：**22/22**，`CITY_ENTRANCE_SUMMARY walked=12/12 floorsReached=12/12`（12 栋 `street=true approachDist=2`）
 - 成品 JAR `sound_isolating_eraser-0.11.0.jar` SHA-256 `e36c141a506990abf87915678d6285000c0690b13b187693685e472f925253e9`：`NIGHT_REMAPPED_DOOR_MIXIN_PASS`（`m_6227_` / `m_6861_` / `m_153165_`）。开发态不能冒充正式 remap 进程注入，门锁 runtime 保持 partial
 - 栖息地正反例：`cityBrickrotHabitatIsSubwayAndIndustrialUnderground`（商业/住宅地铁隧道可刷，工业 `y<56` 可刷，工业地表/非隧道不刷）
 - PendingClose：`cityExpiredExitClosesWhenUnloadedChunkLoads`；不是双客户端重启
@@ -69,18 +69,18 @@ GameTest 12 入口表（碰撞 path-clear，非原生客户端）：
 
 | 模板 | 区 | dist | street | 门 | BFS 楼层 / 门高簇 |
 | --- | --- | --- | --- | --- | --- |
-| warehouse | INDUSTRIAL | 1 | true | -752,89,-744 | 4 / 2 |
-| office_dark | INDUSTRIAL | 1 | true | -752,89,-729 | 14 / 7 |
-| res_tenement | INDUSTRIAL | 1 | true | -744,89,-705 | 10 / 4 |
-| office_tower | COMMERCIAL | 1 | true | -728,83,-368 | 22 / 10 |
-| shop_neon | COMMERCIAL | 1 | true | -712,83,-321 | 4 / 1 |
-| mall | COMMERCIAL | 1 | true | -752,86,-288 | 9 / 1 |
-| res_apartment_mid | RESIDENTIAL | 1 | true | -752,89,-232 | 12 / 6 |
-| res_apartment_high | RESIDENTIAL | 1 | true | -752,89,-216 | 18 / 7 |
-| res_apartment_low | RESIDENTIAL | 1 | true | -728,89,-193 | 8 / 4 |
-| townhall | COMMERCIAL | 1 | true | -688,80,-351 | 6 / 3 |
-| library | COMMERCIAL | 1 | true | -560,71,608 | 6 / 3 |
-| civic_center | COMMERCIAL | 1 | true | -496,68,-410 | 8 / 4 |
+| warehouse | INDUSTRIAL | 2 | true | -752,89,-744 | 4 / 2 |
+| office_dark | INDUSTRIAL | 2 | true | -752,89,-729 | 14 / 7 |
+| res_tenement | INDUSTRIAL | 2 | true | -744,89,-705 | 10 / 4 |
+| office_tower | COMMERCIAL | 2 | true | -728,83,-368 | 22 / 10 |
+| shop_neon | COMMERCIAL | 2 | true | -712,83,-321 | 4 / 1 |
+| mall | COMMERCIAL | 2 | true | -752,86,-288 | 9 / 1 |
+| res_apartment_mid | RESIDENTIAL | 2 | true | -752,89,-232 | 12 / 6 |
+| res_apartment_high | RESIDENTIAL | 2 | true | -752,89,-216 | 18 / 7 |
+| res_apartment_low | RESIDENTIAL | 2 | true | -728,89,-193 | 8 / 4 |
+| townhall | COMMERCIAL | 2 | true | -671,80,-368 | 6 / 3 |
+| library | COMMERCIAL | 2 | true | -560,71,608 | 6 / 3 |
+| civic_center | COMMERCIAL | 2 | true | -496,68,-410 | 8 / 4 |
 
 `a91e777` 原生调查（旧探测器，不得当本 SHA 通过）：8/12 过；library/townhall/civic_center/mall 败因为邻地玻璃/混凝土，不是缺模板。
 

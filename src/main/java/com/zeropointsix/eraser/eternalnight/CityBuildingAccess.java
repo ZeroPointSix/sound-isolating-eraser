@@ -248,7 +248,9 @@ public final class CityBuildingAccess {
         int dy = Math.abs(found.feet().getY() - found.door().getY());
         int axis = (found.feet().getX() == found.door().getX() || found.feet().getZ() == found.door().getZ()) ? 0 : 50;
         int street = CityLayout.street(found.feet().getX(), found.feet().getZ()) ? 0 : 2000;
-        return street + dist * 100 + dy * 10 + axis + found.door().getY();
+        // Dist 1 sits a 0.6-wide player against the door collision; native W needs a 2-block run-up.
+        int distScore = dist == 2 ? 0 : dist == 3 ? 40 : dist == 1 ? 180 : dist * 80;
+        return street + distScore + dy * 10 + axis + found.door().getY();
     }
 
     private static boolean inBuilding(BlockPos origin, net.minecraft.core.Vec3i size, BlockPos pos) {
