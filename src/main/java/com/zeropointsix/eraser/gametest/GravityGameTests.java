@@ -4,17 +4,23 @@ import com.mojang.authlib.GameProfile;
 import com.zeropointsix.eraser.ModMain;
 import com.zeropointsix.eraser.gravity.*;
 import com.zeropointsix.eraser.registry.ModItems;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.gametest.framework.AfterBatch;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
@@ -22,7 +28,9 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.common.util.FakePlayer;
@@ -35,6 +43,25 @@ import top.theillusivec4.curios.api.SlotContext;
 @GameTestHolder(ModMain.MOD_ID)
 @PrefixGameTestTemplate(false)
 public final class GravityGameTests {
+    private static final Set<Long> allyTickets = new HashSet<>();
+    private static final List<Entity> allyEntities = new ArrayList<>();
+    private static BlockPos allyRoof;
+    private static BlockState allyRoofBefore;
+
+    @AfterBatch(batch = "gravity_allies")
+    public static void cleanUpAllies(ServerLevel level) {
+        allyEntities.forEach(Entity::discard);
+        allyEntities.clear();
+        if (allyRoof != null) level.setBlockAndUpdate(allyRoof, allyRoofBefore);
+        allyRoof = null;
+        allyRoofBefore = null;
+        for (long key : allyTickets) {
+            ChunkPos chunk = new ChunkPos(key);
+            level.setChunkForced(chunk.x, chunk.z, false);
+        }
+        allyTickets.clear();
+    }
+
     private static FakePlayer player(GameTestHelper h) {
         FakePlayer player = FakePlayerFactory.get(h.getLevel(), new GameProfile(UUID.randomUUID(), "GravityQA"));
         player.setGameMode(GameType.SURVIVAL);
@@ -199,10 +226,28 @@ public final class GravityGameTests {
         });
     }
 
-    @GameTest(template = "empty", batch = "gravity_allies", timeoutTicks = 130)
+    @GameTest(template = "empty", batch = "gravity_allies", timeoutTicks = 330)
     public static void alliesLingerPassivesIgnoreAndAggressorsAreHostile(GameTestHelper h) {
         Vec3 center = Vec3.atBottomCenterOf(h.absolutePos(new BlockPos(3, 7, 3)));
+        BlockPos origin = BlockPos.containing(center);
+        BlockPos outside = BlockPos.containing(center.add(18, 0, 0));
+        // A loaded destination can still pause mob ticks while its entity-ticking ticket propagates.
+        for (BlockPos pos : List.of(origin, outside)) {
+            ChunkPos chunk = new ChunkPos(pos);
+            if (!h.getLevel().getForcedChunks().contains(chunk.toLong())) {
+                h.getLevel().setChunkForced(chunk.x, chunk.z, true);
+                allyTickets.add(chunk.toLong());
+            }
+        }
+        h.startSequence().thenWaitUntil(() -> {
+            h.assertTrue(h.getLevel().isPositionEntityTicking(origin)
+                    && h.getLevel().isPositionEntityTicking(outside), "both ally locations are entity-ticking before timing begins");
+        }).thenExecute(() -> verifyAlliesLinger(h, center));
+    }
+
+    private static void verifyAlliesLinger(GameTestHelper h, Vec3 center) {
         GravityFieldEntity field = field(h, center);
+        allyEntities.add(field);
         var player = h.makeMockSurvivalPlayer();
         var pet = EntityType.WOLF.create(h.getLevel());
         pet.setTame(true);
@@ -217,19 +262,26 @@ public final class GravityGameTests {
         var snow = EntityType.SNOW_GOLEM.create(h.getLevel());
         var aggressor = EntityType.WOLF.create(h.getLevel());
         List<LivingEntity> entities = List.of(player, pet, horse, wild, cow, villager, iron, snow, aggressor);
+        allyEntities.addAll(entities);
         for (int i = 0; i < entities.size(); i++) stationary(h, entities.get(i), center.add(i * .4, 0, 0));
         // Earlier weather tests may leave rain active; protect this passive fixture normally.
-        h.getLevel().setBlockAndUpdate(snow.blockPosition().above(3), Blocks.STONE.defaultBlockState());
+        allyRoof = snow.blockPosition().above(3);
+        allyRoofBefore = h.getLevel().getBlockState(allyRoof);
+        h.getLevel().setBlockAndUpdate(allyRoof, Blocks.STONE.defaultBlockState());
         // Snow golems also melt in warm biomes; fire resistance makes the fixture biome-independent.
         snow.addEffect(new MobEffectInstance(MobEffects.FIRE_RESISTANCE, 200, 0, false, false));
         aggressor.setTarget(player);
-        h.runAtTickTime(22, () -> {
+        List<LivingEntity> allies = List.of(player, pet, horse);
+        int[] exitTicks = new int[allies.size()];
+        h.runAfterDelay(22, () -> {
             for (LivingEntity ally : List.of(player, pet, horse)) {
                 h.assertTrue(ally.hasEffect(MobEffects.MOVEMENT_SPEED) && ally.getEffect(MobEffects.MOVEMENT_SPEED).getAmplifier() == 2, "ally speed III");
                 h.assertTrue(ally.hasEffect(MobEffects.JUMP) && ally.getEffect(MobEffects.JUMP).getAmplifier() == 2, "ally jump III");
                 h.assertTrue(!ally.hasEffect(MobEffects.MOVEMENT_SLOWDOWN) && ally.getHealth() == ally.getMaxHealth(), "ally unharmed");
                 ally.setPos(center.add(18, 0, 0));
+                h.assertTrue(h.getLevel().isPositionEntityTicking(ally.blockPosition()), "ally exit destination remains entity-ticking");
             }
+            for (int i = 0; i < allies.size(); i++) exitTicks[i] = allies.get(i).tickCount;
             for (LivingEntity neutral : List.of(wild, cow, villager, iron, snow)) {
                 h.assertTrue(neutral.getActiveEffects().stream().allMatch(e -> neutral == snow
                                 && e.getEffect() == MobEffects.FIRE_RESISTANCE)
@@ -241,13 +293,20 @@ public final class GravityGameTests {
             field.discard();
             logAllyClocks(h, "exit", List.of(player, pet, horse));
         });
-        h.runAtTickTime(60, () -> logAllyClocks(h, "mid", List.of(player, pet, horse)));
-        h.runAtTickTime(95, () -> {
+        h.runAfterDelay(60, () -> logAllyClocks(h, "mid", allies));
+        h.runAfterDelay(95, () -> {
             logAllyClocks(h, "before", List.of(player, pet, horse));
             h.assertTrue(player.hasEffect(MobEffects.MOVEMENT_SPEED) && pet.hasEffect(MobEffects.JUMP), "buff still present before four seconds");
         });
-        h.runAtTickTime(105, () -> {
+        h.runAfterDelay(105, () -> {
             logAllyClocks(h, "after", List.of(player, pet, horse));
+            for (int i = 0; i < allies.size(); i++) {
+                LivingEntity ally = allies.get(i);
+                h.assertTrue(ally.tickCount - exitTicks[i] == 83,
+                        "ally ticks match elapsed server ticks: " + ally.getType() + " elapsed=" + (ally.tickCount - exitTicks[i]));
+                h.assertTrue(!ally.hasEffect(MobEffects.MOVEMENT_SPEED) && !ally.hasEffect(MobEffects.JUMP),
+                        "both ally buffs expire after four seconds: " + ally.getType());
+            }
             h.assertTrue(!player.hasEffect(MobEffects.MOVEMENT_SPEED) && !pet.hasEffect(MobEffects.JUMP), "buff expires after four seconds");
             entities.forEach(LivingEntity::discard);
             h.succeed();
