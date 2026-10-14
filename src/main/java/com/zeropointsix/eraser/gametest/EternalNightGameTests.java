@@ -34,8 +34,12 @@ public final class EternalNightGameTests {
      */
     static void isolate(ServerLevel overworld) {
         if (liveConfig == null) liveConfig = GameTestConfigs.sandbox(NightConfig.SPEC);
+        boolean first = configUsers == 0;
         configUsers++;
         ServerLevel city = overworld.getServer().getLevel(EternalNightContent.LEVEL);
+        // Later overlapping batches must not reset ENTRY_BASE/CAP or wipe SavedData
+        // while cityDeepSleepAndReturnPreservePlayer is still rolling entry.
+        if (!first) return;
         if (city != null) CitySavedData.get(city).clearForTesting();
         NightConfig.ENABLED.set(true);
         NightConfig.ENTRY_BASE.set(0.02);
@@ -122,6 +126,8 @@ public final class EternalNightGameTests {
         h.assertTrue(result.right().isPresent(), "real valid bed sleep starts: " + result);
         // An embedded channel is not in ServerConnectionListener, which normally calls doTick.
         h.onEachTick(() -> {
+            NightConfig.ENTRY_BASE.set(1.0);
+            NightConfig.ENTRY_CAP.set(1.0);
             if (player.server.getPlayerList().getPlayer(player.getUUID()) == player) player.doTick();
         });
         BlockPos savedBed = player.getRespawnPosition();
@@ -1043,6 +1049,8 @@ public final class EternalNightGameTests {
         NightConfig.ENTRY_BASE.set(1.0);
         NightConfig.ENTRY_CAP.set(1.0);
         h.onEachTick(() -> {
+            NightConfig.ENTRY_BASE.set(1.0);
+            NightConfig.ENTRY_CAP.set(1.0);
             if (player.server.getPlayerList().getPlayer(player.getUUID()) == player) player.doTick();
             if (EternalNightContent.isCity(player.level())
                     && (player.isSleeping() || player.getPose() == net.minecraft.world.entity.Pose.SLEEPING))
