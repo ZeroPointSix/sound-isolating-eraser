@@ -1,0 +1,4 @@
+1b432149c37ff22cdd62e73f8e86725458dd39cd3cf8c5ece5780824779a6267  src/main/java/com/zeropointsix/eraser/yuji/YujiMonster.java
+1bc6f02820b9335c95f481c12e9b106aeac24088dad7976de7f5a30e9150335b  src/main/java/com/zeropointsix/eraser/gametest/YujiGameTests.java
+d1d53d065ca9f46941a45bcb6262653000632cf795c755b7ca1021a22b7910af  src/main/java/com/zeropointsix/eraser/gametest/RainCityGameTests.java
+dfc9bc90890e7d65456d22a482fa57ada637f578f93fe38a6f88e56fb4c9d504  gradle.properties

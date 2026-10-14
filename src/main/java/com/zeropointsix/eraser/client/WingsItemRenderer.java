@@ -29,7 +29,7 @@ public class WingsItemRenderer extends BlockEntityWithoutLevelRenderer {
         // Same 6.4-block reference mesh; the closed magical miniature spans 0.4 blocks.
         float open = switch (ctx) {
             case FIXED -> 1f;
-            case FIRST_PERSON_LEFT_HAND, FIRST_PERSON_RIGHT_HAND, GUI -> 0.5f;
+            case FIRST_PERSON_LEFT_HAND, FIRST_PERSON_RIGHT_HAND -> 0.5f;
             default -> 0f;
         };
 
@@ -37,6 +37,7 @@ public class WingsItemRenderer extends BlockEntityWithoutLevelRenderer {
         pose.translate(0.5f, 0.5f, 0.5f); // item space: 0..1 盒中心
         switch (ctx) {
             case GUI -> {
+                // Keep the physical miniature inside one inventory slot.
                 pose.scale(2.4f, 2.4f, 2.4f);
                 pose.mulPose(Axis.XP.rotationDegrees(24f));
                 pose.mulPose(Axis.YP.rotationDegrees(38f));

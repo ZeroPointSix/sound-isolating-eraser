@@ -1,5 +1,6 @@
 package com.zeropointsix.shaxiatest;
 
+import com.zeropointsix.eraser.registry.ModCreativeTabs;
 import com.zeropointsix.eraser.shaxia.ShaxiaEnchantments;
 import com.zeropointsix.eraser.shaxia.ShaxiaStacks;
 import com.mojang.blaze3d.platform.NativeImage;
@@ -9,7 +10,6 @@ import java.util.HashSet;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
@@ -190,7 +190,7 @@ public final class ShaxiaTestClient {
             if (!saved && ROLE.equals("user") && ticks == 40) input("click", "1");
             if (saved && ticks == 20) {
                 CreativeModeTabs.tryRebuildTabContents(mc.level.enabledFeatures(), false, mc.level.registryAccess());
-                var creativeKnives = BuiltInRegistries.CREATIVE_MODE_TAB.get(CreativeModeTabs.TOOLS_AND_UTILITIES)
+                var creativeKnives = ModCreativeTabs.QIJIE.get()
                         .getDisplayItems().stream().filter(ShaxiaStacks::isKnife).toList();
                 require(creativeKnives.size() == 1 && ShaxiaStacks.active(creativeKnives.get(0)),
                         "real creative tab contains exactly one factory-enchanted knife");

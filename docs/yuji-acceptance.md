@@ -4,10 +4,18 @@
 
 - 原始需求：[附件图鉴 v0.2](../art/yuji_fodu/monster_cards.md)，包括第 3-12 节的十恶业、第 13 节十佛头及第 14 节骨刺。
 - 附件 SHA-256：`c034d4c9aa7685255fb182fa3ff07b12af5c52b1c813438ebd6843ee73a8bc1f`。
-- 唯一实现 PR：[sound-isolating-eraser #21](https://github.com/ZeroPointSix/sound-isolating-eraser/pull/21)，分支 `feat/yuji-fodu-monsters-20261011`，保留 Draft，不合并、不发布。
+- 原实现 PR：[sound-isolating-eraser #21](https://github.com/ZeroPointSix/sound-isolating-eraser/pull/21)，已由仓库维护者于 2026-10-13 02:55:46 UTC 合并。经用户明确授权，后续修复在 `fix/yuji-navigation-reload-followup-20261013` 新建 Draft PR；本执行者不合并、不发布。
 - 数量按附件原文计算：10 种普通怪物 + 1 个十佛头 Boss + 1 种骨刺投射物，不把投射物虚算成第十二种生物。
 - 沿用仓库 Forge 1.20.1 注册事件、GeckoLib 4 渲染、独立 QA source set 与专用服务器/原生客户端验收方式。生产 Jar 不包含 `yuji_qa` 探针模组。
-- 原需求明确排除自然刷新和 Boss 召唤条件；2026-10-12 实测反馈新增绮语战斗召唤，除此之外仍只提供 11 枚刷怪蛋及 `/summon`，未增加黑雨、世界生成或无来源的普通战利品。
+- 原十怪需求明确排除自然刷新和 Boss 召唤条件；2026-10-12 实测反馈新增绮语战斗召唤。后续 main 已通过独立 PR #22 接入城市、黑雨及城市流程，不应再把旧十怪分支的范围限制当作当前 main 不含这些功能的声明；本次贪欲修复不改城市机制。
+
+## 2026-10-13 合并后增量
+
+[后续修复与证据](validation/yuji/a44-followup/README.md) 基于 main `2f30359d6e71332ca3c258f42ba55c195a0d2c4a`，恢复贪欲近路径点停滞、降低成长上限后读档属性不同步及五项正式回归。原 a42 的 52/52 专项、252/252 全量和三场景真实客户端通过为历史证据，新基线测试及 CI 单独记录。旧 #21 全绿不覆盖这些新增修复。
+
+a51 已回收并核验同修复源码在新 main 上的 **74/74 专项、274/274 全量及退出码 0**。城市佛像重生测试曾真实失败，修复其实体区块载入前提后通过，保留原时限与生成/替换/唯一性断言。此前失败及内存不足退出 137 的原件一并归档；新 Draft 的 CI 以其最新 HEAD 为准。
+
+十怪主体不重做，伤害时点、伤害值、截图和用例断言门槛不调整。人工听音、真人多人、任意复杂场景、两名不同 Agent 独立 Review、原需求功能性签收均未完成。
 
 ## 2026-10-12 实测反馈范围
 

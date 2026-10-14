@@ -1,0 +1,108 @@
+YUJI_QA_RESULTS=/data/yuji-pr21-a23/build/yuji-e2e-1791841154644328464
+YUJI_QA_CONFIG profiles=yuchi,tanyu,shifotou, fps=10, frameDelayMs=700, stallBite=True, recordAudio=True
+--- client.log ---
+YUJI_ACTION_DIAGNOSTIC phase=ai-tanyu, tick=43, entityTick=173, action=grab_bite:2, position=(0.5974934895833334, 65.0, 5.084065755208333), player=(0.5, 65.0, 8.5)
+YUJI_CLIENT_STALL biteSerial=2, milliseconds=1600
+YUJI_ACTION_DIAGNOSTIC phase=ai-tanyu, tick=50, entityTick=180, action=grab_bite:2, position=(0.79248046875, 65.0, 7.661376953125), player=(0.5, 65.0, 8.5)
+YUJI_SOUND_REQUEST phase=ai-tanyu, tick=52, event=qihai:entity.qihai.tanyu.ambient, instance=SimpleSoundInstance
+YUJI_SOUND_REQUEST phase=ai-tanyu, tick=52, event=qihai:entity.qihai.tanyu.bite, instance=SimpleSoundInstance
+YUJI_ACTION_DIAGNOSTIC phase=ai-tanyu, tick=53, entityTick=183, action=grab_bite:4, position=(0.7935384114583334, 65.0, 7.66015625), player=(0.42775, 65.275125, 8.706)
+YUJI_CLIENT_STALL biteSerial=4, milliseconds=1600
+YUJI_ACTION_DIAGNOSTIC phase=ai-tanyu, tick=60, entityTick=190, action=grab_bite:4, position=(0.795654296875, 65.0, 7.65771484375), player=(0.21593826017161524, 65.0, 9.309919977918993)
+YUJI_SOUND_REQUEST phase=ai-tanyu, tick=62, event=qihai:entity.qihai.tanyu.bite, instance=SimpleSoundInstance
+YUJI_SOUND_REQUEST phase=ai-tanyu, tick=62, event=qihai:entity.qihai.tanyu.bite, instance=SimpleSoundInstance
+YUJI_ACTION_DIAGNOSTIC phase=ai-tanyu, tick=63, entityTick=193, action=grab_bite:6, position=(0.7212727864583334, 65.0, 7.975016276041667), player=(0.06392234768665409, 65.0, 9.743153496561236)
+YUJI_CLIENT_STALL biteSerial=6, milliseconds=1600
+YUJI_ACTION_DIAGNOSTIC phase=ai-tanyu, tick=70, entityTick=200, action=grab_bite:6, position=(0.572509765625, 65.0, 8.609619140625), player=(-0.07715664354385401, 65.0, 10.150137349792997)
+YUJI_SOUND_REQUEST phase=ai-tanyu, tick=72, event=qihai:entity.qihai.tanyu.bite, instance=SimpleSoundInstance
+YUJI_SOUND_REQUEST phase=audio-tanyu, tick=0, event=qihai:entity.qihai.tanyu.death, instance=SimpleSoundInstance
+YUJI_QA_PASS audio-tanyu: event=qihai:entity.qihai.tanyu.death, decoded=qihai:tanyu/death, active=true, volume=1.0, backend=OpenAL-wave, observed=[qihai:entity.qihai.tanyu.death, qihai:entity.qihai.tanyu.bite, qihai:entity.qihai.tanyu.ambient]
+YUJI_RENDER_WAIT phase=shifotou, frames=10, ticks=117
+YUJI_QA_PASS shifotou: frames=11, animatedBoneDelta=1.4700000286102295, texture/model/animation loaded, fpsLimit=10, frameDelayMs=700, foregroundPixels=49580, bounds=294,124,667,420
+YUJI_QA_PASS audio-shifotou: event=qihai:entity.qihai.shifotou.death, decoded=qihai:shifotou/death, active=true, volume=1.0, backend=OpenAL-wave, observed=[qihai:entity.qihai.shifotou.death, qihai:music.qihai.shifotou_battle, qihai:entity.qihai.shifotou.slam, qihai:entity.qihai.shifotou.gaze]
+YUJI_QA_PASS gallery: Focused real-client profiles=yuchi,tanyu,shifotou; selected rendering/AI/audio assertions passed.
+--- audio-events-tanyu.log ---
+phase=tanyu, tick=20, event=qihai:entity.qihai.tanyu.ambient, decoded=qihai:tanyu/ambient, channelPlaying=true, volume=1.0, pitch=0.82009953, position=0.5,65.0,0.5, backend=OpenAL-wave
+phase=tanyu, tick=80, event=qihai:entity.qihai.tanyu.ambient, decoded=qihai:tanyu/ambient, channelPlaying=true, volume=1.0, pitch=0.88631386, position=0.5,65.0,0.5, backend=OpenAL-wave
+phase=ai-tanyu, tick=42, event=qihai:entity.qihai.tanyu.bite, decoded=qihai:tanyu/bite, channelPlaying=true, volume=1.0, pitch=1.0, position=0.75,65.0,7.625, backend=OpenAL-wave
+phase=ai-tanyu, tick=52, event=qihai:entity.qihai.tanyu.ambient, decoded=qihai:tanyu/ambient, channelPlaying=true, volume=1.0, pitch=1.0907707, position=0.75,65.0,7.625, backend=OpenAL-wave
+phase=ai-tanyu, tick=52, event=qihai:entity.qihai.tanyu.bite, decoded=qihai:tanyu/bite, channelPlaying=true, volume=1.0, pitch=1.0, position=0.75,65.0,7.625, backend=OpenAL-wave
+phase=ai-tanyu, tick=62, event=qihai:entity.qihai.tanyu.bite, decoded=qihai:tanyu/bite, channelPlaying=true, volume=1.0, pitch=1.0, position=0.75,65.0,7.625, backend=OpenAL-wave
+phase=ai-tanyu, tick=62, event=qihai:entity.qihai.tanyu.bite, decoded=qihai:tanyu/bite, channelPlaying=true, volume=1.0, pitch=1.0, position=0.75,65.0,7.625, backend=OpenAL-wave
+phase=ai-tanyu, tick=72, event=qihai:entity.qihai.tanyu.bite, decoded=qihai:tanyu/bite, channelPlaying=true, volume=1.0, pitch=1.0, position=0.625,65.0,8.625, backend=OpenAL-wave
+phase=audio-tanyu, tick=0, event=qihai:entity.qihai.tanyu.death, decoded=qihai:tanyu/death, channelPlaying=true, volume=1.0, pitch=1.0662484, position=0.625,65.0,8.375, backend=OpenAL-wave
+--- client-mix-audio.log ---
+size=N/A time=00:02:33.20 bitrate=N/A speed= 102x    
+size=N/A time=00:03:31.06 bitrate=N/A speed= 105x    
+[out#0/null @ 0x5b26024e1d00] video:0kB audio:37316kB subtitle:0kB other streams:0kB global headers:0kB muxing overhead: unknown
+size=N/A time=00:03:36.60 bitrate=N/A speed= 105x    
+[Parsed_volumedetect_0 @ 0x5b260250d180] n_samples: 19105884
+[Parsed_volumedetect_0 @ 0x5b260250d180] mean_volume: -31.5 dB
+[Parsed_volumedetect_0 @ 0x5b260250d180] max_volume: -2.4 dB
+[Parsed_volumedetect_0 @ 0x5b260250d180] histogram_2db: 8
+[Parsed_volumedetect_0 @ 0x5b260250d180] histogram_3db: 8
+[Parsed_volumedetect_0 @ 0x5b260250d180] histogram_4db: 14
+[Parsed_volumedetect_0 @ 0x5b260250d180] histogram_5db: 77
+[Parsed_volumedetect_0 @ 0x5b260250d180] histogram_6db: 567
+[Parsed_volumedetect_0 @ 0x5b260250d180] histogram_7db: 744
+[Parsed_volumedetect_0 @ 0x5b260250d180] histogram_8db: 701
+[Parsed_volumedetect_0 @ 0x5b260250d180] histogram_9db: 924
+[Parsed_volumedetect_0 @ 0x5b260250d180] histogram_10db: 1943
+[Parsed_volumedetect_0 @ 0x5b260250d180] histogram_11db: 2904
+[Parsed_volumedetect_0 @ 0x5b260250d180] histogram_12db: 4323
+[Parsed_volumedetect_0 @ 0x5b260250d180] histogram_13db: 6118
+[Parsed_volumedetect_0 @ 0x5b260250d180] histogram_14db: 8861
+--- server.log ---
+YUJI_QA_PASS boss-iron-golem: naturalTarget=true, damageEvents=3, actualHealthLoss=194.0
+YUJI_QA_PASS gallery: Focused real-client profiles=yuchi,tanyu,shifotou; projectile not selected.
+[21:48:16] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: YujiTester lost connection: Disconnected
+[21:48:16] [Server thread/INFO] [minecraft/MinecraftServer]: YujiTester left the game
+[21:48:16] [Server thread/INFO] [minecraft/MinecraftServer]: Stopping the server
+[21:48:17] [Server thread/INFO] [minecraft/MinecraftServer]: Stopping server
+[21:48:17] [Server thread/INFO] [minecraft/MinecraftServer]: Saving players
+[21:48:17] [Server thread/INFO] [minecraft/MinecraftServer]: Saving worlds
+[21:48:25] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[world]'/minecraft:overworld
+[21:48:59] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_nether
+[21:49:00] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[world]'/sound_isolating_eraser:eternal_night
+[21:49:00] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_end
+[21:49:00] [Server thread/DEBUG] [ne.mi.co.ForgeHooks/WP]: Gathering id map for writing to world save world
+[21:49:00] [Server thread/DEBUG] [ne.mi.co.ForgeHooks/WP]: ID Map collection complete world
+[21:49:00] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (world): All chunks are saved
+[21:49:00] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (DIM-1): All chunks are saved
+[21:49:00] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (eternal_night): All chunks are saved
+[21:49:00] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (DIM1): All chunks are saved
+[21:49:00] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage: All dimensions are saved
+[21:49:00] [Server thread/DEBUG] [ne.mi.fm.co.ConfigTracker/CONFIG]: Unloading configs type SERVER
+--- audio-events-shifotou.log ---
+phase=shifotou, tick=2, event=qihai:music.qihai.shifotou_battle, decoded=qihai:shifotou/music_battle, active=true, volume=1.0, pitch=1.0, position=0.5,65.0,0.5, backend=OpenAL-wave
+phase=shifotou, tick=2, event=qihai:music.qihai.shifotou_battle, decoded=qihai:shifotou/music_battle, channelPlaying=true, volume=1.0, pitch=1.0, position=0.5,65.0,0.5, backend=OpenAL-wave
+phase=ai-shifotou, tick=28, event=qihai:entity.qihai.shifotou.slam, decoded=qihai:shifotou/slam, active=true, volume=1.0, pitch=1.0, position=0.5,65.0,-0.758544921875, backend=OpenAL-wave
+phase=ai-shifotou, tick=30, event=qihai:entity.qihai.shifotou.slam, decoded=qihai:shifotou/slam, channelPlaying=true, volume=1.0, pitch=1.0, position=0.5,65.0,-0.758544921875, backend=OpenAL-wave
+phase=ai-shifotou, tick=74, event=qihai:entity.qihai.shifotou.gaze, decoded=qihai:shifotou/gaze, active=true, volume=1.0, pitch=1.0, position=2.1494140625,65.0,-0.4248046875, backend=OpenAL-wave
+phase=ai-shifotou, tick=76, event=qihai:entity.qihai.shifotou.gaze, decoded=qihai:shifotou/gaze, channelPlaying=true, volume=1.0, pitch=1.0, position=2.1494140625,65.0,-0.4248046875, backend=OpenAL-wave
+phase=ai-shifotou, tick=415, event=qihai:entity.qihai.shifotou.slam, decoded=qihai:shifotou/slam, channelPlaying=true, volume=1.0, pitch=1.0, position=20.928059895833336,65.0,9.738037109375, backend=OpenAL-wave
+phase=audio-shifotou, tick=10, event=qihai:entity.qihai.shifotou.slam, decoded=qihai:shifotou/slam, channelPlaying=true, volume=1.0, pitch=1.0, position=33.08056640625,65.0,13.292724609375, backend=OpenAL-wave
+phase=audio-shifotou, tick=16, event=qihai:entity.qihai.shifotou.death, decoded=qihai:shifotou/death, channelPlaying=true, volume=1.0, pitch=0.87100726, position=33.0,65.0,13.25, backend=OpenAL-wave
+--- audio-events-yuchi.log ---
+phase=yuchi, tick=11, event=qihai:entity.qihai.yuchi.ambient, decoded=qihai:yuchi/ambient, active=true, volume=1.0, pitch=0.986781, position=0.5,65.0,0.5, backend=OpenAL-wave
+phase=yuchi, tick=10, event=qihai:entity.qihai.yuchi.ambient, decoded=qihai:yuchi/ambient, channelPlaying=true, volume=1.0, pitch=0.986781, position=0.5,65.0,0.5, backend=OpenAL-wave
+phase=yuchi, tick=60, event=qihai:entity.qihai.yuchi.ambient, decoded=qihai:yuchi/ambient, channelPlaying=true, volume=1.0, pitch=0.8317468, position=0.5,65.0,0.5, backend=OpenAL-wave
+phase=yuchi, tick=120, event=qihai:entity.qihai.yuchi.ambient, decoded=qihai:yuchi/ambient, channelPlaying=true, volume=1.0, pitch=0.8703195, position=0.5,65.0,0.5, backend=OpenAL-wave
+phase=ai-yuchi, tick=37, event=qihai:entity.qihai.yuchi.step, decoded=qihai:yuchi/step, channelPlaying=true, volume=0.5, pitch=1.0, position=0.5,65.0,2.125, backend=OpenAL-wave
+phase=ai-yuchi, tick=148, event=qihai:entity.qihai.yuchi.ambient, decoded=qihai:yuchi/ambient, channelPlaying=true, volume=1.0, pitch=0.93150914, position=0.5,65.0,2.75, backend=OpenAL-wave
+phase=audio-yuchi, tick=10, event=qihai:entity.qihai.yuchi.death, decoded=qihai:yuchi/death, active=true, volume=1.0, pitch=0.948429, position=0.5,65.0,2.875, backend=OpenAL-wave
+phase=audio-yuchi, tick=10, event=qihai:entity.qihai.yuchi.death, decoded=qihai:yuchi/death, channelPlaying=true, volume=1.0, pitch=0.948429, position=0.5,65.0,2.875, backend=OpenAL-wave
+client-audio-shifotou.pass: event=qihai:entity.qihai.shifotou.death, decoded=qihai:shifotou/death, active=true, volume=1.0, backend=OpenAL-wave, observed=[qihai:entity.qihai.shifotou.death, qihai:music.qihai.shifotou_battle, qihai:entity.qihai.shifotou.slam, qihai:entity.qihai.shifotou.gaze]
+client-audio-tanyu.pass: event=qihai:entity.qihai.tanyu.death, decoded=qihai:tanyu/death, active=true, volume=1.0, backend=OpenAL-wave, observed=[qihai:entity.qihai.tanyu.death, qihai:entity.qihai.tanyu.bite, qihai:entity.qihai.tanyu.ambient]
+client-audio-yuchi.pass: event=qihai:entity.qihai.yuchi.death, decoded=qihai:yuchi/death, active=true, volume=1.0, backend=OpenAL-wave, observed=[qihai:entity.qihai.yuchi.step, qihai:entity.qihai.yuchi.ambient, qihai:entity.qihai.yuchi.death]
+client-gallery.pass: Focused real-client profiles=yuchi,tanyu,shifotou; selected rendering/AI/audio assertions passed.
+client-ready.pass: Real client joined, 47 sound events loaded.
+client-shifotou.pass: frames=11, animatedBoneDelta=1.4700000286102295, texture/model/animation loaded, fpsLimit=10, frameDelayMs=700, foregroundPixels=49580, bounds=294,124,667,420
+client-tanyu.pass: frames=11, animatedBoneDelta=0.4112313687801361, texture/model/animation loaded, fpsLimit=10, frameDelayMs=700, foregroundPixels=14142, bounds=416,180,543,362
+client-yuchi.pass: frames=11, animatedBoneDelta=0.4169731140136719, texture/model/animation loaded, fpsLimit=10, frameDelayMs=700, foregroundPixels=5862, bounds=441,199,513,331
+server-ai-shifotou.pass: realPlayer=e2b10060-b568-3058-a037-b909b67bdc60, floorCollision=true, aiTargetObserved=true, finalAiTarget=true, moved=18.52026972904196, playerDamageEvents=5, hitsByPlayer=0, statusObserved=true, chantRange=0.0, summons=0
+server-ai-tanyu.pass: realPlayer=e2b10060-b568-3058-a037-b909b67bdc60, floorCollision=true, aiTargetObserved=true, finalAiTarget=true, moved=7.9764752434483865, playerDamageEvents=5, hitsByPlayer=0, statusObserved=false, chantRange=0.0, summons=0, layers=3
+server-ai-yuchi.pass: realPlayer=e2b10060-b568-3058-a037-b909b67bdc60, floorCollision=true, aiTargetObserved=true, finalAiTarget=true, moved=2.402188801389326, playerDamageEvents=0, hitsByPlayer=0, statusObserved=false, chantRange=0.0, summons=0
+server-boss-iron-golem.pass: naturalTarget=true, damageEvents=3, actualHealthLoss=194.0
+server-gallery.pass: Focused real-client profiles=yuchi,tanyu,shifotou; projectile not selected.
+YUJI_FOCUSED_REAL_CLIENT_PASSED profiles=yuchi,tanyu,shifotou

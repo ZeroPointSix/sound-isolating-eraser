@@ -18,6 +18,9 @@ CONFIGS = {c["name"]: c for c in json.loads((ROOT / ".vscode/launch.json").read_
 CLASSPATH = (ROOT / "build/gravity-test-classpath.txt").read_text().strip()
 processes = []
 logs = []
+profile = os.environ.get("QIJIE_QA_PROFILE") == "1"
+profile_processes = {}
+samples = []
 
 
 def expand(value):
@@ -60,13 +63,31 @@ def launch(name, role, display=None):
         args += ["--username", "GravityWearer" if role == "wearer" else "GravityObserver",
                  "--width", "960", "--height", "540", "--quickPlayMultiplayer", "127.0.0.1:25565"]
     command = ["java", "-Xmx1G", f"-Dgravity.qa.results={RESULTS}", f"-Dgravity.qa.role={role}"]
+    if profile:
+        command += [f"-XX:StartFlightRecording=filename={RESULTS / (role + '.jfr')},settings=profile,dumponexit=true,maxsize=64m",
+                    f"-Xlog:gc*:file={RESULTS / (role + '-gc.log')}:time,uptime,level,tags"]
     command += shlex.split(expand(config["vmArgs"]))
     command += ["-cp", CLASSPATH, config["mainClass"], *args]
     log = (RESULTS / f"{role}.log").open("w")
     logs.append(log)
     process = subprocess.Popen(command, cwd=directory, env=env, stdout=log, stderr=subprocess.STDOUT)
     processes.append(process)
+    profile_processes[role] = process
     return process
+
+
+def sample_processes():
+    if not profile:
+        return
+    for role, process in profile_processes.items():
+        try:
+            status = (Path("/proc") / str(process.pid) / "status").read_text()
+            rss = next(int(line.split()[1]) for line in status.splitlines() if line.startswith("VmRSS:"))
+            stat = (Path("/proc") / str(process.pid) / "stat").read_text().split(") ", 1)[1].split()
+            cpu_seconds = (int(stat[11]) + int(stat[12])) / os.sysconf("SC_CLK_TCK")
+            samples.append({"time": time.time(), "role": role, "rss_kib": rss, "cpu_seconds": cpu_seconds})
+        except (OSError, StopIteration, ValueError):
+            pass
 
 
 try:
@@ -89,8 +110,9 @@ try:
     required = ("wearer", "observer", "server-effects", "wearer-stress",
                 "wearer-preview-pixels", "wearer-active-pixels", "observer-active-pixels",
                 "server-pressure", "server-eraser", "wearer-eraser", "observer-eraser",
-                "server-atomic", "server-isolation")
+                "server-atomic", "server-isolation", "wearer-inventory", "observer-inventory")
     while not all((RESULTS / f"{role}.pass").exists() for role in required):
+        sample_processes()
         failures = list(RESULTS.glob("*.failed"))
         if failures:
             raise AssertionError("; ".join(path.read_text() for path in failures))
@@ -115,6 +137,8 @@ finally:
             process.wait()
     for log in logs:
         log.close()
+    if profile:
+        (RESULTS / "process-samples.json").write_text(json.dumps(samples, indent=2))
     for path in RESULTS.glob("*.log"):
         print(f"--- {path.name}: final log lines ---")
         print("\n".join(path.read_text(errors="replace").splitlines()[-35:]))

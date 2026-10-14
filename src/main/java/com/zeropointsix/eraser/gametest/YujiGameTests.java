@@ -2,6 +2,7 @@ package com.zeropointsix.eraser.gametest;
 
 import com.zeropointsix.eraser.yuji.BoneSpike;
 import com.zeropointsix.eraser.yuji.YujiAfflictions;
+import com.zeropointsix.eraser.yuji.YujiConfig;
 import com.zeropointsix.eraser.yuji.YujiContent;
 import com.zeropointsix.eraser.yuji.YujiKind;
 import com.zeropointsix.eraser.yuji.YujiMonster;
@@ -103,6 +104,121 @@ public final class YujiGameTests {
         h.succeed();
     }
     @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
+    public static void yujiConfiguredGrowthCapSurvivesReload(GameTestHelper h) {
+        int liveCap = YujiConfig.MAX_LAYERS.get();
+        YujiMonster greed = monster(h, YujiKind.TANYU), restored = monster(h, YujiKind.TANYU);
+        try (var ignored = GameTestConfigs.sandbox(YujiConfig.SPEC)) {
+            YujiConfig.MAX_LAYERS.set(3);
+            greed.setLayers(99, true);
+            h.assertTrue(greed.layers() == 3, "configured growth cap is enforced");
+            close(h, greed.getMaxHealth(), 42, "configured layers set maximum health");
+            close(h, greed.getAttributeValue(Attributes.ATTACK_DAMAGE), 5.5, "configured layers set attack damage");
+            greed.setHealth(17);
+            CompoundTag saved = new CompoundTag(); greed.addAdditionalSaveData(saved);
+            YujiConfig.MAX_LAYERS.set(1);
+            restored.readAdditionalSaveData(saved);
+            h.assertTrue(restored.layers() == 1, "reload respects a reduced configured cap");
+            close(h, restored.getMaxHealth(), 34, "reloaded health follows the new cap");
+            close(h, restored.getAttributeValue(Attributes.ATTACK_DAMAGE), 4.5, "reloaded attack follows the new cap");
+            close(h, restored.getHealth(), 17, "changing the cap never heals stored damage");
+            saved.putFloat("Health", 41);
+            restored.readAdditionalSaveData(saved);
+            close(h, restored.getHealth(), 34, "stored health is clamped to the reduced layer cap");
+            YujiConfig.MAX_LAYERS.set(12);
+            saved.putInt("YujiLayers", 12); saved.putFloat("Health", 60); saved.remove("Attributes");
+            restored.readAdditionalSaveData(saved);
+            close(h, restored.getHealth(), 60, "legacy health without attributes is not truncated to spawn health");
+        } finally { greed.discard(); restored.discard(); }
+        h.assertTrue(YujiConfig.MAX_LAYERS.get() == liveCap, "live layer config restored");
+        h.succeed();
+    }
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
+    public static void yujiConfiguredPullStrengthControlsVelocity(GameTestHelper h) {
+        double livePull = YujiConfig.PULL_STRENGTH.get();
+        YujiMonster source = monster(h, YujiKind.XIEYIN); Player p = player(h, source);
+        try (var ignored = GameTestConfigs.sandbox(YujiConfig.SPEC)) {
+            p.moveTo(source.position().add(8, 0, 0));
+            YujiAfflictions.apply(p, source, "enthralled");
+            for (double scale : new double[]{0, .5, 1, 3}) {
+                YujiConfig.PULL_STRENGTH.set(scale);
+                p.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
+                state(p, "enthralled", source).putInt("Age", 0);
+                YujiAfflictions.tickPlayer(p);
+                close(h, p.getDeltaMovement().x, -.8 / 20 * scale, "pull velocity uses configured multiplier " + scale);
+                close(h, p.getDeltaMovement().y, 0, "pull does not inject vertical movement");
+                close(h, p.getDeltaMovement().z, 0, "pull stays directed toward its source");
+                h.assertTrue(p.hasEffect(YujiContent.ENTHRALLED.get()), "zero pull does not erase the source effect");
+            }
+        } finally { source.discard(); YujiAfflictions.tickPlayer(p); }
+        close(h, YujiConfig.PULL_STRENGTH.get(), livePull, "live pull config restored");
+        h.succeed();
+    }
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
+    public static void yujiConfiguredBetrayalTargetsAndBuff(GameTestHelper h) {
+        boolean livePets = YujiConfig.AFFECT_PETS.get(), liveVillagers = YujiConfig.AFFECT_VILLAGERS.get();
+        double liveBuff = YujiConfig.HOSTILE_BUFF.get();
+        YujiMonster source = monster(h, YujiKind.LIANGSHE);
+        // Recruitment scans 32 blocks. Keep this synchronous config probe away from other fixtures.
+        source.moveTo(source.position().add(0, 96, 0));
+        Player p = player(h, source);
+        var wolf = h.spawn(EntityType.WOLF, new BlockPos(3, 2, 2));
+        var villager = h.spawn(EntityType.VILLAGER, new BlockPos(3, 2, 3));
+        var zombie = h.spawn(EntityType.ZOMBIE, new BlockPos(4, 2, 2));
+        var actors = java.util.List.of(source, wolf, villager, zombie);
+        for (var actor : actors) { actor.setNoAi(true); actor.setNoGravity(true); actor.moveTo(source.position()); }
+        wolf.tame(p); wolf.setOrderedToSit(true);
+        double speed = zombie.getAttributeValue(Attributes.MOVEMENT_SPEED);
+        double attack = zombie.getAttributeValue(Attributes.ATTACK_DAMAGE);
+        try (var ignored = GameTestConfigs.sandbox(YujiConfig.SPEC)) {
+            YujiAfflictions.apply(p, source, "betrayed");
+            for (boolean enabled : new boolean[]{false, true}) {
+                YujiConfig.AFFECT_PETS.set(enabled); YujiConfig.AFFECT_VILLAGERS.set(enabled);
+                for (double buff : new double[]{0, .5, 2}) {
+                    YujiConfig.HOSTILE_BUFF.set(buff);
+                    YujiAfflictions.recruit(p, true); YujiAfflictions.recruit(p, true);
+                    h.assertTrue((wolf.getTarget() == p) == enabled, "pet recruitment obeys its switch");
+                    h.assertTrue(wolf.isOrderedToSit() != enabled, "disabled pet interaction preserves sitting");
+                    h.assertTrue(villager.getPersistentData().contains("QihaiBetrayal") == enabled,
+                            "villager influence obeys its switch");
+                    var trade = new net.minecraftforge.event.entity.player.PlayerInteractEvent.EntityInteract(
+                            p, net.minecraft.world.InteractionHand.MAIN_HAND, villager);
+                    YujiAfflictions.trade(trade);
+                    h.assertTrue(trade.isCanceled() == enabled, "trade restriction obeys the villager switch");
+                    close(h, zombie.getAttributeValue(Attributes.MOVEMENT_SPEED), speed * (1 + buff), "configured speed buff applies once");
+                    close(h, zombie.getAttributeValue(Attributes.ATTACK_DAMAGE), attack * (1 + buff), "configured attack buff applies once");
+                    for (var actor : actors) YujiAfflictions.restore(actor);
+                    h.assertTrue(wolf.isOrderedToSit() && p.getUUID().equals(wolf.getOwnerUUID()), "pet state and ownership restored");
+                    close(h, zombie.getAttributeValue(Attributes.ATTACK_DAMAGE), attack, "configured attack buff removed");
+                }
+            }
+        } finally {
+            source.discard(); YujiAfflictions.tickPlayer(p);
+            for (var actor : actors) { YujiAfflictions.restore(actor); actor.discard(); }
+        }
+        h.assertTrue(YujiConfig.AFFECT_PETS.get() == livePets && YujiConfig.AFFECT_VILLAGERS.get() == liveVillagers,
+                "live target switches restored");
+        close(h, YujiConfig.HOSTILE_BUFF.get(), liveBuff, "live hostile buff restored");
+        h.succeed();
+    }
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
+    public static void yujiConfiguredLegacyCurseDamageCap(GameTestHelper h) {
+        double liveCap = YujiConfig.MAX_CURSE_DAMAGE.get();
+        var server = h.getLevel().getServer(); var difficulty = h.getLevel().getDifficulty();
+        YujiMonster source = monster(h, YujiKind.EKOU); Player p = player(h, source);
+        try (var ignored = GameTestConfigs.sandbox(YujiConfig.SPEC)) {
+            server.setDifficulty(net.minecraft.world.Difficulty.NORMAL, true);
+            YujiAfflictions.apply(p, source, "cursed");
+            for (double cap : new double[]{1, 2, 5}) {
+                YujiConfig.MAX_CURSE_DAMAGE.set(cap);
+                p.setHealth(20); state(p, "cursed", source).putInt("Age", 2000);
+                for (int tick = 0; tick < 30; tick++) { p.invulnerableTime = 0; YujiAfflictions.tickPlayer(p); }
+                close(h, p.getHealth(), 20 - cap, "legacy curse respects configured cap " + cap);
+            }
+        } finally { source.discard(); YujiAfflictions.tickPlayer(p); server.setDifficulty(difficulty, true); }
+        close(h, YujiConfig.MAX_CURSE_DAMAGE.get(), liveCap, "live legacy curse config restored");
+        h.succeed();
+    }
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
     public static void yujiGreedLayersClampAndReload(GameTestHelper h) {
         YujiMonster greed = monster(h, YujiKind.TANYU); greed.setLayers(99, true);
         h.assertTrue(greed.layers() == 12, "layer cap"); close(h, greed.getMaxHealth(), 78, "layer health");
@@ -134,6 +250,32 @@ public final class YujiGameTests {
                     "reached movement waypoint advances at layer " + layers + ", width=" + greed.getBbWidth());
             h.assertTrue(greed.position().equals(reached), "navigation never teleports the mob");
             greed.discard();
+        }
+        h.succeed();
+    }
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
+    public static void yujiGreedNearWaypointAdvancesWithoutSkippingDistantNodes(GameTestHelper h) {
+        BlockPos start = h.absolutePos(new BlockPos(2, 2, 2));
+        for (int layers = 0; layers <= 12; layers++) {
+            for (double offset : new double[]{-.0001, .0001, -2, 2}) {
+                YujiMonster greed = monster(h, YujiKind.TANYU);
+                try {
+                    greed.setLayers(layers, false);
+                    var path = new net.minecraft.world.level.pathfinder.Path(java.util.List.of(
+                            new net.minecraft.world.level.pathfinder.Node(start.getX(), start.getY(), start.getZ()),
+                            new net.minecraft.world.level.pathfinder.Node(start.getX(), start.getY(), start.getZ() + 4)),
+                            start.offset(0, 0, 4), true);
+                    var position = path.getNextEntityPos(greed).add(offset, 0, offset);
+                    greed.moveTo(position); greed.setOnGround(true);
+                    h.assertTrue(greed.getNavigation().moveTo(path, 1), "native near-waypoint path starts");
+                    greed.getNavigation().tick();
+                    int expected = Math.abs(offset) < 1 ? 1 : 0;
+                    h.assertTrue(path.getNextNodeIndex() == expected,
+                            "native arrival tolerance handles near but not distant nodes: layers=" + layers
+                                    + ", offset=" + offset + ", index=" + path.getNextNodeIndex());
+                    h.assertTrue(greed.position().equals(position), "arrival detection never teleports");
+                } finally { greed.discard(); }
+            }
         }
         h.succeed();
     }
