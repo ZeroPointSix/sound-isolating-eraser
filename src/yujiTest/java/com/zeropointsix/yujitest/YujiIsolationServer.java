@@ -379,6 +379,14 @@ public final class YujiIsolationServer {
             fill(level, -2, 65, 14, 2, 68, 14); fill(level, -2, 68, 6, 2, 68, 14);
         } else {
             fill(level, -1, 65, 6, -1, 72, 13); fill(level, 2, 65, 6, 2, 72, 13);
+            // Isolate habitat movement from player pushing. Pull/camera are exercised in their own stages.
+            place(a, 10.5, 65, -1.5, 0); place(b, 15.5, 65, 3.5, 90);
+            for (BlockPos center : new BlockPos[]{new BlockPos(10, 65, -2), new BlockPos(15, 65, 3)}) {
+                for (BlockPos wall : BlockPos.betweenClosed(center.offset(-1, 0, -1), center.offset(1, 1, 1)))
+                    if (wall.getX() != center.getX() || wall.getZ() != center.getZ())
+                        block(level, wall, Blocks.GLASS.defaultBlockState());
+            }
+            require(level.noCollision(a) && level.noCollision(b), "habitat observers start clear inside physical enclosures");
         }
         current = spawn(level, round == 0 ? YujiKind.LIANGSHE : YujiKind.XIEYIN, round == 0 ? .5 : 1, 65, 0, true);
         habitatStart = current.position(); current.setNoAi(false);

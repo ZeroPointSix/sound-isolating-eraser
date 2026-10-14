@@ -78,7 +78,7 @@ public final class YujiIsolationClient {
                 require(Math.abs(box.minY - 65) < .01 && box.maxY <= (parts[1].equals("liangshe-indoor") ? 68 : 73),
                         "client sees body below the roof or within corridor wall height");
                 require(box.minX >= (parts[1].equals("liangshe-indoor") ? -1 : 0) && box.maxX <= 2
-                        && box.minZ >= 6 && box.maxZ <= 13, "client sees entire body between habitat walls");
+                        && box.minZ >= 6 && box.maxZ <= 13, "client sees entire body between habitat walls: pos=" + mob.position() + "; box=" + box);
                 pass(parts[1], "TCP-synchronized entity=" + mob.getUUID() + "; pos=" + mob.position() + "; body=" + mob.getBoundingBox());
                 shot = parts[1];
             } else if (parts[0].equals("crouch")) {

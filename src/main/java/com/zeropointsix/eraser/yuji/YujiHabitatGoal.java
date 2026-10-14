@@ -15,6 +15,7 @@ import net.minecraft.world.phys.Vec3;
 
 /** Reachable hiding places, without altering either monster's collision dimensions. */
 final class YujiHabitatGoal extends Goal {
+    private static final org.slf4j.Logger LOGGER = com.mojang.logging.LogUtils.getLogger();
     private static final int SEARCH_RADIUS = 12, SEARCH_INTERVAL = 80, PATH_BUDGET = 16;
     private final YujiMonster mob;
     private Path path;
@@ -55,9 +56,13 @@ final class YujiHabitatGoal extends Goal {
             destination = end;
             path = candidate;
             searchCursor = 0;
+            LOGGER.debug("Yuji habitat selected: kind={}, origin={}, destination={}, candidates={}",
+                    mob.kind(), mob.position(), destination, candidates.size());
             return true;
         }
         searchCursor = candidates.isEmpty() ? 0 : (searchCursor + PATH_BUDGET) % candidates.size();
+        LOGGER.debug("Yuji habitat unavailable: kind={}, origin={}, candidates={}, next={}",
+                mob.kind(), mob.position(), candidates.size(), searchCursor);
         return false;
     }
 

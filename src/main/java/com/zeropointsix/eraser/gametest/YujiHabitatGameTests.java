@@ -37,6 +37,32 @@ public final class YujiHabitatGameTests {
         mob.setPersistenceRequired();
         // Spawn is the sole placement. Vanilla goals/navigation/move control and gravity do the rest.
         mob.setNoAi(false); mob.setNoGravity(false);
+        if (kind == YujiKind.XIEYIN) {
+            var snapshot = new java.util.LinkedHashMap<BlockPos, net.minecraft.world.level.block.state.BlockState>();
+            for (BlockPos p : BlockPos.betweenClosed(0, 0, 0, 15, 7, 15))
+                snapshot.put(p.immutable(), h.getLevel().getBlockState(h.absolutePos(p)));
+            for (int tick = 1; tick < 600; tick++) h.runAtTickTime(tick, () -> {
+                if (!mob.isAlive()) return;
+                snapshot.forEach((p, state) -> {
+                    var actual = h.getLevel().getBlockState(h.absolutePos(p));
+                    if (!actual.equals(state)) h.fail("habitat fixture changed at " + p + " from " + state + " to " + actual);
+                });
+            });
+        }
+        for (int tick = 40; tick < 650; tick += 40) h.runAtTickTime(tick, () -> {
+            if (!mob.isAlive()) return;
+            var path = mob.getNavigation().getPath();
+            System.out.println("YUJI_HABITAT_TRACE kind=" + kind + ", origin=" + h.absolutePos(BlockPos.ZERO)
+                    + ", pos=" + h.relativeVec(mob.position()) + ", entityTick=" + mob.tickCount
+                    + ", entityTicking=" + h.getLevel().isPositionEntityTicking(mob.blockPosition())
+                    + ", support=" + h.getLevel().getBlockState(BlockPos.containing(mob.getX(), mob.getY() - .01, mob.getZ()))
+                    + ", motion=" + mob.getDeltaMovement() + ", grounded=" + mob.onGround()
+                    + ", collisions=" + mob.horizontalCollision + "/" + mob.verticalCollision
+                    + ", effects=" + mob.getActiveEffects() + ", vehicle=" + mob.getVehicle()
+                    + ", target=" + (mob.getTarget() == null ? "none" : mob.getTarget().getUUID())
+                    + ", path=" + (path == null ? "none" : path.getNextNodeIndex() + "/" + path.getNodeCount()
+                    + ", reachable=" + path.canReach() + ", next=" + (path.isDone() ? "done" : h.relativeVec(path.getNextEntityPos(mob)))));
+        });
         return mob;
     }
 
@@ -56,6 +82,17 @@ public final class YujiHabitatGameTests {
                 "body must be below the roof, not on top of it: " + pos);
         h.assertTrue(pos.z >= 9, "must reach the room interior: " + pos);
         h.assertBlockPresent(Blocks.STONE, BlockPos.containing(pos.x, 4, pos.z));
+    }
+
+    private static void insideCorridor(GameTestHelper h, YujiMonster mob, int wallX) {
+        soundBody(h, mob);
+        Vec3 min = h.relativeVec(new Vec3(mob.getBoundingBox().minX, mob.getY(), mob.getBoundingBox().minZ));
+        Vec3 max = h.relativeVec(new Vec3(mob.getBoundingBox().maxX, mob.getY(), mob.getBoundingBox().maxZ));
+        h.assertTrue(Math.abs(min.y - 1) < .01 && min.x >= wallX + 1 && max.x <= wallX + 3
+                        && min.z >= 7 && max.z <= 15,
+                "whole body must stay on corridor floor between walls: " + min + " -> " + max);
+        h.assertBlockPresent(Blocks.STONE, BlockPos.containing(wallX, 1, h.relativeVec(mob.position()).z));
+        h.assertBlockPresent(Blocks.STONE, BlockPos.containing(wallX + 3, 1, h.relativeVec(mob.position()).z));
     }
 
     @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji_habitat", timeoutTicks = 500)
@@ -100,8 +137,9 @@ public final class YujiHabitatGameTests {
                     "accepted giant dimensions stay unchanged");
             h.assertTrue(h.relativeVec(mob.position()).z >= 8, "Xieyin must navigate into narrow corridor: " + h.relativeVec(mob.position()));
             h.assertTrue(mob.distanceToSqr(start) > 30, "real displacement into shelter");
+            insideCorridor(h, mob, 5);
         }).thenExecuteFor(80, () -> {
-            soundBody(h, mob);
+            insideCorridor(h, mob, 5);
             Vec3 pos = h.relativeVec(mob.position());
             h.assertTrue(pos.x > 6 && pos.x < 8 && pos.z >= 8 && pos.z <= 14, "stays in corridor");
         }).thenExecute(mob::discard).thenSucceed();
@@ -129,6 +167,7 @@ public final class YujiHabitatGameTests {
             soundBody(h, mob);
             Vec3 pos = h.relativeVec(mob.position());
             h.assertTrue(pos.x > 11 && pos.x < 13 && pos.z >= 8, "must reject head collision and use tall corridor: " + pos);
+            insideCorridor(h, mob, 10);
         }).thenExecute(mob::discard).thenSucceed();
     }
 
