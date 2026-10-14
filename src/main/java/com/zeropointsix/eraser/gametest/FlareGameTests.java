@@ -5,11 +5,15 @@ import com.zeropointsix.eraser.yuji.YujiContent;
 import com.zeropointsix.eraser.yuji.YujiKind;
 import com.zeropointsix.eraser.yuji.flare.*;
 import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import net.minecraft.core.BlockPos;
+import net.minecraft.gametest.framework.AfterBatch;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -20,6 +24,8 @@ import net.minecraft.world.item.Rarity;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LightBlock;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
@@ -34,6 +40,19 @@ import net.minecraftforge.gametest.PrefixGameTestTemplate;
 @GameTestHolder("yuji_tests")
 @PrefixGameTestTemplate(false)
 public final class FlareGameTests {
+    private static final Map<BlockPos, BlockState> fixtureBlocks = new LinkedHashMap<>();
+    private static void fixtureBlock(ServerLevel level, BlockPos pos, BlockState state) {
+        fixtureBlocks.putIfAbsent(pos.immutable(), level.getBlockState(pos));
+        level.setBlock(pos, state, 3);
+    }
+    @AfterBatch(batch = "flare")
+    public static void restoreFixtures(ServerLevel level) {
+        fixtureBlocks.forEach((pos, state) -> {
+            if (level.getBlockEntity(pos) instanceof SupplyCrateBlockEntity crate) crate.clearContent();
+            level.setBlock(pos, state, 16);
+        });
+        fixtureBlocks.clear();
+    }
     private static Player player(GameTestHelper h) {
         Player player = h.makeMockSurvivalPlayer();
         player.setPos(Vec3.atBottomCenterOf(h.absolutePos(new BlockPos(3, 2, 3))));
@@ -49,8 +68,16 @@ public final class FlareGameTests {
     }
     private static void fire(GameTestHelper h, Player player) { FlareContent.GUN.get().use(h.getLevel(), player, InteractionHand.MAIN_HAND); }
     private static BlockPos platform(GameTestHelper h) {
-        for (int x = 2; x <= 4; x++) for (int z = 2; z <= 4; z++) h.setBlock(new BlockPos(x, 1, z), Blocks.STONE);
-        return h.absolutePos(new BlockPos(3, 2, 3));
+        var level = h.getLevel(); BlockPos reference = h.absolutePos(new BlockPos(3, 2, 3));
+        int surface = reference.getY();
+        for (int x = -1; x <= 1; x++) for (int z = -1; z <= 1; z++)
+            surface = Math.max(surface, level.getHeight(Heightmap.Types.MOTION_BLOCKING, reference.getX() + x, reference.getZ() + z));
+        BlockPos pos = new BlockPos(reference.getX(), surface + 2, reference.getZ());
+        h.assertTrue(pos.getY() + 6 < level.getMaxBuildHeight(), "test platform has sky headroom");
+        for (int x = -1; x <= 1; x++) for (int z = -1; z <= 1; z++)
+            fixtureBlock(level, pos.offset(x, -1, z), Blocks.STONE.defaultBlockState());
+        fixtureBlocks.putIfAbsent(pos, level.getBlockState(pos));
+        return pos;
     }
 
     @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "flare")
@@ -83,7 +110,8 @@ public final class FlareGameTests {
     @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "flare")
     public static void flareGreenIndoorRejectionAndVerticalLaunch(GameTestHelper h) {
         Player p = player(h); p.setItemInHand(InteractionHand.OFF_HAND, new ItemStack(FlareContent.GREEN.get(), 2));
-        BlockPos roof = p.blockPosition().above(3); h.getLevel().setBlock(roof, Blocks.STONE.defaultBlockState(), 3);
+        p.setPos(Vec3.atBottomCenterOf(platform(h)));
+        BlockPos roof = p.blockPosition().above(3); fixtureBlock(h.getLevel(), roof, Blocks.STONE.defaultBlockState());
         fire(h, p);
         h.assertTrue(projectiles(h, p).isEmpty() && p.getOffhandItem().getCount() == 2, "indoor refusal consumes nothing");
         h.getLevel().removeBlock(roof, false); p.setXRot(70); p.setYRot(87); fire(h, p);
@@ -219,12 +247,12 @@ public final class FlareGameTests {
     public static void flareCrateRejectsFluidShaftAndProtectedLanding(GameTestHelper h) {
         Player p = player(h); BlockPos pos = platform(h);
         h.assertTrue(FlarePlacement.safeGround(h.getLevel(), pos), "flat surface is valid");
-        h.getLevel().setBlock(pos.above(4), Blocks.OAK_LEAVES.defaultBlockState(), 3);
+        fixtureBlock(h.getLevel(), pos.above(4), Blocks.OAK_LEAVES.defaultBlockState());
         h.assertTrue(!FlarePlacement.safeGround(h.getLevel(), pos), "canopy blocking the descent is rejected");
         h.getLevel().removeBlock(pos.above(4), false);
         h.getLevel().setBlock(pos, Blocks.WATER.defaultBlockState(), 3);
         h.assertTrue(!FlarePlacement.safeGround(h.getLevel(), pos), "water landing rejected"); h.getLevel().removeBlock(pos, false);
-        h.getLevel().setBlock(pos.above(4).east(), Blocks.STONE.defaultBlockState(), 3);
+        fixtureBlock(h.getLevel(), pos.above(4).east(), Blocks.STONE.defaultBlockState());
         h.assertTrue(!FlarePlacement.safeGround(h.getLevel(), pos), "adjacent high rim rejects shaft"); h.getLevel().removeBlock(pos.above(4).east(), false);
         class Guard { @SubscribeEvent public void deny(BlockEvent.EntityPlaceEvent event) { if (event.getPos().equals(pos)) event.setCanceled(true); } }
         Guard guard = new Guard(); MinecraftForge.EVENT_BUS.register(guard);

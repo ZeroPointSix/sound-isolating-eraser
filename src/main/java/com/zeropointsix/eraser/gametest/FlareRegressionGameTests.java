@@ -182,7 +182,7 @@ public final class FlareRegressionGameTests {
         h.succeed();
     }
 
-    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "flare_regression", timeoutTicks = 140)
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "flare_regression", timeoutTicks = 220)
     public static void flareSupplyLootAndEmptyCountdown(GameTestHelper h) {
         var level = h.getLevel();
         BlockPos pos = h.absolutePos(new BlockPos(2, 3, 2));
@@ -194,9 +194,12 @@ public final class FlareRegressionGameTests {
         h.assertTrue(!crate.isEmpty() && !crate.saveWithFullMetadata().contains("LootTable"), "first access generates real datapack loot");
         var saved = crate.saveWithFullMetadata(); crate.unpackLootTable(player(h));
         h.assertTrue(crate.saveWithFullMetadata().equals(saved), "second access never rerolls");
-        crate.clearContent();
-        h.runAfterDelay(99, () -> h.assertTrue(level.getBlockState(pos).is(FlareContent.CRATE.get()), "empty crate lasts five seconds"));
-        h.runAfterDelay(105, () -> { h.assertTrue(level.isEmptyBlock(pos), "empty crate disappears"); h.succeed(); });
+        h.startSequence().thenWaitUntil(() -> h.assertTrue(level.isPositionEntityTicking(pos), "container chunk ready"))
+                .thenExecute(() -> {
+                    crate.clearContent();
+                    h.runAfterDelay(99, () -> h.assertTrue(level.getBlockState(pos).is(FlareContent.CRATE.get()), "empty crate lasts five seconds"));
+                    h.runAfterDelay(105, () -> { h.assertTrue(level.isEmptyBlock(pos), "empty crate disappears"); h.succeed(); });
+                });
     }
 
     @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "flare_regression")
