@@ -114,6 +114,17 @@ public final class YujiHabitatGameTests {
         fill(h, 1, 3, 7, 4, 3, 14, true);
         fill(h, 10, 1, 7, 10, 7, 14, true); fill(h, 13, 1, 7, 13, 7, 14, true);
         YujiMonster mob = live(h, YujiKind.XIEYIN, new Vec3(3, 1, 3));
+        for (int tick = 40; tick < 600; tick += 40) h.runAtTickTime(tick, () -> {
+            if (!mob.isAlive()) return;
+            var path = mob.getNavigation().getPath();
+            System.out.println("YUJI_HABITAT_LOW_CORRIDOR pos=" + h.relativeVec(mob.position())
+                    + ", entityTick=" + mob.tickCount + ", gameTime=" + h.getLevel().getGameTime()
+                    + ", entityTicking=" + h.getLevel().isPositionEntityTicking(mob.blockPosition())
+                    + ", corridorLoaded=" + h.getLevel().hasChunksAt(h.absolutePos(new BlockPos(7, 0, 4)), h.absolutePos(new BlockPos(17, 11, 14)))
+                    + ", target=" + (mob.getTarget() == null ? "none" : mob.getTarget().getUUID())
+                    + ", path=" + (path == null ? "none" : path.getNextNodeIndex() + "/" + path.getNodeCount()
+                    + ", reachable=" + path.canReach() + ", next=" + (path.isDone() ? "done" : h.relativeVec(path.getNextEntityPos(mob)))));
+        });
         h.startSequence().thenWaitUntil(() -> {
             soundBody(h, mob);
             Vec3 pos = h.relativeVec(mob.position());
