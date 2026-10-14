@@ -19,6 +19,8 @@ import java.util.*;
 public final class CityTemplates {
     public static final List<String> BUILDINGS = List.of("res_apartment_low", "res_apartment_mid", "res_apartment_high",
             "res_tenement", "office_dark", "office_tower", "shop_neon", "warehouse", "mall", "civic_center", "townhall", "library");
+    /** 3×3 civic overlay. Only the commercial district may place these. */
+    public static final List<String> CIVIC_LARGE = List.of("mall", "civic_center", "townhall", "library");
 
     /** Every structure template the generator may place, per the supplied art pack. */
     public static final List<String> STRUCTURES = List.of(
@@ -37,6 +39,17 @@ public final class CityTemplates {
     public static ResourceLocation id(String path) { return new ResourceLocation("qihai", path); }
     public static boolean available(ServerLevel level) {
         return STRUCTURES.stream().allMatch(name -> level.getStructureManager().get(id(name)).isPresent());
+    }
+
+    /**
+     * A 3×3 mall/civic/townhall/library overlay is commercial-only.
+     * Residential and industrial tiles keep {@link CityLayout#building}.
+     */
+    public static String largeCivic(long seed, int blockX, int blockZ) {
+        CityLayout.District district = CityLayout.district(blockX * 64 + 32, blockZ * 64 + 32);
+        if (district != CityLayout.District.COMMERCIAL) return null;
+        if (Math.floorMod(CityLayout.hash(seed, blockX, blockZ), 4) != 0) return null;
+        return CIVIC_LARGE.get((int) Math.floorMod(CityLayout.hash(seed + 1, blockX, blockZ), CIVIC_LARGE.size()));
     }
 
     public static void place(WorldGenRegion region, ChunkAccess chunk) {
@@ -59,12 +72,10 @@ public final class CityTemplates {
             String street = lx == 0 && lz == 0 ? "street_cross_" : lx == 0 ? "street_straight_ns_" : "street_straight_";
             placeOne(region, "streets/" + street + district, new BlockPos(x, CityLayout.surface(x, z) - 1, z), clip, true, null);
         } else {
-            boolean large = Math.floorMod(CityLayout.hash(region.getSeed(), bx, bz), 4) == 0;
-            if (large && lx <= 2 && lz <= 2) {
-                String[] choices = {"mall", "civic_center", "townhall", "library"};
-                String name = choices[(int) Math.floorMod(CityLayout.hash(region.getSeed() + 1, bx, bz), choices.length)];
-                placeOne(region, "buildings/" + name, new BlockPos((bx * 4 + 1) * 16, CityLayout.plateau(bx, bz), (bz * 4 + 1) * 16),
-                        clip, false, loot(name));
+            String civic = largeCivic(region.getSeed(), bx, bz);
+            if (civic != null && lx <= 2 && lz <= 2) {
+                placeOne(region, "buildings/" + civic, new BlockPos((bx * 4 + 1) * 16, CityLayout.plateau(bx, bz), (bz * 4 + 1) * 16),
+                        clip, false, loot(civic));
             } else if (station) {
                 int top = CityLayout.plateau(bx, bz);
                 BoundingBox underground = new BoundingBox(x, CityChunkGenerator.SUBWAY_Y + 6, z, x + 15, top - 1, z + 15);

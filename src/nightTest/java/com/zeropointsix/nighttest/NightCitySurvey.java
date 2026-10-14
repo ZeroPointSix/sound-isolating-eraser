@@ -240,13 +240,12 @@ final class NightCitySurvey {
     private static List<Target> locate(long seed) {
         Map<String, Target> found = new LinkedHashMap<>();
         for (int bx = -12; bx <= 12; bx++) for (int bz = -12; bz <= 12; bz++) {
-            boolean large = Math.floorMod(CityLayout.hash(seed, bx, bz), 4) == 0;
+            String civic = CityTemplates.largeCivic(seed, bx, bz);
             for (int lx = 1; lx <= 3; lx++) for (int lz = 1; lz <= 3; lz++) {
                 String name;
-                if (large && lx <= 2 && lz <= 2) {
+                if (civic != null && lx <= 2 && lz <= 2) {
                     if (lx != 1 || lz != 1) continue;
-                    String[] pool = {"mall", "civic_center", "townhall", "library"};
-                    name = pool[(int) Math.floorMod(CityLayout.hash(seed + 1, bx, bz), pool.length)];
+                    name = civic;
                 } else {
                     if (lx == 3 && lz == 3 && CityTemplates.hasStation(seed, bx, bz)) continue;
                     if (lx == 3 && lz == 1 && Math.floorMod(CityLayout.hash(seed + 3, bx, bz), 4) == 0) continue;

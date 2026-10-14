@@ -441,15 +441,13 @@ public final class EternalNightGameTests {
         for (var entry : blocks.entrySet()) {
             int bx = (int) entry.getValue()[0], bz = (int) entry.getValue()[1];
             // Replicate CityTemplates.place's per-tile routing to find every placed building.
-            boolean large = Math.floorMod(CityLayout.hash(seed, bx, bz), 4) == 0;
+            String civic = CityTemplates.largeCivic(seed, bx, bz);
             java.util.List<String> placements = new java.util.ArrayList<>();
-            if (large) {
-                String name = new String[]{"mall", "civic_center", "townhall", "library"}[
-                        (int) Math.floorMod(CityLayout.hash(seed + 1, bx, bz), 4)];
-                placements.add(name + "@" + ((bx * 4 + 1) * 16) + "," + CityLayout.plateau(bx, bz) + "," + ((bz * 4 + 1) * 16));
+            if (civic != null) {
+                placements.add(civic + "@" + ((bx * 4 + 1) * 16) + "," + CityLayout.plateau(bx, bz) + "," + ((bz * 4 + 1) * 16));
             }
             for (int lx = 1; lx <= 3; lx++) for (int lz = 1; lz <= 3; lz++) {
-                boolean coveredByLarge = large && lx <= 2 && lz <= 2;
+                boolean coveredByLarge = civic != null && lx <= 2 && lz <= 2;
                 int tx = bx * 4 + lx, tz = bz * 4 + lz;
                 boolean station = lx == 3 && lz == 3 && CityTemplates.hasStation(seed, bx, bz);
                 boolean plaza = lx == 3 && lz == 1 && Math.floorMod(CityLayout.hash(seed + 3, bx, bz), 4) == 0;
@@ -525,6 +523,38 @@ public final class EternalNightGameTests {
             }
         }
         return false;
+    }
+
+    @GameTest(template = "empty", batch = "eternal_night_district")
+    public static void cityDistrictPoolsKeepCivicBuildingsInCommercial(GameTestHelper h) {
+        isolate(h.getLevel());
+        java.util.Set<String> civicSeen = new java.util.HashSet<>();
+        int residentialBlocks = 0, industrialBlocks = 0, commercialLarge = 0;
+        for (int bx = -24; bx <= 24; bx++) for (int bz = -24; bz <= 24; bz++) {
+            CityLayout.District district = CityLayout.district(bx * 64 + 32, bz * 64 + 32);
+            String civic = CityTemplates.largeCivic(0, bx, bz);
+            if (district == CityLayout.District.RESIDENTIAL) {
+                residentialBlocks++;
+                h.assertTrue(civic == null, "residential 64-block must not place mall/civic overlay at " + bx + "," + bz);
+                for (int lx = 1; lx <= 3; lx++) for (int lz = 1; lz <= 3; lz++) {
+                    String name = CityLayout.building(0, bx * 4 + lx, bz * 4 + lz);
+                    h.assertTrue(!CityTemplates.CIVIC_LARGE.contains(name),
+                            "residential tile pool must not draw " + name);
+                }
+            } else if (district == CityLayout.District.INDUSTRIAL) {
+                industrialBlocks++;
+                h.assertTrue(civic == null, "industrial 64-block must not place mall/civic overlay at " + bx + "," + bz);
+            } else if (civic != null) {
+                commercialLarge++;
+                civicSeen.add(civic);
+                h.assertTrue(CityTemplates.CIVIC_LARGE.contains(civic), "unknown civic overlay " + civic);
+            }
+        }
+        h.assertTrue(residentialBlocks > 0 && industrialBlocks > 0, "sample covers residential and industrial");
+        h.assertTrue(commercialLarge > 0, "commercial still places the 3x3 civic overlay");
+        h.assertTrue(civicSeen.containsAll(CityTemplates.CIVIC_LARGE),
+                "mall/civic_center/townhall/library still appear in commercial: " + civicSeen);
+        h.succeed();
     }
 
     @GameTest(template = "empty", batch = "eternal_night_shadow")

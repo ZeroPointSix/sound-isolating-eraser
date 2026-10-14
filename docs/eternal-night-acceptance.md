@@ -19,6 +19,7 @@
 | 共享出口 300s SavedData，穿过回床 | PASS（本轮加锁） | `CitySavedData` Until；`cityWalkingThroughSharedExitReturnsHome`：开叶穿越、关叶仍传、>4 格滞后跳跃仍传、过期不传；窗口内不可关 + 过期自动关见 `cityExitDoorStaysOpenUntilExpiry` |
 | 死亡清史、不改原版掉落 | PASS | `cityDeathDropsAndRespawnsAtOwnBed` |
 | 分区 55/15/30、地铁、无洞穴 | PASS | `CityLayout` / `cityGeneratedSubwayAndShaftConnect` |
+| 城区专属建筑池（mall/市政不进住宅） | PASS（本轮加锁） | 大建筑覆盖层原忽略分区。现 `CityTemplates.largeCivic` 仅商业区；`cityDistrictPoolsKeepCivicBuildingsInCommercial` |
 | 怪物配比与原版禁令 | PASS | `CitySpawns`；`cityEventInterceptionCoversSpec`；`cityMissingShadowNeverUsesRegistryDefault`（PR #18 按指示跳过） |
 | 白面 / 粒子 / 低沉音效 | PASS（代码+既有 e2e） | `CityClientRuntime` 白面；`END_ROD` + `BEACON_AMBIENT`；既有 native 白像素对照。本轮未重跑双客户端 e2e 则不把听觉当新证据 |
 | 事件拦截（床/锚/生长/传送门/原版怪） | PASS | `cityEventInterceptionCoversSpec` |
