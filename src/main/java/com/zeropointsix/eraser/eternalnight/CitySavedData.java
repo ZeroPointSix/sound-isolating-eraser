@@ -122,6 +122,18 @@ public final class CitySavedData extends SavedData {
         setDirty();
     }
 
+    /** Replaces in-memory maps from NBT as a process restart would via {@link #load}. */
+    public void overwriteFrom(CompoundTag tag) {
+        CitySavedData loaded = load(tag);
+        exits.clear();
+        exits.putAll(loaded.exits);
+        bosses.clear();
+        bosses.putAll(loaded.bosses);
+        pendingClose.clear();
+        pendingClose.addAll(loaded.pendingClose);
+        setDirty();
+    }
+
     public void releaseBoss(UUID uuid) {
         if (bosses.values().removeIf(uuid::equals)) setDirty();
     }

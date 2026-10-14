@@ -3,12 +3,16 @@ package com.zeropointsix.eraser.eternalnight;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.LevelAccessor;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.DoorBlock;
 import net.minecraft.world.level.block.SlabBlock;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
 import net.minecraft.world.level.block.state.properties.SlabType;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
+import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -78,6 +82,7 @@ public final class CityBuildingAccess {
             var world = city.getBlockState(info.pos());
             if (!(world.getBlock() instanceof DoorBlock) || !world.hasProperty(DoorBlock.FACING)) continue;
             openDoor(city, info.pos());
+            clearApproachSlabs(city, info.pos());
             Direction facing = world.getValue(DoorBlock.FACING);
             for (Direction outward : new Direction[] {facing, facing.getOpposite()}) {
                 for (int distance = 1; distance <= 4; distance++) {
@@ -113,6 +118,41 @@ public final class CityBuildingAccess {
         var up = city.getBlockState(door.above());
         if (up.getBlock() == state.getBlock() && up.hasProperty(DoorBlock.OPEN))
             city.setBlock(door.above(), up.setValue(DoorBlock.OPEN, true), 3);
+        clearApproachSlabs(city, door);
+    }
+
+    /**
+     * Street templates sit at surface-1 with a bottom slab at door Y. A native
+     * 1.8-tall player standing on that slab has their head in the lintel at
+     * door Y+2. Clear the 1–3 street blocks outside each perimeter door so
+     * the run-up is pavement at integer door Y.
+     */
+    public static void clearBuildingApproachSlabs(LevelAccessor level, StructureTemplate template, BlockPos origin,
+                                                  StructurePlaceSettings settings) {
+        for (var block : ForgeRegistries.BLOCKS) {
+            if (!(block instanceof DoorBlock)) continue;
+            for (var info : template.filterBlocks(origin, settings, block)) {
+                if (!info.state().hasProperty(DoorBlock.HALF)
+                        || info.state().getValue(DoorBlock.HALF) != DoubleBlockHalf.LOWER)
+                    continue;
+                clearApproachSlabs(level, info.pos());
+            }
+        }
+    }
+
+    public static void clearApproachSlabs(LevelAccessor level, BlockPos door) {
+        var state = level.getBlockState(door);
+        if (!(state.getBlock() instanceof DoorBlock) || !state.hasProperty(DoorBlock.FACING)) return;
+        Direction facing = state.getValue(DoorBlock.FACING);
+        int flags = level instanceof ServerLevel ? 3 : 2 | 16;
+        for (Direction outward : new Direction[] {facing, facing.getOpposite()}) {
+            for (int distance = 1; distance <= 3; distance++) {
+                BlockPos pos = door.relative(outward, distance);
+                if (!CityLayout.street(pos.getX(), pos.getZ())) continue;
+                if (bottomSlab(level.getBlockState(pos)))
+                    level.setBlock(pos, Blocks.AIR.defaultBlockState(), flags);
+            }
+        }
     }
 
     public static boolean entranceWalkable(ServerLevel city, Approach approach) {
@@ -283,8 +323,9 @@ public final class CityBuildingAccess {
 
     private static boolean walkableSpace(ServerLevel city, int x, int y, int z) {
         if (city.noCollision(bodyAt(x, y, z))) return true;
-        if (!bottomSlab(city, new BlockPos(x, y, z))) return false;
-        AABB raised = new AABB(x + .2, y + .5, z + .2, x + .8, y + 1.8, z + .8);
+        if (!bottomSlab(city.getBlockState(new BlockPos(x, y, z)))) return false;
+        // Native standing on a bottom slab is still 1.8 tall (feet at y+0.5, head at y+2.3).
+        AABB raised = new AABB(x + .2, y + .5, z + .2, x + .8, y + .5 + 1.8, z + .8);
         return city.noCollision(raised);
     }
 
@@ -292,13 +333,17 @@ public final class CityBuildingAccess {
         AABB body = new AABB(x - .3, y, z - .3, x + .3, y + 1.8, z + .3);
         if (city.noCollision(body)) return true;
         BlockPos pos = BlockPos.containing(x, y, z);
-        if (!bottomSlab(city, pos) && !bottomSlab(city, pos.below())) return false;
-        AABB raised = new AABB(x - .3, Math.floor(y) + .5, z - .3, x + .3, Math.floor(y) + 1.8, z + .3);
+        if (!bottomSlab(city.getBlockState(pos)) && !bottomSlab(city.getBlockState(pos.below()))) return false;
+        double stand = Math.floor(y) + .5;
+        AABB raised = new AABB(x - .3, stand, z - .3, x + .3, stand + 1.8, z + .3);
         return city.noCollision(raised);
     }
 
     private static boolean bottomSlab(ServerLevel city, BlockPos pos) {
-        var state = city.getBlockState(pos);
+        return bottomSlab(city.getBlockState(pos));
+    }
+
+    private static boolean bottomSlab(BlockState state) {
         return state.getBlock() instanceof SlabBlock && state.hasProperty(SlabBlock.TYPE)
                 && state.getValue(SlabBlock.TYPE) == SlabType.BOTTOM;
     }

@@ -37,6 +37,7 @@ def main() -> int:
         "class_has_m_153165_": "m_153165_" in blob,
         "class_has_m_6227_": "m_6227_" in blob,
         "class_has_m_6861_": "m_6861_" in blob,
+        "class_has_m_7731_": "m_7731_" in blob,
         "class_has_quoted_wrong_srg": '"m_153166_"' in blob or "m_153166_" in blob,
         "json_lists_CityDoorMixin": "CityDoorMixin" in mixin_json,
         "group_min_3": "min" in blob and "3" in blob,
@@ -49,6 +50,8 @@ def main() -> int:
         failed.append("missing SRG use m_6227_")
     if not checks["class_has_m_6861_"]:
         failed.append("missing SRG neighborChanged m_6861_")
+    if not checks["class_has_m_7731_"]:
+        failed.append("missing SRG Level.setBlock m_7731_ redirect target for setOpen")
     if checks["class_has_quoted_wrong_srg"]:
         failed.append("contains wrong SRG m_153166_")
     if not checks["json_lists_CityDoorMixin"]:
@@ -56,6 +59,7 @@ def main() -> int:
     print("NIGHT_REMAPPED_DOOR_MIXIN jar=" + str(jar.resolve()))
     print("NIGHT_REMAPPED_DOOR_MIXIN srg=m_6227_,m_6861_,m_153165_ present="
           + str(checks["class_has_m_153165_"] and checks["class_has_m_6227_"] and checks["class_has_m_6861_"]))
+    print("NIGHT_REMAPPED_DOOR_MIXIN setOpen_redirect_target_m_7731_=" + str(checks["class_has_m_7731_"]))
     print("NIGHT_REMAPPED_DOOR_MIXIN CityDoorMixin.json=" + str(checks["json_lists_CityDoorMixin"]))
     if failed:
         print("NIGHT_REMAPPED_DOOR_MIXIN_FAIL " + "; ".join(failed), file=sys.stderr)

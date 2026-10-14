@@ -11,6 +11,7 @@ import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.*;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.block.state.properties.SlabType;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.templatesystem.*;
@@ -73,6 +74,7 @@ public final class CityTemplates {
         if (lx == 0 || lz == 0) {
             String street = lx == 0 && lz == 0 ? "street_cross_" : lx == 0 ? "street_straight_ns_" : "street_straight_";
             placeOne(region, "streets/" + street + district, new BlockPos(x, CityLayout.surface(x, z) - 1, z), clip, true, null);
+            flattenLotFacingStreet(region, x, z);
         } else {
             String civic = largeCivic(region.getSeed(), bx, bz);
             if (civic != null && lx <= 2 && lz <= 2) {
@@ -139,6 +141,36 @@ public final class CityTemplates {
         Set<Long> keep = chooseContainers(template, settings, adjusted, seed);
         settings.setBoundingBox(clip).addProcessor(new PlacementProcessor(keep, loot, seed, slope, origin.getY()));
         template.placeInWorld(region, adjusted, adjusted, settings, RandomSource.create(seed), 2 | 16);
+        if (path.startsWith("buildings/"))
+            CityBuildingAccess.clearBuildingApproachSlabs(region, template, adjusted, settings);
+    }
+
+    /**
+     * Street templates put bottom slabs at door Y. A 1.8-tall player on those
+     * slabs hits the lintel. Surface generation can only write the current
+     * chunk, so strip lot-facing sidewalk slabs here instead of from the building.
+     */
+    private static void flattenLotFacingStreet(WorldGenRegion region, int originX, int originZ) {
+        for (int dx = 0; dx < 16; dx++) for (int dz = 0; dz < 16; dz++) {
+            int x = originX + dx, z = originZ + dz;
+            if (!CityLayout.street(x, z) || !nearLot(x, z)) continue;
+            int surface = CityLayout.surface(x, z);
+            for (int y = surface - 1; y <= surface + 3; y++) {
+                BlockPos pos = new BlockPos(x, y, z);
+                BlockState state = region.getBlockState(pos);
+                if (state.getBlock() instanceof SlabBlock && state.hasProperty(SlabBlock.TYPE)
+                        && state.getValue(SlabBlock.TYPE) == SlabType.BOTTOM)
+                    region.setBlock(pos, Blocks.AIR.defaultBlockState(), 2 | 16);
+            }
+        }
+    }
+
+    private static boolean nearLot(int x, int z) {
+        for (int distance = 1; distance <= 3; distance++)
+            if (!CityLayout.street(x + distance, z) || !CityLayout.street(x - distance, z)
+                    || !CityLayout.street(x, z + distance) || !CityLayout.street(x, z - distance))
+                return true;
+        return false;
     }
 
     private static Set<Long> chooseContainers(StructureTemplate template, StructurePlaceSettings settings, BlockPos origin, long seed) {

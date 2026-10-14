@@ -926,6 +926,18 @@ public final class EternalNightGameTests {
         }
         h.assertTrue(NightConfig.ENABLED.get() == hostEnabled, "injected failure restores ENABLED via AfterBatch hook");
         h.assertTrue(NightConfig.EXIT_SECONDS.get() == hostExit, "injected failure restores EXIT_SECONDS via AfterBatch hook");
+        System.out.println("NIGHT_AFTERBATCH_FAIL_RESTORE ENABLED=" + NightConfig.ENABLED.get()
+                + " EXIT_SECONDS=" + NightConfig.EXIT_SECONDS.get());
+        isolate(h.getLevel());
+        NightConfig.ENABLED.set(!hostEnabled);
+        NightConfig.EXIT_SECONDS.set(11);
+        // GameTestBatchRunner invokes the same AfterBatch hook on timeout as on fail.
+        // A real timeout cannot stay in a green suite, so this is the timeout path of restoreConfig.
+        afterConfigFail(h.getLevel());
+        h.assertTrue(NightConfig.ENABLED.get() == hostEnabled, "simulated timeout restores ENABLED via AfterBatch hook");
+        h.assertTrue(NightConfig.EXIT_SECONDS.get() == hostExit, "simulated timeout restores EXIT_SECONDS via AfterBatch hook");
+        System.out.println("NIGHT_AFTERBATCH_TIMEOUT_RESTORE ENABLED=" + NightConfig.ENABLED.get()
+                + " EXIT_SECONDS=" + NightConfig.EXIT_SECONDS.get());
         isolate(h.getLevel());
         NightConfig.EXIT_SECONDS.set(1);
         afterConfig(h.getLevel());
@@ -995,8 +1007,16 @@ public final class EternalNightGameTests {
                     h.assertTrue(!data.active(far, city.getGameTime()), "unloaded expiry cannot teleport");
                     h.assertTrue(data.waitingToClose(far),
                             "unloaded expiry keeps PendingClose instead of dropping the record");
-                    CitySavedData restored = CitySavedData.load(data.save(new CompoundTag()));
+                    CompoundTag snapshot = data.save(new CompoundTag());
+                    CitySavedData restored = CitySavedData.load(snapshot);
                     h.assertTrue(restored.waitingToClose(far), "pending close survives NBT across the unload");
+                    data.clearForTesting();
+                    h.assertTrue(!data.waitingToClose(far),
+                            "in-memory SavedData is empty after simulated process death");
+                    data.overwriteFrom(snapshot);
+                    h.assertTrue(data.waitingToClose(far),
+                            "PendingClose reloads from NBT after simulated restart");
+                    System.out.println("NIGHT_PENDING_CLOSE_RESTART waitingToClose=true after NBT reload");
                 })
                 .thenExecute(() -> {
                     city.setChunkForced(cx, cz, true);
@@ -1006,8 +1026,9 @@ public final class EternalNightGameTests {
                 .thenExecute(() -> {
                     data.activeExits(city, city.getGameTime());
                     h.assertTrue(!city.getBlockState(far).getValue(DoorBlock.OPEN),
-                            "reloading the expired door closes the original leaf");
+                            "reloading the expired door closes the original leaf after restart NBT");
                     h.assertTrue(!data.waitingToClose(far), "pending close is dropped after the leaf shuts");
+                    System.out.println("NIGHT_PENDING_CLOSE_RELOAD doorClosed=true after chunk reload");
                     city.setChunkForced(cx, cz, false);
                 })
                 .thenSucceed();
@@ -1067,10 +1088,12 @@ public final class EternalNightGameTests {
             if (floorsReached) floorsOk++;
             int dist = Math.abs(approach.get().feet().getX() - approach.get().door().getX())
                     + Math.abs(approach.get().feet().getZ() - approach.get().door().getZ());
+            double stepUp = CityBuildingAccess.stepUp(city, approach.get().feet());
             table.append("CITY_ENTRANCE template=").append(placement.name())
                     .append(" district=").append(placement.district())
                     .append(" walkable=true approachDist=").append(dist)
                     .append(" street=").append(CityLayout.street(approach.get().feet().getX(), approach.get().feet().getZ()))
+                    .append(" stepUp=").append(stepUp)
                     .append(" door=").append(approach.get().door().toShortString())
                     .append(" feet=").append(approach.get().feet().toShortString())
                     .append(" floors=").append(floors)
