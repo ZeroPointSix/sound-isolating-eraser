@@ -6,6 +6,7 @@ on:
       - 'src/main/**'
       - 'src/cityTest/**'
       - 'tools/yuji/**'
+      - 'tools/flare/**'
       - 'gradle/city-e2e.gradle'
       - 'build.gradle'
       - 'gradle.properties'
@@ -43,6 +44,7 @@ jobs:
           mkdir -p build
           bash ./gradlew build runGameTestServer -PyujiOnly --no-daemon --stacktrace 2>&1 | tee build/yuji-city-gametest.log
           python tools/yuji/verify_city_gametest_log.py build/yuji-city-gametest.log
+          python tools/flare/verify_gametest_log.py build/yuji-city-gametest.log
       - name: Prepare opt-in real client
         run: bash ./gradlew -PcityE2E writeCityTestClasspath --no-daemon
       - name: Exercise hospital, rain, marks, bell and overworld return
