@@ -17,16 +17,23 @@ public final class FallingSupplyCrate extends Entity {
     private BlockPos destination = BlockPos.ZERO;
     private UUID owner;
     private int age;
+    private int maxAge = 2400;
     public FallingSupplyCrate(EntityType<? extends FallingSupplyCrate> type, Level level) { super(type, level); }
     public void prepare(BlockPos destination, UUID owner) {
         this.destination = destination.immutable(); this.owner = owner;
         setPos(destination.getX() + .5, Math.min(level().getMaxBuildHeight() - 4, destination.getY() + FlareConfig.DROP_HEIGHT.get()), destination.getZ() + .5);
+        maxAge = descentBudget();
+    }
+    private int descentBudget() {
+        // Budget for the slowest legal speed, including a live config reload during descent.
+        double distance = Math.max(0, getY() - destination.getY());
+        return Math.max(2400, (int) Math.ceil(distance / FlareConfig.MIN_DESCENT_SPEED) + 200);
     }
     @Override protected void defineSynchedData() { }
     @Override public void tick() {
         super.tick();
         if (level().isClientSide) { FlareProjectile.particles(level(), position().add(0, 1, 0), 2); return; }
-        if (++age > 2400) { discard(); return; }
+        if (++age > maxAge) { discard(); return; }
         setDeltaMovement(0, -FlareConfig.DESCENT_SPEED.get(), 0);
         move(MoverType.SELF, getDeltaMovement());
         if (onGround() || getY() <= destination.getY()) land();
@@ -44,11 +51,13 @@ public final class FallingSupplyCrate extends Entity {
         discard(); return placed;
     }
     @Override protected void addAdditionalSaveData(CompoundTag tag) {
-        tag.putLong("Destination", destination.asLong()); tag.putInt("Age", age);
+        tag.putLong("Destination", destination.asLong()); tag.putInt("Age", age); tag.putInt("MaxAge", maxAge);
         if (owner != null) tag.putUUID("Owner", owner);
     }
     @Override protected void readAdditionalSaveData(CompoundTag tag) {
-        destination = BlockPos.of(tag.getLong("Destination")); age = tag.getInt("Age");
+        destination = BlockPos.of(tag.getLong("Destination")); age = Math.max(0, tag.getInt("Age"));
+        // Old saves lack a budget; derive the remaining trip without resetting elapsed age.
+        maxAge = tag.contains("MaxAge") ? tag.getInt("MaxAge") : age + descentBudget();
         owner = tag.hasUUID("Owner") ? tag.getUUID("Owner") : null;
     }
     @Override public Packet<ClientGamePacketListener> getAddEntityPacket() { return NetworkHooks.getEntitySpawningPacket(this); }

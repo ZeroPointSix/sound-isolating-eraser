@@ -228,9 +228,12 @@ public final class FlareEdgeCaseGameTests {
                 FlareConfig.DESCENT_SPEED.set(.05);
                 CompoundTag saved = new CompoundTag(); original.saveWithoutId(saved); original.discard();
                 var restored = new FallingSupplyCrate(FlareContent.FALLING_CRATE.get(), fixture.level);
-                restored.load(saved); fixture.level.addFreshEntity(restored); fixture.entities.add(restored);
+                restored.load(saved);
                 CompoundTag roundtrip = new CompoundTag(); restored.saveWithoutId(roundtrip);
                 h.assertTrue(roundtrip.getInt("Age") == saved.getInt("Age") && restored.position().equals(original.position()), "age and position survive entity save/load");
+                h.assertTrue(roundtrip.getInt("MaxAge") == saved.getInt("MaxAge"), "saved descent budget survives reload unchanged");
+                saved.remove("MaxAge"); restored.load(saved);
+                fixture.level.addFreshEntity(restored); fixture.entities.add(restored);
                 h.runAfterDelay(2400, () -> h.assertTrue(!restored.isRemoved(), "reloaded slowed crate survives past old age limit"));
                 h.runAfterDelay(2490, () -> assertLanded(h));
             });
