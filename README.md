@@ -1,7 +1,29 @@
 # Sound-Isolating Eraser · 隔音橡皮
 
-《畸海浮城》× Minecraft 1.20.1 Forge 一次性小道具 mod。手持隔音橡皮点击方块表面，
+《畸海浮城》× Minecraft 1.20.1 Forge 奇物与道具 mod。手持隔音橡皮点击方块表面，
 用可切换形状画出多列 5 格高的透明虚拟墙；底部连续白痕是墙的锚点。
+
+## 奇物与道具
+
+分类由物品数据标签决定，与原版稀有度、附魔和物品名颜色无关。鼠标悬停时，名称下方第一行显示金色“奇物”（英文 `Curio`）或灰蓝色“道具”（英文 `Tool`），原有提示内容与顺序保留；同时属于两个标签时只显示“奇物”。未加入任一标签的物品不显示分类行。
+
+设计规则：**一个世界（畸界）只包含一件奇物**。本次只记录规则，不在代码中限制生成或持有数量；以下四件奇物分别属于哪个世界，仍待用户确认，不预先分配。
+
+| 当前奇物 | 物品 ID |
+| --- | --- |
+| 超级肥料 | `sound_isolating_eraser:super_fertilizer_bag` |
+| 重力玉佩 | `sound_isolating_eraser:gravity_jade_pendant` |
+| 杀夏刀 | `sound_isolating_eraser:shaxiadao` |
+| 隔音橡皮 | `sound_isolating_eraser:sound_isolating_eraser` |
+
+强化药片、空药板、空肥料袋、肥沃果实、风雷翅、雷鹏骨羽、十枚业纹和所有刷怪蛋均不在默认奇物名单中。雨寂佛都的信号枪与三色信号弹属于道具；当前基线尚未包含这些物品，因此道具标签暂为空，后续信号枪实现合并时补入实际注册 ID。
+
+标签文件位于 `src/main/resources/` 下；数据包使用同样的 `data/` 相对路径即可扩展，无需修改 Java：
+
+- 奇物：`data/sound_isolating_eraser/tags/items/qiwu.json`（`#sound_isolating_eraser:qiwu`）。
+- 道具：`data/sound_isolating_eraser/tags/items/daoju.json`（`#sound_isolating_eraser:daoju`）。
+
+数据包使用 `"replace": false` 和 `"values": ["namespace:item_id"]` 追加物品；使用 `"replace": true` 可覆盖默认名单。加载或 `/reload` 后，客户端使用服务端同步的标签显示分类。分类不会改变偷盗怪按“附魔 + 稀有度”选择目标的逻辑，也不调整创造物品栏排序。
 
 ## 安装与双端依赖
 
