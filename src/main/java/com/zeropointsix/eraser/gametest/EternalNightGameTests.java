@@ -1070,6 +1070,7 @@ public final class EternalNightGameTests {
             table.append("CITY_ENTRANCE template=").append(placement.name())
                     .append(" district=").append(placement.district())
                     .append(" walkable=true approachDist=").append(dist)
+                    .append(" street=").append(CityLayout.street(approach.get().feet().getX(), approach.get().feet().getZ()))
                     .append(" door=").append(approach.get().door().toShortString())
                     .append(" feet=").append(approach.get().feet().toShortString())
                     .append(" floors=").append(floors)

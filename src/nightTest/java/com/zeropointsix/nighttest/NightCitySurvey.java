@@ -147,7 +147,7 @@ final class NightCitySurvey {
         ready = false; captured = false; crossed = false; phase = 0; ticks = 0;
         started = System.nanoTime();
         List<CompletableFuture<?>> chunks = new ArrayList<>();
-        for (int dx = -1; dx <= 2; dx++) for (int dz = -1; dz <= 2; dz++) {
+        for (int dx = -2; dx <= 3; dx++) for (int dz = -2; dz <= 3; dz++) {
             var chunk = new ChunkPos((target.origin().getX() >> 4) + dx, (target.origin().getZ() >> 4) + dz);
             tickets.add(chunk);
             city.getChunkSource().addRegionTicket(TICKET, chunk, 0, target.name());
@@ -172,7 +172,9 @@ final class NightCitySurvey {
         current.addProperty("doorOpenedForWalk", true);
         player.getAbilities().flying = false;
         player.onUpdateAbilities();
-        player.teleportTo(city, found.feet().getX() + .5, found.feet().getY(), found.feet().getZ() + .5,
+        double y = found.feet().getY() + CityBuildingAccess.stepUp(city, found.feet());
+        current.addProperty("approachStepUp", y - found.feet().getY());
+        player.teleportTo(city, found.feet().getX() + .5, y, found.feet().getZ() + .5,
                 found.yaw(), found.pitch());
         return true;
     }
@@ -201,13 +203,27 @@ final class NightCitySurvey {
     }
 
     private static String walkFailReason() {
-        if (player == null || door == null) return "native walk could not cross this entrance";
+        String ended = current.has("finalPosition") ? current.get("finalPosition").getAsString()
+                : player == null ? "?" : player.blockPosition().toShortString();
         String approach = current.has("approach") ? current.get("approach").getAsString() : "";
-        if (player.blockPosition().toShortString().equals(approach))
-            return "native walk stayed at approach (blocked immediately)";
-        int manhattan = Math.abs(player.getBlockX() - door.getX()) + Math.abs(player.getBlockZ() - door.getZ());
-        if (manhattan == 0) return "native walk stopped on the door plane";
-        return "native walk could not cross this entrance; ended " + player.blockPosition().toShortString();
+        String hit = current.has("forwardBlock") ? current.get("forwardBlock").getAsString() : "";
+        boolean street = current.has("approachIsStreet") && current.get("approachIsStreet").getAsBoolean();
+        String where = "ended " + ended + (street ? " street-approach" : " non-street-approach");
+        if (!hit.isEmpty()) where += "; forward=" + hit;
+        if (ended.equals(approach))
+            return "native walk stayed at approach (blocked immediately); " + where;
+        if (door != null) {
+            String[] parts = ended.split(", ");
+            if (parts.length == 3) {
+                try {
+                    int x = Integer.parseInt(parts[0].trim());
+                    int z = Integer.parseInt(parts[2].trim());
+                    if (Math.abs(x - door.getX()) + Math.abs(z - door.getZ()) == 0)
+                        return "native walk stopped on the door plane; " + where;
+                } catch (NumberFormatException ignored) { }
+            }
+        }
+        return "native walk could not cross this entrance; " + where;
     }
 
     private static void finishTarget(String result) throws Exception {

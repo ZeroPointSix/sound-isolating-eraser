@@ -4,7 +4,9 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.DoorBlock;
+import net.minecraft.world.level.block.SlabBlock;
 import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
+import net.minecraft.world.level.block.state.properties.SlabType;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
 import net.minecraft.world.phys.AABB;
@@ -55,7 +57,7 @@ public final class CityBuildingAccess {
 
     public static void loadAround(ServerLevel city, BlockPos origin) {
         int cx = origin.getX() >> 4, cz = origin.getZ() >> 4;
-        for (int dx = -1; dx <= 2; dx++) for (int dz = -1; dz <= 2; dz++)
+        for (int dx = -2; dx <= 3; dx++) for (int dz = -2; dz <= 3; dz++)
             city.getChunk(cx + dx, cz + dz);
     }
 
@@ -78,7 +80,7 @@ public final class CityBuildingAccess {
             openDoor(city, info.pos());
             Direction facing = world.getValue(DoorBlock.FACING);
             for (Direction outward : new Direction[] {facing, facing.getOpposite()}) {
-                for (int distance = 1; distance <= 3; distance++) {
+                for (int distance = 1; distance <= 4; distance++) {
                     Approach onAxis = candidateAt(city, info.pos(), outward, distance, null);
                     if (onAxis != null) ranked.add(onAxis);
                     if (distance > 2) continue;
@@ -115,6 +117,11 @@ public final class CityBuildingAccess {
 
     public static boolean entranceWalkable(ServerLevel city, Approach approach) {
         return pathWalkable(city, approach);
+    }
+
+    /** Native teleport Y offset so a bottom slab is a walkable surface, not a shin collision. */
+    public static double stepUp(ServerLevel city, BlockPos feet) {
+        return bottomSlab(city, feet) ? 0.5 : 0;
     }
 
     public static int floorCount(ServerLevel city, BlockPos origin, int sizeX, int sizeZ, int sizeY, BlockPos start) {
@@ -189,13 +196,22 @@ public final class CityBuildingAccess {
         }
         if (ground == Integer.MIN_VALUE || ground > door.getY() || door.getY() - ground > 1) return null;
         BlockPos feet = new BlockPos(column.getX(), ground, column.getZ());
-        if (!city.getBlockState(feet.below()).isSolid() || !city.noCollision(bodyAt(feet))) return null;
+        if (!city.getBlockState(feet.below()).isSolid() || !walkableSpace(city, feet.getX(), feet.getY(), feet.getZ()))
+            return null;
         Direction inward = outward.getOpposite();
-        Vec3 eye = new Vec3(feet.getX() + .5, feet.getY() + 1.62, feet.getZ() + .5);
-        Vec3 look = Vec3.atCenterOf(door).add(0, 0.5, 0);
-        double dx = look.x - eye.x, dy = look.y - eye.y, dz = look.z - eye.z;
-        float yaw = (float) Math.toDegrees(Math.atan2(-dx, dz));
-        float pitch = (float) -Math.toDegrees(Math.atan2(dy, Math.sqrt(dx * dx + dz * dz)));
+        boolean onAxis = feet.getX() == door.getX() || feet.getZ() == door.getZ();
+        float yaw;
+        float pitch;
+        if (onAxis) {
+            yaw = inward.toYRot();
+            pitch = 0f;
+        } else {
+            Vec3 eye = new Vec3(feet.getX() + .5, feet.getY() + 1.62, feet.getZ() + .5);
+            Vec3 look = Vec3.atCenterOf(door).add(0, 0.5, 0);
+            double dx = look.x - eye.x, dy = look.y - eye.y, dz = look.z - eye.z;
+            yaw = (float) Math.toDegrees(Math.atan2(-dx, dz));
+            pitch = (float) -Math.toDegrees(Math.atan2(dy, Math.sqrt(dx * dx + dz * dz)));
+        }
         Approach found = new Approach(door, feet, inward, yaw, pitch);
         return pathWalkable(city, found) ? found : null;
     }
@@ -206,15 +222,33 @@ public final class CityBuildingAccess {
         BlockPos interior = approach.door().relative(approach.inward());
         int interiorY = standY(city, interior.getX(), interior.getZ(), approach.door().getY());
         if (interiorY == Integer.MIN_VALUE || Math.abs(interiorY - approach.door().getY()) > 1) return false;
-        return city.noCollision(bodyAt(interior.getX(), interiorY, interior.getZ()));
+        if (!walkableSpace(city, interior.getX(), interiorY, interior.getZ())) return false;
+        double fromY = approach.feet().getY() + stepUp(city, approach.feet());
+        double toY = interiorY + stepUp(city, new BlockPos(interior.getX(), interiorY, interior.getZ()));
+        Vec3 from = new Vec3(approach.feet().getX() + .5, fromY, approach.feet().getZ() + .5);
+        Vec3 to = new Vec3(interior.getX() + .5, toY, interior.getZ() + .5);
+        int steps = Math.max(4, (int) Math.ceil(from.distanceTo(to) / 0.25));
+        for (int i = 0; i <= steps; i++) {
+            double t = i / (double) steps;
+            double x = from.x + (to.x - from.x) * t;
+            double y = from.y + (to.y - from.y) * t;
+            double z = from.z + (to.z - from.z) * t;
+            BlockPos sample = BlockPos.containing(x, y, z);
+            if (sample.getX() == approach.door().getX() && sample.getZ() == approach.door().getZ()
+                    && Math.abs(sample.getY() - approach.door().getY()) <= 1)
+                continue;
+            if (!bodyFits(city, x, y, z)) return false;
+        }
+        return true;
     }
 
     private static int score(Approach found) {
         int dist = Math.abs(found.feet().getX() - found.door().getX())
                 + Math.abs(found.feet().getZ() - found.door().getZ());
         int dy = Math.abs(found.feet().getY() - found.door().getY());
-        int axis = (found.feet().getX() == found.door().getX() || found.feet().getZ() == found.door().getZ()) ? 0 : 1;
-        return dist * 100 + dy * 10 + axis + (CityLayout.street(found.feet().getX(), found.feet().getZ()) ? 1 : 0);
+        int axis = (found.feet().getX() == found.door().getX() || found.feet().getZ() == found.door().getZ()) ? 0 : 50;
+        int street = CityLayout.street(found.feet().getX(), found.feet().getZ()) ? 0 : 2000;
+        return street + dist * 100 + dy * 10 + axis + found.door().getY();
     }
 
     private static boolean inBuilding(BlockPos origin, net.minecraft.core.Vec3i size, BlockPos pos) {
@@ -235,14 +269,35 @@ public final class CityBuildingAccess {
     }
 
     private static int standY(ServerLevel city, int x, int z, int nearY) {
-        for (int dy = 2; dy >= -4; dy--) {
+        for (int dy : new int[] {0, -1, 1, -2, 2, -3, -4}) {
             int y = nearY + dy;
             BlockPos below = new BlockPos(x, y - 1, z);
-            AABB body = new AABB(x + .2, y, z + .2, x + .8, y + 1.8, z + .8);
-            if (city.getBlockState(below).isSolid() && city.noCollision(body)
+            if (city.getBlockState(below).isSolid() && walkableSpace(city, x, y, z)
                     && city.getFluidState(new BlockPos(x, y, z)).isEmpty())
                 return y;
         }
         return Integer.MIN_VALUE;
+    }
+
+    private static boolean walkableSpace(ServerLevel city, int x, int y, int z) {
+        if (city.noCollision(bodyAt(x, y, z))) return true;
+        if (!bottomSlab(city, new BlockPos(x, y, z))) return false;
+        AABB raised = new AABB(x + .2, y + .5, z + .2, x + .8, y + 1.8, z + .8);
+        return city.noCollision(raised);
+    }
+
+    private static boolean bodyFits(ServerLevel city, double x, double y, double z) {
+        AABB body = new AABB(x - .3, y, z - .3, x + .3, y + 1.8, z + .3);
+        if (city.noCollision(body)) return true;
+        BlockPos pos = BlockPos.containing(x, y, z);
+        if (!bottomSlab(city, pos) && !bottomSlab(city, pos.below())) return false;
+        AABB raised = new AABB(x - .3, Math.floor(y) + .5, z - .3, x + .3, Math.floor(y) + 1.8, z + .3);
+        return city.noCollision(raised);
+    }
+
+    private static boolean bottomSlab(ServerLevel city, BlockPos pos) {
+        var state = city.getBlockState(pos);
+        return state.getBlock() instanceof SlabBlock && state.hasProperty(SlabBlock.TYPE)
+                && state.getValue(SlabBlock.TYPE) == SlabType.BOTTOM;
     }
 }
