@@ -19,7 +19,7 @@ import java.util.*;
 public final class CityTemplates {
     public static final List<String> BUILDINGS = List.of("res_apartment_low", "res_apartment_mid", "res_apartment_high",
             "res_tenement", "office_dark", "office_tower", "shop_neon", "warehouse", "mall", "civic_center", "townhall", "library");
-    /** 3×3 civic overlay. Only the commercial district may place these. */
+    /** 2×2-chunk civic building placed in the 3×3 interior of a 64-block tile. Commercial only. */
     public static final List<String> CIVIC_LARGE = List.of("mall", "civic_center", "townhall", "library");
 
     /** Every structure template the generator may place, per the supplied art pack. */
@@ -42,7 +42,9 @@ public final class CityTemplates {
     }
 
     /**
-     * A 3×3 mall/civic/townhall/library overlay is commercial-only.
+     * A mall/civic/townhall/library overlay is commercial-only.
+     * The template is a 2×2-chunk (32×32) footprint starting at the north-west
+     * interior chunk of the 3×3 building plot inside a 4×4-chunk tile.
      * Residential and industrial tiles keep {@link CityLayout#building}.
      */
     public static String largeCivic(long seed, int blockX, int blockZ) {

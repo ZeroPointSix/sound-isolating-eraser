@@ -68,7 +68,7 @@ python3 tools/verify_city_art.py
 
 导入脚本先核对ZIP整体大小/SHA、路径安全、35个NBT、22张PNG和MIT文件，再复制原始字节；遇到已有不同文件直接失败。清单写入 `src/main/resources/data/sound_isolating_eraser/eternal_night_art_manifest.json`，记录每个资源的SHA。
 
-`check` 强制依赖 `verifyCityAssets`，缺失原资源时不能声称 build 通过。自然睡眠入城要求全部 37 个已授权结构模板存在（12 栋建筑 + 广场/街道/地铁），避免把玩家送进未接入的地图。不能绕过门禁来发布。32 字形与医院/警局/消防专用外观仍缺授权原包，禁止用雨寂佛都或其他包顶替。
+`check` 强制依赖 `verifyCityAssets`，缺失原资源时不能声称 build 通过。自然睡眠入城要求全部 35 个已授权结构模板存在（12 栋建筑 + 4 广场 + 12 街道 + 7 地铁），避免把玩家送进未接入的地图。大建筑是街区内部 3×3 地块中的 2×2 区块模板。不能绕过门禁来发布。32 字形与医院/警局/消防专用外观仍缺授权原包，禁止用雨寂佛都或其他包顶替。
 
 ## 验证记录
 

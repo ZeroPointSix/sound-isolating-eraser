@@ -82,7 +82,9 @@ public final class CitySpawns {
                     Mob mob = spawn(level, ModEntities.NEON_TUMOR.get(), feet, size, false);
                     if (mob != null) { neonCount++; mobs.add(mob); }
                 }
-                if ((district == CityLayout.District.INDUSTRIAL || y < 56) && attempt == 0) {
+                // Notion §7: 砌腐墙 is industrial underground only, not surface industrial
+                // and not other districts' subways. Vanilla mob bans are separate.
+                if (brickrotHabitat(district, y) && attempt == 0) {
                     long region = CityLayout.region(x, z);
                     CitySavedData data = CitySavedData.get(level);
                     if (!data.hasBoss(region)) {
@@ -96,6 +98,11 @@ public final class CitySpawns {
 
     public static EntityType<?> shadowType() {
         return ForgeRegistries.ENTITY_TYPES.containsKey(SHADOW) ? ForgeRegistries.ENTITY_TYPES.getValue(SHADOW) : null;
+    }
+
+    /** Industrial and below the surface/subway split used by the rest of city spawning. */
+    public static boolean brickrotHabitat(CityLayout.District district, int y) {
+        return district == CityLayout.District.INDUSTRIAL && y < 56;
     }
 
     public static boolean withinCountedRange(ServerPlayer player, BlockPos feet) {
