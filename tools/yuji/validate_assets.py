@@ -17,6 +17,16 @@ def require(condition, message):
         raise ValueError(message)
 
 
+def validate_keyframes(name, animation):
+    duration = animation["animation_length"]
+    for bone, channels in animation.get("bones", {}).items():
+        for channel, timeline in channels.items():
+            if isinstance(timeline, dict):
+                for timestamp in timeline:
+                    require(0 <= float(timestamp) <= duration,
+                            f"Keyframe timing: {name}/{bone}/{channel}@{timestamp} outside [0, {duration}]")
+
+
 def texture(reference):
     namespace, name = reference.split(":", 1)
     require(namespace == "qihai", f"Unexpected texture namespace: {reference}")
@@ -74,6 +84,7 @@ def main():
         require(set(animations) == {f"animation.{kind}.{action}" for action in expected["anims"]}, f"Animation set: {kind}")
         for name, animation in animations.items():
             require(set(animation.get("bones", {})) <= set(bones), f"Animation bone reference: {name}")
+            validate_keyframes(name, animation)
         for action, events in cues.get(kind, {}).items():
             animation = animations[f"animation.{kind}.{action}"]
             for event in events:

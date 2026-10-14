@@ -35,7 +35,9 @@ jobs:
         with:
           python-version: '3.12'
       - name: Validate all models, animation cues and resource references
-        run: python tools/yuji/validate_assets.py
+        run: |
+          python -m unittest discover -s tools/yuji -p 'test_*.py' -v
+          python tools/yuji/validate_assets.py
       - name: Build and run all Forge GameTests
         run: |
           set -o pipefail
