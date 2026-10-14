@@ -114,8 +114,8 @@ public final class FlarePermissionGameTests {
         long[] renewedDeadline = {deadline};
 
         h.runAfterDelay(30, () -> {
-            class Guard {
-                @SubscribeEvent public void onPlace(BlockEvent.EntityPlaceEvent event) {
+            class RenewalProtectionGuard {
+                @SubscribeEvent public void onRenewalPlace(BlockEvent.EntityPlaceEvent event) {
                     if (event.getEntity() == f.visitor && original.containsKey(event.getPos())) {
                         renewalEvents[0]++;
                         h.assertTrue(f.level.getBlockState(event.getPos()).is(Blocks.LIGHT), "renewal protection observes the existing light in place");
@@ -123,7 +123,7 @@ public final class FlarePermissionGameTests {
                     }
                 }
             }
-            Guard guard = new Guard(); MinecraftForge.EVENT_BUS.register(guard);
+            RenewalProtectionGuard guard = new RenewalProtectionGuard(); MinecraftForge.EVENT_BUS.register(guard);
             try { f.illuminate(f.visitor); } finally { MinecraftForge.EVENT_BUS.unregister(guard); }
             Map<BlockPos, Long> after = f.deadlines();
             renewedDeadline[0] = authorized ? f.level.getGameTime() + 60 : deadline;
