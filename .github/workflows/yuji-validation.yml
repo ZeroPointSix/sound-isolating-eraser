@@ -48,6 +48,8 @@ jobs:
           rm -rf run/world
           bash ./gradlew runGameTestServer --no-daemon --stacktrace 2>&1 | tee build/yuji-gametest-repeat.log
           python tools/yuji/verify_gametest_log.py build/yuji-gametest-repeat.log
+      - name: Verify flare cleanup after an actual server process restart
+        run: python tools/flare/verify_restart.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -57,6 +59,7 @@ jobs:
             build/reports/
             run/logs/latest.log
             build/yuji-gametest*.log
+            build/flare-restart-*/*.log
 
   client-smoke:
     runs-on: ubuntu-latest

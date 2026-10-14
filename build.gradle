@@ -101,6 +101,10 @@ minecraft {
         // By default, the server will crash when no gametests are provided.
         // The gametest system is also enabled by default for other run configs under the /test command.
         gameTestServer {
+            if (project.hasProperty('flareRestartPhase')) {
+                workingDirectory project.file(providers.gradleProperty('flareRestartRunDir').get())
+                property 'flare.qa.restartPhase', providers.gradleProperty('flareRestartPhase').get()
+            }
             if (project.hasProperty('performanceOnly')) {
                 workingDirectory project.file('run-performance')
                 jvmArgs '-Xmx1G', '-XX:StartFlightRecording=filename=flee-light.jfr,settings=profile,dumponexit=true,maxsize=64m',
@@ -110,7 +114,8 @@ minecraft {
                 workingDirectory project.file(providers.gradleProperty('shadowMeleeRunDir')
                         .getOrElse('run-shadow-melee'))
             }
-            property 'forge.enabledGameTestNamespaces', project.hasProperty('performanceOnly') ? 'qijie_performance' :
+            property 'forge.enabledGameTestNamespaces', project.hasProperty('flareRestartPhase') ? 'flare_restart_tests' :
+                    project.hasProperty('performanceOnly') ? 'qijie_performance' :
                     project.hasProperty('qijieOnly') ? 'qijie_tests' :
                     project.hasProperty('yujiOnly') ? 'yuji_tests' :
                     project.hasProperty('coreOnly') ? "${mod_id},yuji_tests,qijie_tests" :
