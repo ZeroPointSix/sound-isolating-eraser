@@ -32,7 +32,10 @@ public final class FlareRestartGameTests {
             }
             h.assertTrue(lights.size() > 0, "production light field generated before shutdown");
             level.getDataStorage().save();
-            System.out.println("FLARE_RESTART_SEEDED sources=" + lights.size() + " gameTime=" + level.getGameTime());
+            long deadline = 0;
+            for (Tag tag : lights.save(new CompoundTag()).getList("Lights", Tag.TAG_COMPOUND))
+                deadline = Math.max(deadline, ((CompoundTag) tag).getLong("Expires"));
+            System.out.println("FLARE_RESTART_SEEDED sources=" + lights.size() + " deadline=" + deadline + " gameTime=" + level.getGameTime());
             h.succeed();
             return;
         }
@@ -50,10 +53,12 @@ public final class FlareRestartGameTests {
         h.assertTrue(!positions.isEmpty(), "new JVM loads actual saved light records");
         long remaining = deadline - level.getGameTime();
         h.assertTrue(remaining > 0 && remaining <= 1200, "saved original expiry remains intact: " + remaining);
-        System.out.println("FLARE_RESTART_LOADED sources=" + positions.size() + " remainingTicks=" + remaining);
+        System.out.println("FLARE_RESTART_LOADED sources=" + positions.size() + " deadline=" + deadline + " remainingTicks=" + remaining);
         h.runAfterDelay(remaining + 15, () -> {
             for (BlockPos pos : positions) h.assertTrue(level.getBlockState(pos).isAir(), "production cleanup after process restart: " + pos);
             h.assertTrue(lights.size() == 0, "production cleanup removes persisted records");
+            for (BlockPos pos : BlockPos.betweenClosed(center.offset(-3, -3, -3), center.offset(3, 3, 3)))
+                h.assertTrue(!level.getBlockState(pos).is(Blocks.LIGHT), "no orphaned source remains in the saved field: " + pos);
             level.setChunkForced(center.getX() >> 4, center.getZ() >> 4, false);
             System.out.println("FLARE_RESTART_CLEANUP_PASSED sources=" + positions.size());
             h.succeed();

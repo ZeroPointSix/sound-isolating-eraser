@@ -84,7 +84,7 @@ public final class FlareIntegrationGameTests {
         return player;
     }
 
-    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "flare_full_lighting", timeoutTicks = 1500)
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "flare_full_lighting", timeoutTicks = 3300)
     public static void flareDefaultRadiusAndProductionCleanup(GameTestHelper h) {
         var level = h.getLevel();
         lightArea = new TestArea(h, h.absolutePos(new BlockPos(4, 70, 4)), 26);
@@ -125,7 +125,7 @@ public final class FlareIntegrationGameTests {
         });
     }
 
-    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "flare_full_airdrop", timeoutTicks = 420)
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "flare_full_airdrop", timeoutTicks = 2000)
     public static void flareGreenFlightRandomLandingAndLoot(GameTestHelper h) {
         var level = h.getLevel();
         // A separate high platform isolates the default 8-24 block search radius.

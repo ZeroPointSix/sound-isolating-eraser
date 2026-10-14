@@ -6,6 +6,7 @@ on:
       - 'src/main/**'
       - 'art/yuji_fodu/**'
       - 'tools/yuji/**'
+      - 'tools/flare/**'
       - 'src/yujiTest/**'
       - 'gradle/yuji-e2e.gradle'
       - 'build.gradle'
