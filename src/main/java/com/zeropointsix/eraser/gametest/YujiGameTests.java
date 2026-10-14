@@ -525,6 +525,108 @@ public final class YujiGameTests {
         method.setAccessible(true);
         method.invoke(mob);
     }
+
+    private static net.minecraftforge.common.util.FakePlayer voicePlayer(GameTestHelper h, YujiMonster source) {
+        var p = net.minecraftforge.common.util.FakePlayerFactory.get(h.getLevel(),
+                new com.mojang.authlib.GameProfile(UUID.randomUUID(), "YujiVoiceFixture"));
+        p.setGameMode(net.minecraft.world.level.GameType.SURVIVAL);
+        p.moveTo(source.getX() - 12, source.getY(), source.getZ());
+        p.setNoGravity(true);
+        h.getLevel().addNewPlayer(p);
+        h.assertTrue(h.getLevel().getPlayerByUUID(p.getUUID()) == p, "voice recipient is queryable in the real server level");
+        return p;
+    }
+
+    private static YujiMonster voiceSource(GameTestHelper h) throws ReflectiveOperationException {
+        YujiMonster source = monster(h, YujiKind.WANGYU);
+        source.moveTo(source.getX(), h.getLevel().getMaxBuildHeight() - 16, source.getZ());
+        BlockPos center = source.blockPosition().west(12);
+        // An enclosed listener makes every sampled 6-10 block voice source occluded.
+        for (BlockPos pos : BlockPos.betweenClosed(center.offset(-5, 0, -5), center.offset(5, 4, 5))) {
+            boolean wall = Math.abs(pos.getX() - center.getX()) == 4 || Math.abs(pos.getZ() - center.getZ()) == 4;
+            h.getLevel().setBlock(pos, wall ? Blocks.STONE.defaultBlockState() : Blocks.AIR.defaultBlockState(), 2);
+        }
+        var cooldown = YujiMonster.class.getDeclaredField("skillCooldown");
+        cooldown.setAccessible(true); cooldown.setInt(source, 10000);
+        return source;
+    }
+
+    private static net.minecraft.world.phys.Vec3 emitVoice(YujiMonster source) throws ReflectiveOperationException {
+        var method = YujiMonster.class.getDeclaredMethod("mimic");
+        method.setAccessible(true); method.invoke(source);
+        var point = YujiMonster.class.getDeclaredField("falseVoice");
+        point.setAccessible(true);
+        return (net.minecraft.world.phys.Vec3) point.get(source);
+    }
+
+    private static void faceVoice(Player p, net.minecraft.world.phys.Vec3 point, boolean toward) {
+        var direction = point.subtract(p.getEyePosition()).normalize().scale(toward ? 1 : -1);
+        p.setYRot((float) Math.toDegrees(Math.atan2(direction.z, direction.x)) - 90);
+        p.setXRot((float) -Math.toDegrees(Math.asin(direction.y)));
+    }
+
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
+    public static void yujiFakeVoiceReactionStaysWithRecipient(GameTestHelper h) throws ReflectiveOperationException {
+        YujiMonster source = voiceSource(h);
+        var first = voicePlayer(h, source); var second = voicePlayer(h, source);
+        try {
+            source.setTarget(first);
+            var point = emitVoice(source);
+            h.assertTrue(point != null && first.hasEffect(MobEffects.WEAKNESS), "real mimic emits to first recipient");
+            h.assertTrue(first.getEffect(MobEffects.WEAKNESS).getAmplifier() == 0, "first unheard source starts at weakness I");
+            faceVoice(first, point, false); faceVoice(second, point, true);
+            source.setTarget(second); boundaryStep(source);
+            h.assertTrue(source.getTarget() == second, "replacement remains the actual AI target");
+            h.assertTrue(!second.hasEffect(MobEffects.WEAKNESS), "replacement target cannot react to another player's fake sound");
+            faceVoice(first, point, true); boundaryStep(source);
+            h.assertTrue(first.getEffect(MobEffects.WEAKNESS).getAmplifier() == 1, "original listener can still react after AI retargets");
+        } finally { first.discard(); second.discard(); source.discard(); }
+        h.succeed();
+    }
+
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
+    public static void yujiFakeVoiceMissesDoNotCrossRecipients(GameTestHelper h) throws ReflectiveOperationException {
+        YujiMonster source = voiceSource(h);
+        var first = voicePlayer(h, source); var second = voicePlayer(h, source);
+        try {
+            source.setTarget(first); emitVoice(source); emitVoice(source);
+            h.assertTrue(first.hasEffect(MobEffects.WEAKNESS) && first.getEffect(MobEffects.WEAKNESS).getAmplifier() == 0,
+                    "two missed sounds do not yet reach the third-sound threshold");
+            source.setTarget(second); emitVoice(source);
+            h.assertTrue(second.hasEffect(MobEffects.WEAKNESS) && second.getEffect(MobEffects.WEAKNESS).getAmplifier() == 0,
+                    "new recipient does not inherit the first listener's two misses");
+            emitVoice(source); emitVoice(source);
+            h.assertTrue(second.getEffect(MobEffects.WEAKNESS).getAmplifier() == 1
+                    && state(second, "weakness", source).getInt("Remaining") == 400,
+                    "three actual missed sounds still give weakness II for twenty seconds");
+        } finally { first.discard(); second.discard(); source.discard(); }
+        h.succeed();
+    }
+
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
+    public static void yujiFakeVoiceWindowExpiresWithoutTarget(GameTestHelper h) throws ReflectiveOperationException {
+        YujiMonster source = voiceSource(h);
+        var listener = voicePlayer(h, source);
+        try {
+            source.setTarget(listener); var point = emitVoice(source);
+            h.assertTrue(point != null && listener.hasEffect(MobEffects.WEAKNESS), "real mimic opens a reaction window");
+            var window = YujiMonster.class.getDeclaredField("voiceWindow");
+            window.setAccessible(true);
+            h.assertTrue(window.getInt(source) == 40, "reaction window begins at forty ticks");
+            var start = listener.position();
+            listener.moveTo(start.add(100, 0, 0)); faceVoice(listener, point, false); source.setTarget(null);
+            for (int tick = 0; tick < 40; tick++) {
+                boundaryStep(source);
+                h.assertTrue(source.getTarget() == null, "listener stays outside automatic target acquisition");
+            }
+            h.assertTrue(window.getInt(source) == 0, "reaction window expires after forty production AI steps without a target");
+            listener.moveTo(start); faceVoice(listener, point, true); source.setTarget(listener); boundaryStep(source);
+            h.assertTrue(listener.getEffect(MobEffects.WEAKNESS).getAmplifier() == 0,
+                    "lost AI target cannot pause the two-second reaction deadline");
+        } finally { listener.discard(); source.discard(); }
+        h.succeed();
+    }
+
     private static void greedBiteSound(GameTestHelper h, boolean inReach) throws ReflectiveOperationException {
         YujiMonster greed = monster(h, YujiKind.TANYU);
         // Test grids may start underground; a relative +64 can still leave the real hit ray in terrain.
