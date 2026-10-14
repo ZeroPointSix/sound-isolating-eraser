@@ -33,6 +33,7 @@ import com.zeropointsix.eraser.yuji.city.RecliningBuddha;
 import com.zeropointsix.eraser.yuji.city.RainCityRules;
 import com.zeropointsix.eraser.yuji.city.RainCityTemplates;
 import com.zeropointsix.eraser.yuji.city.RainCityData;
+import com.zeropointsix.eraser.yuji.city.RainCitySpawns;
 import net.minecraftforge.gametest.GameTestHolder;
 import net.minecraftforge.gametest.PrefixGameTestTemplate;
 

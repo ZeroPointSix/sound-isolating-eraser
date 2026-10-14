@@ -157,7 +157,7 @@ public final class RainCityEvents {
         if (!ready) { p.displayClientMessage(Component.translatable("message.qihai.city.locked"), true); return; }
         if (data.ringing()) return;
         data.bellAt = p.level().getGameTime(); data.setDirty();
-        for (Entity entity : p.serverLevel().getAllEntities())
+        for (Entity entity : RainCitySpawns.snapshot(p.serverLevel()))
             if (entity instanceof YujiMonster && entity.getPersistentData().getBoolean("YujiGuardian")) entity.discard();
     }
     @SubscribeEvent public static void spawning(EntityJoinLevelEvent e) {

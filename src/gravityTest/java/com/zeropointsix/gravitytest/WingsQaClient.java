@@ -1,5 +1,6 @@
 package com.zeropointsix.gravitytest;
 
+import com.zeropointsix.eraser.wings.WingsState;
 import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.platform.InputConstants;
 import com.zeropointsix.eraser.client.WingsClientData;
@@ -45,7 +46,6 @@ public final class WingsQaClient {
     private static double markX = Double.NaN;
     private static double markZ = Double.NaN;
     private static NativeImage stowedFrame;
-    private static int deployAnimFrame = -1;
     private static String reviewPhase = "";
     private static int reviewPhaseTicks;
     private static int controlStep;
@@ -53,6 +53,8 @@ public final class WingsQaClient {
     private static double hoverError;
     private static long previousCharge;
     private static InputConstants.Key originalCycleKey;
+    private static long firstCycleAt;
+    private static int firstCycleWaitTicks;
 
     @SubscribeEvent
     public static void chat(ClientChatReceivedEvent event) {
@@ -71,15 +73,20 @@ public final class WingsQaClient {
         if (ROLE == null || event.phase != TickEvent.Phase.END || finished) return;
         Minecraft mc = Minecraft.getInstance();
         try {
-            if (++totalTicks > 9000) throw new AssertionError("Timed out in stage " + stage
+            if (stage > 0 && ++totalTicks > 9000) throw new AssertionError("Timed out in stage " + stage
                     + " controlStep=" + controlStep + " phase=" + phase);
             if (mc.player == null || mc.level == null) return;
+            if (Boolean.getBoolean("wings.qa.motionOnly")) {
+                WingsMotionQaClient.tick(mc, RESULTS, ROLE, phase);
+                return;
+            }
             if (stage == 0) {
                 if (!phase.equals("ready")) return;
                 if (SHOWCASE && !Files.exists(RESULTS.resolve("recording.ready"))) return;
                 mc.setScreen(null);
                 GLFW.glfwFocusWindow(mc.getWindow().getWindow());
                 mc.mouseHandler.grabMouse();
+                mark(ROLE.equals("wingswearer") ? "wings-wearer.ready" : "wings-observer.ready");
                 stage = ROLE.equals("wingswearer") ? 1 : 50;
                 ticks = 0;
                 return;
@@ -94,6 +101,14 @@ public final class WingsQaClient {
             if (stage == 60) exerciseControls(mc);
             if (stage == 70 && WingsInputQa.tick(mc, RESULTS)) {
                 capture(mc, "input-rebinding-complete");
+                WingsPresentationQa.begin(mc, RESULTS);
+                stage = 80;
+            }
+            if (stage == 80 && WingsPresentationQa.tick(mc, phase)) {
+                WingsNetworkQa.begin(mc);
+                stage = 90;
+            }
+            if (stage == 90 && WingsNetworkQa.tick(mc, RESULTS, phase)) {
                 stage = 99;
             }
             if (stage == 99 && Files.exists(RESULTS.resolve("wings-observer.pass"))) {
@@ -105,6 +120,8 @@ public final class WingsQaClient {
             restoreCycleBinding();
             try {
                 WingsInputQa.restore(mc);
+                WingsNetworkQa.restore(mc);
+                WingsPresentationQa.restore(mc);
             } catch (Throwable cleanupFailure) {
                 failure.addSuppressed(cleanupFailure);
             }
@@ -135,9 +152,24 @@ public final class WingsQaClient {
                 capture(mc, "deployed");
                 foodAtDeploy = p.getFoodData().getFoodLevel();
             }
+            case 75 -> {
+                require(info(p) != null && info(p).tier() == 0,
+                        "first G starts from synchronized hover: " + info(p));
+                nativeInput("key", "g");
+                firstCycleAt = System.nanoTime();
+                firstCycleWaitTicks = 0;
+            }
             case 95 -> {
-                require(info(p) != null && info(p).tier() == 1,
-                        "G cycles tier hover→cruise (synced)");
+                WingsClientData.WingInfo w = info(p);
+                long elapsedMs = java.util.concurrent.TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - firstCycleAt);
+                if (w != null && w.tier() == 0 && ++firstCycleWaitTicks < 400 && elapsedMs < 20000) {
+                    // Do not resend a non-idempotent action while its sync is in flight.
+                    ticks = 94;
+                    return;
+                }
+                require(w != null && w.tier() == 1,
+                        "single native G cycles hover->cruise (synced), tier=" + (w == null ? "missing" : w.tier())
+                                + " phase=" + phase + " elapsedMs=" + elapsedMs);
                 require(mc.screen == null, "native G must not also open Curios: " + mc.screen);
             }
             case 200 -> {
@@ -191,10 +223,14 @@ public final class WingsQaClient {
             case 361 -> nativeInput("keydown", "w");
             case 367 -> capture(mc, "storm-flight");
             case 371 -> nativeInput("keyup", "w");
+            case 373 -> nativeInput("key", "h");
+            case 385 -> require(info(p) != null && info(p).tier() == WingsState.HOVER,
+                    "water fixture starts in real-key HOVER after STORM capture");
             case 390 -> command(mc, "flood"); // after observer since>35 timeout (~t368)
             case 398 -> require(p.isInWater()
                             && info(p) != null && info(p).deployed(),
-                    "entering water while deployed keeps wings open (Notion §4.6)");
+                    "entering water while deployed keeps wings open (Notion §4.6) pos="
+                            + p.position() + " water=" + p.isInWater() + " state=" + info(p));
             case 400 -> command(mc, "itemDrop");
             case 410 -> {
                 command(mc, "controlsSetup");
@@ -207,21 +243,11 @@ public final class WingsQaClient {
                 if ((ticks == 8 || ticks == 30 || ticks == 50)
                         && (info(p) == null || !info(p).deployed())) {
                     nativeInput("key", "--delay", "150", "space", "space");
-                } else if (ticks >= 75 && ticks <= 85 && ticks % 5 == 0
-                        && info(p) != null && info(p).tier() == 0) {
-                    nativeInput("key", "g");
                 } else if (ticks > 205 && ticks < 225 && ticks % 6 == 1 && moved(p) < 5) {
                     nativeInput("key", "r");
                 } else if (ticks == 262 && moved(p) < 30) {
                     // 整串重发：上一串若部分丢失，链窗已过期可重新开始
                     nativeInput("key", "--delay", "80", "r", "r", "r", "r");
-                }
-                // 收展连续帧：展开动画过渡中逐 tick 截图（deployAnim 0→1 ≈ 6 tick）
-                WingsClientData.WingInfo w = info(p);
-                if (w != null && w.deployed() && w.deployAnim() > 0.01f
-                        && w.deployAnim() < 0.99f && deployAnimFrame < 3) {
-                    deployAnimFrame++;
-                    capture(mc, "deploy-frame-" + deployAnimFrame);
                 }
             }
         }
