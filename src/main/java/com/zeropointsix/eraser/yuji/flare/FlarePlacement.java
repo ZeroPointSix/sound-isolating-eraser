@@ -89,6 +89,14 @@ public final class FlarePlacement {
         return place(level, pos, state, player, false);
     }
 
+    public static boolean canRenew(ServerLevel level, BlockPos pos, BlockState state, @Nullable Player player) {
+        if (!allowed(level, pos, player) || !level.getBlockState(pos).equals(state)) return false;
+        // Renewal changes only the expiry; consult protection without replacing the block or notifying observers.
+        BlockSnapshot snapshot = BlockSnapshot.create(level.dimension(), level, pos);
+        return !ForgeEventFactory.onBlockPlace(player, snapshot, Direction.UP)
+                && level.getBlockState(pos).equals(state);
+    }
+
     private static boolean place(ServerLevel level, BlockPos pos, BlockState state, @Nullable Player player, boolean commit) {
         if (!allowed(level, pos, player) || !level.getBlockState(pos).isAir() || !level.getFluidState(pos).isEmpty()) return false;
         BlockSnapshot snapshot = BlockSnapshot.create(level.dimension(), level, pos);

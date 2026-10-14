@@ -41,7 +41,9 @@ public final class FlareLights extends SavedData {
         ordered.sort(BlockPos::compareTo);
         for (BlockPos pos : ordered) {
             if (level.getBlockState(pos).equals(LIGHT)) {
-                if (lights.containsKey(pos.asLong())) { lights.merge(pos.asLong(), expiry, Math::max); setDirty(); }
+                if (lights.containsKey(pos.asLong()) && FlarePlacement.canRenew(level, pos, LIGHT, player)) {
+                    lights.merge(pos.asLong(), expiry, Math::max); setDirty();
+                }
                 cover(pos, air, covered);
             } else if (Math.floorMod(pos.getX(), 3) == 0 && Math.floorMod(pos.getY(), 3) == 0 && Math.floorMod(pos.getZ(), 3) == 0
                     && add(level, pos, player, expiry)) cover(pos, air, covered);

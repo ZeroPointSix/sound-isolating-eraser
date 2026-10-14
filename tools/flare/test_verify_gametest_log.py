@@ -9,7 +9,7 @@ class GameTestLogGateTests(unittest.TestCase):
         self.batches = "\n".join(
             f"Running test batch '{name}:1' ({count} tests)"
             for name, count in EXPECTED_BATCHES.items())
-        self.success = "All 359 required tests passed :)"
+        self.success = "All 362 required tests passed :)"
 
     def test_complete_run(self):
         verify_log(self.batches + "\n" + self.success)
@@ -21,6 +21,11 @@ class GameTestLogGateTests(unittest.TestCase):
 
     def test_missing_ai_batch(self):
         log = self.batches.replace("Running test batch 'flare_edge_ai_yuji:1' (1 tests)", "")
+        with self.assertRaises(SystemExit):
+            verify_log(log + "\n" + self.success)
+
+    def test_missing_permission_batch(self):
+        log = self.batches.replace("Running test batch 'flare_permission_event:1' (1 tests)", "")
         with self.assertRaises(SystemExit):
             verify_log(log + "\n" + self.success)
 
@@ -42,7 +47,7 @@ class GameTestLogGateTests(unittest.TestCase):
 
     def test_too_few_completed(self):
         with self.assertRaises(SystemExit):
-            verify_log(self.batches + "\nAll 37 required tests passed :)")
+            verify_log(self.batches + "\nAll 40 required tests passed :)")
 
     def test_failure_after_success(self):
         with self.assertRaises(SystemExit):
