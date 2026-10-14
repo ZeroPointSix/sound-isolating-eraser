@@ -11,11 +11,23 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.Mth;
 import net.minecraft.client.player.Input;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.phys.Vec3;
 
 /** Client-authoritative wing flight physics, mirroring the server state. */
 public final class WingsFlight {
     private WingsFlight() {}
+
+    /** Wings own acceleration/drag; vanilla travel must not integrate them a second time. */
+    public static boolean travel(LocalPlayer player) {
+        WingsClientData.WingInfo info = WingsClientData.get(player);
+        if (info == null || !info.deployed() || player.onGround()
+                || player.isPassenger() || !player.isAlive()) return false;
+        player.move(MoverType.SELF, player.getDeltaMovement());
+        player.calculateEntityAnimation(false);
+        player.resetFallDistance();
+        return true;
+    }
 
     public static void tick(LocalPlayer p, WingsClientData.WingInfo info) {
         Minecraft mc = Minecraft.getInstance();
@@ -104,7 +116,7 @@ public final class WingsFlight {
 
     private static Vec3 hoverWish(LocalPlayer p, Input input, WingsClientData.WingInfo info) {
         double maxH = WingsConfig.SERVER.hoverMaxSpeed.get() / 20.0; // m/s → bpt
-        Vec3 flat = inputToWorld(p, input, p.getYRot()).scale(maxH * 0.5);
+        Vec3 flat = inputToWorld(p, input, p.getYRot()).scale(maxH);
         double vy;
         if (input.jumping) vy = 0.3;      // 6 m/s 上升
         else if (input.shiftKeyDown) vy = -0.25; // 5 m/s 下降
@@ -128,8 +140,11 @@ public final class WingsFlight {
         }
         Vec3 flat = inputToWorld(p, input, p.getYRot());
         if (flat.lengthSqr() < 1.0e-4) {
-            // no input: keep current heading, slight decay handled by caller
-            return p.getDeltaMovement();
+            // Preserve heading, but let interpolation shed old-tier speed after
+            // a downgrade even while coasting or holding only jump.
+            Vec3 drift = p.getDeltaMovement();
+            return drift.lengthSqr() > maxSpeed * maxSpeed
+                    ? drift.normalize().scale(maxSpeed) : drift;
         }
         // banked turn: steer current velocity toward input heading
         Vec3 cur = p.getDeltaMovement();

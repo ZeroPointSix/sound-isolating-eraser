@@ -1,14 +1,17 @@
 """Run real Forge clients and a loopback-only server for wind-thunder wings E2E."""
 import json
+import hashlib
 import os
 from pathlib import Path
 import shlex
 import socket
 import subprocess
 import time
+import sys
 
 ROOT = Path(__file__).resolve().parents[1]
-RESULTS = ROOT / "build/wings-e2e"
+MOTION_ONLY = "--motion-only" in sys.argv
+RESULTS = ROOT / ("build/wings-motion-e2e" if MOTION_ONLY else "build/wings-e2e")
 # Fresh world every run: player NBT (deployed wings, food, position) must not carry over.
 if RESULTS.exists():
     RESULTS.rename(RESULTS.with_name("wings-e2e-previous-" + str(time.time_ns())))
@@ -42,10 +45,15 @@ def launch(name, role, display=None):
             "enableVsync:false\npauseOnLostFocus:false\nonboardAccessibility:false\n"
             "showAutosaveIndicator:false\nrenderClouds:false\nnarrator:0\n"
             "tutorialStep:none\n"
+            "soundCategory_master:1.0\nsoundCategory_players:1.0\n"
         )
     env = os.environ.copy()
     env.update({key: expand(value) for key, value in config["env"].items()})
     env["LIBGL_ALWAYS_SOFTWARE"] = "1"
+    # Exercise the real decoder/mixer/source lifecycle in headless CI. This is
+    # an OpenAL output backend, not a claim of human listening or speaker output.
+    env["ALSOFT_DRIVERS"] = "null"
+    env["ALSOFT_LOGLEVEL"] = "2"
     if display:
         env["DISPLAY"] = display
     args = shlex.split(expand(config["args"]))
@@ -58,6 +66,7 @@ def launch(name, role, display=None):
                  "--width", "960", "--height", "540", "--quickPlayMultiplayer", "127.0.0.1:25566"]
     wings_role = {"server": "server", "wearer": "wingswearer", "observer": "wingsobserver"}[role]
     command = ["java", "-Xmx1G",
+               f"-Dwings.qa.motionOnly={str(MOTION_ONLY).lower()}",
                f"-Dwings.qa.results={RESULTS}", f"-Dwings.qa.role={wings_role}",
                f"-Dgravity.qa.results={RESULTS}", f"-Dgravity.qa.role={role}"]
     command += shlex.split(expand(config["vmArgs"]))
@@ -85,19 +94,48 @@ try:
             time.sleep(1)
     wearer = launch("runClient", "wearer", ":93")
     observer = launch("runClient", "observer", ":94")
-    deadline = time.monotonic() + 600
+    # Class/resource loading must not consume the gameplay acceptance budget.
+    # Both waits remain bounded even when one client never joins or gets ready.
+    startup_deadline = time.monotonic() + 600
+    gameplay_deadline = None
     required = ("wings-wearer", "wings-observer", "wings-server", "wings-controls", "wings-key-conflicts",
-                "wings-input-rebinding")
+                "wings-input-rebinding", "wings-animation", "wings-audio", "wings-network",
+                "wings-network-server")
+    if MOTION_ONLY:
+        required = ("wings-motion-wingswearer", "wings-motion-wingsobserver", "wings-motion-server")
     while not all((RESULTS / f"{role}.pass").exists() for role in required):
         failures = list(RESULTS.glob("wings-*.failed"))
         if failures:
             raise AssertionError("; ".join(path.read_text() for path in failures))
         if any(process.poll() is not None for process in (server, wearer, observer)):
             raise RuntimeError("A Minecraft process exited before validation completed")
-        if time.monotonic() >= deadline:
-            raise TimeoutError("Two-client wings validation timed out")
+        now = time.monotonic()
+        if gameplay_deadline is None:
+            if all((RESULTS / f"wings-{role}.ready").exists() for role in ("wearer", "observer")):
+                gameplay_deadline = now + 600
+                print("WINGS_CLIENTS_READY: starting bounded 600-second gameplay validation", flush=True)
+            elif now >= startup_deadline:
+                raise TimeoutError("Two-client wings startup did not reach ready within 600 seconds")
+        elif now >= gameplay_deadline:
+            raise TimeoutError("Two-client wings gameplay validation exceeded 600 seconds after readiness")
         time.sleep(1)
-    print("REAL_TWO_CLIENT_WINGS_E2E_PASSED", flush=True)
+    if MOTION_ONLY:
+        print("REAL_TWO_CLIENT_WINGS_MOTION_PASSED (actual travel, configuration speeds, release/jump, stow/redeploy, simultaneous flight)", flush=True)
+        sys.exit(0)
+    audio = json.loads((RESULTS / "wings-audio.json").read_text())
+    assert all(count > 0 for count in audio["sourcePlaying"].values()), audio
+    network = json.loads((RESULTS / "wings-network-client.json").read_text())
+    assert network["forwardedMovementPackets"] >= 60 and network["multiMoveBatches"] > 0, network
+    frames = json.loads((RESULTS / "wings-animation-frames.json").read_text())
+    for direction in ("deploy", "stow"):
+        sequence = [frame for frame in frames if frame["file"].startswith(f"animation-{direction}-")]
+        hashes = {hashlib.sha256((RESULTS / frame["file"]).read_bytes()).hexdigest() for frame in sequence}
+        assert len(hashes) >= 3, f"{direction}: repeated screenshots are not animation evidence"
+        assert sum(frame["changedWingRegionPixels"] >= 20 for frame in sequence) >= 2
+    for role in ("wearer", "observer"):
+        log = (RESULTS / f"{role}.log").read_text(errors="replace")
+        assert "Turning off sounds" not in log and "Error starting SoundSystem" not in log, f"{role}: audio disabled"
+    print("REAL_TWO_CLIENT_WINGS_E2E_PASSED (native input, impaired TCP, OpenAL sources, distinct rendered animation)", flush=True)
 finally:
     for process in reversed(processes):
         if process.poll() is None:

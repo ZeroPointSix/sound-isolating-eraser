@@ -18,8 +18,10 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.TicketType;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -38,6 +40,8 @@ import net.minecraftforge.gametest.PrefixGameTestTemplate;
 @GameTestHolder("yuji_tests")
 @PrefixGameTestTemplate(false)
 public final class RainCityGameTests {
+    private static final TicketType<BlockPos> BUDDHA_TEST_TICKET =
+            TicketType.create("yuji_buddha_test", BlockPos::compareTo, 40);
     @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji_city")
     public static void cityBlocksCoverEverySuppliedState(GameTestHelper h) {
         h.assertTrue(RainCityContent.MURAL.get().getStateDefinition().getPossibleStates().size() == 432, "432 mural states");
@@ -375,10 +379,16 @@ public final class RainCityGameTests {
     @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji_city", timeoutTicks = 1200)
     public static void cityBuddhaRespawnsAfterRemoval(GameTestHelper h) {
         var city = h.getLevel().getServer().getLevel(RainCityContent.LEVEL);
-        city.getChunk(0, 0);
+        BlockPos home = new BlockPos(0, 123, 0);
+        ChunkPos chunk = new ChunkPos(home);
         RainCityData data = new RainCityData();
         UUID[] first = new UUID[1];
         h.succeedWhen(() -> {
+            // A one-off getChunk does not retain entity loading in an otherwise empty dimension.
+            // Refresh a test-owned ticket while retrying; it expires even if the test fails.
+            city.getChunkSource().addRegionTicket(BUDDHA_TEST_TICKET, chunk, 2, home);
+            city.getChunk(0, 0);
+            h.assertTrue(city.areEntitiesLoaded(chunk.toLong()), "statue chunk entities loaded");
             RainCityEvents.ensureBuddha(city, data);
             h.assertTrue(data.buddha != null, "statue spawned or adopted");
             if (first[0] == null) {
@@ -391,6 +401,7 @@ public final class RainCityGameTests {
             h.assertTrue(alive.size() == 1 && alive.get(0).getUUID().equals(data.buddha), "exactly one live statue");
             RainCityEvents.ensureBuddha(city, data);
             h.assertTrue(city.getEntitiesOfClass(RecliningBuddha.class, new net.minecraft.world.phys.AABB(new BlockPos(0, 123, 0)).inflate(16), RecliningBuddha::isAlive).size() == 1, "no duplicate on later ticks");
+            city.getChunkSource().removeRegionTicket(BUDDHA_TEST_TICKET, chunk, 2, home);
         });
     }
     private RainCityGameTests() { }

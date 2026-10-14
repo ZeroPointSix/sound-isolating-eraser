@@ -1,0 +1,241 @@
+diff --git a/docs/yuji-acceptance.md b/docs/yuji-acceptance.md
+index 5aec06a..6c483ca 100644
+--- a/docs/yuji-acceptance.md
++++ b/docs/yuji-acceptance.md
+@@ -1,10 +1,14 @@
+ # 雨寂佛都需求与验收对照表
+ 
++## 2026-10-13 接续核验
++
++[a39-a42 六维需求对照、导航/配置回归及原始证据](validation/yuji/a39-recovery/README.md)。已恢复到 f8af45c；保留两轮 204/204 历史结果及新增 50/52 失败原件，新增修复另行验证。PR #21 已被外部合并，不能继续称为 Draft；后续交付方式待确认。以下历史记录不覆盖新修复的结论。
++
+ ## 来源与边界
+ 
+ - 原始需求：[附件图鉴 v0.2](../art/yuji_fodu/monster_cards.md)，包括第 3-12 节的十恶业、第 13 节十佛头及第 14 节骨刺。
+ - 附件 SHA-256：`c034d4c9aa7685255fb182fa3ff07b12af5c52b1c813438ebd6843ee73a8bc1f`。
+-- 唯一实现 PR：[sound-isolating-eraser #21](https://github.com/ZeroPointSix/sound-isolating-eraser/pull/21)，分支 `feat/yuji-fodu-monsters-20261011`，保留 Draft，不合并、不发布。
++- 原实现 PR：[sound-isolating-eraser #21](https://github.com/ZeroPointSix/sound-isolating-eraser/pull/21)，分支 `feat/yuji-fodu-monsters-20261011`。该 PR 于 2026-10-13 02:55:46 UTC 被外部合并；本轮未执行 main 合并或发布，不将已合并的 PR 描述为 Draft。
+ - 数量按附件原文计算：10 种普通怪物 + 1 个十佛头 Boss + 1 种骨刺投射物，不把投射物虚算成第十二种生物。
+ - 沿用仓库 Forge 1.20.1 注册事件、GeckoLib 4 渲染、独立 QA source set 与专用服务器/原生客户端验收方式。生产 Jar 不包含 `yuji_qa` 探针模组。
+ - 原需求明确排除自然刷新和 Boss 召唤条件；2026-10-12 实测反馈新增绮语战斗召唤，除此之外仍只提供 11 枚刷怪蛋及 `/summon`，未增加黑雨、世界生成或无来源的普通战利品。
+diff --git a/gradle.properties b/gradle.properties
+index 6bc96c9..cf3d1a0 100644
+--- a/gradle.properties
++++ b/gradle.properties
+@@ -48,7 +48,7 @@ mod_name=Sound-Isolating Eraser
+ # The license of the mod. Review your options at https://choosealicense.com/. All Rights Reserved is the default.
+ mod_license=MIT
+ # The mod version. See https://semver.org/
+-mod_version=0.9.0
++mod_version=0.9.1
+ curios_version=5.14.1+1.20.1
+ geckolib_version=4.4.9
+ # The group ID for the mod. It is only important when publishing as an artifact to a Maven repository.
+diff --git a/src/main/java/com/zeropointsix/eraser/gametest/YujiGameTests.java b/src/main/java/com/zeropointsix/eraser/gametest/YujiGameTests.java
+index 4279aea..29052df 100644
+--- a/src/main/java/com/zeropointsix/eraser/gametest/YujiGameTests.java
++++ b/src/main/java/com/zeropointsix/eraser/gametest/YujiGameTests.java
+@@ -2,6 +2,7 @@ package com.zeropointsix.eraser.gametest;
+ 
+ import com.zeropointsix.eraser.yuji.BoneSpike;
+ import com.zeropointsix.eraser.yuji.YujiAfflictions;
++import com.zeropointsix.eraser.yuji.YujiConfig;
+ import com.zeropointsix.eraser.yuji.YujiContent;
+ import com.zeropointsix.eraser.yuji.YujiKind;
+ import com.zeropointsix.eraser.yuji.YujiMonster;
+@@ -103,6 +104,121 @@ public final class YujiGameTests {
+         h.succeed();
+     }
+     @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
++    public static void yujiConfiguredGrowthCapSurvivesReload(GameTestHelper h) {
++        int liveCap = YujiConfig.MAX_LAYERS.get();
++        YujiMonster greed = monster(h, YujiKind.TANYU), restored = monster(h, YujiKind.TANYU);
++        try (var ignored = GameTestConfigs.sandbox(YujiConfig.SPEC)) {
++            YujiConfig.MAX_LAYERS.set(3);
++            greed.setLayers(99, true);
++            h.assertTrue(greed.layers() == 3, "configured growth cap is enforced");
++            close(h, greed.getMaxHealth(), 42, "configured layers set maximum health");
++            close(h, greed.getAttributeValue(Attributes.ATTACK_DAMAGE), 5.5, "configured layers set attack damage");
++            greed.setHealth(17);
++            CompoundTag saved = new CompoundTag(); greed.addAdditionalSaveData(saved);
++            YujiConfig.MAX_LAYERS.set(1);
++            restored.readAdditionalSaveData(saved);
++            h.assertTrue(restored.layers() == 1, "reload respects a reduced configured cap");
++            close(h, restored.getMaxHealth(), 34, "reloaded health follows the new cap");
++            close(h, restored.getAttributeValue(Attributes.ATTACK_DAMAGE), 4.5, "reloaded attack follows the new cap");
++            close(h, restored.getHealth(), 17, "changing the cap never heals stored damage");
++            saved.putFloat("Health", 41);
++            restored.readAdditionalSaveData(saved);
++            close(h, restored.getHealth(), 34, "stored health is clamped to the reduced layer cap");
++            YujiConfig.MAX_LAYERS.set(12);
++            saved.putInt("YujiLayers", 12); saved.putFloat("Health", 60); saved.remove("Attributes");
++            restored.readAdditionalSaveData(saved);
++            close(h, restored.getHealth(), 60, "legacy health without attributes is not truncated to spawn health");
++        } finally { greed.discard(); restored.discard(); }
++        h.assertTrue(YujiConfig.MAX_LAYERS.get() == liveCap, "live layer config restored");
++        h.succeed();
++    }
++    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
++    public static void yujiConfiguredPullStrengthControlsVelocity(GameTestHelper h) {
++        double livePull = YujiConfig.PULL_STRENGTH.get();
++        YujiMonster source = monster(h, YujiKind.XIEYIN); Player p = player(h, source);
++        try (var ignored = GameTestConfigs.sandbox(YujiConfig.SPEC)) {
++            p.moveTo(source.position().add(8, 0, 0));
++            YujiAfflictions.apply(p, source, "enthralled");
++            for (double scale : new double[]{0, .5, 1, 3}) {
++                YujiConfig.PULL_STRENGTH.set(scale);
++                p.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
++                state(p, "enthralled", source).putInt("Age", 0);
++                YujiAfflictions.tickPlayer(p);
++                close(h, p.getDeltaMovement().x, -.8 / 20 * scale, "pull velocity uses configured multiplier " + scale);
++                close(h, p.getDeltaMovement().y, 0, "pull does not inject vertical movement");
++                close(h, p.getDeltaMovement().z, 0, "pull stays directed toward its source");
++                h.assertTrue(p.hasEffect(YujiContent.ENTHRALLED.get()), "zero pull does not erase the source effect");
++            }
++        } finally { source.discard(); YujiAfflictions.tickPlayer(p); }
++        close(h, YujiConfig.PULL_STRENGTH.get(), livePull, "live pull config restored");
++        h.succeed();
++    }
++    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
++    public static void yujiConfiguredBetrayalTargetsAndBuff(GameTestHelper h) {
++        boolean livePets = YujiConfig.AFFECT_PETS.get(), liveVillagers = YujiConfig.AFFECT_VILLAGERS.get();
++        double liveBuff = YujiConfig.HOSTILE_BUFF.get();
++        YujiMonster source = monster(h, YujiKind.LIANGSHE);
++        // Recruitment scans 32 blocks. Keep this synchronous config probe away from other fixtures.
++        source.moveTo(source.position().add(0, 96, 0));
++        Player p = player(h, source);
++        var wolf = h.spawn(EntityType.WOLF, new BlockPos(3, 2, 2));
++        var villager = h.spawn(EntityType.VILLAGER, new BlockPos(3, 2, 3));
++        var zombie = h.spawn(EntityType.ZOMBIE, new BlockPos(4, 2, 2));
++        var actors = java.util.List.of(source, wolf, villager, zombie);
++        for (var actor : actors) { actor.setNoAi(true); actor.setNoGravity(true); actor.moveTo(source.position()); }
++        wolf.tame(p); wolf.setOrderedToSit(true);
++        double speed = zombie.getAttributeValue(Attributes.MOVEMENT_SPEED);
++        double attack = zombie.getAttributeValue(Attributes.ATTACK_DAMAGE);
++        try (var ignored = GameTestConfigs.sandbox(YujiConfig.SPEC)) {
++            YujiAfflictions.apply(p, source, "betrayed");
++            for (boolean enabled : new boolean[]{false, true}) {
++                YujiConfig.AFFECT_PETS.set(enabled); YujiConfig.AFFECT_VILLAGERS.set(enabled);
++                for (double buff : new double[]{0, .5, 2}) {
++                    YujiConfig.HOSTILE_BUFF.set(buff);
++                    YujiAfflictions.recruit(p, true); YujiAfflictions.recruit(p, true);
++                    h.assertTrue((wolf.getTarget() == p) == enabled, "pet recruitment obeys its switch");
++                    h.assertTrue(wolf.isOrderedToSit() != enabled, "disabled pet interaction preserves sitting");
++                    h.assertTrue(villager.getPersistentData().contains("QihaiBetrayal") == enabled,
++                            "villager influence obeys its switch");
++                    var trade = new net.minecraftforge.event.entity.player.PlayerInteractEvent.EntityInteract(
++                            p, net.minecraft.world.InteractionHand.MAIN_HAND, villager);
++                    YujiAfflictions.trade(trade);
++                    h.assertTrue(trade.isCanceled() == enabled, "trade restriction obeys the villager switch");
++                    close(h, zombie.getAttributeValue(Attributes.MOVEMENT_SPEED), speed * (1 + buff), "configured speed buff applies once");
++                    close(h, zombie.getAttributeValue(Attributes.ATTACK_DAMAGE), attack * (1 + buff), "configured attack buff applies once");
++                    for (var actor : actors) YujiAfflictions.restore(actor);
++                    h.assertTrue(wolf.isOrderedToSit() && p.getUUID().equals(wolf.getOwnerUUID()), "pet state and ownership restored");
++                    close(h, zombie.getAttributeValue(Attributes.ATTACK_DAMAGE), attack, "configured attack buff removed");
++                }
++            }
++        } finally {
++            source.discard(); YujiAfflictions.tickPlayer(p);
++            for (var actor : actors) { YujiAfflictions.restore(actor); actor.discard(); }
++        }
++        h.assertTrue(YujiConfig.AFFECT_PETS.get() == livePets && YujiConfig.AFFECT_VILLAGERS.get() == liveVillagers,
++                "live target switches restored");
++        close(h, YujiConfig.HOSTILE_BUFF.get(), liveBuff, "live hostile buff restored");
++        h.succeed();
++    }
++    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
++    public static void yujiConfiguredLegacyCurseDamageCap(GameTestHelper h) {
++        double liveCap = YujiConfig.MAX_CURSE_DAMAGE.get();
++        var server = h.getLevel().getServer(); var difficulty = h.getLevel().getDifficulty();
++        YujiMonster source = monster(h, YujiKind.EKOU); Player p = player(h, source);
++        try (var ignored = GameTestConfigs.sandbox(YujiConfig.SPEC)) {
++            server.setDifficulty(net.minecraft.world.Difficulty.NORMAL, true);
++            YujiAfflictions.apply(p, source, "cursed");
++            for (double cap : new double[]{1, 2, 5}) {
++                YujiConfig.MAX_CURSE_DAMAGE.set(cap);
++                p.setHealth(20); state(p, "cursed", source).putInt("Age", 2000);
++                for (int tick = 0; tick < 30; tick++) { p.invulnerableTime = 0; YujiAfflictions.tickPlayer(p); }
++                close(h, p.getHealth(), 20 - cap, "legacy curse respects configured cap " + cap);
++            }
++        } finally { source.discard(); YujiAfflictions.tickPlayer(p); server.setDifficulty(difficulty, true); }
++        close(h, YujiConfig.MAX_CURSE_DAMAGE.get(), liveCap, "live legacy curse config restored");
++        h.succeed();
++    }
++    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
+     public static void yujiGreedLayersClampAndReload(GameTestHelper h) {
+         YujiMonster greed = monster(h, YujiKind.TANYU); greed.setLayers(99, true);
+         h.assertTrue(greed.layers() == 12, "layer cap"); close(h, greed.getMaxHealth(), 78, "layer health");
+@@ -138,6 +254,32 @@ public final class YujiGameTests {
+         h.succeed();
+     }
+     @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
++    public static void yujiGreedNearWaypointAdvancesWithoutSkippingDistantNodes(GameTestHelper h) {
++        BlockPos start = h.absolutePos(new BlockPos(2, 2, 2));
++        for (int layers = 0; layers <= 12; layers++) {
++            for (double offset : new double[]{-.0001, .0001, -2, 2}) {
++                YujiMonster greed = monster(h, YujiKind.TANYU);
++                try {
++                    greed.setLayers(layers, false);
++                    var path = new net.minecraft.world.level.pathfinder.Path(java.util.List.of(
++                            new net.minecraft.world.level.pathfinder.Node(start.getX(), start.getY(), start.getZ()),
++                            new net.minecraft.world.level.pathfinder.Node(start.getX(), start.getY(), start.getZ() + 4)),
++                            start.offset(0, 0, 4), true);
++                    var position = path.getNextEntityPos(greed).add(offset, 0, offset);
++                    greed.moveTo(position); greed.setOnGround(true);
++                    h.assertTrue(greed.getNavigation().moveTo(path, 1), "native near-waypoint path starts");
++                    greed.getNavigation().tick();
++                    int expected = Math.abs(offset) < 1 ? 1 : 0;
++                    h.assertTrue(path.getNextNodeIndex() == expected,
++                            "native arrival tolerance handles near but not distant nodes: layers=" + layers
++                                    + ", offset=" + offset + ", index=" + path.getNextNodeIndex());
++                    h.assertTrue(greed.position().equals(position), "arrival detection never teleports");
++                } finally { greed.discard(); }
++            }
++        }
++        h.succeed();
++    }
++    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
+     public static void yujiGreedPeelsOnlyLargeAcceptedHit(GameTestHelper h) {
+         YujiMonster greed = monster(h, YujiKind.TANYU); greed.setLayers(6, false); greed.setHealth(greed.getMaxHealth());
+         greed.hurt(greed.damageSources().generic(), 5); h.assertTrue(greed.layers() == 6, "small hit cannot peel");
+diff --git a/src/main/java/com/zeropointsix/eraser/yuji/YujiMonster.java b/src/main/java/com/zeropointsix/eraser/yuji/YujiMonster.java
+index 42e8c32..045383f 100644
+--- a/src/main/java/com/zeropointsix/eraser/yuji/YujiMonster.java
++++ b/src/main/java/com/zeropointsix/eraser/yuji/YujiMonster.java
+@@ -109,11 +109,18 @@ public final class YujiMonster extends Monster implements GeoEntity {
+         }
+ 
+         @Override protected void followThePath() {
+-            // Fractional layer widths can round vanilla's arrival box away from its own movement target.
+-            // Consume an exactly reached waypoint before the normal collision-aware path follower runs.
+-            if (path != null && !path.isDone() && mob.position().equals(path.getNextEntityPos(mob))) {
+-                path.advance();
+-                if (path.isDone()) return;
++            if (path != null && !path.isDone()) {
++                // Use Path's width-rounded movement target with vanilla's unchanged arrival radius.
++                Vec3 target = path.getNextEntityPos(mob);
++                float width = mob.getBbWidth();
++                maxDistanceToWaypoint = width > .75F ? width / 2 : .75F - width / 2;
++                if (Math.abs(mob.getX() - target.x) <= maxDistanceToWaypoint
++                        && Math.abs(mob.getZ() - target.z) <= maxDistanceToWaypoint
++                        && Math.abs(mob.getY() - target.y) < 1) {
++                    path.advance();
++                    doStuckDetection(getTempMobPos());
++                    return;
++                }
+             }
+             super.followThePath();
+         }
+@@ -536,7 +543,11 @@ public final class YujiMonster extends Monster implements GeoEntity {
+     @Override public void readAdditionalSaveData(CompoundTag tag) {
+         if (kind == YujiKind.TANYU) setLayers(tag.contains("YujiLayers") ? tag.getInt("YujiLayers") : 2, false);
+         super.readAdditionalSaveData(tag);
+-        if (kind == YujiKind.TANYU && !tag.contains("Health")) setHealth(getMaxHealth());
++        if (kind == YujiKind.TANYU) {
++            // Vanilla restores saved attribute bases after the configured layer cap was applied.
++            setLayers(layers(), false);
++            if (!tag.contains("Health")) setHealth(getMaxHealth());
++        }
+         fleeTicks = Mth.clamp(tag.getInt("YujiFlee"), 0, 200); followTicks = Mth.clamp(tag.getInt("YujiFollow"), 0, 1000);
+         grudge = tag.hasUUID("YujiGrudge") ? tag.getUUID("YujiGrudge") : null;
+         summoner = tag.hasUUID("YujiSummoner") ? tag.getUUID("YujiSummoner") : null;
