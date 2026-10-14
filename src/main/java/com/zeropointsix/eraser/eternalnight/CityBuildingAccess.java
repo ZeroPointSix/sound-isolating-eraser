@@ -73,24 +73,35 @@ public final class CityBuildingAccess {
         doors.sort(Comparator.comparingInt(info -> info.pos().getY()));
         List<Approach> ranked = new ArrayList<>();
         for (var info : doors) {
-            if (!(city.getBlockState(info.pos()).getBlock() instanceof DoorBlock)) continue;
-            Direction outward = info.state().getValue(DoorBlock.FACING);
-            for (Direction dir : new Direction[] {outward, outward.getOpposite()}) {
-                Approach found = approachFrom(city, info.pos(), dir);
-                if (found == null) continue;
-                int dy = found.feet().getY() - info.pos().getY();
-                // Standing above the door walks into the facade; native 0/12 used that path.
-                if (dy > 0) continue;
-                ranked.add(found);
+            var world = city.getBlockState(info.pos());
+            if (!(world.getBlock() instanceof DoorBlock) || !world.hasProperty(DoorBlock.FACING)) continue;
+            openDoor(city, info.pos());
+            Direction facing = world.getValue(DoorBlock.FACING);
+            for (Direction outward : new Direction[] {facing, facing.getOpposite()}) {
+                for (int distance = 1; distance <= 3; distance++) {
+                    Approach onAxis = candidateAt(city, info.pos(), outward, distance, null);
+                    if (onAxis != null) ranked.add(onAxis);
+                    if (distance > 2) continue;
+                    Approach left = candidateAt(city, info.pos(), outward, distance, outward.getClockWise());
+                    Approach right = candidateAt(city, info.pos(), outward, distance, outward.getCounterClockWise());
+                    if (left != null) ranked.add(left);
+                    if (right != null) ranked.add(right);
+                }
             }
         }
+        var size = template.getSize();
+        ranked.removeIf(found -> {
+            BlockPos interior = found.door().relative(found.inward());
+            return !inBuilding(origin, size, interior);
+        });
         ranked.sort(Comparator.comparingInt(found -> {
-            int dy = Math.abs(found.feet().getY() - found.door().getY());
-            return dy * 10 + (CityLayout.street(found.feet().getX(), found.feet().getZ()) ? 1 : 0);
+            int insideStart = inBuilding(origin, size, found.feet())
+                    && !CityLayout.street(found.feet().getX(), found.feet().getZ()) ? 5000 : 0;
+            return insideStart + score(found);
         }));
         for (Approach candidate : ranked)
             if (entranceWalkable(city, candidate)) return Optional.of(candidate);
-        return ranked.isEmpty() ? Optional.empty() : Optional.of(ranked.get(0));
+        return Optional.empty();
     }
 
     public static void openDoor(ServerLevel city, BlockPos door) {
@@ -103,13 +114,7 @@ public final class CityBuildingAccess {
     }
 
     public static boolean entranceWalkable(ServerLevel city, Approach approach) {
-        openDoor(city, approach.door());
-        BlockPos inside = approach.door().relative(approach.inward());
-        int y = standY(city, inside.getX(), inside.getZ(), approach.door().getY());
-        if (y == Integer.MIN_VALUE || Math.abs(y - approach.door().getY()) > 1) return false;
-        AABB body = new AABB(inside.getX() + .2, y, inside.getZ() + .2,
-                inside.getX() + .8, y + 1.8, inside.getZ() + .8);
-        return city.noCollision(body);
+        return pathWalkable(city, approach);
     }
 
     public static int floorCount(ServerLevel city, BlockPos origin, int sizeX, int sizeZ, int sizeY, BlockPos start) {
@@ -125,9 +130,9 @@ public final class CityBuildingAccess {
                     || pos.getX() > origin.getX() + sizeX || pos.getZ() > origin.getZ() + sizeZ
                     || pos.getY() < origin.getY() - 1 || pos.getY() > origin.getY() + sizeY + 1)
                 continue;
-            AABB body = new AABB(pos.getX() + .2, pos.getY(), pos.getZ() + .2,
-                    pos.getX() + .8, pos.getY() + 1.8, pos.getZ() + .8);
-            if (!city.getBlockState(pos.below()).isSolid() || !city.noCollision(body)) continue;
+            AABB body = bodyAt(pos.getX(), pos.getY(), pos.getZ());
+            boolean ladder = ladderAt(city, pos) || ladderAt(city, pos.below());
+            if ((!city.getBlockState(pos.below()).isSolid() && !ladder) || !city.noCollision(body)) continue;
             floors.add(pos.getY());
             for (Direction direction : Direction.Plane.HORIZONTAL) {
                 BlockPos next = pos.relative(direction);
@@ -140,6 +145,8 @@ public final class CityBuildingAccess {
                 if (nextY != Integer.MIN_VALUE && Math.abs(nextY - pos.getY()) <= 1)
                     queue.add(new BlockPos(pos.getX(), nextY, pos.getZ()));
             }
+            if (ladderAt(city, pos) || ladderAt(city, pos.above())) queue.add(pos.above());
+            if (ladderAt(city, pos.below())) queue.add(pos.below());
         }
         int count = 0, last = Integer.MIN_VALUE;
         for (int y : floors) {
@@ -171,28 +178,60 @@ public final class CityBuildingAccess {
         return Math.max(1, count);
     }
 
-    private static Approach approachFrom(ServerLevel city, BlockPos door, Direction outward) {
-        for (int distance = 3; distance >= 1; distance--) {
-            BlockPos column = door.relative(outward, distance);
-            int ground = standY(city, column.getX(), column.getZ(), door.getY());
-            if (ground == Integer.MIN_VALUE) {
-                int height = city.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, column.getX(), column.getZ());
-                ground = standY(city, column.getX(), column.getZ(), height);
-            }
-            if (ground == Integer.MIN_VALUE || ground > door.getY()) continue;
-            BlockPos feet = new BlockPos(column.getX(), ground, column.getZ());
-            AABB body = new AABB(feet.getX() + .2, feet.getY(), feet.getZ() + .2,
-                    feet.getX() + .8, feet.getY() + 1.8, feet.getZ() + .8);
-            if (!city.getBlockState(feet.below()).isSolid() || !city.noCollision(body)) continue;
-            Direction inward = outward.getOpposite();
-            Vec3 eye = new Vec3(feet.getX() + .5, feet.getY() + 1.62, feet.getZ() + .5);
-            Vec3 look = Vec3.atCenterOf(door).add(0, 0.5, 0);
-            double dx = look.x - eye.x, dy = look.y - eye.y, dz = look.z - eye.z;
-            float yaw = (float) Math.toDegrees(Math.atan2(-dx, dz));
-            float pitch = (float) -Math.toDegrees(Math.atan2(dy, Math.sqrt(dx * dx + dz * dz)));
-            return new Approach(door, feet, inward, yaw, pitch);
+    private static Approach candidateAt(ServerLevel city, BlockPos door, Direction outward, int distance,
+                                       Direction lateral) {
+        BlockPos column = door.relative(outward, distance);
+        if (lateral != null) column = column.relative(lateral);
+        int ground = standY(city, column.getX(), column.getZ(), door.getY());
+        if (ground == Integer.MIN_VALUE) {
+            int height = city.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, column.getX(), column.getZ());
+            ground = standY(city, column.getX(), column.getZ(), height);
         }
-        return null;
+        if (ground == Integer.MIN_VALUE || ground > door.getY() || door.getY() - ground > 1) return null;
+        BlockPos feet = new BlockPos(column.getX(), ground, column.getZ());
+        if (!city.getBlockState(feet.below()).isSolid() || !city.noCollision(bodyAt(feet))) return null;
+        Direction inward = outward.getOpposite();
+        Vec3 eye = new Vec3(feet.getX() + .5, feet.getY() + 1.62, feet.getZ() + .5);
+        Vec3 look = Vec3.atCenterOf(door).add(0, 0.5, 0);
+        double dx = look.x - eye.x, dy = look.y - eye.y, dz = look.z - eye.z;
+        float yaw = (float) Math.toDegrees(Math.atan2(-dx, dz));
+        float pitch = (float) -Math.toDegrees(Math.atan2(dy, Math.sqrt(dx * dx + dz * dz)));
+        Approach found = new Approach(door, feet, inward, yaw, pitch);
+        return pathWalkable(city, found) ? found : null;
+    }
+
+    private static boolean pathWalkable(ServerLevel city, Approach approach) {
+        openDoor(city, approach.door());
+        if (Math.abs(approach.feet().getY() - approach.door().getY()) > 1) return false;
+        BlockPos interior = approach.door().relative(approach.inward());
+        int interiorY = standY(city, interior.getX(), interior.getZ(), approach.door().getY());
+        if (interiorY == Integer.MIN_VALUE || Math.abs(interiorY - approach.door().getY()) > 1) return false;
+        return city.noCollision(bodyAt(interior.getX(), interiorY, interior.getZ()));
+    }
+
+    private static int score(Approach found) {
+        int dist = Math.abs(found.feet().getX() - found.door().getX())
+                + Math.abs(found.feet().getZ() - found.door().getZ());
+        int dy = Math.abs(found.feet().getY() - found.door().getY());
+        int axis = (found.feet().getX() == found.door().getX() || found.feet().getZ() == found.door().getZ()) ? 0 : 1;
+        return dist * 100 + dy * 10 + axis + (CityLayout.street(found.feet().getX(), found.feet().getZ()) ? 1 : 0);
+    }
+
+    private static boolean inBuilding(BlockPos origin, net.minecraft.core.Vec3i size, BlockPos pos) {
+        return pos.getX() >= origin.getX() - 1 && pos.getX() <= origin.getX() + size.getX()
+                && pos.getZ() >= origin.getZ() - 1 && pos.getZ() <= origin.getZ() + size.getZ();
+    }
+
+    private static boolean ladderAt(ServerLevel city, BlockPos pos) {
+        return city.getBlockState(pos).is(net.minecraft.world.level.block.Blocks.LADDER);
+    }
+
+    private static AABB bodyAt(BlockPos pos) {
+        return bodyAt(pos.getX(), pos.getY(), pos.getZ());
+    }
+
+    private static AABB bodyAt(int x, int y, int z) {
+        return new AABB(x + .2, y, z + .2, x + .8, y + 1.8, z + .8);
     }
 
     private static int standY(ServerLevel city, int x, int z, int nearY) {

@@ -24,6 +24,7 @@ import java.util.UUID;
 @PrefixGameTestTemplate(false)
 public final class EternalNightGameTests {
     private static GameTestConfigs.LiveConfig liveConfig;
+    private static int configUsers;
 
     /**
      * Sequential unique batches plus this reset keep config, SavedData and
@@ -33,7 +34,7 @@ public final class EternalNightGameTests {
      */
     static void isolate(ServerLevel overworld) {
         if (liveConfig == null) liveConfig = GameTestConfigs.sandbox(NightConfig.SPEC);
-        NightEvents.clearTransientState();
+        configUsers++;
         ServerLevel city = overworld.getServer().getLevel(EternalNightContent.LEVEL);
         if (city != null) CitySavedData.get(city).clearForTesting();
         NightConfig.ENABLED.set(true);
@@ -49,9 +50,11 @@ public final class EternalNightGameTests {
     }
 
     static void restoreConfig() {
-        if (liveConfig == null) return;
+        if (configUsers > 0) configUsers--;
+        if (configUsers > 0 || liveConfig == null) return;
         liveConfig.close();
         liveConfig = null;
+        NightEvents.clearTransientState();
     }
 
     @AfterBatch(batch = "eternal_night_sleep") public static void afterSleep(ServerLevel level) { restoreConfig(); }
@@ -1042,12 +1045,17 @@ public final class EternalNightGameTests {
         h.assertTrue(placements.size() == 12, "twelve original building classes are located");
         int walked = 0, floorsOk = 0;
         StringBuilder table = new StringBuilder();
+        StringBuilder missing = new StringBuilder();
         for (var placement : placements) {
             CityBuildingAccess.loadAround(city, placement.origin());
             var approach = CityBuildingAccess.findApproach(city, placement.origin(), placement.name());
-            h.assertTrue(approach.isPresent(), placement.name() + " has a collision-clear exterior approach");
-            h.assertTrue(CityBuildingAccess.entranceWalkable(city, approach.get()),
-                    placement.name() + " interior past the opened door is standable");
+            if (approach.isEmpty() || !CityBuildingAccess.entranceWalkable(city, approach.get())) {
+                missing.append(placement.name()).append(' ');
+                table.append("CITY_ENTRANCE template=").append(placement.name())
+                        .append(" district=").append(placement.district())
+                        .append(" walkable=false origin=").append(placement.origin().toShortString()).append('\n');
+                continue;
+            }
             walked++;
             var template = city.getStructureManager().get(CityTemplates.id("buildings/" + placement.name())).orElseThrow();
             var size = template.getSize();
@@ -1057,15 +1065,20 @@ public final class EternalNightGameTests {
             int expected = CityBuildingAccess.expectedFloors(city, placement.origin(), placement.name());
             boolean floorsReached = floors >= expected;
             if (floorsReached) floorsOk++;
+            int dist = Math.abs(approach.get().feet().getX() - approach.get().door().getX())
+                    + Math.abs(approach.get().feet().getZ() - approach.get().door().getZ());
             table.append("CITY_ENTRANCE template=").append(placement.name())
                     .append(" district=").append(placement.district())
-                    .append(" walkable=true floors=").append(floors)
+                    .append(" walkable=true approachDist=").append(dist)
+                    .append(" door=").append(approach.get().door().toShortString())
+                    .append(" feet=").append(approach.get().feet().toShortString())
+                    .append(" floors=").append(floors)
                     .append(" expectedDoorFloors=").append(expected)
                     .append(" floorsReached=").append(floorsReached).append('\n');
         }
         System.out.print(table);
         System.out.println("CITY_ENTRANCE_SUMMARY walked=" + walked + "/12 floorsReached=" + floorsOk + "/12");
-        h.assertTrue(walked == 12, "all 12 original building classes have a walkable entrance");
+        h.assertTrue(walked == 12, "all 12 original building classes have a walkable entrance; missing " + missing);
         h.succeed();
     }
 

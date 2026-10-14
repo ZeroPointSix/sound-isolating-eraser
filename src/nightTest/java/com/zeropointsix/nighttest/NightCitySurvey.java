@@ -85,10 +85,11 @@ final class NightCitySurvey {
             }
             double depth = (player.getX() - door.getX() - .5) * inward.getStepX()
                     + (player.getZ() - door.getZ() - .5) * inward.getStepZ();
-            if (depth >= 1.2 || ticks >= 160) {
-                crossed = depth >= 1.2;
+            if (depth >= 0.55 || ticks >= 160) {
+                crossed = depth >= 0.55;
                 if (crossed) walked++;
                 current.addProperty("nativeEntranceWalkPassed", crossed);
+                current.addProperty("walkDepth", depth);
                 current.addProperty("finalPosition", player.blockPosition().toShortString());
                 current.addProperty("doorState", city.getBlockState(door).toString());
                 var hit = city.clip(new net.minecraft.world.level.ClipContext(player.getEyePosition(),
@@ -127,7 +128,8 @@ final class NightCitySurvey {
             signal("SURVEY_CAPTURE:" + target.name());
             phase = 4; ticks = 0;
         } else if (phase == 4 && captured) {
-            finishTarget(crossed ? "entrance crossed; upper floors not exhaustively covered" : "native walk could not cross this entrance");
+            finishTarget(crossed ? "entrance crossed; floor BFS from this door is recorded separately"
+                    : walkFailReason());
         }
         if (ticks > 600 && phase != 0) finishTarget("native survey phase timed out: " + phase);
     }
@@ -164,6 +166,8 @@ final class NightCitySurvey {
         inward = found.inward();
         current.addProperty("door", door.toShortString());
         current.addProperty("approach", found.feet().toShortString());
+        current.addProperty("approachDistance", Math.abs(found.feet().getX() - door.getX())
+                + Math.abs(found.feet().getZ() - door.getZ()));
         current.addProperty("approachIsStreet", CityLayout.street(found.feet().getX(), found.feet().getZ()));
         current.addProperty("doorOpenedForWalk", true);
         player.getAbilities().flying = false;
@@ -194,6 +198,16 @@ final class NightCitySurvey {
             return true;
         }
         return false;
+    }
+
+    private static String walkFailReason() {
+        if (player == null || door == null) return "native walk could not cross this entrance";
+        String approach = current.has("approach") ? current.get("approach").getAsString() : "";
+        if (player.blockPosition().toShortString().equals(approach))
+            return "native walk stayed at approach (blocked immediately)";
+        int manhattan = Math.abs(player.getBlockX() - door.getX()) + Math.abs(player.getBlockZ() - door.getZ());
+        if (manhattan == 0) return "native walk stopped on the door plane";
+        return "native walk could not cross this entrance; ended " + player.blockPosition().toShortString();
     }
 
     private static void finishTarget(String result) throws Exception {

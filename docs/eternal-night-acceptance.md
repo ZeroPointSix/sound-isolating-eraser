@@ -29,7 +29,7 @@
 | R-1 同夜刷床再抽 | blocked（无明文） | 未改行为 |
 | R-2 旁观者穿门 | blocked（无明文） | 未改行为 |
 | 入城演出（传送前渐黑、躺姿醒来） | partial | 判定成功后 `CityExitNetwork.fadeIn` 在传送前把客户端拉黑；到达后维度切换渐隐。`finishEntry` 以 `startSleeping` 躺在街道上约 40 tick（`CityArrivalSleepMixin` 避免无床立刻醒来）。`cityArrivalLiesDownOnStreet`。黑屏中文文案仍是到达标题，不是传送前独立黑场文案；原生视觉未在本轮重验 |
-| 12 类建筑入口与楼层 | GameTest 入口回归；原生 survey 仍以新 CI 为准 | CI 15c1fc5 原生调查是 **6/12**。失败的 6 处全是商业/市政：4 处准星打在玻璃/砖上且门未开，2 处（mall/library）用模板边缘+门高度当站立点，街道更低所以判定“无接近点”。不是缺模板。`CityBuildingAccess` 按门朝向落到实地面、服务端先开门，GameTest `cityTwelveBuildingEntrancesWalkable` 要求 12/12 入口可站入并用碰撞 BFS 记楼层。原生 12/12 与 `allFloorsVerified` 仍看出 CI survey JSON，不能预标 PASS |
+| 12 类建筑入口与楼层 | GameTest 12/12；原生仍待本 SHA survey | 审查时 CI `15c1fc5` 原生是 **6/12**，随后一次原生重跑在 8 栋时 3 过 5 败：接近点在门外 3 格，走路撞墙或停在门平面，不是缺模板。现 `findApproach` 优先同高、轴上、距门 1–2 格且室内可站的入口，不再回退到不可走的远处点。本地 JDK17 `cityTwelveBuildingEntrancesWalkable`：**walked=12/12 floorsReached=12/12**（碰撞 BFS+梯子，不是真人爬楼）。原生走入与 `allFloorsVerified` 仍以本 SHA 的 `city-survey.json` 为准，**不得把 GameTest 12/12 写成原生 PASS** |
 
 ## 本轮代码改动
 
@@ -39,8 +39,9 @@
 4. **砌腐墙**：栖息地为地铁隧道（全区）+ 工业区地下，不是「只有工业区」，也不是旧 `INDUSTRIAL \|\| y<56`。
 5. **过期关门**：对已存在的开叶门做强制加载→卸载→过期保留 PendingClose→重载关叶。
 6. **入城演出**：传送前渐黑包 + 到达躺姿；见上表 partial。
-7. **12 入口**：接近点按实际地面与门朝向；GameTest 12/12 入口回归。
+7. **12 入口**：接近点改为最近且室内可站（同高、优先 1–2 格）；GameTest 打印每栋 `approachDist` / 门坐标 / 楼层 BFS。本地 12/12 入口 + 12/12 门高簇。原生调查仍待本 SHA。
 8. **文档**：结构模板 35 项；大建筑是 3×3 内部地块中的 2×2 区块。
+9. **GameTest 配置**：`isolate`/`AfterBatch` 用引用计数，避免并行 batch 提前 `close` 沙盒；`isolate` 不再清空其他用例的入城队列。Forge 真实超时 AfterBatch 仍无失败用例证据。
 
 ## 命令
 
@@ -52,12 +53,32 @@ python3 tools/night-e2e.py   # 有显示/客户端 classpath 时
 
 ## 本轮验证（修复 Request Changes 后，SHA 以 git / CI 为准）
 
-本地 JDK 17：
+本地 JDK 17（本推送前）：
 
-- NightRules 以本次 `checkNightRules` 打印为准（源码仍门禁 `setOpen` / `m_153165_` / `min = 3`）
-- CITY_ART_VERIFIED 87 files / 6 loot tables
-- Eternal Night GameTest 新增 config-fail / 栖息地 / 到达躺姿 / 12 入口；计数以本次 `runGameTestServer` 为准
-- 成品 JAR：`verifyRemappedDoorLock` 必须打印 `NIGHT_REMAPPED_DOOR_MIXIN_PASS`
-- 双原生 e2e 与 12 入口调查以新 CI artifact 的 `city-survey.json` 为准，不沿用 15c1fc5 的 6/12
+- `NightRulesCheck PASS assertions=666329`
+- `CITY_ART_VERIFIED files=87 loot_tables=6`
+- `-PnightOnly runGameTestServer`：**22/22**，`CITY_ENTRANCE_SUMMARY walked=12/12 floorsReached=12/12`
+- 成品 JAR `sound_isolating_eraser-0.11.0.jar` SHA-256 `cb91f10ed6509b0918370bdffbaee328fc46ec55b0a2db8d852fc988ede47f47`：`NIGHT_REMAPPED_DOOR_MIXIN_PASS`（`m_6227_` / `m_6861_` / `m_153165_`）。开发态 `NIGHT_DOOR_LOCK_RUNTIME` 仍是 `DoorBlock.setOpen=true`、`m_153165_=false`，正式 remap 进程注入保持 partial
+- 栖息地正反例：`cityBrickrotHabitatIsSubwayAndIndustrialUnderground`（商业/住宅地铁隧道可刷，工业 `y<56` 可刷，工业地表/非隧道不刷）
+- PendingClose：`cityExpiredExitClosesWhenUnloadedChunkLoads`；不是双客户端重启
+- 入城演出：`cityArrivalLiesDownOnStreet`；传送前独立黑场文案仍缺，partial
+- 双原生 e2e 与 12 入口调查以本 SHA CI/`city-survey.json` 为准，**不沿用 15c1fc5 的 6/12，也不把 GameTest 楼层 BFS 写成原生通达**
 
-CI 以 GitHub Checks 为准。雨寂都市客户端窗口超时、重力 `hostileHoversThenFallsOutsideCylinder` 悬停高度若偶发失败，与本轮白门/栖息地/PendingClose 路径无直接调用关系，以重跑后的 HEAD 检查为准。
+GameTest 12 入口表（碰撞，非原生客户端）：
+
+| 模板 | 区 | approachDist | 门 | BFS 楼层 / 门高簇 |
+| --- | --- | --- | --- | --- |
+| warehouse | INDUSTRIAL | 2 | -737,89,-744 | 4 / 2 |
+| office_dark | INDUSTRIAL | 2 | -745,89,-736 | 14 / 7 |
+| res_tenement | INDUSTRIAL | 2 | -744,89,-720 | 10 / 4 |
+| office_tower | COMMERCIAL | 2 | -736,83,-360 | 22 / 10 |
+| shop_neon | COMMERCIAL | 2 | -712,83,-336 | 4 / 1 |
+| mall | COMMERCIAL | 3 | -736,86,-273 | 9 / 1 |
+| res_apartment_mid | RESIDENTIAL | 2 | -744,89,-225 | 12 / 6 |
+| res_apartment_high | RESIDENTIAL | 2 | -744,89,-224 | 18 / 7 |
+| res_apartment_low | RESIDENTIAL | 2 | -721,89,-200 | 8 / 4 |
+| townhall | COMMERCIAL | 2 | -657,80,-351 | 6 / 3 |
+| library | COMMERCIAL | 3 | -529,71,608 | 6 / 3 |
+| civic_center | COMMERCIAL | 2 | -474,68,-401 | 8 / 4 |
+
+CI 以 GitHub Checks 为准。雨寂都市客户端窗口超时、重力 `hostileHoversThenFallsOutsideCylinder` 悬停高度若偶发失败，与本轮白门/栖息地/PendingClose 路径无直接调用关系，以重跑后的 HEAD 检查为准。本轮**不合 main**，也不自称 Notion 功能验收通过。
