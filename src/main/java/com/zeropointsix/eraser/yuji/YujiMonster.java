@@ -163,7 +163,8 @@ public final class YujiMonster extends Monster implements GeoEntity {
     }
     @Override protected void registerGoals() {
         goalSelector.addGoal(0, new FloatGoal(this));
-        goalSelector.addGoal(1, new Goal() {
+        goalSelector.addGoal(1, new YujiHabitatGoal(this));
+        goalSelector.addGoal(2, new Goal() {
             { setFlags(java.util.EnumSet.of(Flag.MOVE, Flag.LOOK)); }
             @Override public boolean canUse() { return getTarget() != null && getTarget().isAlive(); }
             @Override public boolean requiresUpdateEveryTick() { return true; }
@@ -189,6 +190,17 @@ public final class YujiMonster extends Monster implements GeoEntity {
             getNavigation().moveTo(target, kind == YujiKind.TANYU && distance < 8 ? 1.36 : 1);
         } else if (distance <= stop + .5) getNavigation().stop();
         if (kind == YujiKind.QIYU && !onGround()) setDeltaMovement(getDeltaMovement().multiply(1, .75, 1));
+        tryMelee(target, distance);
+    }
+    boolean habitatMovementPaused() { return startledTicks > 0; }
+    void attendHabitatTarget() {
+        LivingEntity target = getTarget();
+        if (target != null && target.isAlive() && startledTicks == 0) {
+            getLookControl().setLookAt(target, 20, 20);
+            tryMelee(target, distanceTo(target));
+        }
+    }
+    private void tryMelee(LivingEntity target, double distance) {
         if (fleeTicks == 0 && attackCooldown == 0 && actionTicks == 0 && kind.damage > 0
                 && distance <= getBbWidth() + target.getBbWidth() + .8 && hasLineOfSight(target)) {
             String action = switch (kind) {

@@ -70,6 +70,33 @@ public final class YujiIsolationClient {
                     pass(phase, "target=" + target + " maxTurn=" + maxTurn + " maxPitch=" + maxPitch + " effectLevel=" + turnLevel);
                 }
                 shot = phase; phase = "";
+            } else if (parts[0].equals("habitat")) {
+                var mob = Minecraft.getInstance().level.getEntity(Integer.parseInt(parts[2]));
+                require(mob instanceof com.zeropointsix.eraser.yuji.YujiMonster, "client received actual Yuji entity");
+                require(mob.getZ() >= Double.parseDouble(parts[3]) && mob.getZ() < 13, "client observes entity inside habitat: " + mob.position());
+                var box = mob.getBoundingBox();
+                require(Math.abs(box.minY - 65) < .01 && box.maxY <= (parts[1].equals("liangshe-indoor") ? 68 : 73),
+                        "client sees body below the roof or within corridor wall height");
+                require(box.minX >= (parts[1].equals("liangshe-indoor") ? -1 : 0) && box.maxX <= 2
+                        && box.minZ >= 6 && box.maxZ <= 13, "client sees entire body between habitat walls");
+                pass(parts[1], "TCP-synchronized entity=" + mob.getUUID() + "; pos=" + mob.position() + "; body=" + mob.getBoundingBox());
+                shot = parts[1];
+            } else if (parts[0].equals("crouch")) {
+                Minecraft.getInstance().options.keyShift.setDown(Boolean.parseBoolean(parts[1]));
+                record("crouch input=" + parts[1]);
+            } else if (parts[0].equals("attack")) {
+                var mc = Minecraft.getInstance();
+                var entity = mc.level.getEntity(Integer.parseInt(parts[1]));
+                require(entity != null && mc.gameMode != null, "attack target synchronized to client");
+                mc.gameMode.attack(mc.player, entity); mc.player.swing(net.minecraft.world.InteractionHand.MAIN_HAND);
+                record("real attack packet entity=" + entity.getUUID());
+            } else if (parts[0].equals("loot")) {
+                var entity = Minecraft.getInstance().level.getEntity(Integer.parseInt(parts[1]));
+                require(entity instanceof com.zeropointsix.eraser.yuji.YujiMonster, "thief synchronized to both clients");
+                var stack = ((com.zeropointsix.eraser.yuji.YujiMonster) entity).displayedLoot();
+                require(stack.is(net.minecraft.world.item.Items.DIAMOND) && stack.getCount() == 37 && stack.hasTag()
+                        && stack.getTag().getString("YujiReceipt").equals("a70-real-client-property"), "complete stolen stack synchronized");
+                pass("theft-loot", "count/NBT observed in synchronized loot=" + stack.save(new net.minecraft.nbt.CompoundTag()));
             } else if (parts[0].equals("shot")) shot = parts[1];
             else if (parts[0].equals("done")) { pass("isolation", "two real clients completed isolation and terrain probes"); phase = ""; }
         } catch (Throwable error) { fail(error); }
