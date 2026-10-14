@@ -13,6 +13,24 @@ import net.minecraftforge.fml.common.Mod;
 public final class GravityDamage {
     private static final ThreadLocal<LivingEntity> VICTIM = new ThreadLocal<>();
 
+    public static float curve(double health) {
+        return curve(health, GravityConfig.MAX_PERCENT.get(), GravityConfig.CAP_DAMAGE.get(),
+                GravityConfig.REFERENCE_HEALTH.get(), GravityConfig.REFERENCE_PERCENT.get());
+    }
+
+    public static float curve(double health, double percent, double cap, double reference, double referencePercent) {
+        if (!Double.isFinite(health) || health <= 0 || !Double.isFinite(percent) || percent <= 0
+                || !Double.isFinite(cap) || cap <= 0) return 0;
+        double limit = Math.min(health * percent, cap);
+        double knee = cap / percent;
+        double anchor = reference * referencePercent;
+        // Invalid anchors use the capped linear curve, never NaN or an increasing tail.
+        if (health <= knee || !Double.isFinite(reference) || reference <= knee
+                || !Double.isFinite(anchor) || anchor <= 0 || anchor >= cap) return (float) limit;
+        double exponent = Math.log(anchor / cap) / Math.log(knee / reference);
+        return (float) Math.min(limit, cap * Math.pow(knee / health, exponent));
+    }
+
     public static boolean hurt(LivingEntity entity, DamageSource source, float amount) {
         Vec3 velocity = entity.getDeltaMovement();
         boolean marked = entity.hurtMarked, impulse = entity.hasImpulse;

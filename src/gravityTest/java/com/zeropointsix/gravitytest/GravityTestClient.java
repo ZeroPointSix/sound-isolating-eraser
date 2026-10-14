@@ -5,9 +5,7 @@ import com.zeropointsix.eraser.client.GravityClient;
 import com.zeropointsix.eraser.client.GravitySense;
 import com.zeropointsix.eraser.gravity.GravityEquipment;
 import com.zeropointsix.eraser.gravity.GravityFieldEntity;
-import com.zeropointsix.eraser.gravity.GravityGeometry;
 import com.zeropointsix.eraser.registry.ModItems;
-import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashSet;
@@ -38,7 +36,7 @@ public final class GravityTestClient {
     private static boolean finished;
     private static boolean sawField;
     private static final Set<String> sensedKinds = new HashSet<>();
-    private static AABB previewBounds;
+    private static net.minecraft.world.phys.Vec3 castCenter;
     private static AABB serverBounds;
     private static long renderedFrames;
     private static long inputReadyFrame;
@@ -136,97 +134,91 @@ public final class GravityTestClient {
         // exact gameplay assertions, but first allow two real rendered frames.
         if (renderedFrames < inputReadyFrame) { ticks--; return; }
         switch (ticks) {
-            case 1 -> nativeInput("keydown", "v");
-            case 15 -> {
-                require(aiming(), "native V key enters preview");
-                require(fields(mc) == 0, "preview is not a public field");
-                GravityVisualProbe.request("preview", GravityGeometry.bounds(GravityClient.target(mc, 1), 5), true);
-            }
-            case 20 -> nativeInput("click", "4");
-            case 25 -> {
-                require(mc.player.getInventory().selected == selected, "preview scroll must not change hotbar");
-                require(GravityClient.target(mc, 1).equals(GravityGeometry.target(mc.player.getEyePosition(),
-                        mc.player.getLookAngle(), 9)), "one scroll step adds exactly one block");
-            }
-            case 30 -> nativeInput("mousedown", "3");
-            case 32 -> nativeInput("mouseup", "3");
-            case 40 -> {
-                requireCanceled(mc, "native right-click");
-                nativeInput("keyup", "v");
-            }
-            case 50 -> nativeInput("keydown", "v");
-            case 60 -> nativeInput("keydown", "Escape");
-            case 61 -> nativeInput("keyup", "Escape");
-            case 65 -> {
-                requireCanceled(mc, "native Escape");
-                nativeInput("keyup", "v");
-            }
-            case 70 -> {
-                // Closing the menu re-samples physical keys. Let GLFW consume the
-                // queued X11 keyup first, or catch-up ticks can re-arm then cast.
-                if (InputConstants.isKeyDown(mc.getWindow().getWindow(), GLFW.GLFW_KEY_V)) { ticks--; return; }
-                mc.setScreen(null);
-                mc.mouseHandler.grabMouse();
-                require(!GravityClient.TARGET.isDown(), "V remains released after closing the Escape screen");
-                requireCanceled(mc, "closing Escape screen after native key release");
-            }
-            case 75 -> nativeInput("keydown", "v");
-            case 80 -> {
-                require(aiming() && GravityClient.TARGET.isDown(), "server unequip starts from a held native-key preview");
-                require(fields(mc) == 0 && !mc.player.getCooldowns().isOnCooldown(ModItems.GRAVITY_JADE_PENDANT.get()),
-                        "server unequip starts without a field or cooldown");
-                command(mc, "unequip");
-            }
-            case 110 -> {
-                // Client catch-up ticks are not a server acknowledgement. Wait
-                // for both the command reply and Curios' equipment packet.
+            case 1 -> command(mc, "unequip");
+            case 20 -> {
                 if (!phase.equals("unequip") || GravityEquipment.isEquipped(mc.player)) { ticks--; return; }
-                requireCanceled(mc, "server unequip");
-                require(!GravityEquipment.isEquipped(mc.player) && !GravitySense.outlines(moving), "unequip revokes private sense");
+                require(!GravitySense.outlines(moving), "unequip revokes private sense");
+                nativeInput("keydown", "v");
+            }
+            case 35 -> {
+                require(fields(mc) == 0 && !mc.player.getCooldowns().isOnCooldown(ModItems.GRAVITY_JADE_PENDANT.get()),
+                        "unequipped native V press creates no field or cooldown");
                 nativeInput("keyup", "v");
                 command(mc, "equip");
             }
-            case 150 -> {
+            case 60 -> {
                 if (!phase.equals("equip") || !GravityEquipment.isEquipped(mc.player)) { ticks--; return; }
-                require(GravityEquipment.isEquipped(mc.player), "Curios re-equip synchronized");
                 command(mc, "stop");
             }
-            case 180 -> {
+            case 85 -> {
                 require(!GravitySense.outlines(moving), "outline disappears after movement stops");
                 command(mc, "start");
             }
-            case 210 -> {
-                GravityClient.TARGET.setKey(InputConstants.Type.KEYSYM.getOrCreate(GLFW.GLFW_KEY_B));
+            case 100 -> {
+                castCenter = mc.player.position();
+                nativeInput("keydown", "v");
+            }
+            case 115 -> {
+                if (serverBounds == null) { ticks--; return; }
+                require(GravityClient.ACTIVATE.isDown(), "native V remains physically held");
+                require(fields(mc) == 1, "native V press creates a field before key release");
+                GravityFieldEntity field = field(mc);
+                require(field.position().distanceToSqr(castCenter) < 0.001, "server casts at exact player feet");
+                require(field.fieldBounds().equals(serverBounds), "wearer bounds equal server authority");
+                require(mc.player.getCooldowns().isOnCooldown(ModItems.GRAVITY_JADE_PENDANT.get()), "cast synchronizes cooldown");
+                GravityVisualProbe.request("active", field);
+                mark("wearer-cast.pass");
+                selected = mc.player.getInventory().selected;
+            }
+            case 120 -> nativeInput("click", "4");
+            case 130 -> {
+                require(mc.player.getInventory().selected != selected, "scroll changes hotbar normally while V is held");
+                nativeInput("mousedown", "3");
+            }
+            case 132 -> nativeInput("mouseup", "3");
+            case 140 -> nativeInput("keydown", "Escape");
+            case 141 -> nativeInput("keyup", "Escape");
+            case 150 -> {
+                require(fields(mc) == 1, "right-click and Escape do not cancel an active domain");
+                mc.setScreen(null);
+                mc.mouseHandler.grabMouse();
+                mc.player.setYRot(mc.player.getYRot() + 90);
+                require(field(mc).position().distanceToSqr(castCenter) < 0.001, "turning does not move the domain");
+                mc.player.setYRot(mc.player.getYRot() - 90);
+                nativeInput("keyup", "v");
+            }
+            case 180 -> {
+                GravityClient.ACTIVATE.setKey(InputConstants.Type.KEYSYM.getOrCreate(GLFW.GLFW_KEY_B));
                 KeyMapping.resetMapping();
                 nativeInput("keydown", "b");
             }
-            case 225 -> require(aiming(), "rebound B key enters preview");
-            case 234 -> previewBounds = GravityGeometry.bounds(GravityClient.target(mc, 1), 5);
-            case 235 -> nativeInput("keyup", "b");
-            case 240 -> mc.player.setYRot(mc.player.getYRot() + 90);
-            case 250 -> mc.player.setYRot(mc.player.getYRot() - 90);
-            case 285 -> {
-                require(fields(mc) == 1, "release creates one authoritative synchronized field");
-                GravityFieldEntity field = mc.level.getEntitiesOfClass(GravityFieldEntity.class,
-                        mc.player.getBoundingBox().inflate(32)).get(0);
-                require(field.fieldBounds().equals(previewBounds), "preview and landed center match after look changes");
-                require(field.fieldBounds().equals(serverBounds), "wearer field bounds equal server authority");
-                require(mc.player.getCooldowns().isOnCooldown(ModItems.GRAVITY_JADE_PENDANT.get()), "successful cast synchronizes cooldown");
-                GravityVisualProbe.request("active", field.fieldBounds(), false);
-                mark("wearer-cast.pass");
+            case 195 -> {
+                require(fields(mc) == 1, "cooldown blocks another native-key press");
+                nativeInput("keyup", "b");
             }
-            case 300 -> nativeInput("keydown", "b");
-            case 305 -> nativeInput("keyup", "b");
-            case 320 -> {
-                require(!aiming() && fields(mc) == 1, "cooldown blocks a repeated native-key cast");
+            case 500 -> {
+                if (!Files.exists(RESULTS.resolve("server-effects.pass")) || fields(mc) != 0) { ticks--; return; }
+                require(mc.player.getCooldowns().isOnCooldown(ModItems.GRAVITY_JADE_PENDANT.get()),
+                        "60-second cooldown outlasts the 15-second field");
+                command(mc, "reset-cooldown");
             }
-            case 650 -> {
-                require(fields(mc) == 0, "field expires on wearer client");
+            case 520 -> {
+                if (!phase.equals("reset-cooldown")
+                        || mc.player.getCooldowns().isOnCooldown(ModItems.GRAVITY_JADE_PENDANT.get())) { ticks--; return; }
+                nativeInput("keydown", "b");
+            }
+            case 535 -> {
+                require(GravityClient.ACTIVATE.isDown() && fields(mc) == 1, "rebound B activates before release");
+                nativeInput("keyup", "b");
+                mark("wearer-remap.pass");
+            }
+            case 900 -> {
+                if (fields(mc) != 0) { ticks--; return; }
                 command(mc, "stress");
                 stressStarted = System.nanoTime();
                 stressFrames = renderedFrames;
             }
-            case 750 -> {
+            case 1000 -> {
                 double fps = (renderedFrames - stressFrames) * 1_000_000_000D / (System.nanoTime() - stressStarted);
                 require(stressPeak == 64, "200 moving ItemEntity stress reaches but never exceeds the nearest-64 cap");
                 require(fps >= 5, "200-item software-rendered stress remains responsive (>=5 rendered FPS)");
@@ -238,7 +230,7 @@ public final class GravityTestClient {
             }
             default -> { }
         }
-        if (ticks > 650) {
+        if (ticks > 900) {
             int count = GravitySense.targets().size();
             require(count <= 64, "highlight cap remains bounded");
             stressPeak = Math.max(stressPeak, count);
@@ -247,13 +239,12 @@ public final class GravityTestClient {
 
     private static void exerciseObserver(Minecraft mc, Entity moving) throws Exception {
         require(GravitySense.targets().isEmpty() && (moving == null || !mc.shouldEntityAppearGlowing(moving)), "private sensing remains wearer-only");
-        require(!aiming(), "another player's preview never activates observer controls");
         if (fields(mc) == 1 && !sawField && serverBounds != null) {
             GravityFieldEntity field = mc.level.getEntitiesOfClass(GravityFieldEntity.class,
-                    mc.player.getBoundingBox().inflate(32)).get(0);
+                    mc.player.getBoundingBox().inflate(64)).get(0);
             require(field.fieldBounds().equals(serverBounds), "observer field bounds equal server authority");
             sawField = true;
-            GravityVisualProbe.request("active", field.fieldBounds(), false);
+            GravityVisualProbe.request("active", field);
         }
         if (sawField && fields(mc) == 0 && Files.exists(RESULTS.resolve("wearer.pass"))) {
             mark("observer.pass");
@@ -272,18 +263,8 @@ public final class GravityTestClient {
         return mc.level.getEntitiesOfClass(GravityFieldEntity.class, mc.player.getBoundingBox().inflate(32)).size();
     }
 
-    private static boolean aiming() throws Exception {
-        Field field = GravityClient.class.getDeclaredField("aiming");
-        field.setAccessible(true);
-        return field.getBoolean(null);
-    }
-
-    private static void requireCanceled(Minecraft mc, String action) throws Exception {
-        require(!aiming() && fields(mc) == 0
-                && !mc.player.getCooldowns().isOnCooldown(ModItems.GRAVITY_JADE_PENDANT.get()), action + " cancels without cooldown"
-                        + ": aiming=" + aiming() + ", fields=" + fields(mc) + ", phase=" + phase
-                        + ", equipped=" + GravityEquipment.isEquipped(mc.player)
-                        + ", cooldown=" + mc.player.getCooldowns().isOnCooldown(ModItems.GRAVITY_JADE_PENDANT.get()));
+    private static GravityFieldEntity field(Minecraft mc) {
+        return mc.level.getEntitiesOfClass(GravityFieldEntity.class, mc.player.getBoundingBox().inflate(64)).get(0);
     }
 
     private static void require(boolean condition, String message) {

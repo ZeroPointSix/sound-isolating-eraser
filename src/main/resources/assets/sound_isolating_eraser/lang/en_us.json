@@ -32,7 +32,7 @@
   "block.sound_isolating_eraser.eraser_anchor": "Eraser Anchor",
   "block.sound_isolating_eraser.eraser_barrier": "Eraser Barrier",
   "item.sound_isolating_eraser.gravity_jade_pendant": "Gravity Jade Pendant",
-  "key.sound_isolating_eraser.gravity_target": "Gravity Targeting",
+  "key.sound_isolating_eraser.gravity_target": "Release Gravity Field",
   "key.categories.sound_isolating_eraser": "Wind-Thunder Wings",
   "death.attack.gravity_crush": "%1$s was crushed by gravity",
   "death.attack.gravity_crush.player": "%1$s was crushed by %2$s's gravity field",

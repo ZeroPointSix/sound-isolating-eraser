@@ -136,24 +136,29 @@ public final class RoundTwoTestServer {
                 wearer.getFoodData().setFoodLevel(10);
                 wearer.teleportTo(level, 64.5, 65, 1.7, 0, 0);
                 observer.teleportTo(level, 70.5, 65, 0.5, 90, 0);
+                // The wider cylinder crosses chunks beyond the original login view.
+                for (int x = 3; x <= 5; x++) {
+                    for (int z = -1; z <= 1; z++) level.getChunk(x, z);
+                }
                 var cow = EntityType.COW.create(level);
                 var zombie = EntityType.ZOMBIE.create(level);
                 victims = List.of(cow, zombie, wearer);
                 positions = List.of(new Vec3(63.3,65,0.5), new Vec3(65.7,65,0.5), new Vec3(64.5,65,1.7));
                 for (int i = 0; i < victims.size(); i++) {
                     var entity = victims.get(i);
-                    entity.getAttribute(Attributes.MAX_HEALTH).setBaseValue(100);
+                    entity.getAttribute(Attributes.MAX_HEALTH).setBaseValue(i == 1 ? 300 : 100);
                     entity.getAttribute(Attributes.ARMOR).setBaseValue(0);
-                    entity.setHealth(100);
+                    entity.setHealth(entity.getMaxHealth());
                     entity.setDeltaMovement(Vec3.ZERO);
                     if (entity instanceof Mob mob) {
-                        mob.setNoAi(true);
-                        mob.setNoGravity(true);
+                        mob.setNoAi(i != 1);
+                        mob.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(0);
+                        mob.setNoGravity(i != 1);
                         mob.setPos(positions.get(i));
                         level.addFreshEntity(mob);
                     }
                 }
-                pressure = GravityFieldEntity.create(level, observer.getUUID(), new BlockPos(64,67,0));
+                pressure = GravityFieldEntity.create(level, observer.getUUID(), new Vec3(64.5,65,0.5));
                 level.addFreshEntity(pressure);
                 started = server.getTickCount();
             }
@@ -162,19 +167,27 @@ public final class RoundTwoTestServer {
                 int pulses = elapsed / 20;
                 for (int i = 0; i < victims.size(); i++) {
                     var entity = victims.get(i);
-                    check(Math.abs(entity.getHealth() - (100 - pulses)) < 0.01,
+                    float expected = i == 1 ? 300 - pulses * 3 - (pulses == 15 ? 9 : 0) : 100;
+                    check(Math.abs(entity.getHealth() - expected) < 0.01,
                             "pulse " + pulses + " health=" + entity.getHealth() + " " + entity.getType());
-                    check(entity.position().distanceToSqr(positions.get(i)) < 0.0025,
-                            "pulse " + pulses + " no hurt displacement " + entity.getType());
-                    check(pressure.fieldBounds().contains(entity.position()), "inside field");
-                    check(entity.hasEffect(MobEffects.MOVEMENT_SLOWDOWN)
-                            && entity.getEffect(MobEffects.MOVEMENT_SLOWDOWN).getAmplifier() == 2, "Slowness III");
+                    check(Math.abs(entity.getX() - positions.get(i).x) < 0.05
+                            && Math.abs(entity.getZ() - positions.get(i).z) < 0.05, "no horizontal hurt displacement");
+                    check(pressure.contains(entity.position()), "inside cylinder");
+                    if (i == 1) {
+                        check(entity.getEffect(MobEffects.MOVEMENT_SLOWDOWN).getAmplifier() == 4, "Slowness V");
+                        if (pulses >= 4) check(entity.getY() > 67.5 && entity.getY() <= 68.3, "hostile hovers above ground");
+                        if (pulses == 15) check(entity.getDeltaMovement().y <= -2.5, "natural expiry slams downward");
+                    } else {
+                        check(!entity.hasEffect(MobEffects.MOVEMENT_SLOWDOWN), "no allied/passive slowness");
+                        if (i == 2) check(entity.getEffect(MobEffects.MOVEMENT_SPEED).getAmplifier() == 2, "survival caster gets Speed III");
+                    }
                 }
             }
             if (elapsed == 310) {
                 check(pressure.isRemoved(), "300-tick lifetime retained");
                 for (var entity : victims) check(!entity.hasEffect(MobEffects.MOVEMENT_SLOWDOWN), "effect fades within 10 ticks");
-                mark("server-pressure.pass", "15 pulses: Cow=85 Zombie=85 real Player=85; displacement <0.05 block; Slowness III; expiry/fade passed\n");
+                check(victims.get(1).onGround(), "slammed hostile lands with native gravity");
+                mark("server-pressure.pass", "15 pulses plus 3x slam: Cow=100 Zombie=246 before native fall Player=100; hover and Slowness V; allies protected; expiry/fade passed\n");
                 victims.get(0).discard();
                 victims.get(1).discard();
                 pressureDone = true;

@@ -3,10 +3,8 @@ package com.zeropointsix.eraser.client;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.zeropointsix.eraser.gravity.GravityConfig;
 import com.zeropointsix.eraser.gravity.GravityEquipment;
 import com.zeropointsix.eraser.gravity.GravityFieldEntity;
-import com.zeropointsix.eraser.gravity.GravityGeometry;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.util.Mth;
@@ -17,11 +15,11 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.client.event.RenderLevelStageEvent;
 
 public final class GravityWorldRenderer {
-    public static void render(RenderLevelStageEvent event, PoseStack pose, boolean aiming) {
+    public static void render(RenderLevelStageEvent event, PoseStack pose) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.level == null) return;
         boolean equipped = GravityEquipment.isEquipped(mc.player);
-        if (GravityFieldIndex.fields().isEmpty() && !(equipped && aiming)
+        if (GravityFieldIndex.fields().isEmpty()
                 && (!equipped || GravitySense.targets().isEmpty())) return;
         Vec3 camera = event.getCamera().getPosition();
         var buffers = mc.renderBuffers().bufferSource();
@@ -36,14 +34,8 @@ public final class GravityWorldRenderer {
                 if (field.level() == mc.level && !field.isRemoved()
                         && mc.level.getEntity(field.getId()) == field
                         && event.getFrustum().isVisible(field.fieldBounds())) {
-                    LevelRenderer.renderLineBox(pose, buffers.getBuffer(GravityRenderTypes.LINES),
-                            field.fieldBounds(), 0.85F, 0.93F, 0.91F, 0.22F);
+                    cylinder(pose, buffers.getBuffer(GravityRenderTypes.LINES), field);
                 }
-            }
-            if (equipped && aiming) {
-                AABB box = GravityGeometry.bounds(GravityClient.target(mc, event.getPartialTick()), GravityConfig.HEIGHT.get());
-                fill(pose, buffers.getBuffer(GravityRenderTypes.FILL), box, 0.065F);
-                LevelRenderer.renderLineBox(pose, buffers.getBuffer(GravityRenderTypes.LINES), box, 0.88F, 1F, 0.97F, 0.8F);
             }
             for (Entity entity : GravitySense.targets()) {
                 if (!equipped) break;
@@ -55,7 +47,6 @@ public final class GravityWorldRenderer {
                         Mth.lerp(pt, entity.zOld, entity.getZ()) - entity.getZ());
                 LevelRenderer.renderLineBox(pose, buffers.getBuffer(GravityRenderTypes.LINES), box, 1F, 1F, 1F, 0.95F);
             }
-            buffers.endBatch(GravityRenderTypes.FILL);
             buffers.endBatch(GravityRenderTypes.LINES);
         } finally {
             pose.popPose();
@@ -63,24 +54,36 @@ public final class GravityWorldRenderer {
         }
     }
 
-    private static void fill(PoseStack pose, VertexConsumer vertices, AABB box, float alpha) {
-        float x0 = (float) box.minX, x1 = (float) box.maxX;
-        float y0 = (float) box.minY, y1 = (float) box.maxY;
-        float z0 = (float) box.minZ, z1 = (float) box.maxZ;
-        float[][] faces = {
-                {x0,y0,z0, x1,y0,z0, x1,y1,z0, x0,y1,z0},
-                {x0,y0,z1, x0,y1,z1, x1,y1,z1, x1,y0,z1},
-                {x0,y0,z0, x0,y1,z0, x0,y1,z1, x0,y0,z1},
-                {x1,y0,z0, x1,y0,z1, x1,y1,z1, x1,y1,z0},
-                {x0,y0,z0, x0,y0,z1, x1,y0,z1, x1,y0,z0},
-                {x0,y1,z0, x1,y1,z0, x1,y1,z1, x0,y1,z1}
-        };
-        for (float[] face : faces) {
-            for (int i = 0; i < 12; i += 3) {
-                vertices.vertex(pose.last().pose(), face[i], face[i+1], face[i+2])
-                        .color(0.88F, 1F, 0.97F, alpha).endVertex();
-            }
+    private static void cylinder(PoseStack pose, VertexConsumer vertices, GravityFieldEntity field) {
+        AABB box = field.fieldBounds();
+        double ground = Mth.clamp(field.getY() + 0.05, box.minY, box.maxY);
+        for (int i = 0; i < 96; i++) {
+            double a = i * Math.PI / 48, b = (i + 1) * Math.PI / 48;
+            double x0 = Mth.clamp(field.getX() + Math.cos(a) * field.radius(), box.minX, box.maxX);
+            double z0 = Mth.clamp(field.getZ() + Math.sin(a) * field.radius(), box.minZ, box.maxZ);
+            double x1 = Mth.clamp(field.getX() + Math.cos(b) * field.radius(), box.minX, box.maxX);
+            double z1 = Mth.clamp(field.getZ() + Math.sin(b) * field.radius(), box.minZ, box.maxZ);
+            line(pose, vertices, x0, ground, z0, x1, ground, z1, 0.70F);
+            line(pose, vertices, x0, box.minY, z0, x1, box.minY, z1, 0.25F);
+            line(pose, vertices, x0, box.maxY, z0, x1, box.maxY, z1, 0.25F);
+            if (i % 8 == 0) line(pose, vertices, x0, box.minY, z0, x0, box.maxY, z0, 0.22F);
         }
+    }
+
+    private static void line(PoseStack pose, VertexConsumer vertices, double x0, double y0, double z0,
+            double x1, double y1, double z1, float alpha) {
+        Vec3 direction = new Vec3(x1 - x0, y1 - y0, z1 - z0);
+        if (direction.lengthSqr() < 1.0e-10) return;
+        direction = direction.normalize();
+        vertex(pose, vertices, x0, y0, z0, direction, alpha);
+        vertex(pose, vertices, x1, y1, z1, direction, alpha);
+    }
+
+    private static void vertex(PoseStack pose, VertexConsumer vertices, double x, double y, double z,
+            Vec3 direction, float alpha) {
+        vertices.vertex(pose.last().pose(), (float) x, (float) y, (float) z)
+                .color(0.85F, 0.93F, 0.91F, alpha)
+                .normal(pose.last().normal(), (float) direction.x, (float) direction.y, (float) direction.z).endVertex();
     }
 
     private GravityWorldRenderer() { }

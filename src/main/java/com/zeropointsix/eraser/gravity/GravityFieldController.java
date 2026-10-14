@@ -2,9 +2,7 @@ package com.zeropointsix.eraser.gravity;
 
 import com.zeropointsix.eraser.ModMain;
 import com.zeropointsix.eraser.registry.ModItems;
-import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
@@ -17,33 +15,24 @@ import net.minecraftforge.fml.common.Mod;
 public final class GravityFieldController {
     private static final String COOLDOWN = ModMain.MOD_ID + ":gravity_cooldown";
 
-    public static boolean canActivate(ServerPlayer player, ResourceLocation dimension, BlockPos center) {
+    public static boolean canActivate(ServerPlayer player) {
         if (!player.isAlive() || player.isSpectator() || !GravityEquipment.isEquipped(player)
-                || !player.level().dimension().location().equals(dimension)
                 || remainingCooldown(player) > 0) return false;
-        if (!GravityGeometry.inRange(player.getEyePosition(), center,
-                GravityConfig.minDistance(), GravityConfig.MAX_DISTANCE.get())) return false;
         ServerLevel level = player.serverLevel();
-        AABB box = GravityGeometry.bounds(center, GravityConfig.HEIGHT.get());
-        if (box.minY < level.getMinBuildHeight() || box.maxY > level.getMaxBuildHeight()
-                || !level.getWorldBorder().isWithinBounds(box)) return false;
-        for (int x = ((int) box.minX) >> 4; x <= (((int) box.maxX - 1) >> 4); x++) {
-            for (int z = ((int) box.minZ) >> 4; z <= (((int) box.maxZ - 1) >> 4); z++) {
-                if (!level.hasChunk(x, z)) return false;
-            }
-        }
-        return true;
+        AABB box = GravityGeometry.bounds(level, player.position(), GravityConfig.RADIUS.get(),
+                GravityConfig.BELOW.get(), GravityConfig.ABOVE.get());
+        return GravityGeometry.chunksLoaded(level, player.position(), GravityConfig.RADIUS.get(), box);
     }
 
-    public static boolean activate(ServerPlayer player, ResourceLocation dimension, BlockPos center) {
-        if (center == null) return false;
-        if (!canActivate(player, dimension, center)) return false;
-        GravityFieldEntity field = GravityFieldEntity.create(player.serverLevel(), player.getUUID(), center);
+    public static boolean activate(ServerPlayer player) {
+        if (!canActivate(player)) return false;
+        GravityFieldEntity field = GravityFieldEntity.create(player.serverLevel(), player.getUUID(), player.position());
         if (!player.serverLevel().addFreshEntity(field)) return false;
         int ticks = GravityConfig.COOLDOWN.get();
         player.getPersistentData().putLong(COOLDOWN, clock(player) + ticks);
         player.getCooldowns().addCooldown(ModItems.GRAVITY_JADE_PENDANT.get(), ticks);
-        GravityTerrainCrush.crush(player.serverLevel(), player, field.fieldBounds(), GravityConfig.SURFACE_CHANCE.get());
+        GravityTerrainCrush.crush(player.serverLevel(), player, field.position(), field.radius(),
+                field.fieldBounds(), GravityConfig.SURFACE_CHANCE.get());
         return true;
     }
 
