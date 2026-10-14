@@ -12,6 +12,7 @@ import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -219,6 +220,8 @@ public final class GravityGameTests {
         for (int i = 0; i < entities.size(); i++) stationary(h, entities.get(i), center.add(i * .4, 0, 0));
         // Earlier weather tests may leave rain active; protect this passive fixture normally.
         h.getLevel().setBlockAndUpdate(snow.blockPosition().above(3), Blocks.STONE.defaultBlockState());
+        // Snow golems also melt in warm biomes; fire resistance makes the fixture biome-independent.
+        snow.addEffect(new MobEffectInstance(MobEffects.FIRE_RESISTANCE, 200, 0, false, false));
         aggressor.setTarget(player);
         h.runAtTickTime(22, () -> {
             for (LivingEntity ally : List.of(player, pet, horse)) {
@@ -228,7 +231,9 @@ public final class GravityGameTests {
                 ally.setPos(center.add(18, 0, 0));
             }
             for (LivingEntity neutral : List.of(wild, cow, villager, iron, snow)) {
-                h.assertTrue(neutral.getActiveEffects().isEmpty() && neutral.getHealth() == neutral.getMaxHealth(),
+                h.assertTrue(neutral.getActiveEffects().stream().allMatch(e -> neutral == snow
+                                && e.getEffect() == MobEffects.FIRE_RESISTANCE)
+                        && neutral.getHealth() == neutral.getMaxHealth(),
                         "passive unaffected: " + neutral.getType() + " health=" + neutral.getHealth()
                                 + " effects=" + neutral.getActiveEffects());
             }
