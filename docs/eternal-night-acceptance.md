@@ -100,4 +100,4 @@ GameTest 12 入口表（碰撞 path-clear，`stepUp=0`，非原生客户端）�
 
 `res_apartment_low` 原生从该扇已穿过的门做碰撞 BFS 只到 1 层（期望 4 个门高簇）。入口已走进去（walkDepth 0.762），**不是**进不去。GameTest 在另一世界种子上从该模板的门 BFS 到 8/4。原生爬楼不得标 12/12。三怪联调仍 `threeMonsterIntegrationVerified=false`。
 
-CI 以 GitHub Checks 为准。全量 GameTest 套件里并行 batch 曾把深睡入城的 `ENTRY_BASE` 打回 0.02；本轮 isolate 不再在后续用户上重置配置。雨寂/重力若仍偶发失败，与街道台阶剥离无直接调用关系。本轮**不合 main**，也不自称 Notion 功能验收通过。
+CI 以 GitHub Checks 为准。`f4c1007` Eternal Night 原生步在 observer `Native phase timed out: READY`：双方都拍了 `original-art`，但 `/nightqa ready` 只发一次、CI 丢包后 `READY.size()` 达不到 2。现客户端周期重发 ready/captured，服务端 6 秒后用城内在场兜底。全量 GameTest 并行 isolate 踩 `ENTRY_BASE` 已修。雨寂/重力若仍偶发失败，与街道台阶剥离无直接调用关系。本轮**不合 main**，也不自称 Notion 功能验收通过。
