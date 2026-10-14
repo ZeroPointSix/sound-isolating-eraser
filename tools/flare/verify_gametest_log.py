@@ -1,30 +1,38 @@
-"""Require the 35 default flare GameTests to be discovered and completed."""
+"""Require all 36 flare GameTests in one complete, successful server run."""
 from pathlib import Path
 import re
 import sys
 
-root = Path(__file__).resolve().parents[2]
-sources = [
-    root / "src/main/java/com/zeropointsix/eraser/gametest/FlareGameTests.java",
-    root / "src/main/java/com/zeropointsix/eraser/gametest/FlareRegressionGameTests.java",
-    root / "src/main/java/com/zeropointsix/eraser/gametest/FlareIntegrationGameTests.java",
-    root / "src/main/java/com/zeropointsix/eraser/gametest/FlareEdgeCaseGameTests.java",
-]
-expected = sum(len(re.findall(r"@GameTest\(", path.read_text())) for path in sources)
-log = Path(sys.argv[1]).read_text(errors="replace")
-batches = {}
-for name, count in re.findall(
-        r"Running test batch '(flare(?:_regression|_full_lighting|_full_airdrop|_edge_[a-z]+)?):\d+' \((\d+) tests\)",
-        log):
-    batches[name] = max(batches.get(name, 0), int(count))
-completed = [int(n) for n in re.findall(r"All (\d+) required tests passed", log)]
-discovered = sum(batches.values())
-if expected != 35:
-    raise SystemExit(f"FAIL: expected 35 flare GameTests in source, found {expected}")
-if discovered != expected:
-    raise SystemExit(f"FAIL: expected {expected} flare tests; batches={batches}")
-if not completed or max(completed) < expected:
-    raise SystemExit(f"FAIL: flare tests were not part of a successful run; completed={completed}")
-if re.search(r"\brequired tests failed\b|\bBUILD FAILED\b|flare[a-z]+ failed!", log, re.I):
-    raise SystemExit("FAIL: test log contains flare or overall failures")
-print(f"PASS: all {expected} flare GameTests were discovered and completed in a successful GameTest run")
+EXPECTED_BATCHES = {
+    "flare": 15, "flare_regression": 10,
+    "flare_full_lighting": 1, "flare_full_airdrop": 1,
+    **{f"flare_edge_{name}": 1 for name in (
+        "wall", "floor", "ceiling", "entity", "flight", "yellow", "slow", "reload", "lowceiling")},
+}
+
+
+def verify_log(log):
+    matches = list(re.finditer(r"Running test batch '(flare[a-z_]*):\d+' \((\d+) tests\)", log))
+    batches = {m.group(1): int(m.group(2)) for m in matches}
+    if batches != EXPECTED_BATCHES or len(matches) != len(batches):
+        raise SystemExit(f"FAIL: expected each of the 36 flare tests once; batches={batches}")
+    completed = list(re.finditer(r"All (\d+) required tests passed", log))
+    if (len(completed) != 1 or int(completed[0].group(1)) < 36
+            or completed[0].start() < matches[-1].end()):
+        raise SystemExit("FAIL: expected one successful run after all flare batches")
+    if re.search(r"\brequired tests failed\b|\bBUILD FAILED\b|flare[a-z]+ failed!", log, re.I):
+        raise SystemExit("FAIL: test log contains flare or overall failures")
+
+
+def main():
+    root = Path(__file__).resolve().parents[2] / "src/main/java/com/zeropointsix/eraser/gametest"
+    names = ["FlareGameTests", "FlareRegressionGameTests", "FlareIntegrationGameTests", "FlareEdgeCaseGameTests"]
+    counts = [len(re.findall(r"@GameTest\(", (root / f"{name}.java").read_text())) for name in names]
+    if sum(counts[:3]) != 27 or counts[3] != 9:
+        raise SystemExit(f"FAIL: expected original 27 plus 9 edge GameTests in source, found {counts}")
+    verify_log(Path(sys.argv[1]).read_text(errors="replace"))
+    print("PASS: all 36 flare GameTests (27 original + 9 edge) completed in one successful GameTest run")
+
+
+if __name__ == "__main__":
+    main()

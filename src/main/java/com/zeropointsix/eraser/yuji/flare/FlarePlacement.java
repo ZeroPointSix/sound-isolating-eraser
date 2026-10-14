@@ -16,6 +16,8 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraftforge.common.util.BlockSnapshot;
 import net.minecraftforge.common.util.FakePlayerFactory;
 import net.minecraftforge.event.ForgeEventFactory;
@@ -30,6 +32,13 @@ public final class FlarePlacement {
             preferred = preferred.add(Vec3.atLowerCornerOf(face.getNormal()).scale(clearance));
         }
         if (clearDecoyPosition(level, decoy, preferred, hit)) return true;
+        // Fractional-height impacts need continuous clearance, not only whole-block offsets.
+        Vec3 center = preferred.add(0, decoy.getBbHeight() / 2., 0);
+        var free = level.findFreePosition(decoy,
+                Shapes.create(AABB.ofSize(center, 2, decoy.getBbHeight() * 2., 2)), center,
+                decoy.getBbWidth() + .02, decoy.getBbHeight() + .02, decoy.getBbWidth() + .02);
+        if (free.isPresent() && clearDecoyPosition(level, decoy,
+                free.get().add(0, -decoy.getBbHeight() / 2., 0), hit)) return true;
         // Corners, low ceilings, and entity impacts may need a nearby full-height space.
         // Do not create a suffocating decoy if the local space cannot fit it.
         for (int distance = 1; distance <= 3; distance++)

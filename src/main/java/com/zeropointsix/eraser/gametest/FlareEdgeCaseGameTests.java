@@ -98,6 +98,7 @@ public final class FlareEdgeCaseGameTests {
 
     private static void close() { if (fixture != null) { fixture.close(); fixture = null; } }
     @AfterBatch(batch = "flare_edge_wall") public static void afterWall(ServerLevel level) { close(); }
+    @AfterBatch(batch = "flare_edge_lowceiling") public static void afterLowCeiling(ServerLevel level) { close(); }
     @AfterBatch(batch = "flare_edge_floor") public static void afterFloor(ServerLevel level) { close(); }
     @AfterBatch(batch = "flare_edge_ceiling") public static void afterCeiling(ServerLevel level) { close(); }
     @AfterBatch(batch = "flare_edge_entity") public static void afterEntity(ServerLevel level) { close(); }
@@ -143,6 +144,17 @@ public final class FlareEdgeCaseGameTests {
     @GameTest(templateNamespace = "flare_edge_tests", template = "empty", batch = "flare_edge_floor", timeoutTicks = 300)
     public static void flareRedFloorImpactHasClearance(GameTestHelper h) {
         ready(h, () -> verifyImpact(h, fixture.shoot(0, new Vec3(0, 4, 0), new Vec3(0, -1, 0))));
+    }
+
+    @GameTest(templateNamespace = "flare_edge_tests", template = "empty", batch = "flare_edge_lowceiling", timeoutTicks = 300)
+    public static void flareRedWallUnderLowCeilingFindsClearance(GameTestHelper h) {
+        ready(h, () -> {
+            for (BlockPos p : BlockPos.betweenClosed(fixture.center.offset(-3, 2, -3), fixture.center.offset(3, 2, 3)))
+                fixture.set(p, Blocks.STONE.defaultBlockState());
+            for (BlockPos p : BlockPos.betweenClosed(fixture.center.offset(3, 0, -3), fixture.center.offset(3, 1, 3)))
+                fixture.set(p, Blocks.STONE.defaultBlockState());
+            verifyImpact(h, fixture.shoot(0, new Vec3(0, 1.4, 0), new Vec3(1, 0, 0)));
+        });
     }
 
     @GameTest(templateNamespace = "flare_edge_tests", template = "empty", batch = "flare_edge_ceiling", timeoutTicks = 300)
@@ -215,8 +227,19 @@ public final class FlareEdgeCaseGameTests {
     public static void flareHighestSlowestDropReachesGround(GameTestHelper h) {
         ready(h, () -> {
             var crate = drop(h);
-            h.runAfterDelay(2405, () -> h.assertTrue(!crate.isRemoved(), "legal 2560-tick descent survives old 2400-tick cutoff"));
-            h.runAfterDelay(2570, () -> assertLanded(h));
+            h.runAfterDelay(5, () -> {
+                CompoundTag saved = new CompoundTag(); crate.saveWithoutId(saved); crate.discard();
+                h.assertTrue(saved.getInt("MaxAge") > 2560, "slow descent has an extended lifetime before reload");
+                var restored = new FallingSupplyCrate(FlareContent.FALLING_CRATE.get(), fixture.level);
+                restored.load(saved);
+                CompoundTag roundtrip = new CompoundTag(); restored.saveWithoutId(roundtrip);
+                h.assertTrue(roundtrip.getInt("Age") == saved.getInt("Age")
+                        && roundtrip.getInt("MaxAge") == saved.getInt("MaxAge")
+                        && restored.position().equals(crate.position()), "same-speed reload preserves extended budget, age and position");
+                fixture.level.addFreshEntity(restored); fixture.entities.add(restored);
+                h.runAfterDelay(2400, () -> h.assertTrue(!restored.isRemoved(), "legal 2560-tick descent survives old 2400-tick cutoff"));
+                h.runAfterDelay(2565, () -> assertLanded(h));
+            });
         });
     }
 
@@ -227,6 +250,7 @@ public final class FlareEdgeCaseGameTests {
             h.runAfterDelay(5, () -> {
                 FlareConfig.DESCENT_SPEED.set(.05);
                 CompoundTag saved = new CompoundTag(); original.saveWithoutId(saved); original.discard();
+                h.assertTrue(saved.getInt("MaxAge") > 2560, "lifetime already covers a live slowdown before reload");
                 var restored = new FallingSupplyCrate(FlareContent.FALLING_CRATE.get(), fixture.level);
                 restored.load(saved);
                 CompoundTag roundtrip = new CompoundTag(); restored.saveWithoutId(roundtrip);
