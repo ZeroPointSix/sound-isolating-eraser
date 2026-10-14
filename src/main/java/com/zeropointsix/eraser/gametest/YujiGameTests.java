@@ -537,18 +537,27 @@ public final class YujiGameTests {
         return p;
     }
 
-    private static YujiMonster voiceSource(GameTestHelper h) throws ReflectiveOperationException {
+    private record VoiceFixture(YujiMonster source, java.util.Map<BlockPos, net.minecraft.world.level.block.state.BlockState> blocks) {
+        void restore() {
+            blocks.forEach((pos, state) -> source.level().setBlock(pos, state, 2));
+            source.discard();
+        }
+    }
+
+    private static VoiceFixture voiceSource(GameTestHelper h) throws ReflectiveOperationException {
         YujiMonster source = monster(h, YujiKind.WANGYU);
-        source.moveTo(source.getX(), h.getLevel().getMaxBuildHeight() - 16, source.getZ());
+        source.moveTo(source.getX(), h.getLevel().getMaxBuildHeight() - 32, source.getZ());
         BlockPos center = source.blockPosition().west(12);
+        var blocks = new java.util.HashMap<BlockPos, net.minecraft.world.level.block.state.BlockState>();
         // An enclosed listener makes every sampled 6-10 block voice source occluded.
         for (BlockPos pos : BlockPos.betweenClosed(center.offset(-5, 0, -5), center.offset(5, 4, 5))) {
+            blocks.put(pos.immutable(), h.getLevel().getBlockState(pos));
             boolean wall = Math.abs(pos.getX() - center.getX()) == 4 || Math.abs(pos.getZ() - center.getZ()) == 4;
             h.getLevel().setBlock(pos, wall ? Blocks.STONE.defaultBlockState() : Blocks.AIR.defaultBlockState(), 2);
         }
         var cooldown = YujiMonster.class.getDeclaredField("skillCooldown");
         cooldown.setAccessible(true); cooldown.setInt(source, 10000);
-        return source;
+        return new VoiceFixture(source, blocks);
     }
 
     private static net.minecraft.world.phys.Vec3 emitVoice(YujiMonster source) throws ReflectiveOperationException {
@@ -567,7 +576,7 @@ public final class YujiGameTests {
 
     @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
     public static void yujiFakeVoiceReactionStaysWithRecipient(GameTestHelper h) throws ReflectiveOperationException {
-        YujiMonster source = voiceSource(h);
+        var fixture = voiceSource(h); YujiMonster source = fixture.source();
         var first = voicePlayer(h, source); var second = voicePlayer(h, source);
         try {
             source.setTarget(first);
@@ -580,13 +589,13 @@ public final class YujiGameTests {
             h.assertTrue(!second.hasEffect(MobEffects.WEAKNESS), "replacement target cannot react to another player's fake sound");
             faceVoice(first, point, true); boundaryStep(source);
             h.assertTrue(first.getEffect(MobEffects.WEAKNESS).getAmplifier() == 1, "original listener can still react after AI retargets");
-        } finally { first.discard(); second.discard(); source.discard(); }
+        } finally { first.discard(); second.discard(); fixture.restore(); }
         h.succeed();
     }
 
     @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
     public static void yujiFakeVoiceMissesDoNotCrossRecipients(GameTestHelper h) throws ReflectiveOperationException {
-        YujiMonster source = voiceSource(h);
+        var fixture = voiceSource(h); YujiMonster source = fixture.source();
         var first = voicePlayer(h, source); var second = voicePlayer(h, source);
         try {
             source.setTarget(first); emitVoice(source); emitVoice(source);
@@ -599,13 +608,13 @@ public final class YujiGameTests {
             h.assertTrue(second.getEffect(MobEffects.WEAKNESS).getAmplifier() == 1
                     && state(second, "weakness", source).getInt("Remaining") == 400,
                     "three actual missed sounds still give weakness II for twenty seconds");
-        } finally { first.discard(); second.discard(); source.discard(); }
+        } finally { first.discard(); second.discard(); fixture.restore(); }
         h.succeed();
     }
 
     @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
     public static void yujiFakeVoiceWindowExpiresWithoutTarget(GameTestHelper h) throws ReflectiveOperationException {
-        YujiMonster source = voiceSource(h);
+        var fixture = voiceSource(h); YujiMonster source = fixture.source();
         var listener = voicePlayer(h, source);
         try {
             source.setTarget(listener); var point = emitVoice(source);
@@ -623,7 +632,7 @@ public final class YujiGameTests {
             listener.moveTo(start); faceVoice(listener, point, true); source.setTarget(listener); boundaryStep(source);
             h.assertTrue(listener.getEffect(MobEffects.WEAKNESS).getAmplifier() == 0,
                     "lost AI target cannot pause the two-second reaction deadline");
-        } finally { listener.discard(); source.discard(); }
+        } finally { listener.discard(); fixture.restore(); }
         h.succeed();
     }
 

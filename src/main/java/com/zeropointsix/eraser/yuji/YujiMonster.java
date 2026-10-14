@@ -76,6 +76,7 @@ public final class YujiMonster extends Monster implements GeoEntity {
     private int attackCooldown, skillCooldown = 20, actionTicks, actionLength, burstCooldown, fleeTicks, followTicks, startledTicks;
     private UUID actionTarget;
     private Vec3 falseVoice;
+    @Nullable private UUID voiceRecipient;
     private int voiceWindow, missedVoices, deathAge, animationSerial = -1;
     private boolean stompBurst;
     /** Qiyu summoning: cast interval, alive cap per summoner, scan radius. */
@@ -269,9 +270,11 @@ public final class YujiMonster extends Monster implements GeoEntity {
                         && ForgeEventFactory.onEntityDestroyBlock(this, pos, state)) level().destroyBlock(pos, false, this);
             }
         }
-        if (voiceWindow > 0 && getTarget() instanceof ServerPlayer p) {
+        if (voiceWindow > 0) {
             voiceWindow--;
-            if (lookingAt(p, falseVoice, 15)) { YujiAfflictions.weakness(p, this, 160, 1); voiceWindow = 0; }
+            Player recipient = voiceRecipient == null ? null : level().getPlayerByUUID(voiceRecipient);
+            if (!(recipient instanceof ServerPlayer p) || !vulnerable(p)) voiceWindow = 0;
+            else if (lookingAt(p, falseVoice, 15)) { YujiAfflictions.weakness(p, this, 160, 1); voiceWindow = 0; }
         }
     }
     public List<Player> nearbyPlayers(double range) {
@@ -579,6 +582,9 @@ public final class YujiMonster extends Monster implements GeoEntity {
                 SoundEvents.VILLAGER_HURT, SoundEvents.WOLF_WHINE, SoundEvents.STONE_STEP};
         player.connection.send(new ClientboundSoundPacket(net.minecraft.core.registries.BuiltInRegistries.SOUND_EVENT.wrapAsHolder(voices[random.nextInt(voices.length)]),
                 SoundSource.HOSTILE, falseVoice.x, falseVoice.y, falseVoice.z, 1, 1, random.nextLong()));
+        // Keep both the delayed reaction and consecutive misses with the actual listener, not the AI target.
+        if (!player.getUUID().equals(voiceRecipient)) missedVoices = 0;
+        voiceRecipient = player.getUUID();
         if (player.hasLineOfSight(this) && lookingAt(player, getEyePosition(), 25)) missedVoices = 0; else missedVoices++;
         YujiAfflictions.weakness(player, this, missedVoices >= 3 ? 400 : 160, missedVoices >= 3 ? 1 : 0);
         voiceWindow = 40; begin("mimic", 24, player);
