@@ -3,6 +3,7 @@ package com.zeropointsix.eraser.yuji.flare;
 import net.minecraftforge.common.ForgeConfigSpec;
 
 public final class FlareConfig {
+    public static final double MIN_DESCENT_SPEED = .05;
     public static ForgeConfigSpec.IntValue STACK_SIZE, COOLDOWN, RED_DELAY, RED_LIFETIME,
             TAUNT_INTERVAL, YELLOW_DELAY, YELLOW_LIFETIME, LIGHT_RADIUS, GREEN_DELAY,
             DROP_HEIGHT, DROP_ATTEMPTS, EMPTY_LIFETIME, LOOT_ROLLS, SUPPLY_GUNS,
@@ -32,7 +33,7 @@ public final class FlareConfig {
         DROP_MAX = b.defineInRange("airdropMaxDistance", 24., 1., 64.);
         DROP_HEIGHT = b.defineInRange("airdropHeight", 40, 4, 128);
         DROP_ATTEMPTS = b.defineInRange("airdropLocationAttempts", 48, 1, 256);
-        DESCENT_SPEED = b.defineInRange("airdropDescentSpeed", .35, .05, 1.);
+        DESCENT_SPEED = b.defineInRange("airdropDescentSpeed", .35, MIN_DESCENT_SPEED, 1.);
         EMPTY_LIFETIME = b.defineInRange("emptyCrateTicks", 100, 1, 72000);
         LOOT_ROLLS = b.defineInRange("airdropLootRolls", 1, 1, 27);
         SUPPLY_GUNS = b.defineInRange("supplyGuns", 1, 0, 8);

@@ -12,12 +12,46 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.EntityHitResult;
+import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.common.util.BlockSnapshot;
 import net.minecraftforge.common.util.FakePlayerFactory;
 import net.minecraftforge.event.ForgeEventFactory;
 
 public final class FlarePlacement {
+    public static boolean positionDecoy(ServerLevel level, FlareDecoy decoy, Vec3 origin, @Nullable HitResult hit) {
+        Vec3 preferred = origin;
+        if (hit instanceof BlockHitResult block) {
+            Direction face = block.getDirection();
+            double clearance = face == Direction.DOWN ? decoy.getBbHeight() + .01
+                    : face == Direction.UP ? .01 : decoy.getBbWidth() / 2. + .01;
+            preferred = preferred.add(Vec3.atLowerCornerOf(face.getNormal()).scale(clearance));
+        }
+        if (clearDecoyPosition(level, decoy, preferred, hit)) return true;
+        // Corners, low ceilings, and entity impacts may need a nearby full-height space.
+        // Do not create a suffocating decoy if the local space cannot fit it.
+        for (int distance = 1; distance <= 3; distance++)
+            for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++) for (int z = -1; z <= 1; z++) {
+                if (Math.abs(x) + Math.abs(y) + Math.abs(z) != distance) continue;
+                if (clearDecoyPosition(level, decoy, preferred.add(x, y, z), hit)) return true;
+            }
+        return false;
+    }
+
+    private static boolean clearDecoyPosition(ServerLevel level, FlareDecoy decoy, Vec3 pos, @Nullable HitResult hit) {
+        decoy.setPos(pos);
+        var bounds = decoy.getBoundingBox();
+        if (bounds.minY < level.getMinBuildHeight() || bounds.maxY > level.getMaxBuildHeight()
+                || !level.getWorldBorder().isWithinBounds(bounds)) return false;
+        for (BlockPos block : BlockPos.betweenClosed(BlockPos.containing(bounds.minX, bounds.minY, bounds.minZ),
+                BlockPos.containing(bounds.maxX, bounds.maxY, bounds.maxZ)))
+            if (!level.hasChunkAt(block)) return false;
+        if (hit instanceof EntityHitResult entity && bounds.intersects(entity.getEntity().getBoundingBox())) return false;
+        return level.noCollision(decoy, bounds);
+    }
+
     public static boolean openSky(Level level, BlockPos origin) {
         for (int x = -1; x <= 1; x++) for (int z = -1; z <= 1; z++)
             if (!level.hasChunkAt(origin.offset(x, 0, z))

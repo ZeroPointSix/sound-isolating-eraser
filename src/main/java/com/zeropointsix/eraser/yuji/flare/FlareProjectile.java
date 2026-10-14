@@ -53,13 +53,18 @@ public final class FlareProjectile extends ThrowableProjectile implements ItemSu
         if (level().isClientSide) return;
         setPos(hit.getLocation());
         if (color() == 2) setDeltaMovement(Vec3.ZERO);
-        else activate();
+        else activate(hit);
     }
-    public void activate() {
+    public void activate() { activate(null); }
+    private void activate(@javax.annotation.Nullable HitResult hit) {
         if (!(level() instanceof ServerLevel server) || isRemoved() || lit()) return;
         if (color() == 0) {
             FlareDecoy decoy = new FlareDecoy(FlareContent.DECOY.get(), server);
-            decoy.setPos(position()); decoy.ignite(); server.addFreshEntity(decoy); decoy.taunt(); discard();
+            if (FlarePlacement.positionDecoy(server, decoy, position(), hit)) {
+                decoy.ignite();
+                if (server.addFreshEntity(decoy)) decoy.taunt();
+            }
+            discard();
         } else if (color() == 1) {
             FlareLights.get(server).illuminate(server, blockPosition(), FlarePlacement.owner(server, shooter));
             entityData.set(LIT, true); extinguishAt = server.getGameTime() + FlareConfig.YELLOW_LIFETIME.get();
