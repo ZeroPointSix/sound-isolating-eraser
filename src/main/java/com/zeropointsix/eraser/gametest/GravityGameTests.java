@@ -239,13 +239,32 @@ public final class GravityGameTests {
             }
             h.assertTrue(aggressor.hasEffect(MobEffects.MOVEMENT_SLOWDOWN), "neutral attacking ally is hostile");
             field.discard();
+            logAllyClocks(h, "exit", List.of(player, pet, horse));
         });
-        h.runAtTickTime(95, () -> h.assertTrue(player.hasEffect(MobEffects.MOVEMENT_SPEED) && pet.hasEffect(MobEffects.JUMP), "buff still present before four seconds"));
+        h.runAtTickTime(60, () -> logAllyClocks(h, "mid", List.of(player, pet, horse)));
+        h.runAtTickTime(95, () -> {
+            logAllyClocks(h, "before", List.of(player, pet, horse));
+            h.assertTrue(player.hasEffect(MobEffects.MOVEMENT_SPEED) && pet.hasEffect(MobEffects.JUMP), "buff still present before four seconds");
+        });
         h.runAtTickTime(105, () -> {
+            logAllyClocks(h, "after", List.of(player, pet, horse));
             h.assertTrue(!player.hasEffect(MobEffects.MOVEMENT_SPEED) && !pet.hasEffect(MobEffects.JUMP), "buff expires after four seconds");
             entities.forEach(LivingEntity::discard);
             h.succeed();
         });
+    }
+
+    private static void logAllyClocks(GameTestHelper h, String phase, List<LivingEntity> allies) {
+        for (LivingEntity ally : allies) {
+            var speed = ally.getEffect(MobEffects.MOVEMENT_SPEED);
+            var jump = ally.getEffect(MobEffects.JUMP);
+            System.out.println("GRAVITY_ALLY_CLOCK phase=" + phase + " time=" + h.getLevel().getGameTime()
+                    + " type=" + ally.getType().toShortString() + " tickCount=" + ally.tickCount
+                    + " speed=" + (speed == null ? 0 : speed.getDuration()) + " jump=" + (jump == null ? 0 : jump.getDuration())
+                    + " ticking=" + h.getLevel().isPositionEntityTicking(ally.blockPosition())
+                    + " forced=" + h.getLevel().getForcedChunks().size() + " players=" + h.getLevel().players().size()
+                    + " linger=" + GravityConfig.ALLY_LINGER.get() + " position=" + ally.position());
+        }
     }
 
     @GameTest(template = "empty", batch = "gravity_hover", timeoutTicks = 160)

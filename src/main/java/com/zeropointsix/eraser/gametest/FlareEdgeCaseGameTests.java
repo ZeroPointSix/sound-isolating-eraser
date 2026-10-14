@@ -1,6 +1,8 @@
 package com.zeropointsix.eraser.gametest;
 
 import com.zeropointsix.eraser.yuji.YujiConfig;
+import com.zeropointsix.eraser.yuji.YujiContent;
+import com.zeropointsix.eraser.yuji.YujiKind;
 import com.zeropointsix.eraser.yuji.flare.*;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -16,6 +18,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.Blocks;
@@ -106,6 +109,8 @@ public final class FlareEdgeCaseGameTests {
     @AfterBatch(batch = "flare_edge_yellow") public static void afterYellow(ServerLevel level) { close(); }
     @AfterBatch(batch = "flare_edge_slow") public static void afterSlow(ServerLevel level) { close(); }
     @AfterBatch(batch = "flare_edge_reload") public static void afterReload(ServerLevel level) { close(); }
+    @AfterBatch(batch = "flare_edge_ai_vanilla") public static void afterVanillaAi(ServerLevel level) { close(); }
+    @AfterBatch(batch = "flare_edge_ai_yuji") public static void afterYujiAi(ServerLevel level) { close(); }
 
     private static void ready(GameTestHelper h, Runnable run) {
         fixture = new Fixture(h);
@@ -173,6 +178,43 @@ public final class FlareEdgeCaseGameTests {
             cow.setNoAi(true);
             verifyImpact(h, fixture.shoot(0, new Vec3(0, 1, 0), new Vec3(1, 0, 0)));
         });
+    }
+
+    private static void verifyNaturalPursuit(GameTestHelper h, Mob attacker) {
+        // Shade the real AI arena so sunlight damage cannot interfere with pursuit.
+        for (BlockPos p : BlockPos.betweenClosed(fixture.center.offset(-8, 3, -2), fixture.center.offset(8, 3, 2)))
+            fixture.set(p, Blocks.STONE.defaultBlockState());
+        Vec3 start = Vec3.atBottomCenterOf(fixture.center.west(6));
+        attacker.setPersistenceRequired(); fixture.add(attacker, start);
+        h.assertTrue(!attacker.isNoAi() && attacker.getTarget() == null, "real mob begins with active AI and no injected target");
+        var flare = fixture.shoot(0, new Vec3(2, 1, 0), new Vec3(0, -.5, 0));
+        h.runAfterDelay(12, () -> {
+            h.assertTrue(flare.isRemoved(), "real red projectile hits the arena floor");
+            var target = decoy(h); assertHealthy(h, target);
+            h.startSequence().thenWaitUntil(() -> {
+                h.assertTrue(attacker.getTarget() == target, "scheduled taunt selects the real decoy");
+                h.assertTrue(attacker.position().distanceTo(start) > 3 && attacker.distanceTo(target) < 3,
+                        "live navigation closes the eight-block gap, distance=" + attacker.distanceTo(target));
+                h.assertTrue(target.isAlive() && target.getHealth() < target.getMaxHealth()
+                                && target.getLastHurtByMob() == attacker,
+                        "natural mob attack damages the decoy, health=" + target.getHealth());
+            }).thenExecute(() -> {
+                System.out.println("FLARE_AI_PURSUIT_PASSED mob=" + attacker.getType().toShortString()
+                        + " ticks=" + attacker.tickCount + " travelled=" + attacker.position().distanceTo(start)
+                        + " distance=" + attacker.distanceTo(target) + " decoyHealth=" + target.getHealth());
+                h.succeed();
+            });
+        });
+    }
+
+    @GameTest(templateNamespace = "flare_edge_tests", template = "empty", batch = "flare_edge_ai_vanilla", timeoutTicks = 400)
+    public static void flareRedVanillaZombieNaturallyPursuesAndAttacks(GameTestHelper h) {
+        ready(h, () -> verifyNaturalPursuit(h, EntityType.ZOMBIE.create(fixture.level)));
+    }
+
+    @GameTest(templateNamespace = "flare_edge_tests", template = "empty", batch = "flare_edge_ai_yuji", timeoutTicks = 400)
+    public static void flareRedYujiNaturallyPursuesAndAttacks(GameTestHelper h) {
+        ready(h, () -> verifyNaturalPursuit(h, YujiContent.MOBS.get(YujiKind.SHASHENG).get().create(fixture.level)));
     }
 
     @GameTest(templateNamespace = "flare_edge_tests", template = "empty", batch = "flare_edge_flight", timeoutTicks = 300)
