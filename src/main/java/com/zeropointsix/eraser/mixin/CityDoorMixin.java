@@ -24,8 +24,8 @@ public abstract class CityDoorMixin {
         return observe(level, pos, state, flags);
     }
 
-    // SRG names from createSrgToMcp: use=m_6227_, neighborChanged=m_6861_, setOpen=m_153165_
-    // (m_153166_ does not exist; min=3 fails the remapped JAR if any of the three miss).
+    // SRG names from createSrgToMcp: use=m_6227_, neighborChanged=m_6861_, setOpen=m_153165_.
+    // min=3 fails the remapped JAR if any of the three miss.
     @Group(name = "citySetBlock", min = 3)
     @Redirect(method = {"m_6227_", "m_6861_", "m_153165_"}, remap = false, require = 0, at = @At(value = "INVOKE", remap = false,
             target = "Lnet/minecraft/world/level/Level;m_7731_(Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/state/BlockState;I)Z"))

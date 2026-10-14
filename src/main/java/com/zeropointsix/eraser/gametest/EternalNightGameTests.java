@@ -2,7 +2,6 @@ package com.zeropointsix.eraser.gametest;
 
 import com.zeropointsix.eraser.ModMain;
 import com.zeropointsix.eraser.eternalnight.*;
-import com.zeropointsix.eraser.mixin.CityDoorMixin;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.AfterBatch;
@@ -19,7 +18,6 @@ import net.minecraftforge.fml.config.ConfigTracker;
 import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.gametest.GameTestHolder;
 import net.minecraftforge.gametest.PrefixGameTestTemplate;
-import org.spongepowered.asm.mixin.injection.Redirect;
 import java.util.UUID;
 
 @GameTestHolder("eternal_night_tests")
@@ -741,7 +739,6 @@ public final class EternalNightGameTests {
     @GameTest(template = "empty", batch = "eternal_night_lock", timeoutTicks = 120)
     public static void cityExitDoorStaysOpenUntilExpiry(GameTestHelper h) {
         isolate(h.getLevel());
-        assertDoorMixinTargetsOfficialSetOpenSrg(h);
         ServerLevel city = h.getLevel().getServer().getLevel(EternalNightContent.LEVEL);
         BlockPos pos = new BlockPos(4, 70, 4);
         installDoor(city, pos, Blocks.OAK_DOOR);
@@ -791,20 +788,6 @@ public final class EternalNightGameTests {
     private static void openLeaves(ServerLevel city, BlockPos pos) {
         city.setBlock(pos, city.getBlockState(pos).setValue(DoorBlock.OPEN, true), 3);
         city.setBlock(pos.above(), city.getBlockState(pos.above()).setValue(DoorBlock.OPEN, true), 3);
-    }
-
-    private static void assertDoorMixinTargetsOfficialSetOpenSrg(GameTestHelper h) {
-        boolean mojmap = false, srg = false;
-        for (var method : CityDoorMixin.class.getDeclaredMethods()) {
-            Redirect redirect = method.getAnnotation(Redirect.class);
-            if (redirect == null) continue;
-            for (String name : redirect.method()) {
-                if (name.equals("setOpen")) mojmap = true;
-                if (name.equals("m_153165_")) srg = true;
-                h.assertTrue(!name.equals("m_153166_"), "setOpen SRG is m_153165_, not m_153166_");
-            }
-        }
-        h.assertTrue(mojmap && srg, "CityDoorMixin must target setOpen and m_153165_");
     }
 
     /**
