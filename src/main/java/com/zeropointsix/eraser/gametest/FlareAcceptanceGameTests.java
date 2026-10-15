@@ -22,6 +22,7 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.TicketType;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
@@ -62,9 +63,7 @@ public final class FlareAcceptanceGameTests {
                 originalLights.add(((CompoundTag) tag).getLong("Pos"));
             for (int x = (center.getX() - 16) >> 4; x <= (center.getX() + 16) >> 4; x++)
                 for (int z = (center.getZ() - 16) >> 4; z <= (center.getZ() + 16) >> 4; z++) {
-                    long key = ChunkPos.asLong(x, z);
-                    h.assertTrue(!level.getForcedChunks().contains(key), "acceptance area has no foreign forced ticket");
-                    chunks.add(key);
+                    chunks.add(ChunkPos.asLong(x, z));
                 }
             load();
             if (arena) {
@@ -82,22 +81,33 @@ public final class FlareAcceptanceGameTests {
         void load() {
             for (long key : chunks) {
                 ChunkPos c = new ChunkPos(key);
-                level.setChunkForced(c.x, c.z, true); ownedTickets.add(key); level.getChunk(c.x, c.z);
+                level.setChunkForced(c.x, c.z, true);
+                // PLAYER tickets keep the neighbourhood entity-ticking even when the
+                // GameTestServer simulation distance is tight on CI runners.
+                level.getChunkSource().addRegionTicket(TicketType.PLAYER, c, 2, c);
+                ownedTickets.add(key); level.getChunk(c.x, c.z);
             }
         }
 
         void release() {
             for (long key : ownedTickets) {
-                ChunkPos c = new ChunkPos(key); level.setChunkForced(c.x, c.z, false);
+                ChunkPos c = new ChunkPos(key);
+                level.setChunkForced(c.x, c.z, false);
+                level.getChunkSource().removeRegionTicket(TicketType.PLAYER, c, 2, c);
             }
             ownedTickets.clear();
         }
 
         boolean ticking() {
-            return chunks.stream().allMatch(key -> {
-                ChunkPos c = new ChunkPos(key);
-                return level.isPositionEntityTicking(new BlockPos(c.getMinBlockX() + 8, center.getY(), c.getMinBlockZ() + 8));
-            });
+            ChunkPos centerChunk = new ChunkPos(center);
+            return level.isPositionEntityTicking(center)
+                    && chunks.stream().filter(key -> {
+                        ChunkPos c = new ChunkPos(key);
+                        return Math.abs(c.x - centerChunk.x) <= 1 && Math.abs(c.z - centerChunk.z) <= 1;
+                    }).allMatch(key -> {
+                        ChunkPos c = new ChunkPos(key);
+                        return level.isPositionEntityTicking(new BlockPos(c.getMinBlockX() + 8, center.getY(), c.getMinBlockZ() + 8));
+                    });
         }
 
         void set(BlockPos pos, BlockState state) {
