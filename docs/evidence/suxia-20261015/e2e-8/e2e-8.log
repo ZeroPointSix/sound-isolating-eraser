@@ -1,0 +1,132 @@
+SUXIA_QA_RESULTS=/data2/suxia-20261015/build/suxia-e2e-1792096743110322937
+SUXIA_REAL_CLIENT_AND_DEDICATED_SERVER_E2E_PASSED
+--- server-restart.log ---
+SUXIA_QA_PASS=restart Actual dedicated-server JVM restart restored same hostile UUID/sleep/persistence and watch ledger cooldown.
+SUXIA_QA_PHASE=restored
+SUXIA_QA_PASS=restored-wake Restored persistent hostile woke again after actual restart and survival-player approach.
+SUXIA_QA_PHASE=restored-awake
+[20:53:42] [Server thread/WARN] [minecraft/MinecraftServer]: Can't keep up! Is the server overloaded? Running 2296ms or 45 ticks behind
+[20:53:48] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: SuxiaTester lost connection: Disconnected
+[20:53:48] [Server thread/INFO] [minecraft/MinecraftServer]: SuxiaTester left the game
+[20:53:49] [Server thread/INFO] [minecraft/MinecraftServer]: Stopping the server
+[20:53:49] [Server thread/INFO] [minecraft/MinecraftServer]: Stopping server
+[20:53:49] [Server thread/INFO] [minecraft/MinecraftServer]: Saving players
+[20:53:49] [Server thread/INFO] [minecraft/MinecraftServer]: Saving worlds
+[20:53:54] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[world]'/minecraft:overworld
+[20:54:11] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_nether
+[20:54:11] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[world]'/qihai:yuji_fodu
+[20:54:11] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[world]'/sound_isolating_eraser:eternal_night
+[20:54:11] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_end
+[20:54:11] [Server thread/DEBUG] [ne.mi.co.ForgeHooks/WP]: Gathering id map for writing to world save world
+[20:54:11] [Server thread/DEBUG] [ne.mi.co.ForgeHooks/WP]: ID Map collection complete world
+[20:54:11] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (world): All chunks are saved
+[20:54:11] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (DIM-1): All chunks are saved
+[20:54:11] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (yuji_fodu): All chunks are saved
+[20:54:11] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (eternal_night): All chunks are saved
+[20:54:11] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (DIM1): All chunks are saved
+[20:54:11] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage: All dimensions are saved
+[20:54:11] [Server thread/DEBUG] [ne.mi.fm.co.ConfigTracker/CONFIG]: Unloading configs type SERVER
+--- client-restored.log ---
+[20:53:03] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Recieved login wrapper packet event for channel fml:handshake with index 24
+[20:53:03] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.HandshakeHandler/FMLHANDSHAKE]: Received config sync from server
+[20:53:03] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Dispatching wrapped packet reply for channel fml:handshake with index 24
+[20:53:03] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Recieved login wrapper packet event for channel fml:handshake with index 25
+[20:53:03] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.HandshakeHandler/FMLHANDSHAKE]: Received config sync from server
+[20:53:03] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Dispatching wrapped packet reply for channel fml:handshake with index 25
+[20:53:03] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Recieved login wrapper packet event for channel fml:handshake with index 26
+[20:53:03] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.HandshakeHandler/FMLHANDSHAKE]: Received config sync from server
+[20:53:03] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Dispatching wrapped packet reply for channel fml:handshake with index 26
+[20:53:03] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Recieved login wrapper packet event for channel fml:handshake with index 27
+[20:53:03] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.HandshakeHandler/FMLHANDSHAKE]: Received config sync from server
+[20:53:03] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Dispatching wrapped packet reply for channel fml:handshake with index 27
+[20:53:03] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Recieved login wrapper packet event for channel fml:handshake with index 28
+[20:53:03] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.HandshakeHandler/FMLHANDSHAKE]: Received config sync from server
+[20:53:03] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Dispatching wrapped packet reply for channel fml:handshake with index 28
+[20:53:03] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Recieved login wrapper packet event for channel fml:handshake with index 29
+[20:53:03] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.HandshakeHandler/FMLHANDSHAKE]: Received config sync from server
+[20:53:03] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Dispatching wrapped packet reply for channel fml:handshake with index 29
+[20:53:03] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Recieved login wrapper packet event for channel fml:handshake with index 30
+[20:53:03] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.HandshakeHandler/FMLHANDSHAKE]: Received config sync from server
+[20:53:03] [Netty Epoll Client IO #0/DEBUG] [ne.mi.co.ForgeConfig/FORGEMOD]: Forge config just got changed on the file system!
+[20:53:03] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Dispatching wrapped packet reply for channel fml:handshake with index 30
+[20:53:04] [Netty Epoll Client IO #0/INFO] [ne.mi.ne.NetworkHooks/]: Connected to a modded server.
+[20:53:15] [Render thread/DEBUG] [ne.mi.ne.fi.NetworkFilters/]: Injected net.minecraftforge.network.filters.ForgeConnectionNetworkFilter@2979c6ef into net.minecraft.network.Connection@1af6974c
+[20:53:22] [Render thread/INFO] [minecraft/AdvancementList]: Loaded 2 advancements
+--- client.log ---
+[20:44:16] [Render thread/DEBUG] [ne.mi.re.ForgeRegistry/REGISTRIES]: Registry minecraft:stat_type Sync: ACTIVE -> FROZEN
+[20:44:16] [Render thread/DEBUG] [ne.mi.re.ForgeRegistry/REGISTRIES]: Registry minecraft:command_argument_type Sync: ACTIVE -> FROZEN
+[20:44:16] [Render thread/DEBUG] [ne.mi.re.ForgeRegistry/REGISTRIES]: Registry minecraft:villager_profession Sync: ACTIVE -> FROZEN
+[20:44:16] [Render thread/DEBUG] [ne.mi.re.ForgeRegistry/REGISTRIES]: Registry minecraft:point_of_interest_type Sync: ACTIVE -> FROZEN
+[20:44:16] [Render thread/DEBUG] [ne.mi.re.ForgeRegistry/REGISTRIES]: Registry minecraft:memory_module_type Sync: ACTIVE -> FROZEN
+[20:44:16] [Render thread/DEBUG] [ne.mi.re.ForgeRegistry/REGISTRIES]: Registry minecraft:sensor_type Sync: ACTIVE -> FROZEN
+[20:44:16] [Render thread/DEBUG] [ne.mi.re.ForgeRegistry/REGISTRIES]: Registry minecraft:schedule Sync: ACTIVE -> FROZEN
+[20:44:16] [Render thread/DEBUG] [ne.mi.re.ForgeRegistry/REGISTRIES]: Registry minecraft:activity Sync: ACTIVE -> FROZEN
+[20:44:16] [Render thread/DEBUG] [ne.mi.re.ForgeRegistry/REGISTRIES]: Registry minecraft:worldgen/carver Sync: ACTIVE -> FROZEN
+[20:44:16] [Render thread/DEBUG] [ne.mi.re.ForgeRegistry/REGISTRIES]: Registry minecraft:worldgen/feature Sync: ACTIVE -> FROZEN
+[20:44:16] [Render thread/DEBUG] [ne.mi.re.ForgeRegistry/REGISTRIES]: Registry minecraft:chunk_status Sync: ACTIVE -> FROZEN
+[20:44:16] [Render thread/DEBUG] [ne.mi.re.ForgeRegistry/REGISTRIES]: Registry minecraft:worldgen/block_state_provider_type Sync: ACTIVE -> FROZEN
+[20:44:16] [Render thread/DEBUG] [ne.mi.re.ForgeRegistry/REGISTRIES]: Registry minecraft:worldgen/foliage_placer_type Sync: ACTIVE -> FROZEN
+[20:44:16] [Render thread/DEBUG] [ne.mi.re.ForgeRegistry/REGISTRIES]: Registry minecraft:worldgen/tree_decorator_type Sync: ACTIVE -> FROZEN
+[20:44:16] [Render thread/DEBUG] [ne.mi.re.ForgeRegistry/REGISTRIES]: Registry minecraft:worldgen/biome Sync: ACTIVE -> FROZEN
+[20:44:16] [Render thread/DEBUG] [ne.mi.re.ForgeRegistry/REGISTRIES]: Registry forge:entity_data_serializers Sync: ACTIVE -> FROZEN
+[20:44:16] [Render thread/DEBUG] [ne.mi.re.ForgeRegistry/REGISTRIES]: Registry forge:global_loot_modifier_serializers Sync: ACTIVE -> FROZEN
+[20:44:16] [Render thread/DEBUG] [ne.mi.re.ForgeRegistry/REGISTRIES]: Registry forge:biome_modifier_serializers Sync: ACTIVE -> FROZEN
+[20:44:16] [Render thread/DEBUG] [ne.mi.re.ForgeRegistry/REGISTRIES]: Registry forge:fluid_type Sync: ACTIVE -> FROZEN
+[20:44:16] [Render thread/DEBUG] [ne.mi.re.ForgeRegistry/REGISTRIES]: Registry forge:structure_modifier_serializers Sync: ACTIVE -> FROZEN
+[20:44:16] [Render thread/DEBUG] [ne.mi.re.ForgeRegistry/REGISTRIES]: Registry forge:holder_set_type Sync: ACTIVE -> FROZEN
+[20:44:16] [Render thread/DEBUG] [ne.mi.re.ForgeRegistry/REGISTRIES]: Registry forge:display_contexts Sync: ACTIVE -> FROZEN
+[20:44:18] [Render thread/DEBUG] [ne.mi.re.ObjectHolderRegistry/REGISTRIES]: Applying holder lookups
+[20:44:18] [Render thread/DEBUG] [ne.mi.re.ObjectHolderRegistry/REGISTRIES]: Holder lookups applied
+[20:44:18] [Render thread/DEBUG] [ne.mi.re.GameData/REGISTRIES]: FROZEN state restored.
+--- client-rejoin.log ---
+[20:46:30] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Recieved login wrapper packet event for channel fml:handshake with index 24
+[20:46:30] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.HandshakeHandler/FMLHANDSHAKE]: Received config sync from server
+[20:46:30] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Dispatching wrapped packet reply for channel fml:handshake with index 24
+[20:46:30] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Recieved login wrapper packet event for channel fml:handshake with index 25
+[20:46:30] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.HandshakeHandler/FMLHANDSHAKE]: Received config sync from server
+[20:46:30] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Dispatching wrapped packet reply for channel fml:handshake with index 25
+[20:46:30] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Recieved login wrapper packet event for channel fml:handshake with index 26
+[20:46:30] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.HandshakeHandler/FMLHANDSHAKE]: Received config sync from server
+[20:46:30] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Dispatching wrapped packet reply for channel fml:handshake with index 26
+[20:46:30] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Recieved login wrapper packet event for channel fml:handshake with index 27
+[20:46:30] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.HandshakeHandler/FMLHANDSHAKE]: Received config sync from server
+[20:46:30] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Dispatching wrapped packet reply for channel fml:handshake with index 27
+[20:46:30] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Recieved login wrapper packet event for channel fml:handshake with index 28
+[20:46:30] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.HandshakeHandler/FMLHANDSHAKE]: Received config sync from server
+[20:46:30] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Dispatching wrapped packet reply for channel fml:handshake with index 28
+[20:46:30] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Recieved login wrapper packet event for channel fml:handshake with index 29
+[20:46:30] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.HandshakeHandler/FMLHANDSHAKE]: Received config sync from server
+[20:46:30] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Dispatching wrapped packet reply for channel fml:handshake with index 29
+[20:46:30] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Recieved login wrapper packet event for channel fml:handshake with index 30
+[20:46:30] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.HandshakeHandler/FMLHANDSHAKE]: Received config sync from server
+[20:46:30] [Netty Epoll Client IO #0/DEBUG] [ne.mi.co.ForgeConfig/FORGEMOD]: Forge config just got changed on the file system!
+[20:46:30] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Dispatching wrapped packet reply for channel fml:handshake with index 30
+[20:46:31] [Netty Epoll Client IO #0/INFO] [ne.mi.ne.NetworkHooks/]: Connected to a modded server.
+[20:46:43] [Render thread/DEBUG] [ne.mi.ne.fi.NetworkFilters/]: Injected net.minecraftforge.network.filters.ForgeConnectionNetworkFilter@697b48e4 into net.minecraft.network.Connection@137d04d8
+[20:46:50] [Render thread/INFO] [minecraft/AdvancementList]: Loaded 2 advancements
+--- server.log ---
+SUXIA_QA_PASS=persistence Empty-NBT command entity remained loaded/alive 100 ticks with the only player 160 blocks away.
+SUXIA_QA_PASS=wake Live survival player within three blocks wakes hostile, acquires target and arms ambush.
+SUXIA_QA_PHASE=hostile-awake
+[20:48:02] [Server thread/WARN] [minecraft/MinecraftServer]: Can't keep up! Is the server overloaded? Running 2430ms or 48 ticks behind
+SUXIA_QA_PASS=ready-restart Prepared real world save with sleeping persistent hostile and both cooling watches.
+[20:48:18] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: SuxiaTester lost connection: Disconnected
+[20:48:18] [Server thread/INFO] [minecraft/MinecraftServer]: SuxiaTester left the game
+[20:48:18] [Server thread/INFO] [minecraft/MinecraftServer]: Stopping the server
+[20:48:18] [Server thread/INFO] [minecraft/MinecraftServer]: Stopping server
+[20:48:18] [Server thread/INFO] [minecraft/MinecraftServer]: Saving players
+[20:48:18] [Server thread/INFO] [minecraft/MinecraftServer]: Saving worlds
+[20:48:23] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[world]'/minecraft:overworld
+[20:48:56] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_end
+[20:48:56] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_nether
+[20:48:56] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[world]'/sound_isolating_eraser:eternal_night
+[20:48:56] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[world]'/qihai:yuji_fodu
+[20:48:56] [Server thread/DEBUG] [ne.mi.co.ForgeHooks/WP]: Gathering id map for writing to world save world
+[20:48:56] [Server thread/DEBUG] [ne.mi.co.ForgeHooks/WP]: ID Map collection complete world
+[20:48:56] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (world): All chunks are saved
+[20:48:56] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (DIM1): All chunks are saved
+[20:48:56] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (DIM-1): All chunks are saved
+[20:48:56] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (eternal_night): All chunks are saved
+[20:48:56] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (yuji_fodu): All chunks are saved
+[20:48:56] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage: All dimensions are saved
+[20:48:56] [Server thread/DEBUG] [ne.mi.fm.co.ConfigTracker/CONFIG]: Unloading configs type SERVER

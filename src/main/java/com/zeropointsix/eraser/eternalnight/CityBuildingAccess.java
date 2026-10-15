@@ -37,26 +37,33 @@ public final class CityBuildingAccess {
 
     public static List<Placement> locateBuildings(long seed) {
         Map<String, Placement> found = new LinkedHashMap<>();
-        for (int bx = -12; bx <= 12; bx++) for (int bz = -12; bz <= 12; bz++) {
-            String civic = CityTemplates.largeCivic(seed, bx, bz);
-            for (int lx = 1; lx <= 3; lx++) for (int lz = 1; lz <= 3; lz++) {
-                String name;
-                if (civic != null && lx <= 2 && lz <= 2) {
-                    if (lx != 1 || lz != 1) continue;
-                    name = civic;
-                } else {
-                    if (lx == 3 && lz == 3 && CityTemplates.hasStation(seed, bx, bz)) continue;
-                    if (lx == 3 && lz == 1 && Math.floorMod(CityLayout.hash(seed + 3, bx, bz), 4) == 0) continue;
-                    name = CityLayout.building(seed, bx * 4 + lx, bz * 4 + lz);
+        // Rare civic types need not occur in the first window (for example, seed 52).
+        // Preserve existing samples, then survey bounded outer windows without loading chunks.
+        int previousRadius = -1;
+        for (int radius : new int[]{12, 24, 48}) {
+            for (int bx = -radius; bx <= radius; bx++) for (int bz = -radius; bz <= radius; bz++) {
+                if (Math.abs(bx) <= previousRadius && Math.abs(bz) <= previousRadius) continue;
+                String civic = CityTemplates.largeCivic(seed, bx, bz);
+                for (int lx = 1; lx <= 3; lx++) for (int lz = 1; lz <= 3; lz++) {
+                    String name;
+                    if (civic != null && lx <= 2 && lz <= 2) {
+                        if (lx != 1 || lz != 1) continue;
+                        name = civic;
+                    } else {
+                        if (lx == 3 && lz == 3 && CityTemplates.hasStation(seed, bx, bz)) continue;
+                        if (lx == 3 && lz == 1 && Math.floorMod(CityLayout.hash(seed + 3, bx, bz), 4) == 0) continue;
+                        name = CityLayout.building(seed, bx * 4 + lx, bz * 4 + lz);
+                    }
+                    int x = (bx * 4 + lx) * 16, z = (bz * 4 + lz) * 16;
+                    found.putIfAbsent(name, new Placement(name, new BlockPos(x, CityLayout.plateau(bx, bz), z),
+                            CityLayout.district(x, z)));
                 }
-                int x = (bx * 4 + lx) * 16, z = (bz * 4 + lz) * 16;
-                found.putIfAbsent(name, new Placement(name, new BlockPos(x, CityLayout.plateau(bx, bz), z),
-                        CityLayout.district(x, z)));
             }
+            if (found.keySet().containsAll(CityTemplates.BUILDINGS)) return List.copyOf(found.values());
+            previousRadius = radius;
         }
-        if (found.size() != CityTemplates.BUILDINGS.size())
-            throw new AssertionError("could not locate every original building class: " + found.keySet());
-        return List.copyOf(found.values());
+        throw new AssertionError("could not locate every original building class within radius 48 for seed "
+                + seed + ": " + found.keySet());
     }
 
     public static void loadAround(ServerLevel city, BlockPos origin) {

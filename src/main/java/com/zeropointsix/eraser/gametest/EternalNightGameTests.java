@@ -1071,6 +1071,31 @@ public final class EternalNightGameTests {
         }).thenSucceed();
     }
 
+    @GameTest(template = "empty", batch = "eternal_night_survey")
+    public static void cityBuildingSurveyFindsRareCivicTypes(GameTestHelper h) {
+        long[] seeds = {0L, 52L, -1L, Long.MIN_VALUE, Long.MAX_VALUE};
+        for (long seed : seeds) {
+            var placements = CityBuildingAccess.locateBuildings(seed);
+            var names = new java.util.HashSet<String>();
+            for (var placement : placements) {
+                names.add(placement.name());
+                int bx = Math.floorDiv(placement.origin().getX(), 64);
+                int bz = Math.floorDiv(placement.origin().getZ(), 64);
+                String generated = CityTemplates.CIVIC_LARGE.contains(placement.name())
+                        ? CityTemplates.largeCivic(seed, bx, bz)
+                        : CityLayout.building(seed, Math.floorDiv(placement.origin().getX(), 16),
+                                Math.floorDiv(placement.origin().getZ(), 16));
+                h.assertTrue(placement.name().equals(generated), "survey uses the actual seeded layout");
+                h.assertTrue(Math.abs(bx) <= 48 && Math.abs(bz) <= 48, "survey remains bounded");
+            }
+            h.assertTrue(names.equals(new java.util.HashSet<>(CityTemplates.BUILDINGS)),
+                    "all twelve original building classes are found for seed " + seed);
+            h.assertTrue(placements.equals(CityBuildingAccess.locateBuildings(seed)), "survey is seed-stable");
+        }
+        System.out.println("CITY_BUILDING_SURVEY_PASSED seeds=0,52,-1,MIN,MAX classes=12");
+        h.succeed();
+    }
+
     @GameTest(template = "empty", batch = "eternal_night_entrances", timeoutTicks = 2000)
     public static void cityTwelveBuildingEntrancesWalkable(GameTestHelper h) {
         isolate(h.getLevel());

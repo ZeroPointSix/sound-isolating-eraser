@@ -1,0 +1,2 @@
+2026-10-15 21:08:02,058 main WARN Advanced terminal features are not available in this environment
+CITY_SEED_52_REPRODUCED: could not locate every original building class: [warehouse, res_tenement, office_dark, office_tower, shop_neon, res_apartment_mid, res_apartment_high, res_apartment_low, civic_center, townhall, library]

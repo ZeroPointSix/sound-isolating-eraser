@@ -1,0 +1,1 @@
+phase=hostile-awake player=(17.6295891053531, 67.7554953174728, 0.7089455969765686) yaw=-218.22281 pitch=57.950027 renderFrame=338 entityFrames={10=338}

@@ -1,0 +1,1 @@
+phase=restored-awake player=(14.349076552333143, 65.0, -4.908736692207205) yaw=-179.81978 pitch=7.127612 renderFrame=307 entityFrames={1=307}
