@@ -7,6 +7,8 @@ import com.zeropointsix.eraser.yuji.flare.*;
 import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.HashSet;
+import java.util.Set;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.AfterBatch;
 import net.minecraft.gametest.framework.GameTest;
@@ -22,6 +24,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.Rarity;
 import net.minecraft.world.level.LightLayer;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LightBlock;
 import net.minecraft.world.level.block.state.BlockState;
@@ -41,17 +44,32 @@ import net.minecraftforge.gametest.PrefixGameTestTemplate;
 @PrefixGameTestTemplate(false)
 public final class FlareGameTests {
     private static final Map<BlockPos, BlockState> fixtureBlocks = new LinkedHashMap<>();
+    private static final Set<Long> fixtureTickets = new HashSet<>();
+    private static FallingSupplyCrate airdropFixture;
     private static void fixtureBlock(ServerLevel level, BlockPos pos, BlockState state) {
         fixtureBlocks.putIfAbsent(pos.immutable(), level.getBlockState(pos));
         level.setBlock(pos, state, 3);
     }
     @AfterBatch(batch = "flare")
     public static void restoreFixtures(ServerLevel level) {
-        fixtureBlocks.forEach((pos, state) -> {
-            if (level.getBlockEntity(pos) instanceof SupplyCrateBlockEntity crate) crate.clearContent();
-            level.setBlock(pos, state, 16);
-        });
-        fixtureBlocks.clear();
+        try {
+            if (airdropFixture != null) airdropFixture.discard();
+            airdropFixture = null;
+            fixtureBlocks.forEach((pos, state) -> {
+                if (level.getBlockEntity(pos) instanceof SupplyCrateBlockEntity crate) crate.clearContent();
+                level.setBlock(pos, state, 16);
+            });
+        } finally {
+            fixtureBlocks.clear();
+            int released = fixtureTickets.size();
+            for (long key : fixtureTickets) {
+                ChunkPos chunk = new ChunkPos(key);
+                level.setChunkForced(chunk.x, chunk.z, false);
+                if (level.getForcedChunks().contains(key)) throw new IllegalStateException("flare fixture chunk ticket leaked");
+            }
+            fixtureTickets.clear();
+            System.out.println("FLARE_FIXTURE_CLEANUP_PASSED releasedChunkTickets=" + released);
+        }
     }
     private static Player player(GameTestHelper h) {
         Player player = h.makeMockSurvivalPlayer();
@@ -216,8 +234,18 @@ public final class FlareGameTests {
     @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "flare", timeoutTicks = 220)
     public static void flareAirdropLandsGeneratesOnceAndExpiresEmpty(GameTestHelper h) {
         Player p = player(h); BlockPos pos = platform(h);
+        // A mock player does not keep the surface fixture entity-ticking.
+        ChunkPos chunk = new ChunkPos(pos);
+        if (!h.getLevel().getForcedChunks().contains(chunk.toLong())) {
+            h.getLevel().setChunkForced(chunk.x, chunk.z, true);
+            fixtureTickets.add(chunk.toLong());
+        }
+        h.getLevel().getChunk(chunk.x, chunk.z);
         h.startSequence().thenWaitUntil(() -> h.assertTrue(h.getLevel().isPositionEntityTicking(pos), "entity chunk ready")).thenExecute(() -> {
+        System.out.println("FLARE_AIRDROP_READY chunk=" + chunk + " forced=" + h.getLevel().getForcedChunks().contains(chunk.toLong())
+                + " entityTicking=" + h.getLevel().isPositionEntityTicking(pos));
         var entity = new FallingSupplyCrate(FlareContent.FALLING_CRATE.get(), h.getLevel());
+        airdropFixture = entity;
         entity.prepare(pos, p.getUUID()); entity.setPos(pos.getX() + .5, pos.getY() + 1, pos.getZ() + .5);
         h.getLevel().addFreshEntity(entity);
         h.runAfterDelay(8, () -> {
