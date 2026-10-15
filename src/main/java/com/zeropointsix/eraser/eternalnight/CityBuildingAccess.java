@@ -106,8 +106,20 @@ public final class CityBuildingAccess {
                     && !CityLayout.street(found.feet().getX(), found.feet().getZ()) ? 5000 : 0;
             return insideStart + score(found);
         }));
-        for (Approach candidate : ranked)
-            if (entranceWalkable(city, candidate)) return Optional.of(candidate);
+        int expected = expectedFloors(city, origin, building);
+        Set<BlockPos> checkedDoors = new HashSet<>();
+        Approach fallback = null;
+        for (Approach candidate : ranked) {
+            if (!entranceWalkable(city, candidate)) continue;
+            if (fallback == null) fallback = candidate;
+            if (!checkedDoors.add(candidate.door())) continue;
+            // Some original templates have a separate ground-floor room with its own entrance.
+            // Survey the stair-connected entrance, not merely the nearest isolated room.
+            int reached = floorCount(city, origin, size.getX(), size.getZ(), size.getY(),
+                    candidate.door().relative(candidate.inward()));
+            if (reached >= expected) return Optional.of(candidate);
+        }
+        if (fallback != null) return Optional.of(fallback);
         return Optional.empty();
     }
 
@@ -170,9 +182,10 @@ public final class CityBuildingAccess {
         TreeSet<Integer> floors = new TreeSet<>();
         queue.add(start);
         int budget = 12000;
-        while (!queue.isEmpty() && budget-- > 0) {
+        while (!queue.isEmpty() && budget > 0) {
             BlockPos pos = queue.poll();
             if (!seen.add(pos.asLong())) continue;
+            budget--;
             if (pos.getX() < origin.getX() - 1 || pos.getZ() < origin.getZ() - 1
                     || pos.getX() > origin.getX() + sizeX || pos.getZ() > origin.getZ() + sizeZ
                     || pos.getY() < origin.getY() - 1 || pos.getY() > origin.getY() + sizeY + 1)
@@ -180,7 +193,12 @@ public final class CityBuildingAccess {
             AABB body = bodyAt(pos.getX(), pos.getY(), pos.getZ());
             boolean ladder = ladderAt(city, pos) || ladderAt(city, pos.below());
             if ((!city.getBlockState(pos.below()).isSolid() && !ladder) || !city.noCollision(body)) continue;
-            floors.add(pos.getY());
+            BlockState at = city.getBlockState(pos);
+            // Count the same door-bearing levels as expectedFloors, not every three stair steps.
+            if (pos.getX() >= origin.getX() && pos.getX() < origin.getX() + sizeX
+                    && pos.getZ() >= origin.getZ() && pos.getZ() < origin.getZ() + sizeZ
+                    && at.getBlock() instanceof DoorBlock && at.getValue(DoorBlock.HALF) == DoubleBlockHalf.LOWER)
+                floors.add(pos.getY());
             for (Direction direction : Direction.Plane.HORIZONTAL) {
                 BlockPos next = pos.relative(direction);
                 int nextY = standY(city, next.getX(), next.getZ(), pos.getY());
@@ -202,6 +220,8 @@ public final class CityBuildingAccess {
                 last = y;
             }
         }
+        if (budget == 0 && !queue.isEmpty())
+            throw new IllegalStateException("floor survey exceeded its node budget at " + origin.toShortString());
         return count;
     }
 

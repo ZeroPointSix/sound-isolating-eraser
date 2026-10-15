@@ -188,6 +188,11 @@ try:
     wait_evidence(server, clients, required)
     wait_evidence(server, clients, ["server-survey", "owner-survey"], ".complete")
     print((RESULTS / "server-survey.complete").read_text().strip(), flush=True)
+    survey = json.loads((RESULTS / "city-survey.json").read_text())
+    if survey["templatesLocated"] != 12 or survey["nativeEntrancesPassed"] != 12 or survey["floorsReached"] != 12:
+        failed = [row for row in survey["observations"] if not row.get("floorsReachedExpected", False)]
+        raise AssertionError(f"NIGHT_BUILDING_ACCESS_FAILED {json.dumps(failed, ensure_ascii=False)}")
+    print("NIGHT_BUILDING_ACCESS_PASS nativeEntrances=12/12 reachableDoorFloors=12/12", flush=True)
     for name in required:
         print((RESULTS / (name + ".pass")).read_text().strip(), flush=True)
     save_and_stop(server)

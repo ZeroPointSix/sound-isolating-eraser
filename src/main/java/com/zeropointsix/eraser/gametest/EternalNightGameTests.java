@@ -84,6 +84,7 @@ public final class EternalNightGameTests {
     @AfterBatch(batch = "eternal_night_unload") public static void afterUnload(ServerLevel level) { restoreConfig(); }
     @AfterBatch(batch = "eternal_night_arrival") public static void afterArrival(ServerLevel level) { restoreConfig(); }
     @AfterBatch(batch = "eternal_night_entrances") public static void afterEntrances(ServerLevel level) { restoreConfig(); }
+    @AfterBatch(batch = "eternal_night_floor_levels") public static void afterFloorLevels(ServerLevel level) { restoreConfig(); }
 
     @GameTest(template = "empty", batch = "eternal_night_sleep", timeoutTicks = 1400)
     public static void cityDeepSleepAndReturnPreservePlayer(GameTestHelper h) {
@@ -1116,7 +1117,38 @@ public final class EternalNightGameTests {
         System.out.print(table);
         System.out.println("CITY_ENTRANCE_SUMMARY walked=" + walked + "/12 floorsReached=" + floorsOk + "/12");
         h.assertTrue(walked == 12, "all 12 original building classes have a walkable entrance; missing " + missing);
+        h.assertTrue(floorsOk == 12, "all 12 original building classes reach every door-bearing floor: " + table);
         h.succeed();
+    }
+
+    @GameTest(template = "empty", batch = "eternal_night_floor_levels", timeoutTicks = 200)
+    public static void cityFloorSurveyDoesNotCountStairHeightAsStoreys(GameTestHelper h) {
+        isolate(h.getLevel());
+        ServerLevel level = h.getLevel();
+        BlockPos origin = h.absolutePos(new BlockPos(1, 2, 1));
+        var previous = new java.util.LinkedHashMap<BlockPos, net.minecraft.world.level.block.state.BlockState>();
+        for (BlockPos pos : BlockPos.betweenClosed(origin, origin.offset(4, 12, 4)))
+            previous.put(pos.immutable(), level.getBlockState(pos));
+        try {
+        for (BlockPos pos : BlockPos.betweenClosed(origin, origin.offset(4, 12, 4)))
+            level.setBlock(pos, pos.getY() == origin.getY() ? Blocks.STONE.defaultBlockState()
+                    : Blocks.AIR.defaultBlockState(), 3);
+        BlockPos door = origin.offset(1, 1, 1);
+        var state = Blocks.OAK_DOOR.defaultBlockState().setValue(DoorBlock.OPEN, true);
+        level.setBlock(door, state.setValue(DoorBlock.HALF, DoubleBlockHalf.LOWER), 3);
+        level.setBlock(door.above(), state.setValue(DoorBlock.HALF, DoubleBlockHalf.UPPER), 3);
+        for (int y = 1; y <= 10; y++) {
+            level.setBlock(origin.offset(3, y, 2), Blocks.STONE.defaultBlockState(), 3);
+            level.setBlock(origin.offset(2, y, 2), Blocks.LADDER.defaultBlockState()
+                    .setValue(net.minecraft.world.level.block.LadderBlock.FACING, Direction.WEST), 3);
+        }
+        h.assertTrue(CityBuildingAccess.floorCount(level, origin, 5, 5, 13, door) == 1,
+                "ten blocks of climbable height are not extra door-bearing storeys");
+        System.out.println("CITY_FLOOR_LEVELS_PASS ladderHeight=10 doorStoreys=1");
+        h.succeed();
+        } finally {
+            previous.forEach((pos, original) -> level.setBlock(pos, original, 3));
+        }
     }
 
     private static int[] sampleDistrict(CityLayout.District want) {

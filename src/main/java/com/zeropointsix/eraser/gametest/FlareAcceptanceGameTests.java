@@ -54,6 +54,7 @@ public final class FlareAcceptanceGameTests {
         final Set<Long> originalLights = new HashSet<>();
         final GameTestConfigs.LiveConfig config;
         boolean prepared, completed;
+        java.util.function.Supplier<String> diagnostic = () -> "preparing";
 
         Fixture(GameTestHelper h, int slot, boolean arena) {
             level = h.getLevel();
@@ -174,7 +175,8 @@ public final class FlareAcceptanceGameTests {
                     // World/light preparation is not part of the behavior's bounded observation window.
                     int behaviorTicks = arena ? 900 : 1600;
                     h.runAfterDelay(behaviorTicks, () -> h.assertTrue(preparedFixture.completed,
-                            "acceptance behavior finishes within " + behaviorTicks + " ticks after preparation"));
+                            "acceptance behavior finishes within " + behaviorTicks + " ticks after preparation: "
+                                    + preparedFixture.diagnostic.get()));
                     action.run();
                 });
     }
@@ -188,11 +190,17 @@ public final class FlareAcceptanceGameTests {
     }
 
     private static void transfer(GameTestHelper h, Mob mob) {
-        FlareConfig.RED_LIFETIME.set(80);
+        // Exercise the production lifetime; 80 ticks can expire before natural pathfinding/attack.
+        int lifetime = 600;
+        FlareConfig.RED_LIFETIME.set(lifetime);
         h.assertTrue(FlareConfig.TAUNT_INTERVAL.get() == 10, "default ten-tick taunt cadence retained");
         ServerPlayer player = fixture.player();
         BlockPos start = fixture.center.west(8);
         mob.setPersistenceRequired(); fixture.add(mob, start);
+        String[] phase = {"initial pursuit"};
+        fixture.diagnostic = () -> "phase=" + phase[0] + " mobPos=" + mob.position()
+                + " mobHealth=" + mob.getHealth() + " playerHealth=" + player.getHealth()
+                + " target=" + mob.getTarget() + " navigationDone=" + mob.getNavigation().isDone();
         h.assertTrue(!mob.isNoAi() && mob.getTarget() == null, "no target or AI action injected");
         long pursuitStartedAt = fixture.level.getGameTime();
         h.startSequence().thenWaitUntil(() -> {
@@ -202,12 +210,20 @@ public final class FlareAcceptanceGameTests {
             System.out.println("FLARE_PLAYER_PURSUIT mob=" + mob.getType().toShortString()
                     + " elapsedTicks=" + (fixture.level.getGameTime() - pursuitStartedAt) + " mobTicks=" + mob.tickCount);
             var flare = fixture.shoot(0, player, fixture.center);
+            phase[0] = "projectile impact";
             h.startSequence().thenWaitUntil(() -> h.assertTrue(flare.isRemoved(), "red projectile impacts naturally"))
                     .thenExecute(() -> {
                         FlareDecoy target = decoy(h);
+                        phase[0] = "attack decoy";
+                        Fixture current = fixture;
+                        h.runAfterDelay(lifetime + 1, () -> System.out.println("FLARE_DEADLINE_DIAGNOSTIC "
+                                + current.diagnostic.get() + " decoyPos=" + target.position()
+                                + " decoyHealth=" + target.getHealth() + " removed=" + target.isRemoved()
+                                + " lastAttacker=" + target.getLastHurtByMob()));
                         CompoundTag saved = new CompoundTag(); target.addAdditionalSaveData(saved);
                         long remaining = saved.getLong("FlareExpires") - fixture.level.getGameTime();
-                        h.assertTrue(remaining > 0 && remaining <= 80, "production decoy retains the configured 80-tick deadline");
+                        h.assertTrue(remaining > 0 && remaining <= lifetime,
+                                "production decoy retains the configured " + lifetime + "-tick deadline");
                         h.runAfterDelay(remaining + 1, () -> h.assertTrue(target.isRemoved(),
                                 "decoy is removed at its original production deadline"));
                         h.assertTrue(mob.getTarget() == target && target.tickCount <= 10,
@@ -216,9 +232,13 @@ public final class FlareAcceptanceGameTests {
                                 + " from=player to=decoy decoyTicks=" + target.tickCount);
                         h.startSequence().thenWaitUntil(() -> h.assertTrue(target.getHealth() < target.getMaxHealth()
                                         && target.getLastHurtByMob() == mob, "transferred mob naturally reaches and attacks decoy"))
+                                .thenExecute(() -> { phase[0] = "decoy expiry";
+                                    System.out.println("FLARE_DECOY_ATTACKED mob=" + mob.getType().toShortString()
+                                            + " decoyTicks=" + target.tickCount + " health=" + target.getHealth()); })
                                 .thenWaitUntil(() -> h.assertTrue(target.isRemoved(), "decoy ends by production expiry or combat"))
                                 .thenExecute(() -> {
                                     Vec3 endedAt = mob.position();
+                                    phase[0] = "reacquire player";
                                     h.startSequence().thenWaitUntil(() -> h.assertTrue(player.isAlive() && mob.getTarget() == player
                                                     && mob.position().distanceTo(endedAt) > 1,
                                             "live AI reacquires and resumes pursuit of original player"))
