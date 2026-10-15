@@ -6,6 +6,7 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.RenderGuiEvent;
+import net.minecraftforge.client.event.ScreenEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -78,10 +79,21 @@ public final class CityClientRuntime {
     }
 
     @SubscribeEvent public static void fade(RenderGuiEvent.Post event) {
+        if (Minecraft.getInstance().screen == null) renderFade(event.getGuiGraphics());
+    }
+
+    @SubscribeEvent public static void fadeScreen(ScreenEvent.Render.Post event) {
+        renderFade(event.getGuiGraphics());
+    }
+
+    private static void renderFade(net.minecraft.client.gui.GuiGraphics graphics) {
         int alpha = ENTRY_OVERLAY.alpha();
         if (alpha <= 0) return;
         Minecraft client = Minecraft.getInstance();
-        event.getGuiGraphics().fill(0, 0, client.getWindow().getGuiScaledWidth(), client.getWindow().getGuiScaledHeight(), alpha << 24);
+        // Item/HUD layers use positive Z; the entry scene must also cover a still-open sleep screen.
+        graphics.pose().pushPose();
+        graphics.pose().translate(0, 0, 1000);
+        graphics.fill(0, 0, client.getWindow().getGuiScaledWidth(), client.getWindow().getGuiScaledHeight(), alpha << 24);
         if (ENTRY_OVERLAY.showsCaption()) {
             int width = client.getWindow().getGuiScaledWidth();
             int height = client.getWindow().getGuiScaledHeight();
@@ -89,11 +101,13 @@ public final class CityClientRuntime {
                     "message.sound_isolating_eraser.city.arrival"), Math.max(1, width - 40));
             int y = (height - lines.size() * client.font.lineHeight) / 2;
             for (var line : lines) {
-                event.getGuiGraphics().drawString(client.font, line, (width - client.font.width(line)) / 2,
+                graphics.drawString(client.font, line, (width - client.font.width(line)) / 2,
                         y, 0xFFFFFFFF, false);
                 y += client.font.lineHeight;
             }
         }
+        graphics.flush();
+        graphics.pose().popPose();
     }
     private CityClientRuntime() { }
 }

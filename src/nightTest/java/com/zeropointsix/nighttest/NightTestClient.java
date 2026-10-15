@@ -31,15 +31,24 @@ public final class NightTestClient {
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void entryCaption(net.minecraftforge.client.event.RenderGuiEvent.Post event) {
+        if (Minecraft.getInstance().screen == null) captureEntryCaption(event.getGuiGraphics());
+    }
+
+    @SubscribeEvent(priority = EventPriority.LOWEST)
+    public static void entryCaptionScreen(net.minecraftforge.client.event.ScreenEvent.Render.Post event) {
+        captureEntryCaption(event.getGuiGraphics());
+    }
+
+    private static void captureEntryCaption(net.minecraft.client.gui.GuiGraphics graphics) {
         var client = Minecraft.getInstance();
         if (ROLE == null || "server".equals(ROLE) || RELOADED || finished || entryCaptionProven
                 || client.level == null || !client.level.dimension().equals(Level.OVERWORLD)
                 || !CityClientRuntime.entryCaptionVisible()) return;
-        event.getGuiGraphics().flush();
+        graphics.flush();
         try (var frame = Screenshot.takeScreenshot(client.getMainRenderTarget())) {
             int dark = 0, bright = 0, samples = 0;
-            for (int y = frame.getHeight() / 4; y < frame.getHeight() * 3 / 4; y++) {
-                for (int x = frame.getWidth() / 8; x < frame.getWidth() * 7 / 8; x++) {
+            for (int y = 0; y < frame.getHeight(); y++) {
+                for (int x = 0; x < frame.getWidth(); x++) {
                     int pixel = frame.getPixelRGBA(x, y);
                     int r = pixel & 255, g = (pixel >>> 8) & 255, b = (pixel >>> 16) & 255;
                     samples++;
@@ -47,11 +56,11 @@ public final class NightTestClient {
                     if (r > 180 && g > 180 && b > 180) bright++;
                 }
             }
-            require(dark > samples * 0.97 && bright >= 25,
-                    "pre-teleport frame has black backdrop and visible caption: dark=" + dark + " bright=" + bright);
+            require(dark > samples * 0.995 && bright >= 25,
+                    "pre-teleport frame hides game HUD beneath black caption: dark=" + dark + " bright=" + bright);
             frame.writeToFile(RESULTS.resolve(ROLE + "-entry-caption.png"));
             Files.writeString(RESULTS.resolve(ROLE + "-entry-caption.pass"),
-                    "PASS rendered caption on black before leaving overworld; dark=" + dark + " bright=" + bright + "\n");
+                    "PASS full-frame black caption before leaving overworld; dark=" + dark + " bright=" + bright + "\n");
             entryCaptionProven = true;
         } catch (Throwable failure) {
             failure.printStackTrace();
