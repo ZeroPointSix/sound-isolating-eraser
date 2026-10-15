@@ -71,5 +71,8 @@
   "message.sound_isolating_eraser.city.milestone.75": "A low echo reaches you from afar.",
   "message.sound_isolating_eraser.city.milestone.90": "The way out is close.",
   "block.qihai.neon_sign": "Neon Sign",
-  "block.qihai.emergency_light": "Emergency Light"
+  "block.qihai.emergency_light": "Emergency Light",
+  "message.sound_isolating_eraser.fertilizer.mature": "This crop is already fully grown.",
+  "message.sound_isolating_eraser.fertilizer.no_room": "No room to grow: the tree needs open space, plain soil below and no creatures in the way.",
+  "message.sound_isolating_eraser.fertilizer.invalid_target": "Use on a crop, sapling, grass block or fertile log."
 }

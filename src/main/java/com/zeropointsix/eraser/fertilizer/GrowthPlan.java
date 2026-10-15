@@ -55,8 +55,9 @@ public final class GrowthPlan {
                 && (!blocks.containsKey(pos) || currentTrunk != null && !currentTrunk.contains(pos.asLong())))
             throw new UnsafePlacement();
         if (!before.equals(state)) {
+            // Vanilla trunk placers turn any non-plain dirt-tag soil (mycelium, podzol, moss...) into dirt.
             boolean soil = (state.is(Blocks.ROOTED_DIRT) || state.is(Blocks.DIRT) || state.is(Blocks.GRASS_BLOCK))
-                    && (before.is(Blocks.DIRT) || before.is(Blocks.GRASS_BLOCK) || before.is(Blocks.ROOTED_DIRT));
+                    && before.is(BlockTags.DIRT);
             if (!soil && !before.isAir() && !before.canBeReplaced() && !before.is(BlockTags.LEAVES)
                     && !before.is(BlockTags.SAPLINGS)
                     && !(ownedLogs.contains(pos.asLong()) && before.is(FertilizerContent.LOG.get()))) throw new UnsafePlacement();
@@ -155,7 +156,7 @@ public final class GrowthPlan {
         for (int x = low; x <= high; x++) for (int z = low; z <= high; z++) for (int d = 1; d <= depth; d++) {
             BlockPos p = root.offset(x, -d, z);
             BlockState old = get(p);
-            if (!old.is(Blocks.DIRT) && !old.is(Blocks.GRASS_BLOCK) && !old.is(Blocks.ROOTED_DIRT)) break;
+            if (!old.is(BlockTags.DIRT)) break;
             put(p, Blocks.ROOTED_DIRT.defaultBlockState());
         }
         Set<Long> result = currentTrunk;
