@@ -1,0 +1,1 @@
+bdc3ff9eb8cbd089bfc8f49a2f00b9e89b6f357472b6ed6fec9c9e98175215c6  build/libs/sound_isolating_eraser-0.12.1.jar

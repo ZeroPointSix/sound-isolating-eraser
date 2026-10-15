@@ -1,0 +1,4 @@
+c6439ffa0307b919bcd70f0f4a24bdb7867824a26c5afc9b8cfe508dcb431892  sound_isolating_eraser-0.12.0.jar
+f2838c5798cbae5faa369da56e01063393d81b27173d2bb28101cdc2e2644398  sound_isolating_eraser-0.12.0-night-release-qa.jar
+b6b2f421daf4e87d3bc6011f734310c6dd46988ba18f9cbb9737f5ddb531d6df  geckolib-forge-1.20.1-4.4.9.jar
+6d77ae8ad532fdf303390f404b0081b3b4ac4f61e7f1f4b4d4a9077e132dae4f  curios-forge-5.14.1+1.20.1.jar

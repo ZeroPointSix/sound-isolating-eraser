@@ -1,0 +1,242 @@
+2026-10-15 06:58:26,291 main WARN Advanced terminal features are not available in this environment
+[06:58:26] [main/INFO] [cp.mo.mo.Launcher/MODLAUNCHER]: ModLauncher running: args [--launchTarget, forgeserver, --fml.forgeVersion, 47.2.0, --fml.mcVersion, 1.20.1, --fml.forgeGroup, net.minecraftforge, --fml.mcpVersion, 20230612.114412, --nogui]
+[06:58:26] [main/INFO] [cp.mo.mo.Launcher/MODLAUNCHER]: ModLauncher 10.0.9+10.0.9+main.dcd20f30 starting: java version 17.0.20.1 by Eclipse Adoptium; OS Linux arch amd64 version 6.17.0-1022-azure
+[06:58:26] [main/WARN] [ne.mi.fm.lo.FMLConfig/CORE]: Configuration file /home/runner/work/sound-isolating-eraser/sound-isolating-eraser/build/night-release-server/config/fml.toml is not correct. Correcting
+[06:58:26] [main/INFO] [ne.mi.fm.lo.FMLConfig/CORE]: Incorrect key [earlyWindowSkipGLVersions] was corrected from null to []
+[06:58:26] [main/INFO] [ne.mi.fm.lo.FMLConfig/CORE]: Incorrect key [earlyWindowSquir] was corrected from null to false
+[06:58:26] [main/INFO] [ne.mi.fm.lo.ImmediateWindowHandler/]: ImmediateWindowProvider not loading because launch target is forgeserver
+[06:58:26] [main/INFO] [mixin/]: SpongePowered MIXIN Subsystem Version=0.8.5 Source=union:/home/runner/work/sound-isolating-eraser/sound-isolating-eraser/build/night-release-server/libraries/org/spongepowered/mixin/0.8.5/mixin-0.8.5.jar%2365!/ Service=ModLauncher Env=SERVER
+[06:58:26] [main/WARN] [ne.mi.fm.lo.mo.ModFileParser/LOADING]: Mod file /home/runner/work/sound-isolating-eraser/sound-isolating-eraser/build/night-release-server/libraries/net/minecraftforge/fmlcore/1.20.1-47.2.0/fmlcore-1.20.1-47.2.0.jar is missing mods.toml file
+[06:58:26] [main/WARN] [ne.mi.fm.lo.mo.ModFileParser/LOADING]: Mod file /home/runner/work/sound-isolating-eraser/sound-isolating-eraser/build/night-release-server/libraries/net/minecraftforge/javafmllanguage/1.20.1-47.2.0/javafmllanguage-1.20.1-47.2.0.jar is missing mods.toml file
+[06:58:26] [main/WARN] [ne.mi.fm.lo.mo.ModFileParser/LOADING]: Mod file /home/runner/work/sound-isolating-eraser/sound-isolating-eraser/build/night-release-server/libraries/net/minecraftforge/lowcodelanguage/1.20.1-47.2.0/lowcodelanguage-1.20.1-47.2.0.jar is missing mods.toml file
+[06:58:26] [main/WARN] [ne.mi.fm.lo.mo.ModFileParser/LOADING]: Mod file /home/runner/work/sound-isolating-eraser/sound-isolating-eraser/build/night-release-server/libraries/net/minecraftforge/mclanguage/1.20.1-47.2.0/mclanguage-1.20.1-47.2.0.jar is missing mods.toml file
+[06:58:26] [main/INFO] [ne.mi.fm.lo.mo.JarInJarDependencyLocator/]: Found 1 dependencies adding them to mods collection
+[06:58:27] [main/INFO] [mixin/]: Compatibility level set to JAVA_17
+[06:58:27] [main/INFO] [cp.mo.mo.LaunchServiceHandler/MODLAUNCHER]: Launching target 'forgeserver' with arguments [--nogui]
+[06:58:30] [modloading-worker-0/INFO] [ne.mi.co.ForgeMod/FORGEMOD]: Forge mod loading, version 47.2.0, for MC 1.20.1 with MCP 20230612.114412
+[06:58:30] [modloading-worker-0/INFO] [ne.mi.co.MinecraftForge/FORGE]: MinecraftForge v47.2.0 Initialized
+[06:58:31] [main/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Configuration file /home/runner/work/sound-isolating-eraser/sound-isolating-eraser/build/night-release-server/config/curios-common.toml is not correct. Correcting
+[06:58:31] [main/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key slots was corrected from null to its default, []. 
+[06:58:31] [Forge Version Check/INFO] [ne.mi.fm.VersionChecker/]: [forge] Starting version check at https://files.minecraftforge.net/net/minecraftforge/forge/promotions_slim.json
+[06:58:31] [Forge Version Check/INFO] [ne.mi.fm.VersionChecker/]: [forge] Found status: OUTDATED Current: 47.2.0 Target: 47.4.10
+[06:58:31] [main/INFO] [mojang/YggdrasilAuthenticationService]: Environment: authHost='https://authserver.mojang.com', accountsHost='https://api.mojang.com', sessionHost='https://sessionserver.mojang.com', servicesHost='https://api.minecraftservices.com', name='PROD'
+[06:58:32] [main/WARN] [minecraft/VanillaPackResourcesBuilder]: Assets URL 'union:/home/runner/work/sound-isolating-eraser/sound-isolating-eraser/build/night-release-server/libraries/net/minecraft/server/1.20.1-20230612.114412/server-1.20.1-20230612.114412-srg.jar%23109!/assets/.mcassetsroot' uses unexpected schema
+[06:58:32] [main/WARN] [minecraft/VanillaPackResourcesBuilder]: Assets URL 'union:/home/runner/work/sound-isolating-eraser/sound-isolating-eraser/build/night-release-server/libraries/net/minecraft/server/1.20.1-20230612.114412/server-1.20.1-20230612.114412-srg.jar%23109!/data/.mcassetsroot' uses unexpected schema
+[06:58:32] [main/WARN] [minecraft/Pack]: Missing metadata in pack mod:night_release_qa
+[06:58:32] [main/WARN] [minecraft/MinecraftServer]: Missing data pack mod:night_release_qa
+[06:58:32] [main/ERROR] [minecraft/DedicatedServerProperties]: No key layers in MapLike[{}]
+[06:58:32] [main/INFO] [minecraft/RecipeManager]: Loaded 7 recipes
+[06:58:33] [main/INFO] [minecraft/AdvancementList]: Loaded 1271 advancements
+[06:58:33] [main/INFO] [to.th.cu.Curios/]: Loaded 10 curio slots
+[06:58:33] [main/INFO] [to.th.cu.Curios/]: Loaded 1 curio entities
+[06:58:33] [Server thread/INFO] [minecraft/DedicatedServer]: Starting minecraft server version 1.20.1
+[06:58:33] [Server thread/INFO] [minecraft/DedicatedServer]: Loading properties
+[06:58:33] [Server thread/INFO] [minecraft/DedicatedServer]: Default game type: SURVIVAL
+[06:58:33] [Server thread/INFO] [minecraft/MinecraftServer]: Generating keypair
+[06:58:33] [Server thread/INFO] [minecraft/DedicatedServer]: Starting Minecraft server on 127.0.0.1:25589
+[06:58:33] [Server thread/INFO] [minecraft/ServerConnectionListener]: Using epoll channel type
+[06:58:33] [Server thread/WARN] [minecraft/DedicatedServer]: **** SERVER IS RUNNING IN OFFLINE/INSECURE MODE!
+[06:58:33] [Server thread/WARN] [minecraft/DedicatedServer]: The server will make no attempt to authenticate usernames. Beware.
+[06:58:33] [Server thread/WARN] [minecraft/DedicatedServer]: While this makes the game possible to play without internet access, it also opens up the ability for hackers to connect with any username they choose.
+[06:58:33] [Server thread/WARN] [minecraft/DedicatedServer]: To change this, set "online-mode" to "true" in the server.properties file.
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Configuration file ./world/serverconfig/eternal-night-server.toml is not correct. Correcting
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key eternalNight was corrected from null to its default, SimpleCommentedConfig:{}. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key eternalNight.enabled was corrected from null to its default, true. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key eternalNight.entryDimensions was corrected from null to its default, [minecraft:overworld]. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key eternalNight.entryBase was corrected from null to its default, 0.02. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key eternalNight.entryPerSleeplessDay was corrected from null to its default, 0.08. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key eternalNight.entryCap was corrected from null to its default, 0.5. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key eternalNight.newDoorExitChance was corrected from null to its default, 0.01. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key eternalNight.doorGuarantee was corrected from null to its default, 100. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key eternalNight.sharedExitSeconds was corrected from null to its default, 300. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key eternalNight.spawnCityMonsters was corrected from null to its default, true. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key eternalNight.nearbyShadowCap was corrected from null to its default, 10. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key eternalNight.nearbyNeonCap was corrected from null to its default, 12. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key eternalNight.returnAndResetOnDeath was corrected from null to its default, true. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key eternalNight.disablePlantGrowth was corrected from null to its default, true. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Configuration file ./world/serverconfig/curios-server.toml is not correct. Correcting
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key keepCurios was corrected from null to its default, DEFAULT. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key menu was corrected from null to its default, SimpleCommentedConfig:{}. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key menu.enableLegacyMenu was corrected from null to its default, false. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key menu.experimental was corrected from null to its default, SimpleCommentedConfig:{}. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key menu.experimental.minimumColumns was corrected from null to its default, 1. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key menu.experimental.maxSlotsPerPage was corrected from null to its default, 48. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Configuration file ./world/serverconfig/qihai-yuji-server.toml is not correct. Correcting
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key betrayed was corrected from null to its default, SimpleCommentedConfig:{}. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key betrayed.affectPets was corrected from null to its default, true. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key betrayed.affectVillagers was corrected from null to its default, true. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key betrayed.hostileBuff was corrected from null to its default, 0.3. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key enthralled was corrected from null to its default, SimpleCommentedConfig:{}. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key enthralled.pullStrength was corrected from null to its default, 1.0. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key enthralled.cameraTurn was corrected from null to its default, true. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key cursed was corrected from null to its default, SimpleCommentedConfig:{}. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key cursed.maxDamage was corrected from null to its default, 3.0. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key tanyu was corrected from null to its default, SimpleCommentedConfig:{}. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key tanyu.maxLayers was corrected from null to its default, 12. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key flare was corrected from null to its default, SimpleCommentedConfig:{}. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key flare.ammunitionStackSize was corrected from null to its default, 16. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key flare.cooldownTicks was corrected from null to its default, 20. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key flare.creativeDoesNotConsume was corrected from null to its default, true. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key flare.allowAllDimensions was corrected from null to its default, true. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key flare.redFlightTicks was corrected from null to its default, 60. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key flare.decoyLifetimeTicks was corrected from null to its default, 600. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key flare.decoyHealth was corrected from null to its default, 30.0. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key flare.decoyArmor was corrected from null to its default, 6.0. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key flare.decoyKnockbackResistance was corrected from null to its default, 1.0. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key flare.tauntRadius was corrected from null to its default, 24.0. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key flare.tauntIntervalTicks was corrected from null to its default, 10. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key flare.yellowFlightTicks was corrected from null to its default, 30. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key flare.illuminationTicks was corrected from null to its default, 1200. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key flare.illuminationRadius was corrected from null to its default, 24. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key flare.airdropDelayTicks was corrected from null to its default, 80. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key flare.airdropMinDistance was corrected from null to its default, 8.0. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key flare.airdropMaxDistance was corrected from null to its default, 24.0. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key flare.airdropHeight was corrected from null to its default, 40. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key flare.airdropLocationAttempts was corrected from null to its default, 48. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key flare.airdropDescentSpeed was corrected from null to its default, 0.35. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key flare.emptyCrateTicks was corrected from null to its default, 100. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key flare.airdropLootRolls was corrected from null to its default, 1. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key flare.supplyGuns was corrected from null to its default, 1. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key flare.supplyRed was corrected from null to its default, 2. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key flare.supplyYellow was corrected from null to its default, 2. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key flare.supplyGreen was corrected from null to its default, 1. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key flare.cityRedYellowChance was corrected from null to its default, 0.08. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key flare.mallGreenChance was corrected from null to its default, 0.02. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Configuration file ./world/serverconfig/qihai-city-server.toml is not correct. Correcting
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key ambientCap was corrected from null to its default, 300. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key spawnDistance was corrected from null to its default, 96. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key spawnBudgetPerTick was corrected from null to its default, 4. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key hordeMultiplier was corrected from null to its default, 1.0. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Configuration file ./world/serverconfig/forge-server.toml is not correct. Correcting
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key server was corrected from null to its default, SimpleCommentedConfig:{}. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key server.removeErroringBlockEntities was corrected from null to its default, false. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key server.removeErroringEntities was corrected from null to its default, false. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key server.fullBoundingBoxLadders was corrected from null to its default, false. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key server.zombieBaseSummonChance was corrected from null to its default, 0.1. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key server.zombieBabyChance was corrected from null to its default, 0.05. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key server.permissionHandler was corrected from null to its default, forge:default_handler. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key server.advertiseDedicatedServerToLan was corrected from null to its default, true. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Configuration file ./world/serverconfig/super-fertilizer-server.toml is not correct. Correcting
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key bagCapacity was corrected from null to its default, 64. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key boneMealAttempts was corrected from null to its default, 10. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key groveThreshold was corrected from null to its default, 5. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key groveTreeCount was corrected from null to its default, 15. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key groveRadius was corrected from null to its default, 24. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key meadowRadius was corrected from null to its default, 12. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key auraThreshold was corrected from null to its default, 10. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key fruitNutrition was corrected from null to its default, 8. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key fruitSaturation was corrected from null to its default, 1.2. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key fruitHealHP was corrected from null to its default, 6.0. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key fruitRegenerationTicks was corrected from null to its default, 3600. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Configuration file ./world/serverconfig/sound_isolating_eraser-eraser-server.toml is not correct. Correcting
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key eraser_wall was corrected from null to its default, SimpleCommentedConfig:{}. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key eraser_wall.barrierHeight was corrected from null to its default, 5. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key eraser_item was corrected from null to its default, SimpleCommentedConfig:{}. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key eraser_item.eraserDurability was corrected from null to its default, 64. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key enhancement_pill was corrected from null to its default, SimpleCommentedConfig:{}. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key enhancement_pill.pillPackUses was corrected from null to its default, 12. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key enhancement_pill.pillDurationTicks was corrected from null to its default, 48000. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key enhancement_pill.withdrawalDurationTicks was corrected from null to its default, 12000. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key enhancement_pill.useDurationTicks was corrected from null to its default, 32. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key enhancement_pill.strengthAmplifier was corrected from null to its default, 1. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key enhancement_pill.speedAmplifier was corrected from null to its default, 1. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key enhancement_pill.hasteAmplifier was corrected from null to its default, 1. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key enhancement_pill.resistanceAmplifier was corrected from null to its default, 0. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key enhancement_pill.withdrawalSlownessAmplifier was corrected from null to its default, 1. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key enhancement_pill.withdrawalMiningFatigueAmplifier was corrected from null to its default, 1. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key enhancement_pill.withdrawalWeaknessAmplifier was corrected from null to its default, 1. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key enhancement_pill.withdrawalDarknessEnabled was corrected from null to its default, true. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key enhancement_pill.withdrawalNauseaEnabled was corrected from null to its default, false. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key enhancement_pill.allowMilkCureWithdrawal was corrected from null to its default, false. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key enhancement_pill.consumeInCreative was corrected from null to its default, false. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key enhancement_pill.showHudTimer was corrected from null to its default, true. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Configuration file ./world/serverconfig/sound_isolating_eraser-server.toml is not correct. Correcting
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key gravity_jade was corrected from null to its default, SimpleCommentedConfig:{}. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key gravity_jade.gravitySenseRange was corrected from null to its default, 16. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key gravity_jade.movementThreshold was corrected from null to its default, 0.02. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key gravity_jade.senseFadeTicks was corrected from null to its default, 4. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key gravity_jade.maxHighlightedEntities was corrected from null to its default, 64. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key gravity_jade.gravityFieldRadius was corrected from null to its default, 16. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key gravity_jade.gravityFieldBelow was corrected from null to its default, 8. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key gravity_jade.gravityFieldAbove was corrected from null to its default, 16. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key gravity_jade.gravityFieldDurationTicks was corrected from null to its default, 300. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key gravity_jade.maxPercent was corrected from null to its default, 0.2. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key gravity_jade.capDamage was corrected from null to its default, 10.0. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key gravity_jade.referenceHealth was corrected from null to its default, 300.0. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key gravity_jade.referencePercent was corrected from null to its default, 0.01. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key gravity_jade.gravitySlownessAmplifier was corrected from null to its default, 4. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key gravity_jade.gravityFieldCooldownTicks was corrected from null to its default, 1200. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key gravity_jade.levitationHoverHeight was corrected from null to its default, 3.0. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key gravity_jade.slamDamageMultiplier was corrected from null to its default, 3.0. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key gravity_jade.allyBuffLingerTicks was corrected from null to its default, 80. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key gravity_jade.surfaceBreakChance was corrected from null to its default, 0.25. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Configuration file ./world/serverconfig/sound_isolating_eraser-wings-server.toml is not correct. Correcting
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key flight was corrected from null to its default, SimpleCommentedConfig:{}. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key flight.hoverMaxSpeed was corrected from null to its default, 5.0. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key flight.cruiseSpeed was corrected from null to its default, 30.0. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key flight.boostSpeed was corrected from null to its default, 60.0. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key flight.stormSpeed was corrected from null to its default, 120.0. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key flight.accelLerp was corrected from null to its default, 2.5. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key flight.unloadedChunkSpeedCap was corrected from null to its default, 30.0. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key flight.voidPushMargin was corrected from null to its default, 5. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key hunger was corrected from null to its default, SimpleCommentedConfig:{}. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key hunger.hoverExhaustPerSec was corrected from null to its default, 0.4. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key hunger.cruiseExhaustPerSec was corrected from null to its default, 0.8. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key hunger.boostExhaustPerSec was corrected from null to its default, 2.0. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key hunger.stormExhaustPerSec was corrected from null to its default, 4.0. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key hunger.minFoodToDeploy was corrected from null to its default, 4. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key hunger.minFoodForFastTiers was corrected from null to its default, 6. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key blink was corrected from null to its default, SimpleCommentedConfig:{}. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key blink.blinkDistance was corrected from null to its default, 24.0. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key blink.blinkExhaust was corrected from null to its default, 6.0. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key blink.blinkChainWindowTicks was corrected from null to its default, 12. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key blink.blinkChainMax was corrected from null to its default, 3. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key blink.blinkCooldownTicks was corrected from null to its default, 40. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key blink.blinkChainCooldownTicks was corrected from null to its default, 160. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key blink.blinkDamageEnabled was corrected from null to its default, false. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key blink.blinkDamage was corrected from null to its default, 4.0. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key safety was corrected from null to its default, SimpleCommentedConfig:{}. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key safety.wallDamageEnabled was corrected from null to its default, true. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key safety.wallDamageThresholdSpeed was corrected from null to its default, 40.0. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key safety.wallDamageCap was corrected from null to its default, 10.0. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key safety.chargedDurationTicks was corrected from null to its default, 1200. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Configuration file ./world/serverconfig/sound_isolating_eraser-shaxiadao-server.toml is not correct. Correcting
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key item was corrected from null to its default, SimpleCommentedConfig:{}. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key item.baseAttackDamage was corrected from null to its default, 4.0. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key item.attackSpeed was corrected from null to its default, 2.4. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key combat was corrected from null to its default, SimpleCommentedConfig:{}. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key combat.normalBonus was corrected from null to its default, 2.5. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key combat.trueDamage was corrected from null to its default, 2.0. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key combat.scaleWithCooldown was corrected from null to its default, true. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key combat.allowFakePlayers was corrected from null to its default, false. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key target was corrected from null to its default, SimpleCommentedConfig:{}. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key target.enemyFallback was corrected from null to its default, true. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key target.conditionalRequiresPlayerIntent was corrected from null to its default, true. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key target.includeEntityTypes was corrected from null to its default, []. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key target.excludeEntityTypes was corrected from null to its default, []. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key factory was corrected from null to its default, SimpleCommentedConfig:{}. 
+[06:58:33] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key factory.restoreMissing was corrected from null to its default, true. 
+[06:58:33] [Server thread/INFO] [minecraft/DedicatedServer]: Preparing level "world"
+[06:58:33] [Server thread/INFO] [minecraft/MinecraftServer]: Preparing start region for dimension minecraft:overworld
+[06:58:34] [Worker-Main-3/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[06:58:34] [Worker-Main-1/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[06:58:34] [Worker-Main-3/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 43%
+[06:58:35] [Server thread/INFO] [minecraft/LoggerChunkProgressListener]: Time elapsed: 1364 ms
+[06:58:35] [Server thread/INFO] [minecraft/DedicatedServer]: Done (1.863s)! For help, type "help"
+[06:58:35] [Server thread/INFO] [ne.mi.se.pe.PermissionAPI/]: Successfully initialized permission handler forge:default_handler
+NIGHT_RELEASE_DOOR_LOCK_ACTIVE production=true SRG=m_153165_ now=0 until=20
+NIGHT_RELEASE_DOOR_LOCK_PASS production=true SRG=m_153165_ activeCloseBlocked=true expiredClosed=true inactiveCloseAllowed=true now=20 until=20
+[06:58:36] [Server thread/INFO] [minecraft/MinecraftServer]: Stopping server
+[06:58:36] [Server thread/INFO] [minecraft/MinecraftServer]: Saving players
+[06:58:36] [Server thread/INFO] [minecraft/MinecraftServer]: Saving worlds
+[06:58:37] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[world]'/minecraft:overworld
+[06:58:37] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_end
+[06:58:37] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[world]'/sound_isolating_eraser:eternal_night
+[06:58:37] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[world]'/qihai:yuji_fodu
+[06:58:37] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_nether
+[06:58:37] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (world): All chunks are saved
+[06:58:37] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (DIM1): All chunks are saved
+[06:58:37] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (eternal_night): All chunks are saved
+[06:58:37] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (yuji_fodu): All chunks are saved
+[06:58:37] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (DIM-1): All chunks are saved
+[06:58:37] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage: All dimensions are saved

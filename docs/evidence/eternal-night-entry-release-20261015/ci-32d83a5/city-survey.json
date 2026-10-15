@@ -1,0 +1,926 @@
+{
+  "scope": "one generated entrance per original building template; natural entities observed for 220 ticks per accessible sample",
+  "surveyConfiguration": "Creative viewer, city spawning enabled, random door exits disabled during entrance survey; camera-only flight to unobstructed vantage after natural entity sampling",
+  "templatesLocated": 12,
+  "nativeEntrancesPassed": 12,
+  "floorsReached": 11,
+  "allFloorsVerified": false,
+  "threeMonsterIntegrationVerified": false,
+  "observations": [
+    {
+      "template": "res_tenement",
+      "district": "INDUSTRIAL",
+      "origin": "-752, 88, -752",
+      "nativeEntranceWalkPassed": true,
+      "door": "-752, 89, -744",
+      "approach": "-754, 89, -744",
+      "approachDistance": 2,
+      "approachIsStreet": true,
+      "doorOpenedForWalk": true,
+      "approachStepUp": 0.0,
+      "walkDepth": 0.7624797822502387,
+      "finalPosition": "-751, 89, -744",
+      "doorState": "Block{minecraft:dark_oak_door}[facing\u003dwest,half\u003dlower,hinge\u003dleft,open\u003dtrue,powered\u003dfalse]",
+      "forwardHit": "-746, 90, -744",
+      "forwardBlock": "Block{minecraft:blackstone}",
+      "observedEntitiesWithin64": [
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "4c06ab3f-7c1b-4970-b8ec-c59f1b5c5c1c",
+          "position": "-766, 83, -778"
+        },
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "56f6fbac-9bd9-4af8-b43e-f098c198991f",
+          "position": "-766, 86, -735"
+        },
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "710794a3-ab69-4e9f-a379-7aec6851de57",
+          "position": "-761, 87, -713"
+        },
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "1f63f524-2d29-4d39-9ecd-d7e0d77ddcd0",
+          "position": "-767, 86, -713"
+        },
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "a5d7340e-7f14-485a-abb3-6fd088b35884",
+          "position": "-741, 98, -777"
+        },
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "a593a91d-dcef-4f3e-8828-ac4f58eeac12",
+          "position": "-737, 99, -779"
+        },
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "f92fdde8-080e-44e4-bfd0-2e93d52e44b0",
+          "position": "-748, 99, -784"
+        },
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "c3ea5b35-3963-4eac-9f9e-5ef04e310e05",
+          "position": "-735, 119, -716"
+        },
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "a4a81e20-a371-4870-970d-ebff5e423427",
+          "position": "-736, 120, -716"
+        },
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "cdc8d0a7-c5ee-4d66-a745-920f3f2ac1e7",
+          "position": "-735, 119, -713"
+        }
+      ],
+      "citySpawningEnabled": true,
+      "observationTicks": 220,
+      "shadowRegistered": true,
+      "visualTarget": "56f6fbac-9bd9-4af8-b43e-f098c198991f",
+      "observationCamera": "-761.5,87.0,-734.5",
+      "clearCameraVantage": true,
+      "floorsReached": 1,
+      "expectedDoorFloors": 4,
+      "floorsReachedExpected": false,
+      "result": "entrance crossed; floor BFS from this door is recorded separately"
+    },
+    {
+      "template": "warehouse",
+      "district": "INDUSTRIAL",
+      "origin": "-752, 88, -736",
+      "nativeEntranceWalkPassed": true,
+      "door": "-752, 89, -728",
+      "approach": "-754, 89, -728",
+      "approachDistance": 2,
+      "approachIsStreet": true,
+      "doorOpenedForWalk": true,
+      "approachStepUp": 0.0,
+      "walkDepth": 0.7624797822502387,
+      "finalPosition": "-751, 89, -728",
+      "doorState": "Block{minecraft:dark_oak_door}[facing\u003dwest,half\u003dlower,hinge\u003dleft,open\u003dtrue,powered\u003dfalse]",
+      "forwardHit": "-748, 90, -728",
+      "forwardBlock": "Block{minecraft:iron_bars}[east\u003dfalse,north\u003dfalse,south\u003dfalse,waterlogged\u003dfalse,west\u003dfalse]",
+      "observedEntitiesWithin64": [
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "4c06ab3f-7c1b-4970-b8ec-c59f1b5c5c1c",
+          "position": "-766, 83, -778"
+        },
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "56f6fbac-9bd9-4af8-b43e-f098c198991f",
+          "position": "-766, 86, -738"
+        },
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "710794a3-ab69-4e9f-a379-7aec6851de57",
+          "position": "-757, 88, -722"
+        },
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "1f63f524-2d29-4d39-9ecd-d7e0d77ddcd0",
+          "position": "-766, 86, -715"
+        },
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "a5d7340e-7f14-485a-abb3-6fd088b35884",
+          "position": "-741, 98, -777"
+        },
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "a593a91d-dcef-4f3e-8828-ac4f58eeac12",
+          "position": "-737, 99, -779"
+        },
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "f92fdde8-080e-44e4-bfd0-2e93d52e44b0",
+          "position": "-748, 99, -784"
+        },
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "c3ea5b35-3963-4eac-9f9e-5ef04e310e05",
+          "position": "-735, 119, -716"
+        },
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "a4a81e20-a371-4870-970d-ebff5e423427",
+          "position": "-736, 120, -716"
+        },
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "cdc8d0a7-c5ee-4d66-a745-920f3f2ac1e7",
+          "position": "-735, 119, -713"
+        }
+      ],
+      "citySpawningEnabled": true,
+      "observationTicks": 220,
+      "shadowRegistered": true,
+      "visualTarget": "710794a3-ab69-4e9f-a379-7aec6851de57",
+      "observationCamera": "-752.4780517771844,89.0,-721.521960574377",
+      "clearCameraVantage": true,
+      "floorsReached": 4,
+      "expectedDoorFloors": 2,
+      "floorsReachedExpected": true,
+      "result": "entrance crossed; floor BFS from this door is recorded separately"
+    },
+    {
+      "template": "office_dark",
+      "district": "INDUSTRIAL",
+      "origin": "-752, 88, -720",
+      "nativeEntranceWalkPassed": true,
+      "door": "-744, 89, -705",
+      "approach": "-744, 89, -703",
+      "approachDistance": 2,
+      "approachIsStreet": true,
+      "doorOpenedForWalk": true,
+      "approachStepUp": 0.0,
+      "walkDepth": 0.7624797822502387,
+      "finalPosition": "-744, 89, -706",
+      "doorState": "Block{minecraft:spruce_door}[facing\u003dsouth,half\u003dlower,hinge\u003dleft,open\u003dtrue,powered\u003dfalse]",
+      "forwardHit": "-744, 90, -710",
+      "forwardBlock": "Block{minecraft:cracked_deepslate_bricks}",
+      "observedEntitiesWithin64": [
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "56f6fbac-9bd9-4af8-b43e-f098c198991f",
+          "position": "-766, 86, -738"
+        },
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "1f63f524-2d29-4d39-9ecd-d7e0d77ddcd0",
+          "position": "-761, 88, -708"
+        },
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "79cd8fb1-8b27-477a-bbe3-f6bc73fdd2d3",
+          "position": "-768, 83, -672"
+        },
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "710794a3-ab69-4e9f-a379-7aec6851de57",
+          "position": "-752, 89, -717"
+        },
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "a4a81e20-a371-4870-970d-ebff5e423427",
+          "position": "-736, 120, -716"
+        },
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "cdc8d0a7-c5ee-4d66-a745-920f3f2ac1e7",
+          "position": "-735, 119, -713"
+        },
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "b98def62-c5a0-4a33-9283-c048bca097ac",
+          "position": "-715, 89, -734"
+        },
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "2578af72-e8e4-41c2-b29c-f35933a8346e",
+          "position": "-707, 86, -665"
+        },
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "272f346a-2b80-40a5-b797-cd942f0d3ab7",
+          "position": "-706, 86, -665"
+        },
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "3a55b111-d8ad-4744-8554-8c7024476e5c",
+          "position": "-706, 86, -664"
+        }
+      ],
+      "citySpawningEnabled": true,
+      "observationTicks": 220,
+      "shadowRegistered": true,
+      "visualTarget": "710794a3-ab69-4e9f-a379-7aec6851de57",
+      "observationCamera": "-754.3311481261171,90.5,-714.139365222081",
+      "clearCameraVantage": true,
+      "floorsReached": 14,
+      "expectedDoorFloors": 7,
+      "floorsReachedExpected": true,
+      "result": "entrance crossed; floor BFS from this door is recorded separately"
+    },
+    {
+      "template": "townhall",
+      "district": "COMMERCIAL",
+      "origin": "-752, 82, -368",
+      "nativeEntranceWalkPassed": true,
+      "door": "-735, 83, -368",
+      "approach": "-735, 83, -370",
+      "approachDistance": 2,
+      "approachIsStreet": true,
+      "doorOpenedForWalk": true,
+      "approachStepUp": 0.0,
+      "walkDepth": 0.7624797822499545,
+      "finalPosition": "-735, 83, -367",
+      "doorState": "Block{minecraft:spruce_door}[facing\u003dnorth,half\u003dlower,hinge\u003dleft,open\u003dtrue,powered\u003dfalse]",
+      "forwardHit": "-735, 84, -362",
+      "forwardBlock": "Block{minecraft:air}",
+      "observedEntitiesWithin64": [
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "1443a0b1-689e-4acc-a7cc-4ad58fa80533",
+          "position": "-706, 92, -407"
+        },
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "3616f347-f7e7-460e-bbdd-d333f5d90efb",
+          "position": "-706, 92, -406"
+        }
+      ],
+      "citySpawningEnabled": true,
+      "observationTicks": 220,
+      "shadowRegistered": true,
+      "visualTarget": "3616f347-f7e7-460e-bbdd-d333f5d90efb",
+      "observationCamera": "-701.5,93.0,-405.5",
+      "clearCameraVantage": true,
+      "floorsReached": 6,
+      "expectedDoorFloors": 3,
+      "floorsReachedExpected": true,
+      "result": "entrance crossed; floor BFS from this door is recorded separately"
+    },
+    {
+      "template": "shop_neon",
+      "district": "COMMERCIAL",
+      "origin": "-752, 82, -336",
+      "nativeEntranceWalkPassed": true,
+      "door": "-744, 83, -321",
+      "approach": "-744, 83, -319",
+      "approachDistance": 2,
+      "approachIsStreet": true,
+      "doorOpenedForWalk": true,
+      "approachStepUp": 0.0,
+      "walkDepth": 0.7624797822499545,
+      "finalPosition": "-744, 83, -322",
+      "doorState": "Block{minecraft:spruce_door}[facing\u003dsouth,half\u003dlower,hinge\u003dleft,open\u003dtrue,powered\u003dfalse]",
+      "forwardHit": "-744, 84, -326",
+      "forwardBlock": "Block{minecraft:light_gray_concrete}",
+      "observedEntitiesWithin64": [],
+      "citySpawningEnabled": true,
+      "observationTicks": 220,
+      "shadowRegistered": true,
+      "floorsReached": 4,
+      "expectedDoorFloors": 1,
+      "floorsReachedExpected": true,
+      "result": "entrance crossed; floor BFS from this door is recorded separately"
+    },
+    {
+      "template": "office_tower",
+      "district": "COMMERCIAL",
+      "origin": "-720, 82, -352",
+      "nativeEntranceWalkPassed": true,
+      "door": "-705, 83, -344",
+      "approach": "-703, 83, -344",
+      "approachDistance": 2,
+      "approachIsStreet": true,
+      "doorOpenedForWalk": true,
+      "approachStepUp": 0.0,
+      "walkDepth": 0.7624797822502387,
+      "finalPosition": "-706, 83, -344",
+      "doorState": "Block{minecraft:birch_door}[facing\u003deast,half\u003dlower,hinge\u003dleft,open\u003dtrue,powered\u003dfalse]",
+      "forwardHit": "-711, 84, -344",
+      "forwardBlock": "Block{minecraft:smooth_stone}",
+      "observedEntitiesWithin64": [
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "ab8f7388-ec53-432b-b96d-02056f6d7748",
+          "position": "-732, 92, -395"
+        },
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "085e2a0a-ddbb-405d-9290-756e57a9bbe6",
+          "position": "-731, 92, -395"
+        },
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "1443a0b1-689e-4acc-a7cc-4ad58fa80533",
+          "position": "-706, 92, -407"
+        },
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "3616f347-f7e7-460e-bbdd-d333f5d90efb",
+          "position": "-706, 92, -406"
+        }
+      ],
+      "citySpawningEnabled": true,
+      "observationTicks": 220,
+      "shadowRegistered": true,
+      "visualTarget": "085e2a0a-ddbb-405d-9290-756e57a9bbe6",
+      "observationCamera": "-726.5,93.0,-394.5",
+      "clearCameraVantage": true,
+      "floorsReached": 22,
+      "expectedDoorFloors": 10,
+      "floorsReachedExpected": true,
+      "result": "entrance crossed; floor BFS from this door is recorded separately"
+    },
+    {
+      "template": "res_apartment_mid",
+      "district": "RESIDENTIAL",
+      "origin": "-752, 88, -224",
+      "nativeEntranceWalkPassed": true,
+      "door": "-752, 89, -216",
+      "approach": "-754, 89, -216",
+      "approachDistance": 2,
+      "approachIsStreet": true,
+      "doorOpenedForWalk": true,
+      "approachStepUp": 0.0,
+      "walkDepth": 0.7624797822502387,
+      "finalPosition": "-751, 89, -216",
+      "doorState": "Block{minecraft:oak_door}[facing\u003dwest,half\u003dlower,hinge\u003dleft,open\u003dtrue,powered\u003dfalse]",
+      "forwardHit": "-747, 90, -216",
+      "forwardBlock": "Block{minecraft:polished_andesite}",
+      "observedEntitiesWithin64": [
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "a3c3c29f-582d-450a-91e2-d00bc263c9e1",
+          "position": "-774, 85, -247"
+        },
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "2f13f154-5510-4d1e-8f13-ed17699ba4f0",
+          "position": "-781, 128, -234"
+        },
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "d2410173-5777-40a1-9914-465892f1918e",
+          "position": "-781, 128, -233"
+        },
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "a20b71a1-fc1b-40c7-ade8-ab0c37d269d4",
+          "position": "-771, 86, -196"
+        },
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "4d4c890d-b514-4cf6-aa9a-abbfdc8ac6cc",
+          "position": "-769, 86, -200"
+        },
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "8c4bbf0b-3c99-45a9-8458-037839fb83a2",
+          "position": "-770, 86, -199"
+        },
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "ad98c028-34a1-4278-867c-0641259812d8",
+          "position": "-757, 85, -178"
+        },
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "7fc605ed-589c-41cf-8ec7-f42301d67811",
+          "position": "-735, 125, -222"
+        },
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "9f4e15ee-a567-4523-84c9-8fa63b3caa87",
+          "position": "-735, 125, -221"
+        },
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "8c772843-fcc5-433f-9c65-ee07eb4681c5",
+          "position": "-735, 125, -220"
+        }
+      ],
+      "citySpawningEnabled": true,
+      "observationTicks": 220,
+      "shadowRegistered": true,
+      "visualTarget": "4d4c890d-b514-4cf6-aa9a-abbfdc8ac6cc",
+      "observationCamera": "-761.5,87.0,-199.5",
+      "clearCameraVantage": true,
+      "floorsReached": 12,
+      "expectedDoorFloors": 6,
+      "floorsReachedExpected": true,
+      "result": "entrance crossed; floor BFS from this door is recorded separately"
+    },
+    {
+      "template": "res_apartment_high",
+      "district": "RESIDENTIAL",
+      "origin": "-752, 85, -176",
+      "nativeEntranceWalkPassed": true,
+      "door": "-744, 86, -176",
+      "approach": "-744, 86, -178",
+      "approachDistance": 2,
+      "approachIsStreet": true,
+      "doorOpenedForWalk": true,
+      "approachStepUp": 0.0,
+      "walkDepth": 0.7624797822500398,
+      "finalPosition": "-744, 86, -175",
+      "doorState": "Block{minecraft:oak_door}[facing\u003dnorth,half\u003dlower,hinge\u003dleft,open\u003dtrue,powered\u003dfalse]",
+      "forwardHit": "-744, 87, -170",
+      "forwardBlock": "Block{minecraft:air}",
+      "observedEntitiesWithin64": [
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "2f13f154-5510-4d1e-8f13-ed17699ba4f0",
+          "position": "-781, 128, -234"
+        },
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "d2410173-5777-40a1-9914-465892f1918e",
+          "position": "-781, 128, -233"
+        },
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "a20b71a1-fc1b-40c7-ade8-ab0c37d269d4",
+          "position": "-774, 86, -195"
+        },
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "4d4c890d-b514-4cf6-aa9a-abbfdc8ac6cc",
+          "position": "-769, 86, -200"
+        },
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "8c4bbf0b-3c99-45a9-8458-037839fb83a2",
+          "position": "-770, 86, -200"
+        },
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "ad98c028-34a1-4278-867c-0641259812d8",
+          "position": "-757, 85, -177"
+        },
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "add36d29-18ce-40af-a277-5d5693ae4c26",
+          "position": "-768, 85, -189"
+        },
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "7fc605ed-589c-41cf-8ec7-f42301d67811",
+          "position": "-735, 125, -222"
+        },
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "9f4e15ee-a567-4523-84c9-8fa63b3caa87",
+          "position": "-735, 125, -221"
+        },
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "8c772843-fcc5-433f-9c65-ee07eb4681c5",
+          "position": "-735, 125, -220"
+        }
+      ],
+      "citySpawningEnabled": true,
+      "observationTicks": 220,
+      "shadowRegistered": true,
+      "visualTarget": "ad98c028-34a1-4278-867c-0641259812d8",
+      "observationCamera": "-753.6514996938465,86.0,-173.65309957005672",
+      "clearCameraVantage": true,
+      "floorsReached": 18,
+      "expectedDoorFloors": 7,
+      "floorsReachedExpected": true,
+      "result": "entrance crossed; floor BFS from this door is recorded separately"
+    },
+    {
+      "template": "res_apartment_low",
+      "district": "RESIDENTIAL",
+      "origin": "-752, 82, -80",
+      "nativeEntranceWalkPassed": true,
+      "door": "-752, 83, -72",
+      "approach": "-754, 83, -72",
+      "approachDistance": 2,
+      "approachIsStreet": true,
+      "doorOpenedForWalk": true,
+      "approachStepUp": 0.0,
+      "walkDepth": 0.7624797822502387,
+      "finalPosition": "-751, 83, -72",
+      "doorState": "Block{minecraft:dark_oak_door}[facing\u003dwest,half\u003dlower,hinge\u003dleft,open\u003dtrue,powered\u003dfalse]",
+      "forwardHit": "-746, 84, -72",
+      "forwardBlock": "Block{minecraft:air}",
+      "observedEntitiesWithin64": [
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "2f02d2b8-28f3-4bec-98f5-eef0e6c9c71f",
+          "position": "-755, 80, -53"
+        },
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "33c8bb9a-0783-416a-9caa-ab7628d38eff",
+          "position": "-742, 83, -101"
+        },
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "abaee469-039f-4022-ac7c-c660a6d48c19",
+          "position": "-740, 83, -101"
+        },
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "4459a7ef-55d3-400f-8eef-325623a9425e",
+          "position": "-742, 83, -99"
+        },
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "c5b9ee44-4b8f-412c-8155-a056c8056fce",
+          "position": "-742, 80, -49"
+        },
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "751bc0ca-0410-485c-b621-e530527e2373",
+          "position": "-744, 80, -51"
+        },
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "e4771a64-dee2-49f2-b1df-147ba6c4c9b3",
+          "position": "-742, 79, -37"
+        }
+      ],
+      "citySpawningEnabled": true,
+      "observationTicks": 220,
+      "shadowRegistered": true,
+      "visualTarget": "2f02d2b8-28f3-4bec-98f5-eef0e6c9c71f",
+      "observationCamera": "-750.5,81.0,-52.5",
+      "clearCameraVantage": true,
+      "floorsReached": 8,
+      "expectedDoorFloors": 4,
+      "floorsReachedExpected": true,
+      "result": "entrance crossed; floor BFS from this door is recorded separately"
+    },
+    {
+      "template": "mall",
+      "district": "COMMERCIAL",
+      "origin": "-560, 67, 528",
+      "nativeEntranceWalkPassed": true,
+      "door": "-560, 68, 544",
+      "approach": "-562, 68, 544",
+      "approachDistance": 2,
+      "approachIsStreet": true,
+      "doorOpenedForWalk": true,
+      "approachStepUp": 0.0,
+      "walkDepth": 0.7624797822502387,
+      "finalPosition": "-559, 68, 544",
+      "doorState": "Block{minecraft:oak_door}[facing\u003dwest,half\u003dlower,hinge\u003dleft,open\u003dtrue,powered\u003dfalse]",
+      "forwardHit": "-554, 69, 544",
+      "forwardBlock": "Block{minecraft:air}",
+      "observedEntitiesWithin64": [],
+      "citySpawningEnabled": true,
+      "observationTicks": 220,
+      "shadowRegistered": true,
+      "floorsReached": 9,
+      "expectedDoorFloors": 1,
+      "floorsReachedExpected": true,
+      "result": "entrance crossed; floor BFS from this door is recorded separately"
+    },
+    {
+      "template": "library",
+      "district": "COMMERCIAL",
+      "origin": "-304, 76, -560",
+      "nativeEntranceWalkPassed": true,
+      "door": "-304, 77, -544",
+      "approach": "-306, 77, -544",
+      "approachDistance": 2,
+      "approachIsStreet": true,
+      "doorOpenedForWalk": true,
+      "approachStepUp": 0.0,
+      "walkDepth": 0.7624797822499545,
+      "finalPosition": "-303, 77, -544",
+      "doorState": "Block{minecraft:oak_door}[facing\u003dwest,half\u003dlower,hinge\u003dleft,open\u003dtrue,powered\u003dfalse]",
+      "forwardHit": "-298, 78, -544",
+      "forwardBlock": "Block{minecraft:air}",
+      "observedEntitiesWithin64": [],
+      "citySpawningEnabled": true,
+      "observationTicks": 220,
+      "shadowRegistered": true,
+      "floorsReached": 6,
+      "expectedDoorFloors": 3,
+      "floorsReachedExpected": true,
+      "result": "entrance crossed; floor BFS from this door is recorded separately"
+    },
+    {
+      "template": "civic_center",
+      "district": "COMMERCIAL",
+      "origin": "-240, 79, -48",
+      "nativeEntranceWalkPassed": true,
+      "door": "-240, 80, -26",
+      "approach": "-242, 80, -26",
+      "approachDistance": 2,
+      "approachIsStreet": true,
+      "doorOpenedForWalk": true,
+      "approachStepUp": 0.0,
+      "walkDepth": 0.7624797822500398,
+      "finalPosition": "-239, 80, -26",
+      "doorState": "Block{minecraft:oak_door}[facing\u003dwest,half\u003dlower,hinge\u003dleft,open\u003dtrue,powered\u003dfalse]",
+      "forwardHit": "-234, 81, -26",
+      "forwardBlock": "Block{minecraft:stone_bricks}",
+      "observedEntitiesWithin64": [
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "b379dc1a-d62e-4cd7-a3a1-f7f59bfff1bc",
+          "position": "-278, 74, 13"
+        },
+        {
+          "id": "sound_isolating_eraser:shadow_tangler",
+          "uuid": "e1999fe4-56b0-44aa-9b1b-00b7b5e198e8",
+          "position": "-277, 74, 13"
+        }
+      ],
+      "citySpawningEnabled": true,
+      "observationTicks": 220,
+      "shadowRegistered": true,
+      "visualTarget": "e1999fe4-56b0-44aa-9b1b-00b7b5e198e8",
+      "observationCamera": "-280.5,75.0,13.5",
+      "clearCameraVantage": true,
+      "floorsReached": 7,
+      "expectedDoorFloors": 4,
+      "floorsReachedExpected": true,
+      "result": "entrance crossed; floor BFS from this door is recorded separately"
+    }
+  ],
+  "nativeTrajectory": [
+    {
+      "template": "res_tenement",
+      "tick": 2100,
+      "x": -752.8730936137515,
+      "y": 89.0,
+      "z": -743.5
+    },
+    {
+      "template": "res_tenement",
+      "tick": 2105,
+      "x": -751.8157503407386,
+      "y": 89.0,
+      "z": -743.5
+    },
+    {
+      "template": "res_tenement",
+      "tick": 2110,
+      "x": -750.7375202177498,
+      "y": 89.0,
+      "z": -743.5
+    },
+    {
+      "template": "warehouse",
+      "tick": 2479,
+      "x": -752.8730936137515,
+      "y": 89.0,
+      "z": -727.5
+    },
+    {
+      "template": "warehouse",
+      "tick": 2484,
+      "x": -751.8157503407386,
+      "y": 89.0,
+      "z": -727.5
+    },
+    {
+      "template": "warehouse",
+      "tick": 2489,
+      "x": -750.7375202177498,
+      "y": 89.0,
+      "z": -727.5
+    },
+    {
+      "template": "office_dark",
+      "tick": 2857,
+      "x": -743.5,
+      "y": 89.0,
+      "z": -703.1269063862485
+    },
+    {
+      "template": "office_dark",
+      "tick": 2862,
+      "x": -743.5,
+      "y": 89.0,
+      "z": -704.1842496592614
+    },
+    {
+      "template": "office_dark",
+      "tick": 2867,
+      "x": -743.5,
+      "y": 89.0,
+      "z": -705.2624797822502
+    },
+    {
+      "template": "townhall",
+      "tick": 3249,
+      "x": -734.5,
+      "y": 83.0,
+      "z": -368.8730936137515
+    },
+    {
+      "template": "townhall",
+      "tick": 3254,
+      "x": -734.5,
+      "y": 83.0,
+      "z": -367.8157503407388
+    },
+    {
+      "template": "townhall",
+      "tick": 3259,
+      "x": -734.5,
+      "y": 83.0,
+      "z": -366.73752021775005
+    },
+    {
+      "template": "shop_neon",
+      "tick": 3630,
+      "x": -743.5,
+      "y": 83.0,
+      "z": -319.1269063862485
+    },
+    {
+      "template": "shop_neon",
+      "tick": 3635,
+      "x": -743.5,
+      "y": 83.0,
+      "z": -320.1842496592612
+    },
+    {
+      "template": "shop_neon",
+      "tick": 3640,
+      "x": -743.5,
+      "y": 83.0,
+      "z": -321.26247978224995
+    },
+    {
+      "template": "office_tower",
+      "tick": 4009,
+      "x": -703.1269063862485,
+      "y": 83.0,
+      "z": -343.5
+    },
+    {
+      "template": "office_tower",
+      "tick": 4014,
+      "x": -704.1842496592614,
+      "y": 83.0,
+      "z": -343.5
+    },
+    {
+      "template": "office_tower",
+      "tick": 4019,
+      "x": -705.2624797822502,
+      "y": 83.0,
+      "z": -343.5
+    },
+    {
+      "template": "res_apartment_mid",
+      "tick": 4395,
+      "x": -752.8730936137515,
+      "y": 89.0,
+      "z": -215.5
+    },
+    {
+      "template": "res_apartment_mid",
+      "tick": 4400,
+      "x": -751.8157503407386,
+      "y": 89.0,
+      "z": -215.5
+    },
+    {
+      "template": "res_apartment_mid",
+      "tick": 4405,
+      "x": -750.7375202177498,
+      "y": 89.0,
+      "z": -215.5
+    },
+    {
+      "template": "res_apartment_high",
+      "tick": 4776,
+      "x": -743.5,
+      "y": 86.0,
+      "z": -176.87309361375154
+    },
+    {
+      "template": "res_apartment_high",
+      "tick": 4781,
+      "x": -743.5,
+      "y": 86.0,
+      "z": -175.81575034073876
+    },
+    {
+      "template": "res_apartment_high",
+      "tick": 4786,
+      "x": -743.5,
+      "y": 86.0,
+      "z": -174.73752021774996
+    },
+    {
+      "template": "res_apartment_low",
+      "tick": 5161,
+      "x": -752.8730936137515,
+      "y": 83.0,
+      "z": -71.5
+    },
+    {
+      "template": "res_apartment_low",
+      "tick": 5166,
+      "x": -751.8157503407386,
+      "y": 83.0,
+      "z": -71.5
+    },
+    {
+      "template": "res_apartment_low",
+      "tick": 5171,
+      "x": -750.7375202177498,
+      "y": 83.0,
+      "z": -71.5
+    },
+    {
+      "template": "mall",
+      "tick": 5555,
+      "x": -560.8730936137515,
+      "y": 68.0,
+      "z": 544.5
+    },
+    {
+      "template": "mall",
+      "tick": 5560,
+      "x": -559.8157503407386,
+      "y": 68.0,
+      "z": 544.5
+    },
+    {
+      "template": "mall",
+      "tick": 5565,
+      "x": -558.7375202177498,
+      "y": 68.0,
+      "z": 544.5
+    },
+    {
+      "template": "library",
+      "tick": 5950,
+      "x": -304.8730936137515,
+      "y": 77.0,
+      "z": -543.5
+    },
+    {
+      "template": "library",
+      "tick": 5955,
+      "x": -303.8157503407388,
+      "y": 77.0,
+      "z": -543.5
+    },
+    {
+      "template": "library",
+      "tick": 5960,
+      "x": -302.73752021775005,
+      "y": 77.0,
+      "z": -543.5
+    },
+    {
+      "template": "civic_center",
+      "tick": 6344,
+      "x": -240.87309361375154,
+      "y": 80.0,
+      "z": -25.5
+    },
+    {
+      "template": "civic_center",
+      "tick": 6349,
+      "x": -240.03067850591785,
+      "y": 80.0,
+      "z": -25.5
+    },
+    {
+      "template": "civic_center",
+      "tick": 6354,
+      "x": -238.9533341142951,
+      "y": 80.0,
+      "z": -25.5
+    }
+  ]
+}
