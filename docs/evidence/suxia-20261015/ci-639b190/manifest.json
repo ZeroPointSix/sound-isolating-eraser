@@ -1,0 +1,437 @@
+{
+  "head": "639b1903cc029bc3e646db0340c40028d4f8f4d7",
+  "conclusion": "11 success / 1 failure; original Night client pixel failure retained",
+  "failed_job_url": "https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38808663286/job/116676005792",
+  "artifact_url": "https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38808663286/artifacts/12007727560",
+  "artifact_zip_sha256": "59a1705c860503d424543d8b242d71a387578612a45d71ebf515d9bfb8850665",
+  "original_artifact_files": [
+    {
+      "name": "build/libs/sound_isolating_eraser-0.13.1.jar",
+      "bytes": 3831805,
+      "sha256": "2f792d54dd57cfc38870e9fd8b48e5d9fd19140d77226a1ce28bd8760a7c9a38"
+    },
+    {
+      "name": "build/night-e2e/observer-before-sleep.png",
+      "bytes": 77324,
+      "sha256": "8785b7911c30d6dc4ec321d658e87107dd4eb6984cb5e1451280dfb674b34c97"
+    },
+    {
+      "name": "build/night-e2e/observer-negative-no-plane.png",
+      "bytes": 111962,
+      "sha256": "253c010eeb721e0b62d8bb09fc3b7aef5e7d235ac82145055c1429b0aee47b85"
+    },
+    {
+      "name": "build/night-e2e/observer-original-art.png",
+      "bytes": 112448,
+      "sha256": "5c48e827115ae2312c29833c0da1fe864d30a2870932cabeffab156b74925d92"
+    },
+    {
+      "name": "build/night-e2e/observer-reload-failed.png",
+      "bytes": 110099,
+      "sha256": "134fc6a5a798775603be9e139804c0f178c42d37cd4484d2ea202bf03c523880"
+    },
+    {
+      "name": "build/night-e2e/observer-reload-negative-no-plane.png",
+      "bytes": 111942,
+      "sha256": "83039f53943eafa9af5585c1aecbbff263405f956fadf86fe31e042614413bc4"
+    },
+    {
+      "name": "build/night-e2e/observer-reload-original-art.png",
+      "bytes": 110223,
+      "sha256": "6cf763736b4222da5408a9ca2d2b5ed7e0fa055b79a6c8b5091d1d76cdb3fcea"
+    },
+    {
+      "name": "build/night-e2e/observer-reload-shared-white-exit.png",
+      "bytes": 110099,
+      "sha256": "134fc6a5a798775603be9e139804c0f178c42d37cd4484d2ea202bf03c523880"
+    },
+    {
+      "name": "build/night-e2e/observer-reload.log",
+      "bytes": 197148,
+      "sha256": "7b7ea0eb94d3bd77f7ef2cd81c6cef4448e68700f7f33b69bc1d78d23d876c4f"
+    },
+    {
+      "name": "build/night-e2e/observer-restart-ready.pass",
+      "bytes": 57,
+      "sha256": "fca70a9397693d83aadf581e233c176549c1e3ee589128e506c01ca0317a2645"
+    },
+    {
+      "name": "build/night-e2e/observer-shared-white-exit.png",
+      "bytes": 107531,
+      "sha256": "4f4c8e4be4d1557f28ed3671db41e7b71fdb94504c6ff9f4da516be584519bfb"
+    },
+    {
+      "name": "build/night-e2e/observer-sleeping.png",
+      "bytes": 69790,
+      "sha256": "2c72789160625a620c275b46e477321f85d901e4379935adb9841d2db8a30c7f"
+    },
+    {
+      "name": "build/night-e2e/observer-white.pass",
+      "bytes": 158,
+      "sha256": "be4262cf7297c6f45a379b0916af47d2d354e788f6c195537fcdede5cc4bd1c6"
+    },
+    {
+      "name": "build/night-e2e/observer.failed",
+      "bytes": 172,
+      "sha256": "7abd9363406aeec02023697399d98784a7c0f1fa3c834cad1fbf02f6f65571b9"
+    },
+    {
+      "name": "build/night-e2e/observer.log",
+      "bytes": 208844,
+      "sha256": "49d65dcdd07dc4301f5cc6a1f640c174902a664d4d12a142e12436878fbfea33"
+    },
+    {
+      "name": "build/night-e2e/owner-before-sleep.png",
+      "bytes": 76624,
+      "sha256": "160e263069d8bdbea304bc0ae0351f529587748e3206f9c124e8863df6aac99c"
+    },
+    {
+      "name": "build/night-e2e/owner-negative-no-plane.png",
+      "bytes": 95357,
+      "sha256": "02ac82e3bc86390836ee20bb8ae95fdd9313769691d4d91b5998d5f89f387136"
+    },
+    {
+      "name": "build/night-e2e/owner-original-art.png",
+      "bytes": 93817,
+      "sha256": "077f032b31bb5550f6b518e2b171835f0f888033f2cc37f053b90338af4d16ef"
+    },
+    {
+      "name": "build/night-e2e/owner-reload-negative-no-plane.png",
+      "bytes": 100052,
+      "sha256": "37dc2c146a32bc5bfe7df3723eb72e661b4468b1a91946204d3577f8f55fde9b"
+    },
+    {
+      "name": "build/night-e2e/owner-reload-shared-white-exit.png",
+      "bytes": 96766,
+      "sha256": "d6480f2c6d34753f24b259f9885487542f6b4232f10dad9bb855844e8154c670"
+    },
+    {
+      "name": "build/night-e2e/owner-reload-white.pass",
+      "bytes": 158,
+      "sha256": "78ca7d755646f3dbaf3efad34b5d4f94d43782e8ed7f25609189f0ad710f0a45"
+    },
+    {
+      "name": "build/night-e2e/owner-reload.log",
+      "bytes": 194014,
+      "sha256": "ff5abd0061f9e861db45bcc0e8f1bf1c96c9a0f83efbef217054fdbe1dfb2bfd"
+    },
+    {
+      "name": "build/night-e2e/owner-restart-ready.pass",
+      "bytes": 57,
+      "sha256": "fca70a9397693d83aadf581e233c176549c1e3ee589128e506c01ca0317a2645"
+    },
+    {
+      "name": "build/night-e2e/owner-shared-white-exit.png",
+      "bytes": 92562,
+      "sha256": "03340d9a6be0474fe8a52a2a9044e3de669e00f034e7ea6b2bb8c1abad5584a6"
+    },
+    {
+      "name": "build/night-e2e/owner-sleeping.png",
+      "bytes": 70926,
+      "sha256": "a515b88e823c24e4f85edfd61f3d5e82d4934e8a35b0e17661204ceda77d7735"
+    },
+    {
+      "name": "build/night-e2e/owner-white.pass",
+      "bytes": 158,
+      "sha256": "cd1e3f5fe07c0db9e0cc2843f9f69d6a755310b36b71969268a03f21e2a8e1b7"
+    },
+    {
+      "name": "build/night-e2e/owner.log",
+      "bytes": 208262,
+      "sha256": "ffee15deb67e830ec26c3c148bf2a373db0995dde1f42785e9d42a7312a38de9"
+    },
+    {
+      "name": "build/night-e2e/restart-expected.nbt",
+      "bytes": 438,
+      "sha256": "8a9e4457268740688aaad445e7e386f1a831474ce3d5f76cc2f68d0fc2850ad6"
+    },
+    {
+      "name": "build/night-e2e/server/world/dimensions/sound_isolating_eraser/eternal_night/data/capabilities.dat",
+      "bytes": 48,
+      "sha256": "9dad459b3f201df11aafab8f80ff8b27efcbd7332062fdccb74a9dc734c16b92"
+    },
+    {
+      "name": "build/night-e2e/server/world/dimensions/sound_isolating_eraser/eternal_night/data/eternal_night_city.dat",
+      "bytes": 117,
+      "sha256": "059edd97cc66ba95c0fddada976b42db3de4f4a59cbf922ac911b4ad3a2034d7"
+    },
+    {
+      "name": "build/night-e2e/server/world/dimensions/sound_isolating_eraser/eternal_night/data/raids.dat",
+      "bytes": 90,
+      "sha256": "72d18550cf8620f2d05b8d53fcc7f41d0199764d7b00b02305db7a8936116c08"
+    },
+    {
+      "name": "build/night-e2e/server/world/level.dat",
+      "bytes": 39105,
+      "sha256": "eceb9b83ab1dd5df530b0367ecff92694544300c99ea1cbc8caf55affec8df20"
+    },
+    {
+      "name": "build/night-e2e/server/world/playerdata/1e45b3a1-cf1c-3570-a6ac-dfc5c2facb9c.dat",
+      "bytes": 1527,
+      "sha256": "dd6e3982da4429e83780e41f247c21904c0d34461e0caa783320161a67b7169f"
+    },
+    {
+      "name": "build/night-e2e/server/world/playerdata/7f6dcb7a-e08d-3d6b-bb04-cfc8e433c91b.dat",
+      "bytes": 1272,
+      "sha256": "7d6adfa174d5d682b1d593531fe833955760fa30790510bf15f001c2798c13b1"
+    },
+    {
+      "name": "build/night-e2e/server-checkpoint.pass",
+      "bytes": 109,
+      "sha256": "2da15dbce89e88369a1ce3009951625a66d19674e660945b66ef6b44b6d360e9"
+    },
+    {
+      "name": "build/night-e2e/server-reload.log",
+      "bytes": 189015,
+      "sha256": "68346d132d2f5eddca17dca8fd5585ffd0d0919901d9d5a752f3e6cae640f981"
+    },
+    {
+      "name": "build/night-e2e/server-reload.pass",
+      "bytes": 138,
+      "sha256": "17636cb0a2c77ed0ba5ac70e7a05acb08b693cc62aed64812db500cdbf7f9d52"
+    },
+    {
+      "name": "build/night-e2e/server.log",
+      "bytes": 229224,
+      "sha256": "056b95d28d71446ef42b05f98a356e1751cd602d3b0670225ee917057c568d16"
+    },
+    {
+      "name": "build/night-jar-sha256.txt",
+      "bytes": 111,
+      "sha256": "2116ace751d1e69722531f7a9fb8004aff9fa43d57a8285850e5a2b966cad144"
+    },
+    {
+      "name": "build/night-native-validation.log",
+      "bytes": 144,
+      "sha256": "f46134fce2e9198746aa81123b14ad2c82bab16a2b8f1895be8b9cea41d64858"
+    },
+    {
+      "name": "build/night-validation.log",
+      "bytes": 794530,
+      "sha256": "a854a5a6c62e820ad63533fbf1199614322e6407b6d0c6dae29474d7cb46138e"
+    },
+    {
+      "name": "run/logs/debug.log",
+      "bytes": 876195,
+      "sha256": "5d5bb39e12786f0396da7ea1fd10a598563462aa0fa8197e0897b9946ebf6a72"
+    },
+    {
+      "name": "run/logs/latest.log",
+      "bytes": 445884,
+      "sha256": "64be50337b7b5035dbb653a6f587314b51cc653dc71aa7f9b4e39c019439aafb"
+    }
+  ],
+  "pixel_reproduction": "Original unmodified CI PNGs re-evaluated with exact ROI and pixel thresholds; Java exit 1 and values identical to the CI failure; not a client rerun",
+  "files": [
+    {
+      "name": "NightPixelProbe.java",
+      "bytes": 1959,
+      "sha256": "0439c85086e7fba73c586419ec9a4f27a50f66737f8f81451f701d82bbf06240"
+    },
+    {
+      "name": "build/night-e2e/observer-before-sleep.png",
+      "bytes": 77324,
+      "sha256": "8785b7911c30d6dc4ec321d658e87107dd4eb6984cb5e1451280dfb674b34c97"
+    },
+    {
+      "name": "build/night-e2e/observer-negative-no-plane.png",
+      "bytes": 111962,
+      "sha256": "253c010eeb721e0b62d8bb09fc3b7aef5e7d235ac82145055c1429b0aee47b85"
+    },
+    {
+      "name": "build/night-e2e/observer-original-art.png",
+      "bytes": 112448,
+      "sha256": "5c48e827115ae2312c29833c0da1fe864d30a2870932cabeffab156b74925d92"
+    },
+    {
+      "name": "build/night-e2e/observer-reload-failed.png",
+      "bytes": 110099,
+      "sha256": "134fc6a5a798775603be9e139804c0f178c42d37cd4484d2ea202bf03c523880"
+    },
+    {
+      "name": "build/night-e2e/observer-reload-negative-no-plane.png",
+      "bytes": 111942,
+      "sha256": "83039f53943eafa9af5585c1aecbbff263405f956fadf86fe31e042614413bc4"
+    },
+    {
+      "name": "build/night-e2e/observer-reload-original-art.png",
+      "bytes": 110223,
+      "sha256": "6cf763736b4222da5408a9ca2d2b5ed7e0fa055b79a6c8b5091d1d76cdb3fcea"
+    },
+    {
+      "name": "build/night-e2e/observer-reload-shared-white-exit.png",
+      "bytes": 110099,
+      "sha256": "134fc6a5a798775603be9e139804c0f178c42d37cd4484d2ea202bf03c523880"
+    },
+    {
+      "name": "build/night-e2e/observer-reload.log",
+      "bytes": 197148,
+      "sha256": "7b7ea0eb94d3bd77f7ef2cd81c6cef4448e68700f7f33b69bc1d78d23d876c4f"
+    },
+    {
+      "name": "build/night-e2e/observer-restart-ready.pass",
+      "bytes": 57,
+      "sha256": "fca70a9397693d83aadf581e233c176549c1e3ee589128e506c01ca0317a2645"
+    },
+    {
+      "name": "build/night-e2e/observer-shared-white-exit.png",
+      "bytes": 107531,
+      "sha256": "4f4c8e4be4d1557f28ed3671db41e7b71fdb94504c6ff9f4da516be584519bfb"
+    },
+    {
+      "name": "build/night-e2e/observer-sleeping.png",
+      "bytes": 69790,
+      "sha256": "2c72789160625a620c275b46e477321f85d901e4379935adb9841d2db8a30c7f"
+    },
+    {
+      "name": "build/night-e2e/observer-white.pass",
+      "bytes": 158,
+      "sha256": "be4262cf7297c6f45a379b0916af47d2d354e788f6c195537fcdede5cc4bd1c6"
+    },
+    {
+      "name": "build/night-e2e/observer.failed",
+      "bytes": 172,
+      "sha256": "7abd9363406aeec02023697399d98784a7c0f1fa3c834cad1fbf02f6f65571b9"
+    },
+    {
+      "name": "build/night-e2e/observer.log",
+      "bytes": 208844,
+      "sha256": "49d65dcdd07dc4301f5cc6a1f640c174902a664d4d12a142e12436878fbfea33"
+    },
+    {
+      "name": "build/night-e2e/owner-before-sleep.png",
+      "bytes": 76624,
+      "sha256": "160e263069d8bdbea304bc0ae0351f529587748e3206f9c124e8863df6aac99c"
+    },
+    {
+      "name": "build/night-e2e/owner-negative-no-plane.png",
+      "bytes": 95357,
+      "sha256": "02ac82e3bc86390836ee20bb8ae95fdd9313769691d4d91b5998d5f89f387136"
+    },
+    {
+      "name": "build/night-e2e/owner-original-art.png",
+      "bytes": 93817,
+      "sha256": "077f032b31bb5550f6b518e2b171835f0f888033f2cc37f053b90338af4d16ef"
+    },
+    {
+      "name": "build/night-e2e/owner-reload-negative-no-plane.png",
+      "bytes": 100052,
+      "sha256": "37dc2c146a32bc5bfe7df3723eb72e661b4468b1a91946204d3577f8f55fde9b"
+    },
+    {
+      "name": "build/night-e2e/owner-reload-shared-white-exit.png",
+      "bytes": 96766,
+      "sha256": "d6480f2c6d34753f24b259f9885487542f6b4232f10dad9bb855844e8154c670"
+    },
+    {
+      "name": "build/night-e2e/owner-reload-white.pass",
+      "bytes": 158,
+      "sha256": "78ca7d755646f3dbaf3efad34b5d4f94d43782e8ed7f25609189f0ad710f0a45"
+    },
+    {
+      "name": "build/night-e2e/owner-reload.log",
+      "bytes": 194014,
+      "sha256": "ff5abd0061f9e861db45bcc0e8f1bf1c96c9a0f83efbef217054fdbe1dfb2bfd"
+    },
+    {
+      "name": "build/night-e2e/owner-restart-ready.pass",
+      "bytes": 57,
+      "sha256": "fca70a9397693d83aadf581e233c176549c1e3ee589128e506c01ca0317a2645"
+    },
+    {
+      "name": "build/night-e2e/owner-shared-white-exit.png",
+      "bytes": 92562,
+      "sha256": "03340d9a6be0474fe8a52a2a9044e3de669e00f034e7ea6b2bb8c1abad5584a6"
+    },
+    {
+      "name": "build/night-e2e/owner-sleeping.png",
+      "bytes": 70926,
+      "sha256": "a515b88e823c24e4f85edfd61f3d5e82d4934e8a35b0e17661204ceda77d7735"
+    },
+    {
+      "name": "build/night-e2e/owner-white.pass",
+      "bytes": 158,
+      "sha256": "cd1e3f5fe07c0db9e0cc2843f9f69d6a755310b36b71969268a03f21e2a8e1b7"
+    },
+    {
+      "name": "build/night-e2e/owner.log",
+      "bytes": 208262,
+      "sha256": "ffee15deb67e830ec26c3c148bf2a373db0995dde1f42785e9d42a7312a38de9"
+    },
+    {
+      "name": "build/night-e2e/restart-expected.nbt",
+      "bytes": 438,
+      "sha256": "8a9e4457268740688aaad445e7e386f1a831474ce3d5f76cc2f68d0fc2850ad6"
+    },
+    {
+      "name": "build/night-e2e/server-checkpoint.pass",
+      "bytes": 109,
+      "sha256": "2da15dbce89e88369a1ce3009951625a66d19674e660945b66ef6b44b6d360e9"
+    },
+    {
+      "name": "build/night-e2e/server-reload.log",
+      "bytes": 189015,
+      "sha256": "68346d132d2f5eddca17dca8fd5585ffd0d0919901d9d5a752f3e6cae640f981"
+    },
+    {
+      "name": "build/night-e2e/server-reload.pass",
+      "bytes": 138,
+      "sha256": "17636cb0a2c77ed0ba5ac70e7a05acb08b693cc62aed64812db500cdbf7f9d52"
+    },
+    {
+      "name": "build/night-e2e/server.log",
+      "bytes": 229224,
+      "sha256": "056b95d28d71446ef42b05f98a356e1751cd602d3b0670225ee917057c568d16"
+    },
+    {
+      "name": "build/night-jar-sha256.txt",
+      "bytes": 111,
+      "sha256": "2116ace751d1e69722531f7a9fb8004aff9fa43d57a8285850e5a2b966cad144"
+    },
+    {
+      "name": "build/night-native-validation.log",
+      "bytes": 144,
+      "sha256": "f46134fce2e9198746aa81123b14ad2c82bab16a2b8f1895be8b9cea41d64858"
+    },
+    {
+      "name": "build/night-validation.log",
+      "bytes": 794530,
+      "sha256": "a854a5a6c62e820ad63533fbf1199614322e6407b6d0c6dae29474d7cb46138e"
+    },
+    {
+      "name": "ci-639b190-job-116676005677.log",
+      "bytes": 1040710,
+      "sha256": "2f2f9dc428f5db8b16f312ab6a0ab5d72dcd27c71ecfd04f94c404977e033907"
+    },
+    {
+      "name": "ci-639b190-job-116676005792.log",
+      "bytes": 943564,
+      "sha256": "a4a1c47c4e233d1af3fed24a7d40e20d050e2849659b74d0bdc856b222e04e7d"
+    },
+    {
+      "name": "ci-639b190-terminal.json",
+      "bytes": 62285,
+      "sha256": "a4af68fadd3760cbc7654705f7f1e9d1106709db67a31eb3addd56ccdba1fa18"
+    },
+    {
+      "name": "night-pixel-original-failure.exit",
+      "bytes": 2,
+      "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+    },
+    {
+      "name": "night-pixel-original-failure.log",
+      "bytes": 359,
+      "sha256": "0420ffdf5720a21808f84deba09fbf00d7ae6498a5959ee1d0aba18e28183ca7"
+    },
+    {
+      "name": "run/logs/debug.log",
+      "bytes": 876195,
+      "sha256": "5d5bb39e12786f0396da7ea1fd10a598563462aa0fa8197e0897b9946ebf6a72"
+    },
+    {
+      "name": "run/logs/latest.log",
+      "bytes": 445884,
+      "sha256": "64be50337b7b5035dbb653a6f587314b51cc653dc71aa7f9b4e39c019439aafb"
+    }
+  ]
+}

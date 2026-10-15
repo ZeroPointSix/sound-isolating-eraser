@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File "/data2/suxia-20261015/tools/night-e2e.py", line 164, in <module>
+    wait_evidence(server, clients, checkpoint)
+  File "/data2/suxia-20261015/tools/night-e2e.py", line 126, in wait_evidence
+    raise AssertionError("; ".join(path.read_text() for path in failures))
+AssertionError: java.lang.AssertionError: entry keeps server responsive: tick gap 40409 ms
