@@ -1,5 +1,11 @@
 # 雨寂佛都需求与验收对照表
 
+## 2026-10-15 PR29 可失败证据补齐
+
+[a76 红绿对照与十怪边界](validation/yuji/a76-negative-control/README.md) 保留两舌主动择屋、邪淫主动寻窄生产目标及 `1eb3861` 的独立场地/逐 tick 完整性检查。在 `8b80590` 的 [CI 38688113953](https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38688113953) 中，未修改的生产实现专项 **83/83、exit 0**；隔离工作树只移除 `YujiHabitatGoal` 注册后，完整执行 **83 项、78 通过/5 个栖息地行为断言失败，Gradle exit 1、负对照验证器 exit 0**。编译错误、少跑、超时、场地异常和无关失败不计为有效负对照，主工作区源码未改变。[原始红绿日志及结果](https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38688113953/artifacts/11949819998) 已保留。
+
+同一 `8b80590` 的两轮全量 GameTest 各 **352/352、exit 0**，静态测试 **14/14、exit 0**；这不是后续提交的自动通过证明。愚痴爬姿探针继承 `b228aab`：先实测门面接触，再额外连续 180 tick 检查贴门、无重叠/穿门、AI/重力、目标、爬姿及无伤，之后同一实体自然穿过打开的门。原有断言未放宽。最终 HEAD 与客户端完成状态仍以 [PR 固定证据评论](https://github.com/ZeroPointSix/sound-isolating-eraser/pull/29#issuecomment-6185348425) 为准；人工听音、真人多人、任意复杂地形、跨维度/重连和最终需求签收仍未完成。
+
 ## 2026-10-15 PR29 接管补强
 
 [a74 逐怪差异、真实客户端断言与证据边界](validation/yuji/a74-takeover/README.md) 从远端最新 `5ac2daa` 接续，保留已有主动择屋/寻窄、偷盗整组 NBT/死亡归还和邪淫潜行部分解除实现。新增爬姿抵门的真实门面接触断言，恶口自然施法第 15/32 tick 各 6 点实际伤害与客户端血量核验，以及贪欲由真实客户端发起 5.9/6 点攻击的剥皮阈值与双端同步核验。每项运行结果以 PR #29 对应固定 HEAD 的证据评论与 CI 为准；测试设计和旧版本绿灯不等于本轮已通过，人工听音、真人多人、跨维度/断线与最终需求签收仍未完成。
