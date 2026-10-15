@@ -28,37 +28,57 @@ import net.minecraftforge.gametest.PrefixGameTestTemplate;
 @GameTestHolder(ModMain.MOD_ID)
 @PrefixGameTestTemplate(false)
 public final class FertilizerSoilGameTests {
-    static InteractionResult grow(ServerLevel level, BlockPos sapling, Block soil, Block saplingBlock) {
+    // Fixtures stay inside a 7x7 column around the sapling and are cleared afterwards, so they
+    // never touch neighbouring GameTest structures.
+    static void prepare(ServerLevel level, BlockPos sapling, Block soil) {
         level.getChunk(sapling);
-        for (BlockPos p : BlockPos.betweenClosed(sapling.offset(-6, 0, -6), sapling.offset(6, 24, 6)))
+        for (BlockPos p : BlockPos.betweenClosed(sapling.offset(-3, 0, -3), sapling.offset(3, 9, 3)))
             level.setBlock(p, Blocks.AIR.defaultBlockState(), 2);
-        for (BlockPos p : BlockPos.betweenClosed(sapling.offset(-6, -10, -6), sapling.offset(6, -1, 6)))
+        for (BlockPos p : BlockPos.betweenClosed(sapling.offset(-3, -2, -3), sapling.offset(3, -1, 3)))
             level.setBlock(p, (p.getY() == sapling.getY() - 1 ? soil : Blocks.DIRT).defaultBlockState(), 2);
-        level.setBlock(sapling, saplingBlock.defaultBlockState(), 2);
+        level.setBlock(sapling, Blocks.ACACIA_SAPLING.defaultBlockState(), 2);
+    }
+
+    static void clear(ServerLevel level, BlockPos sapling) {
+        for (BlockPos p : BlockPos.betweenClosed(sapling.offset(-3, -2, -3), sapling.offset(3, 9, 3)))
+            level.setBlock(p, Blocks.AIR.defaultBlockState(), 2);
+    }
+
+    static InteractionResult use(ServerLevel level, BlockPos sapling) {
         FakePlayer p = FakePlayerFactory.get(level, new GameProfile(UUID.randomUUID(), "SoilQA"));
         p.setGameMode(GameType.SURVIVAL);
-        p.setPos(Vec3.atCenterOf(sapling.offset(4, 0, 4)));
+        p.setPos(Vec3.atCenterOf(sapling.offset(3, 0, 3)));
         p.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(FertilizerContent.BAG.get()));
         return p.getMainHandItem().useOn(new UseOnContext(p, InteractionHand.MAIN_HAND,
                 new BlockHitResult(Vec3.atCenterOf(sapling), Direction.UP, sapling, false)));
     }
 
     static void check(GameTestHelper h, ServerLevel level, BlockPos sapling, Block soil, String where) {
-        InteractionResult result = grow(level, sapling, soil, Blocks.ACACIA_SAPLING);
-        h.assertTrue(result.consumesAction() && level.getBlockState(sapling).is(FertilizerContent.LOG.get()),
-                "acacia sapling on " + soil + " in " + where + " grows: result=" + result
-                        + " root=" + level.getBlockState(sapling));
+        prepare(level, sapling, soil);
+        InteractionResult result = use(level, sapling);
+        boolean grew = level.getBlockState(sapling).is(FertilizerContent.LOG.get());
+        boolean rooted = level.getBlockState(sapling.below()).is(Blocks.ROOTED_DIRT);
+        String root = level.getBlockState(sapling).toString();
+        clear(level, sapling);
+        h.assertTrue(result.consumesAction() && grew && rooted,
+                "acacia sapling on " + soil + " in " + where + " grows: result=" + result + " root=" + root);
     }
 
-    @GameTest(template = "empty", batch = "fertilizer_soil_overworld")
-    public static void acaciaOnGrassAndMyceliumInOverworld(GameTestHelper h) {
-        ServerLevel level = h.getLevel();
-        check(h, level, h.absolutePos(new BlockPos(1, 30, 1)).offset(400, 0, 0), Blocks.GRASS_BLOCK, "overworld");
-        BlockPos mycelium = h.absolutePos(new BlockPos(1, 30, 1)).offset(440, 0, 0);
-        check(h, level, mycelium, Blocks.MYCELIUM, "overworld");
-        h.assertTrue(level.getBlockState(mycelium.below()).is(Blocks.ROOTED_DIRT), "trunk roots into the former mycelium");
-        check(h, level, h.absolutePos(new BlockPos(1, 30, 1)).offset(480, 0, 0), Blocks.PODZOL, "overworld");
-        h.succeed();
+    private static BlockPos local(GameTestHelper h) { return h.absolutePos(new BlockPos(5, 3, 5)); }
+
+    @GameTest(template = "empty", batch = "fertilizer_soil_grass")
+    public static void acaciaOnGrassInOverworld(GameTestHelper h) {
+        check(h, h.getLevel(), local(h), Blocks.GRASS_BLOCK, "overworld"); h.succeed();
+    }
+
+    @GameTest(template = "empty", batch = "fertilizer_soil_mycelium")
+    public static void acaciaOnMyceliumInOverworld(GameTestHelper h) {
+        check(h, h.getLevel(), local(h), Blocks.MYCELIUM, "overworld"); h.succeed();
+    }
+
+    @GameTest(template = "empty", batch = "fertilizer_soil_podzol")
+    public static void acaciaOnPodzolInOverworld(GameTestHelper h) {
+        check(h, h.getLevel(), local(h), Blocks.PODZOL, "overworld"); h.succeed();
     }
 
     @GameTest(template = "empty", batch = "fertilizer_soil_overworld")
@@ -75,8 +95,9 @@ public final class FertilizerSoilGameTests {
     public static void acaciaOnGrassAndMyceliumInRainCity(GameTestHelper h) {
         ServerLevel city = h.getLevel().getServer().getLevel(RainCityContent.LEVEL);
         h.assertTrue(city != null, "city dimension is loaded");
-        check(h, city, new BlockPos(600, 80, 600), Blocks.GRASS_BLOCK, "yuji_fodu");
-        check(h, city, new BlockPos(640, 80, 600), Blocks.MYCELIUM, "yuji_fodu");
+        // Far outside the generated city; the fixture is cleared again afterwards.
+        check(h, city, new BlockPos(3000, 120, 3000), Blocks.GRASS_BLOCK, "yuji_fodu");
+        check(h, city, new BlockPos(3020, 120, 3000), Blocks.MYCELIUM, "yuji_fodu");
         h.succeed();
     }
 }
