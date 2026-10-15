@@ -203,6 +203,11 @@ public final class NightEvents {
         return CityEntryQueue.request(player);
     }
 
+    /** GameTest hook: puts a player into the street-arrival sleep window. */
+    public static void beginArrivalSleepForTest(Player player, int ticks) {
+        ARRIVAL_SLEEP.put(player.getUUID(), ticks);
+    }
+
     public static boolean keepArrivalSleep(Player player) {
         return ARRIVAL_SLEEP.containsKey(player.getUUID());
     }
