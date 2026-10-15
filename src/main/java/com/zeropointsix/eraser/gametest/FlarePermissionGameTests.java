@@ -100,20 +100,25 @@ public final class FlarePermissionGameTests {
     private static void verifyRenewal(GameTestHelper h, boolean mayBuild, boolean denyEvent) {
         fixture = new Fixture(h);
         Fixture f = fixture;
-        f.illuminate(f.owner);
-        Map<BlockPos, Long> original = f.deadlines();
-        h.assertTrue(!original.isEmpty() && !original.containsKey(f.foreign), "owner creates managed lights without claiming foreign light");
-        long deadline = f.level.getGameTime() + 60;
-        h.assertTrue(original.values().stream().allMatch(d -> d == deadline), "initial persisted deadlines match configured lifetime");
-        BlockPos source = original.keySet().stream().filter(pos -> f.level.isEmptyBlock(pos.east())).findFirst().orElseThrow();
+        // Fix the observer geometry before lighting so the second shot only tests renewal.
+        BlockPos source = new BlockPos(Math.floorDiv(f.center.getX() + 1, 3) * 3,
+                Math.floorDiv(f.center.getY() + 1, 3) * 3, Math.floorDiv(f.center.getZ() + 1, 3) * 3);
         BlockPos observer = source.east();
         f.set(observer, Blocks.OBSERVER.defaultBlockState().setValue(ObserverBlock.FACING, Direction.WEST));
+        f.illuminate(f.owner);
+        Map<BlockPos, Long> original = f.deadlines();
+        h.assertTrue(original.containsKey(source) && !original.containsKey(f.foreign), "owner creates the observed managed light without claiming foreign light");
+        h.assertTrue(f.level.getBlockTicks().hasScheduledTick(observer, Blocks.OBSERVER), "positive control: initial placement notifies the observer");
+        long deadline = f.level.getGameTime() + 60;
+        h.assertTrue(original.values().stream().allMatch(d -> d == deadline), "initial persisted deadlines match configured lifetime");
         f.visitor.getAbilities().mayBuild = mayBuild;
         boolean authorized = mayBuild && !denyEvent;
         int[] renewalEvents = {0};
         long[] renewedDeadline = {deadline};
 
         h.runAfterDelay(30, () -> {
+            h.assertTrue(!f.level.getBlockState(observer).getValue(ObserverBlock.POWERED)
+                    && !f.level.getBlockTicks().hasScheduledTick(observer, Blocks.OBSERVER), "initial observer pulse has settled before renewal");
             class RenewalProtectionGuard {
                 @SubscribeEvent public void onRenewalPlace(BlockEvent.EntityPlaceEvent event) {
                     if (event.getEntity() == f.visitor && original.containsKey(event.getPos())) {
