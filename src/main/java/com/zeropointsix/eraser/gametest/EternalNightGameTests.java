@@ -1134,6 +1134,25 @@ public final class EternalNightGameTests {
         }).thenSucceed();
     }
 
+    @GameTest(template = "empty", batch = "eternal_night_survey_seeds", timeoutTicks = 200)
+    public static void cityBuildingSurveyFindsRareTemplatesBeyondInitialWindow(GameTestHelper h) {
+        for (long seed : new long[] {52L, 0L, 5376539267146632372L}) {
+            var placements = CityBuildingAccess.locateBuildings(seed);
+            var names = placements.stream().map(CityBuildingAccess.Placement::name)
+                    .collect(java.util.stream.Collectors.toSet());
+            h.assertTrue(names.equals(new java.util.HashSet<>(CityTemplates.BUILDINGS)),
+                    "survey includes every original template for seed=" + seed + ": " + names);
+            if (seed == 52L) {
+                var mall = placements.stream().filter(p -> "mall".equals(p.name())).findFirst().orElseThrow();
+                h.assertTrue(Math.abs(Math.floorDiv(mall.origin().getX(), 64)) > 12
+                                || Math.abs(Math.floorDiv(mall.origin().getZ(), 64)) > 12,
+                        "seed 52 keeps the real mall outside the original search window");
+            }
+        }
+        System.out.println("CITY_SURVEY_SEEDS_PASS seeds=52,0,5376539267146632372 templates=12/12");
+        h.succeed();
+    }
+
     @GameTest(template = "empty", batch = "eternal_night_entrances", timeoutTicks = 2000)
     public static void cityTwelveBuildingEntrancesWalkable(GameTestHelper h) {
         isolate(h.getLevel());

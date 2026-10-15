@@ -40,6 +40,8 @@ def launch(name, role, display=None):
             "generate-structures=false\nspawn-monsters=false\ngamemode=survival\n"
         )
     else:
+        (directory / "config").mkdir(exist_ok=True)
+        (directory / "config/fml.toml").write_text("earlyWindowControl = false\n")
         (directory / "options.txt").write_text(
             "renderDistance:4\nsimulationDistance:5\nguiScale:2\nmaxFps:30\n"
             "enableVsync:false\npauseOnLostFocus:false\nonboardAccessibility:false\n"
@@ -70,6 +72,10 @@ def launch(name, role, display=None):
                f"-Dwings.qa.results={RESULTS}", f"-Dwings.qa.role={wings_role}",
                f"-Dgravity.qa.results={RESULTS}", f"-Dgravity.qa.role={role}"]
     command += shlex.split(expand(config["vmArgs"]))
+    if role != "server":
+        natives = directory / "lwjgl-natives"
+        natives.mkdir(exist_ok=True)
+        command += [f"-Dorg.lwjgl.system.SharedLibraryExtractPath={natives}"]
     command += ["-cp", CLASSPATH, config["mainClass"], *args]
     log = (RESULTS / f"{role}.log").open("w")
     logs.append(log)

@@ -47,6 +47,12 @@ def atomic_json(path: Path, value: dict) -> None:
     temporary.replace(path)
 
 
+def prepare_client(directory: Path) -> None:
+    (directory / "config").mkdir(parents=True, exist_ok=True)
+    (directory / "config/fml.toml").write_text("earlyWindowControl = false\n", encoding="utf-8")
+    (directory / "options.txt").write_text(CLIENT_OPTIONS, encoding="utf-8")
+
+
 def paeth(left: int, above: int, upper_left: int) -> int:
     prediction = left + above - upper_left
     a, b, c = abs(prediction - left), abs(prediction - above), abs(prediction - upper_left)
@@ -345,7 +351,7 @@ def run_smoke(options: argparse.Namespace) -> int:
             "view-distance=5\nsimulation-distance=5\nmax-players=1\nmax-tick-time=120000\n"
             "enable-rcon=false\nenable-query=false\nwhite-list=false\nsync-chunk-writes=false\n",
             encoding="utf-8")
-        (run / "client/options.txt").write_text(CLIENT_OPTIONS, encoding="utf-8")
+        prepare_client(run / "client")
         xserver = processes.start("Xvfb", [xvfb, "-displayfd", "1", "-screen", "0", "1280x720x24",
                                              "-nolisten", "tcp", "-noreset"], run, run / "xvfb.log", display_pipe=True)
         display = wait_display(xserver)
@@ -448,6 +454,20 @@ def self_test() -> int:
             self.assertEqual(options["onboardAccessibility"], "false")
             self.assertEqual(options["skipMultiplayerWarning"], "true")
             self.assertEqual(options["pauseOnLostFocus"], "false")
+
+        def test_early_window_setting_is_private_to_client(self):
+            with tempfile.TemporaryDirectory() as folder:
+                root = Path(folder)
+                (root / "config").mkdir()
+                global_config = root / "config/fml.toml"
+                global_config.write_text("earlyWindowControl = true\n", encoding="utf-8")
+                client = root / "private/client"
+                prepare_client(client)
+                self.assertEqual((client / "config/fml.toml").read_text(encoding="utf-8"),
+                                 "earlyWindowControl = false\n")
+                self.assertEqual((client / "options.txt").read_text(encoding="utf-8"), CLIENT_OPTIONS)
+                self.assertEqual(global_config.read_text(encoding="utf-8"), "earlyWindowControl = true\n")
+                self.assertFalse((root / "private/server/config").exists())
 
         def test_rgb_and_rgba_all_filters(self):
             for alpha in (False, True):
