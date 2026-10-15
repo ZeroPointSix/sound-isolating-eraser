@@ -189,13 +189,18 @@ public final class YujiIsolationServer {
                     double barrier = doorPos.getZ() + doorState.getCollisionShape(level, doorPos).bounds().minZ;
                     require(current.getBoundingBox().maxZ <= barrier + .001 && level.noCollision(current),
                             "husk crossed closed door: box=" + current.getBoundingBox() + " barrier=" + barrier);
-                    if (current.horizontalCollision) contacts++;
+                    double gap = barrier - current.getBoundingBox().maxZ;
+                    if (current.horizontalCollision && Math.abs(gap) <= .001) contacts++;
+                    require(round == 0 || current.crawling(), "blocked second-round husk stays in crawling pose");
                     require(current.getTarget() == a, "blocked husk retains the real player target");
                     if (ticks == 180) {
                         require(current.getZ() > 1.5, "husk actually approached barrier");
+                        require(gap <= .35, "blocked husk remains at the actual door collision plane");
+                        require(round == 0 || (Math.abs(gap) <= .001 && contacts > 0),
+                                "crawling husk physically contacts the closed door: gap=" + gap + "; contactTicks=" + contacts);
                         require(a.getHealth() == 400, "husk never damages player");
-                        pass(item + "-closed", "z=" + current.getZ() + "; reached closed-door plane within .35 before 180 blocked ticks; crawling="
-                                + current.crawling() + "; collisionTicks=" + contacts);
+                        pass(item + "-closed", "z=" + current.getZ() + "; barrier=" + barrier + "; gap=" + gap
+                                + "; observed 180 blocked ticks; crawling=" + current.crawling() + "; doorContactTicks=" + contacts);
                         signalBoth(a, b, "shot:" + item + "-closed"); next("door-proof");
                     }
                 }

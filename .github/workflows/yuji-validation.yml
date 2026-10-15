@@ -88,7 +88,7 @@ jobs:
             YUJI_QA_PROFILES=yuchi,tanyu YUJI_QA_CLIENT_FPS=10 YUJI_QA_FRAME_DELAY_MS=700 \
               YUJI_QA_STALL_BITE=1 YUJI_QA_RECORD_AUDIO=1 python tools/yuji/e2e.py
           done
-      - name: Exercise grudge, buffed slashes and body contact with two real clients
+      - name: Exercise grudge, buffed slashes, chant timing, peel threshold and body contact with two real clients
         run: YUJI_QA_BOUNDARIES=1 python tools/yuji/e2e.py
       - name: Verify targeted audio, camera isolation, doors, climbing and Panda with two real clients
         run: YUJI_QA_ISOLATION=1 YUJI_QA_RECORD_AUDIO=1 python tools/yuji/e2e.py

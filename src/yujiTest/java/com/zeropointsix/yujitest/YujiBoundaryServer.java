@@ -18,6 +18,7 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.event.entity.living.LivingAttackEvent;
 import net.minecraftforge.event.entity.living.LivingDamageEvent;
 import net.minecraftforge.event.server.ServerStartedEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -28,10 +29,14 @@ public final class YujiBoundaryServer {
     private static final Path RESULTS = Path.of(System.getProperty("yuji.qa.results"));
     private static String stage = "waiting";
     private static int elapsed, firstHits, secondHits, contactIndex;
+    private static int chantStartTick, initialLayers;
+    private static float initialHealth;
+    private static double originalAttackDamage;
     private static boolean failed, complete;
     private static YujiMonster current, source;
     private static final ArrayList<Integer> hitTicks = new ArrayList<>();
     private static final ArrayList<Float> damage = new ArrayList<>();
+    private static final ArrayList<Float> incomingDamage = new ArrayList<>();
     private static final String[] CONTACT = {"side", "upper", "outside-side", "above"};
     // Boss body is 30x40 (modelScale 5); offsets straddle its edges like the matching GameTests.
     private static final double[][] OFFSETS = {{15.2, 0}, {0, 39.8}, {15.31, 0}, {0, 40.01}};
@@ -94,9 +99,10 @@ public final class YujiBoundaryServer {
         try {
             if (event.getEntity() == current && event.getSource().getEntity() instanceof ServerPlayer p) {
                 if (p.getGameProfile().getName().equals("YujiTester")) firstHits++; else secondHits++;
+                if (stage.startsWith("tanyu-")) damage.add(event.getAmount());
                 log("playerAttack stage=" + stage + " player=" + p.getGameProfile().getName() + " uuid=" + p.getUUID() + " damage=" + event.getAmount());
             }
-            if ((stage.equals("slash") || stage.equals("contact")) && event.getEntity() instanceof ServerPlayer p
+            if ((stage.equals("slash") || stage.equals("chant") || stage.equals("contact")) && event.getEntity() instanceof ServerPlayer p
                     && p.getGameProfile().getName().equals("YujiTester") && event.getSource().getEntity() == current) {
                 hitTicks.add(current.tickCount); damage.add(event.getAmount());
                 log("actualDamage stage=" + stage + " contact=" + (stage.equals("contact") ? CONTACT[contactIndex] : "n/a")
@@ -104,6 +110,11 @@ public final class YujiBoundaryServer {
                         + " intersects=" + current.getBoundingBox().intersects(p.getBoundingBox()) + " player=" + p.getUUID());
             }
         } catch (Throwable error) { fail(error); }
+    }
+    @SubscribeEvent public static void attack(LivingAttackEvent event) {
+        if (!Boolean.getBoolean("yuji.qa.boundaries") || failed || complete || !stage.startsWith("tanyu-")) return;
+        if (event.getEntity() == current && event.getSource().getEntity() instanceof ServerPlayer)
+            incomingDamage.add(event.getAmount());
     }
     private static void fail(Throwable error) {
         failed = true; error.printStackTrace();
@@ -193,6 +204,63 @@ public final class YujiBoundaryServer {
                 case "slash-proof" -> {
                     if (!ready("betrayal-double-slash-YujiTester")) return;
                     current.discard(); source.discard(); setupPlayer(first);
+                    position(first, 12, 65, 0, 90, 0);
+                    current = spawn(first, YujiKind.EKOU, 0);
+                    hitTicks.clear(); damage.clear(); chantStartTick = -1; next("chant");
+                }
+                case "chant" -> {
+                    if (chantStartTick < 0 && current.action().equals("chant")) {
+                        require(current.getTarget() == first, "natural chant acquires the connected player");
+                        chantStartTick = current.tickCount;
+                    }
+                    if (chantStartTick < 0 || current.tickCount - chantStartTick < 40) return;
+                    require(hitTicks.size() == 2, "natural chant has exactly two accepted hits: " + hitTicks);
+                    // begin() occurs after action resolution; zero-based action tick 0 runs on the following entity tick.
+                    require(hitTicks.get(0) - chantStartTick - 1 == 15 && hitTicks.get(1) - chantStartTick - 1 == 32,
+                            "natural chant hits at action ticks 15 and 32: start=" + chantStartTick + "; hits=" + hitTicks);
+                    for (float amount : damage) close(amount, 6, "each natural chant hit deals six damage");
+                    close(400 - first.getHealth(), 12, "real connected player loses twelve health");
+                    current.setNoAi(true);
+                    pass("ekou-natural-double-hit", "natural AI; actionStartEntityTick=" + chantStartTick + "; hitEntityTicks=" + hitTicks
+                            + "; zeroBasedActionTicks=[15, 32]; damage=" + damage + "; actualHealthLoss=" + (400 - first.getHealth()));
+                    signal(first, "health:ekou-health:388"); next("chant-health");
+                }
+                case "chant-health" -> {
+                    if (!ready("ekou-health-YujiTester")) return;
+                    signal(first, "shot:ekou-natural-double-hit"); next("chant-proof");
+                }
+                case "chant-proof" -> {
+                    if (!ready("ekou-natural-double-hit-YujiTester")) return;
+                    current.discard(); setupPlayer(first); position(first, 0, 65, 2.5, 180, 0);
+                    current = spawn(first, YujiKind.TANYU, 0); current.setNoAi(true);
+                    originalAttackDamage = first.getAttribute(Attributes.ATTACK_DAMAGE).getBaseValue();
+                    beginPeel(first, false);
+                }
+                case "tanyu-below", "tanyu-at" -> {
+                    if (elapsed == 30) signal(first, "attack:" + current.getId());
+                    if (firstHits == 0) return;
+                    boolean threshold = stage.equals("tanyu-at");
+                    require(firstHits == 1 && incomingDamage.size() == 1 && damage.size() == 1,
+                            "one real client attack is accepted per peel probe");
+                    close(incomingDamage.get(0), threshold ? 6 : 5.9, "actual incoming attack damage at peel boundary");
+                    require(current.layers() == initialLayers - (threshold ? 1 : 0), "peel threshold changes exactly the expected layer count");
+                    require(!threshold || current.action().equals("peel"), "threshold hit starts peel action");
+                    require(damage.get(0) > 0, "below-threshold control is a real accepted damaging attack");
+                    close(initialHealth - current.getHealth(), damage.get(0), "recorded accepted damage equals monster health loss");
+                    recordPeelProof(first, second, threshold);
+                }
+                case "tanyu-below-proof" -> {
+                    if (!ready("tanyu-below-YujiTester") || !ready("tanyu-below-YujiWitness")) return;
+                    beginPeel(first, true);
+                }
+                case "tanyu-at-proof" -> {
+                    if (!ready("tanyu-at-YujiTester") || !ready("tanyu-at-YujiWitness")) return;
+                    first.getAttribute(Attributes.ATTACK_DAMAGE).setBaseValue(originalAttackDamage);
+                    signal(first, "shot:tanyu-peel-threshold"); next("tanyu-shot");
+                }
+                case "tanyu-shot" -> {
+                    if (!ready("tanyu-peel-threshold-YujiTester")) return;
+                    current.discard(); setupPlayer(first);
                     current = spawn(first, YujiKind.SHIFOTOU, 0);
                     // Isolate body contact from unrelated melee skills while retaining normal server AI ticks.
                     current.goalSelector.removeAllGoals(goal -> true);
@@ -210,13 +278,26 @@ public final class YujiBoundaryServer {
                             + ", intersects=" + touching + ", damage=" + damage + ", ticks=" + hitTicks + ", healthLoss=" + (400 - first.getHealth()));
                     if (++contactIndex < CONTACT.length) beginContact(first, second);
                     else {
-                        current.discard(); pass("boundaries", "All three independent findings passed targeted two-real-client probes; not sound/camera isolation coverage.");
+                        current.discard(); pass("boundaries", "Grudge, betrayal, natural chant, peel threshold and boss contact passed two-real-client probes; not human multiplayer acceptance.");
                         signal(first, "done"); signal(second, "done"); complete = true;
                     }
                 }
                 default -> throw new AssertionError(stage);
             }
         } catch (Throwable error) { fail(error); }
+    }
+    private static void beginPeel(ServerPlayer first, boolean threshold) {
+        first.getAttribute(Attributes.ATTACK_DAMAGE).setBaseValue(threshold ? 6 : 5.9);
+        initialLayers = current.layers(); initialHealth = current.getHealth();
+        firstHits = 0; incomingDamage.clear(); damage.clear(); next(threshold ? "tanyu-at" : "tanyu-below");
+    }
+    private static void recordPeelProof(ServerPlayer first, ServerPlayer second, boolean threshold) throws Exception {
+        String name = threshold ? "tanyu-at" : "tanyu-below";
+        pass(name, "real TCP attack; rawDamage=" + incomingDamage.get(0) + "; acceptedDamage=" + damage.get(0)
+                + "; layers=" + initialLayers + " -> " + current.layers() + "; action=" + current.action());
+        signal(first, "layers:" + name + ":" + current.getId() + ":" + current.layers());
+        signal(second, "layers:" + name + ":" + current.getId() + ":" + current.layers());
+        next(name + "-proof");
     }
     private static void beginContact(ServerPlayer first, ServerPlayer second) throws Exception {
         first.setHealth(400); first.invulnerableTime = 0; first.removeAllEffects();
