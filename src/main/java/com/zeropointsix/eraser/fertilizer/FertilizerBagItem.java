@@ -1,6 +1,10 @@
 package com.zeropointsix.eraser.fertilizer;
 
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.BlockTags;
+import net.minecraft.world.level.block.CropBlock;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -29,7 +33,10 @@ public final class FertilizerBagItem extends Item {
         boolean capture = level.captureBlockSnapshots;
         level.captureBlockSnapshots = false;
         try {
-            if (!FertilizerGrowth.use(level, context.getClickedPos(), player)) return InteractionResult.FAIL;
+            if (!FertilizerGrowth.use(level, context.getClickedPos(), player)) {
+                player.displayClientMessage(Component.translatable(failure(level.getBlockState(context.getClickedPos()))), true);
+                return InteractionResult.FAIL;
+            }
         } finally { level.captureBlockSnapshots = capture; }
         int capacity = getMaxDamage(bag);
         bag.getOrCreateTag().putInt("FertilizerCapacity", capacity);
@@ -38,6 +45,14 @@ public final class FertilizerBagItem extends Item {
         else bag.setDamageValue(used);
         player.getCooldowns().addCooldown(this, 4);
         return InteractionResult.CONSUME;
+    }
+
+    /** Growth fails silently in the world; tell the player why on the action bar. */
+    public static String failure(BlockState state) {
+        String key = "message.sound_isolating_eraser.fertilizer.";
+        if (state.getBlock() instanceof CropBlock crop && crop.isMaxAge(state)) return key + "mature";
+        if (state.is(BlockTags.SAPLINGS) || state.is(FertilizerContent.LOG.get())) return key + "no_room";
+        return key + "invalid_target";
     }
 
     @Override public boolean isFoil(ItemStack stack) { return false; }
