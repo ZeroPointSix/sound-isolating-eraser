@@ -559,10 +559,9 @@ public final class YujiAfflictions {
             }
         }
         var owned = goatRamTargets.remove(goat);
-        boolean ownedInfluence = goat.getPersistentData().getCompound(INFLUENCE).getBoolean("GoatRamOwned");
         boolean force = takeover && active;
-        if (force || ownedInfluence || (owned != null && owned.ram != null
-                && brain.getMemory(MemoryModuleType.RAM_TARGET).orElse(null) == owned.ram)) {
+        // Only erase the ram vector we ourselves wrote. Later native RAM_TARGET values must survive restore.
+        if (force || owned != null && owned.ram != null && brain.getMemory(MemoryModuleType.RAM_TARGET).orElse(null) == owned.ram) {
             brain.eraseMemory(MemoryModuleType.RAM_TARGET);
         }
         // Vanilla timeout retains these memories. Erase only the exact values written by our ram behavior.
