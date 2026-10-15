@@ -55,8 +55,9 @@ public final class FlareEdgeCaseGameTests {
             int surface = level.getMinBuildHeight();
             for (int x = -9; x <= 9; x++) for (int z = -9; z <= 9; z++)
                 surface = Math.max(surface, level.getHeight(Heightmap.Types.MOTION_BLOCKING, reference.getX() + x, reference.getZ() + z));
-            center = new BlockPos(reference.getX(), surface + 2, reference.getZ());
-            h.assertTrue(center.getY() + 128 < level.getMaxBuildHeight() - 4, "fixture permits full 128-block descent");
+            int ceiling = level.getMaxBuildHeight() - 136;
+            center = new BlockPos(reference.getX(), Math.min(surface + 2, ceiling), reference.getZ());
+            h.assertTrue(center.getY() + 128 < level.getMaxBuildHeight() - 4, "fixture permits full 128-block descent: " + center);
             for (BlockPos p : BlockPos.betweenClosed(center.offset(-8, -1, -8), center.offset(8, -1, 8)))
                 set(p, Blocks.STONE.defaultBlockState());
             owner = h.makeMockSurvivalPlayer();
