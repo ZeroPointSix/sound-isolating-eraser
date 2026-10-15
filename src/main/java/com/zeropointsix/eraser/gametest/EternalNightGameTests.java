@@ -1100,6 +1100,14 @@ public final class EternalNightGameTests {
             int expected = CityBuildingAccess.expectedFloors(city, placement.origin(), placement.name());
             boolean floorsReached = floors >= expected;
             if (floorsReached) floorsOk++;
+            if ("res_tenement".equals(placement.name())) {
+                h.assertTrue(floorsReached, "res_tenement industrial counterexample must reach every door-bearing floor: origin="
+                        + placement.origin().toShortString() + " door=" + approach.get().door().toShortString()
+                        + " floors=" + floors + " expectedDoorFloors=" + expected);
+                System.out.println("CITY_TENEMENT_FLOOR_GATE origin=" + placement.origin().toShortString()
+                        + " door=" + approach.get().door().toShortString()
+                        + " floors=" + floors + " expectedDoorFloors=" + expected);
+            }
             int dist = Math.abs(approach.get().feet().getX() - approach.get().door().getX())
                     + Math.abs(approach.get().feet().getZ() - approach.get().door().getZ());
             double stepUp = CityBuildingAccess.stepUp(city, approach.get().feet());
