@@ -251,6 +251,8 @@ final class NightCitySurvey {
                     floorsOk++;
             boolean allFloors = floorsOk == targets.size();
             JsonObject report = new JsonObject();
+            report.addProperty("worldSeed", Long.toString(city.getSeed()));
+            report.addProperty("floorVerificationMethod", "collision BFS from a natively crossed ground-floor entrance; not native climbing");
             report.addProperty("scope", "one generated entrance per original building template; natural entities observed for 220 ticks per accessible sample");
             report.addProperty("surveyConfiguration", "Creative viewer, city spawning enabled, random door exits disabled during entrance survey; camera-only flight to unobstructed vantage after natural entity sampling");
             report.addProperty("templatesLocated", targets.size()); report.addProperty("nativeEntrancesPassed", walked);

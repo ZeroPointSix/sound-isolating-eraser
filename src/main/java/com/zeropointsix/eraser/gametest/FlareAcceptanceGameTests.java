@@ -43,28 +43,38 @@ import net.minecraftforge.gametest.PrefixGameTestTemplate;
 @GameTestHolder("flare_acceptance_tests")
 @PrefixGameTestTemplate(false)
 public final class FlareAcceptanceGameTests {
+    private static final TicketType<String> ACCEPTANCE_TICKET =
+            TicketType.create("flare_acceptance", String::compareTo, 0);
     private static Fixture fixture;
 
     private static final class Fixture {
         final ServerLevel level;
         final BlockPos center;
         final Set<Long> chunks = new HashSet<>(), ownedTickets = new HashSet<>();
+        final Set<Long> originalForced = new HashSet<>();
+        final String ticketOwner = UUID.randomUUID().toString();
         final Map<BlockPos, BlockState> previous = new LinkedHashMap<>();
         final List<Entity> entities = new ArrayList<>();
         final Set<Long> originalLights = new HashSet<>();
         final GameTestConfigs.LiveConfig config;
+        final int originalRedLifetime, originalYellowLifetime, originalLightRadius;
         boolean prepared, completed;
         java.util.function.Supplier<String> diagnostic = () -> "preparing";
 
         Fixture(GameTestHelper h, int slot, boolean arena) {
             level = h.getLevel();
             center = new BlockPos(8200 + slot * 128, 200, 8200);
+            originalRedLifetime = FlareConfig.RED_LIFETIME.get();
+            originalYellowLifetime = FlareConfig.YELLOW_LIFETIME.get();
+            originalLightRadius = FlareConfig.LIGHT_RADIUS.get();
             config = GameTestConfigs.sandbox(YujiConfig.SPEC);
             for (Tag tag : FlareLights.get(level).save(new CompoundTag()).getList("Lights", Tag.TAG_COMPOUND))
                 originalLights.add(((CompoundTag) tag).getLong("Pos"));
             for (int x = (center.getX() - 16) >> 4; x <= (center.getX() + 16) >> 4; x++)
                 for (int z = (center.getZ() - 16) >> 4; z <= (center.getZ() + 16) >> 4; z++) {
-                    chunks.add(ChunkPos.asLong(x, z));
+                    long key = ChunkPos.asLong(x, z);
+                    chunks.add(key);
+                    if (level.getForcedChunks().contains(key)) originalForced.add(key);
                 }
             load();
             if (arena) {
@@ -83,9 +93,8 @@ public final class FlareAcceptanceGameTests {
             for (long key : chunks) {
                 ChunkPos c = new ChunkPos(key);
                 level.setChunkForced(c.x, c.z, true);
-                // PLAYER tickets keep the neighbourhood entity-ticking even when the
-                // GameTestServer simulation distance is tight on CI runners.
-                level.getChunkSource().addRegionTicket(TicketType.PLAYER, c, 2, c);
+                // Own a distinct ticket; never replace or remove a player's existing ticket.
+                level.getChunkSource().addRegionTicket(ACCEPTANCE_TICKET, c, 2, ticketOwner);
                 ownedTickets.add(key); level.getChunk(c.x, c.z);
             }
         }
@@ -93,8 +102,8 @@ public final class FlareAcceptanceGameTests {
         void release() {
             for (long key : ownedTickets) {
                 ChunkPos c = new ChunkPos(key);
-                level.setChunkForced(c.x, c.z, false);
-                level.getChunkSource().removeRegionTicket(TicketType.PLAYER, c, 2, c);
+                if (!originalForced.contains(key)) level.setChunkForced(c.x, c.z, false);
+                level.getChunkSource().removeRegionTicket(ACCEPTANCE_TICKET, c, 2, ticketOwner);
             }
             ownedTickets.clear();
         }
@@ -109,6 +118,35 @@ public final class FlareAcceptanceGameTests {
                         ChunkPos c = new ChunkPos(key);
                         return level.isPositionEntityTicking(new BlockPos(c.getMinBlockX() + 8, center.getY(), c.getMinBlockZ() + 8));
                     });
+        }
+
+        String preparationState() {
+            List<String> pending = new ArrayList<>();
+            for (long key : chunks) {
+                ChunkPos c = new ChunkPos(key);
+                BlockPos pos = new BlockPos(c.getMinBlockX() + 8, center.getY(), c.getMinBlockZ() + 8);
+                if (!level.isPositionEntityTicking(pos)) pending.add(c.toString());
+            }
+            return "center=" + center + " ticking=" + ticking() + " pendingChunks=" + pending
+                    + " raw=" + level.getMaxLocalRawBrightness(center)
+                    + " sky=" + level.getBrightness(LightLayer.SKY, center)
+                    + " block=" + level.getBrightness(LightLayer.BLOCK, center);
+        }
+
+        void awaitReady(boolean arena) {
+            long started = System.nanoTime();
+            long deadline = started + java.util.concurrent.TimeUnit.SECONDS.toNanos(60);
+            // GameTestServer runs ticks without the normal 50 ms wait. Pump the real
+            // chunk/light executor before starting the AI window, not simulated entity ticks.
+            while (!ticking() || (arena && level.getMaxLocalRawBrightness(center) > 6)) {
+                if (System.nanoTime() >= deadline)
+                    throw new AssertionError("acceptance preparation exceeded 60 real seconds: " + preparationState());
+                if (!level.getChunkSource().pollTask())
+                    java.util.concurrent.locks.LockSupport.parkNanos(1_000_000L);
+            }
+            System.out.println("FLARE_PREPARATION_BARRIER elapsedMs="
+                    + java.util.concurrent.TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started)
+                    + " " + preparationState());
         }
 
         void set(BlockPos pos, BlockState state) {
@@ -138,22 +176,40 @@ public final class FlareAcceptanceGameTests {
         }
 
         void close() {
-            load();
-            entities.forEach(Entity::discard);
-            level.getEntitiesOfClass(FlareDecoy.class, new AABB(center).inflate(24)).forEach(Entity::discard);
-            level.getEntitiesOfClass(FlareProjectile.class, new AABB(center).inflate(24)).forEach(Entity::discard);
-            for (Tag tag : FlareLights.get(level).save(new CompoundTag()).getList("Lights", Tag.TAG_COMPOUND)) {
-                BlockPos pos = BlockPos.of(((CompoundTag) tag).getLong("Pos"));
-                if (!originalLights.contains(pos.asLong()) && pos.distSqr(center) <= 32 * 32
-                        && level.getBlockState(pos).is(Blocks.LIGHT)) level.removeBlock(pos, false);
+            try {
+                load();
+                entities.forEach(Entity::discard);
+                level.getEntitiesOfClass(FlareDecoy.class, new AABB(center).inflate(24)).forEach(Entity::discard);
+                level.getEntitiesOfClass(FlareProjectile.class, new AABB(center).inflate(24)).forEach(Entity::discard);
+                for (Tag tag : FlareLights.get(level).save(new CompoundTag()).getList("Lights", Tag.TAG_COMPOUND)) {
+                    BlockPos pos = BlockPos.of(((CompoundTag) tag).getLong("Pos"));
+                    if (!originalLights.contains(pos.asLong()) && pos.distSqr(center) <= 32 * 32
+                            && level.getBlockState(pos).is(Blocks.LIGHT)) level.removeBlock(pos, false);
+                }
+                previous.forEach((pos, state) -> level.setBlock(pos, state, 3));
+                FlareLights.get(level).cleanup(level);
+            } finally {
+                try { config.close(); } finally { release(); }
             }
-            previous.forEach((pos, state) -> level.setBlock(pos, state, 3));
-            FlareLights.get(level).cleanup(level);
-            config.close(); release();
+            if (FlareConfig.RED_LIFETIME.get() != originalRedLifetime
+                    || FlareConfig.YELLOW_LIFETIME.get() != originalYellowLifetime
+                    || FlareConfig.LIGHT_RADIUS.get() != originalLightRadius)
+                throw new AssertionError("acceptance configuration was not restored");
+            for (long key : chunks)
+                if (level.getForcedChunks().contains(key) != originalForced.contains(key))
+                    throw new AssertionError("acceptance changed pre-existing forced chunk " + new ChunkPos(key));
+            if (entities.stream().anyMatch(entity -> !entity.isRemoved()))
+                throw new AssertionError("acceptance left an owned entity behind");
+            System.out.println("FLARE_FIXTURE_RESTORED center=" + center
+                    + " config=true forcedChunks=true ownedEntitiesRemoved=true");
         }
     }
 
-    private static void close() { if (fixture != null) { fixture.close(); fixture = null; } }
+    private static void close() {
+        Fixture closing = fixture;
+        fixture = null;
+        if (closing != null) closing.close();
+    }
     @AfterBatch(batch = "flare_acceptance_vanilla") public static void afterVanilla(ServerLevel level) { close(); }
     @AfterBatch(batch = "flare_acceptance_yuji") public static void afterYuji(ServerLevel level) { close(); }
     @AfterBatch(batch = "flare_acceptance_shadow") public static void afterShadow(ServerLevel level) { close(); }
@@ -163,10 +219,19 @@ public final class FlareAcceptanceGameTests {
         long startedAt = h.getLevel().getGameTime();
         fixture = new Fixture(h, slot, arena);
         Fixture preparedFixture = fixture;
-        h.runAfterDelay(1200, () -> h.assertTrue(preparedFixture.prepared, "acceptance preparation finishes within 1200 ticks"));
+        preparedFixture.awaitReady(arena);
+        for (int tick = 200; tick < 1200; tick += 200) {
+            h.runAfterDelay(tick, () -> {
+                if (!preparedFixture.prepared) System.out.println("FLARE_PREPARING slot=" + slot
+                        + " elapsedTicks=" + (preparedFixture.level.getGameTime() - startedAt)
+                        + " " + preparedFixture.preparationState());
+            });
+        }
+        h.runAfterDelay(1200, () -> h.assertTrue(preparedFixture.prepared,
+                "acceptance preparation finishes within 1200 ticks: " + preparedFixture.preparationState()));
         h.startSequence().thenIdle(40)
-                .thenWaitUntil(() -> h.assertTrue(fixture.ticking(), "acceptance chunks entity-ticking"))
-                .thenWaitUntil(() -> h.assertTrue(!arena || fixture.level.getMaxLocalRawBrightness(fixture.center) <= 6,
+                .thenWaitUntil(() -> h.assertTrue(preparedFixture.ticking(), "acceptance chunks entity-ticking"))
+                .thenWaitUntil(() -> h.assertTrue(!arena || preparedFixture.level.getMaxLocalRawBrightness(preparedFixture.center) <= 6,
                         "roofed arena is dark before any flare"))
                 .thenExecute(() -> {
                     preparedFixture.prepared = true;
