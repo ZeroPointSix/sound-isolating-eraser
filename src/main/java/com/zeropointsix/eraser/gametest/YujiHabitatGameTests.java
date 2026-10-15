@@ -10,6 +10,8 @@ import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.BlockTags;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.Mob;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
@@ -21,7 +23,7 @@ import net.minecraftforge.gametest.PrefixGameTestTemplate;
 public final class YujiHabitatGameTests {
     private static final java.util.Map<BlockPos, BlockState> originalBlocks = new java.util.LinkedHashMap<>();
     private static final java.util.Map<GameTestHelper, java.util.Map<BlockPos, BlockState>> expectedBlocks = new java.util.IdentityHashMap<>();
-    private static final java.util.List<YujiMonster> fixtureMobs = new java.util.ArrayList<>();
+    private static final java.util.List<Mob> fixtureMobs = new java.util.ArrayList<>();
 
     private static int fixtureY(GameTestHelper h) {
         return h.getLevel().getMaxBuildHeight() - 16 - h.absolutePos(BlockPos.ZERO).getY();
@@ -46,7 +48,7 @@ public final class YujiHabitatGameTests {
 
     @AfterBatch(batch = "yuji_habitat")
     public static void restoreFixtures(ServerLevel level) {
-        fixtureMobs.forEach(YujiMonster::discard);
+        fixtureMobs.forEach(Mob::discard);
         originalBlocks.forEach((pos, state) -> level.setBlock(pos, state, 3));
         fixtureMobs.clear(); originalBlocks.clear(); expectedBlocks.clear();
     }
@@ -160,6 +162,20 @@ public final class YujiHabitatGameTests {
     public static void liangsheWalksInsideAndStaysUnderRoof(GameTestHelper h) {
         floor(h); room(h, 5, false);
         YujiMonster mob = live(h, YujiKind.LIANGSHE, new Vec3(7.5, 1, 2.5));
+        var outside = h.spawn(EntityType.COW, new Vec3(.5, 1 + fixtureY(h), 7.5));
+        fixtureMobs.add(outside);
+        outside.setNoAi(true);
+        outside.setPersistenceRequired();
+        // A live pursuit target suppresses random stroll without moving the monster into shelter.
+        // Its initial 8-9.5-block distance makes pursuit stop, rather than chase or retreat.
+        mob.setTarget(outside);
+        h.assertTrue(mob.distanceTo(outside) >= 8 && mob.distanceTo(outside) <= 9.5,
+                "outdoor target begins within the pursuit stopping band");
+        for (int tick = 1; tick < 500; tick++) h.runAtTickTime(tick, () -> {
+            if (!mob.isAlive()) return;
+            h.assertTrue(outside.isAlive() && mob.getTarget() == outside,
+                    "outdoor pursuit target remains active so random stroll cannot prove habitat selection");
+        });
         Vec3 start = mob.position();
         h.startSequence().thenWaitUntil(() -> {
             insideRoom(h, mob, 5);
@@ -172,7 +188,7 @@ public final class YujiHabitatGameTests {
             Vec3 pos = relative(h, mob.position());
             h.assertTrue(pos.x > 6 && pos.x < 9 && pos.z >= 9 && pos.z < 14, "stays indoors after arriving");
             h.assertBlockPresent(Blocks.STONE, fixturePos(h, BlockPos.containing(pos.x, 4, pos.z)));
-        }).thenExecute(mob::discard).thenSucceed();
+        }).thenExecute(() -> { mob.discard(); outside.discard(); }).thenSucceed();
     }
 
     @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji_habitat", timeoutTicks = 650)
