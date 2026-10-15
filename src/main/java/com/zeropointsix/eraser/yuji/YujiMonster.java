@@ -282,6 +282,11 @@ public final class YujiMonster extends Monster implements GeoEntity {
                         && ForgeEventFactory.onEntityDestroyBlock(this, pos, state)) level().destroyBlock(pos, false, this);
             }
         }
+        if (voiceRecipient != null) {
+            Player finder = level().getPlayerByUUID(voiceRecipient);
+            if (finder instanceof ServerPlayer seen && vulnerable(seen)
+                    && hasLineOfSight(seen) && lookingAt(seen, getEyePosition(), 25)) missedVoices = 0;
+        }
         if (voiceWindow > 0) {
             voiceWindow--;
             Player recipient = voiceRecipient == null ? null : level().getPlayerByUUID(voiceRecipient);
@@ -380,7 +385,7 @@ public final class YujiMonster extends Monster implements GeoEntity {
                     target.hurt(damageSources().indirectMagic(this, this), 6);
             }
             case "bless" -> { if (tick == 15) blessAllies(); }
-            case "summon" -> { if (tick == 18) summonAllies(); }
+            case "summon" -> { if (tick == 18 && canSummon()) summonAllies(); }
             default -> { }
         }
     }

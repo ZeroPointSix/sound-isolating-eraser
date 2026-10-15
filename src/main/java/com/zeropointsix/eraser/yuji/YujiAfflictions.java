@@ -24,11 +24,14 @@ import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.Goal;
+import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.animal.Cat;
 import net.minecraft.world.entity.animal.IronGolem;
 import net.minecraft.world.entity.animal.Parrot;
 import net.minecraft.world.entity.animal.SnowGolem;
 import net.minecraft.world.entity.animal.Wolf;
+import net.minecraft.world.entity.animal.goat.Goat;
+import net.minecraft.world.entity.animal.goat.Goat;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.monster.RangedAttackMob;
 import net.minecraft.world.entity.npc.AbstractVillager;
@@ -185,8 +188,10 @@ public final class YujiAfflictions {
                 || blocked(player, foot.north()) && blocked(player, foot.south());
     }
     private static boolean blocked(Player player, BlockPos pos) {
-        return !player.level().getBlockState(pos).getCollisionShape(player.level(), pos).isEmpty()
-                && !player.level().getBlockState(pos.above()).getCollisionShape(player.level(), pos.above()).isEmpty();
+        var level = player.level();
+        var state = level.getBlockState(pos);
+        var above = level.getBlockState(pos.above());
+        return state.isCollisionShapeFullBlock(level, pos) && above.isCollisionShapeFullBlock(level, pos.above());
     }
     private static void refresh(Player player, MobEffect effect, int amplifier) {
         MobEffectInstance current = player.getEffect(effect);
@@ -310,6 +315,7 @@ public final class YujiAfflictions {
                 }
             }
             data.putUUID("Player", player.getUUID()); data.putLong("Until", player.level().getGameTime() + 45);
+            if (mob instanceof Goat goat) prepareGoatRam(goat, data);
             mob.getPersistentData().put(INFLUENCE, data);
             if (mob instanceof Enemy) {
                 modifier(mob, Attributes.MOVEMENT_SPEED, SPEED, YujiConfig.HOSTILE_BUFF.get());
@@ -344,6 +350,7 @@ public final class YujiAfflictions {
             neutral.setPersistentAngerTarget(data.hasUUID("PreviousAnger") ? data.getUUID("PreviousAnger") : null);
             neutral.setRemainingPersistentAngerTime(data.getInt("PreviousAngerTime"));
         }
+        if (mob instanceof Goat goat) restoreGoatRam(goat, data);
         var speed = mob.getAttribute(Attributes.MOVEMENT_SPEED); if (speed != null) speed.removeModifier(SPEED);
         var attack = mob.getAttribute(Attributes.ATTACK_DAMAGE); if (attack != null) attack.removeModifier(ATTACK);
         var follow = mob.getAttribute(Attributes.FOLLOW_RANGE); if (follow != null) follow.removeModifier(FOLLOW);
@@ -372,6 +379,7 @@ public final class YujiAfflictions {
             });
             return;
         }
+        if (mob instanceof Goat) return;
         mob.goalSelector.addGoal(0, new Goal() {
             private int attackTicks;
             { setFlags(EnumSet.of(Flag.MOVE, Flag.LOOK, Flag.JUMP)); }
@@ -403,6 +411,25 @@ public final class YujiAfflictions {
         if (event.getTarget() instanceof AbstractVillager && event.getEntity().hasEffect(YujiContent.BETRAYED.get()) && YujiConfig.AFFECT_VILLAGERS.get()) {
             event.setCancellationResult(net.minecraft.world.InteractionResult.FAIL); event.setCanceled(true);
         }
+    }
+    private static final String GOAT_RAM_UNTIL = "GoatRamPreviousCooldownUntil";
+    private static void prepareGoatRam(Goat goat, CompoundTag data) {
+        var brain = goat.getBrain();
+        if (!data.contains(GOAT_RAM_UNTIL)) {
+            int remaining = brain.getMemory(MemoryModuleType.RAM_COOLDOWN_TICKS).orElse(0);
+            data.putLong(GOAT_RAM_UNTIL, goat.level().getGameTime() + remaining);
+        }
+        // Vanilla PrepareRamNearestTarget requires RAM_COOLDOWN_TICKS to be absent, not 0.
+        brain.eraseMemory(MemoryModuleType.RAM_COOLDOWN_TICKS);
+    }
+    private static void restoreGoatRam(Goat goat, CompoundTag data) {
+        var brain = goat.getBrain();
+        brain.eraseMemory(MemoryModuleType.RAM_TARGET);
+        brain.eraseMemory(MemoryModuleType.WALK_TARGET);
+        brain.eraseMemory(MemoryModuleType.LOOK_TARGET);
+        int left = (int) Math.max(0L, data.getLong(GOAT_RAM_UNTIL) - goat.level().getGameTime());
+        if (left > 0) brain.setMemory(MemoryModuleType.RAM_COOLDOWN_TICKS, left);
+        else brain.eraseMemory(MemoryModuleType.RAM_COOLDOWN_TICKS);
     }
     private YujiAfflictions() {}
 }
