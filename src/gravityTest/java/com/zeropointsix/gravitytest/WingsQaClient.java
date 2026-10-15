@@ -55,6 +55,8 @@ public final class WingsQaClient {
     private static InputConstants.Key originalCycleKey;
     private static long firstCycleAt;
     private static int firstCycleWaitTicks;
+    private static long floodAt;
+    private static int floodStartedAtTick, floodWetTicks;
 
     @SubscribeEvent
     public static void chat(ClientChatReceivedEvent event) {
@@ -226,11 +228,35 @@ public final class WingsQaClient {
             case 373 -> nativeInput("key", "h");
             case 385 -> require(info(p) != null && info(p).tier() == WingsState.HOVER,
                     "water fixture starts in real-key HOVER after STORM capture");
-            case 390 -> command(mc, "flood"); // after observer since>35 timeout (~t368)
-            case 398 -> require(p.isInWater()
-                            && info(p) != null && info(p).deployed(),
-                    "entering water while deployed keeps wings open (Notion §4.6) pos="
-                            + p.position() + " water=" + p.isInWater() + " state=" + info(p));
+            case 390 -> {
+                floodAt = System.nanoTime();
+                floodStartedAtTick = totalTicks;
+                floodWetTicks = 0;
+                command(mc, "flood"); // after observer since>35 timeout (~t368)
+            }
+            case 398 -> {
+                long elapsedMs = java.util.concurrent.TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - floodAt);
+                int elapsedTicks = totalTicks - floodStartedAtTick;
+                require(elapsedTicks <= 400 && elapsedMs < 20000,
+                        "water fixture becomes observable within 20 seconds: phase=" + phase
+                                + " pos=" + p.position() + " water=" + p.isInWater()
+                                + " fluid=" + mc.level.getFluidState(p.blockPosition())
+                                + " velocity=" + p.getDeltaMovement() + " elapsedMs=" + elapsedMs);
+                require(info(p) != null && info(p).deployed(),
+                        "wings remain deployed throughout real water entry: " + info(p));
+                // The command acknowledgement and fluid update cross the actual network.
+                // Observe real wet ticks; never resend flood or force the player's water flag.
+                floodWetTicks = phase.equals("flood") && p.isInWater() ? floodWetTicks + 1 : 0;
+                if (floodWetTicks < 3) {
+                    ticks = 397;
+                    return;
+                }
+                require(p.isInWater() && info(p) != null && info(p).deployed(),
+                        "entering water while deployed keeps wings open (Notion §4.6) pos="
+                                + p.position() + " water=" + p.isInWater() + " state=" + info(p));
+                System.out.println("WINGS_WATER_NATIVE_PASS wetTicks=" + floodWetTicks
+                        + " elapsedTicks=" + elapsedTicks + " elapsedMs=" + elapsedMs + " pos=" + p.position());
+            }
             case 400 -> command(mc, "itemDrop");
             case 410 -> {
                 command(mc, "controlsSetup");

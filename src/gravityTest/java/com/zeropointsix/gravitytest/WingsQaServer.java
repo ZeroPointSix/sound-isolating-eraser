@@ -467,6 +467,8 @@ public final class WingsQaServer {
                 // 水下飞行回归：佩戴者悬停中被水体包住，展开态必须保持
                 ServerPlayer wearer = server.getPlayerList().getPlayerByName(WEARER);
                 if (wearer != null) {
+                    check(WingsState.deployed(wearer) && WingsState.tier(wearer) == WingsState.HOVER,
+                            "water fixture starts with deployed hover on the server");
                     ServerLevel wlevel = wearer.serverLevel();
                     BlockPos c = wearer.blockPosition();
                     for (int dx = -1; dx <= 1; dx++) {
@@ -477,7 +479,8 @@ public final class WingsQaServer {
                             }
                         }
                     }
-                    check(true, "wearer submerged in water while deployed");
+                    LOGGER.info("WINGS_WATER_FIXTURE_PLACED center={} wearerPos={} velocity={}",
+                            c, wearer.position(), wearer.getDeltaMovement());
                 }
             }
             case "above" -> {
