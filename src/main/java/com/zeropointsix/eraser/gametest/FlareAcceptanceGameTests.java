@@ -162,7 +162,7 @@ public final class FlareAcceptanceGameTests {
         void clearStrays() {
             AABB box = new AABB(center).inflate(24);
             for (Mob stray : level.getEntitiesOfClass(Mob.class, box)) {
-                if (stray instanceof Player || stray instanceof FlareDecoy) continue;
+                if (stray instanceof FlareDecoy) continue;
                 if (entities.contains(stray)) continue;
                 stray.discard();
             }
