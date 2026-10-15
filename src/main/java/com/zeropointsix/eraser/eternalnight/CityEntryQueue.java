@@ -47,7 +47,8 @@ public final class CityEntryQueue {
         int x = Math.floorMod((int) hash, 256) * 64;
         int z = Math.floorMod((int) (hash >>> 32), 256) * 64;
         PENDING.put(player.getUUID(), new Entry(player, city, x, z));
-        // Wake at the deep-sleep threshold so vanilla cannot skip this night while chunks load.
+        // Fade to black before teleport; wake so vanilla cannot skip this night while chunks load.
+        CityExitNetwork.fadeIn(player, 20);
         player.stopSleepInBed(true, true);
         player.displayClientMessage(Component.translatable("message.sound_isolating_eraser.city.preparing"), true);
         return true;

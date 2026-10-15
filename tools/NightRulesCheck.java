@@ -8,7 +8,7 @@ public final class NightRulesCheck {
         assertions++;
         if (!condition) throw new AssertionError(message);
     }
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
         long[] ticks = {-1, 0, 23999, 24000, 72000, 144000, Long.MAX_VALUE};
         double[] expected = {.02, .02, .02, .10, .26, .50, .50};
         for (int i = 0; i < ticks.length; i++) {
@@ -61,6 +61,12 @@ public final class NightRulesCheck {
         check(Math.abs(districts[2] / 65536.0 - .30) < .02, "30% industrial");
         check(CityLayout.region(-1, 0) != CityLayout.region(0, 0), "negative region floor division");
         check(CityLayout.region(0, 0) == CityLayout.region(511, 511), "512 region boundary");
+        String mixin = java.nio.file.Files.readString(java.nio.file.Path.of(
+                "src/main/java/com/zeropointsix/eraser/mixin/CityDoorMixin.java"));
+        check(mixin.contains("\"setOpen\""), "CityDoorMixin targets DoorBlock.setOpen");
+        check(mixin.contains("\"m_153165_\""), "CityDoorMixin targets official setOpen SRG m_153165_");
+        check(!mixin.contains("\"m_153166_\""), "setOpen SRG is m_153165_, not the off-by-one id");
+        check(mixin.contains("min = 3"), "citySetBlock group requires all three door methods");
         System.out.println("NightRulesCheck PASS assertions=" + assertions);
     }
 }
