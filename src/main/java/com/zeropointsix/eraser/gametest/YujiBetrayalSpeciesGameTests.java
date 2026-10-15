@@ -101,11 +101,11 @@ public final class YujiBetrayalSpeciesGameTests {
                 original.put(pos, level.getBlockState(pos));
                 level.setBlock(pos, (relative.getY() == 0 ? Blocks.STONE : Blocks.AIR).defaultBlockState(), 3);
             }
-            player = createPlayer("YujiGoatVictim", 8.5, 5.5);
-            witness = createPlayer("YujiGoatWitness", 5.5, 10.5);
+            player = createPlayer("YujiGoatVictim", 8.5, 4.5);
+            witness = createPlayer("YujiGoatWitness", 3.5, 10.5);
             cow = EntityType.COW.create(level);
             h.assertTrue(cow != null, "vanilla distraction cow is available");
-            cow.moveTo(origin.getX() + 11.5, origin.getY() + 1, origin.getZ() + 10.5);
+            cow.moveTo(origin.getX() + 13.5, origin.getY() + 1, origin.getZ() + 10.5);
             cow.setNoAi(true);
             cow.setPersistenceRequired();
             h.assertTrue(level.addFreshEntity(cow), "distraction cow joins the actual level");
@@ -222,6 +222,8 @@ public final class YujiBetrayalSpeciesGameTests {
             }
             YujiAfflictions.recruit(player, true);
             YujiAfflictions.recruit(player, true);
+            helper.assertTrue(goat.getTarget() != player && goat.getTarget() != cow && goat.getTarget() != witness,
+                    "betrayed goat keeps native ram instead of a melee target");
             helper.assertTrue(goat.goalSelector.getAvailableGoals().stream().noneMatch(g ->
                             g.getGoal().getClass().getEnclosingClass() == YujiAfflictions.class),
                     "betrayed goat must not receive synthetic melee");

@@ -338,11 +338,17 @@ public final class YujiAfflictions {
                     }
                     stopGoatRam(goat, true);
                     installGoatRamTargeting(goat);
-                    // Bypass the pre-existing idle cooldown once, never on the 20-tick effect refresh.
                     goat.getBrain().eraseMemory(MemoryModuleType.RAM_COOLDOWN_TICKS);
                 } else if (changedVictim) {
                     stopGoatRam(goat, false);
                     installGoatRamTargeting(goat);
+                } else if (!data.getBoolean("GoatRamCompleted")
+                        && !goat.getBrain().hasMemoryValue(MemoryModuleType.RAM_TARGET)
+                        && goat.getBrain().getRunningBehaviors().stream().noneMatch(behavior ->
+                                behavior instanceof PrepareRamNearestTarget<?> || behavior instanceof RamTarget)) {
+                    // Vanilla prepare stop() writes a 600-tick lockout when an attempt cannot finish.
+                    // Keep retrying while betrayal owns this goat so a later clear path can still charge.
+                    goat.getBrain().eraseMemory(MemoryModuleType.RAM_COOLDOWN_TICKS);
                 }
             }
             if (mob instanceof Enemy) {
@@ -350,7 +356,8 @@ public final class YujiAfflictions {
                 modifier(mob, Attributes.ATTACK_DAMAGE, ATTACK, YujiConfig.HOSTILE_BUFF.get());
                 modifier(mob, Attributes.FOLLOW_RANGE, FOLLOW, 1);
             }
-            if (!(mob instanceof AbstractVillager) && !(mob instanceof Cat) && !(mob instanceof Parrot)) mob.setTarget(player);
+            if (!(mob instanceof AbstractVillager) && !(mob instanceof Cat) && !(mob instanceof Parrot)
+                    && !(mob instanceof Goat)) mob.setTarget(player);
             if (mob instanceof TamableAnimal pet) pet.setOrderedToSit(pet instanceof Cat || pet instanceof Parrot);
             if (mob instanceof NeutralMob neutral) { neutral.setPersistentAngerTarget(player.getUUID()); neutral.setRemainingPersistentAngerTime(60); }
             ((ServerLevel) player.level()).sendParticles(YujiContent.PARTICLE.get("betray_mark").get(), mob.getX(), mob.getY() + mob.getBbHeight() + .2, mob.getZ(), 2, .1, .1, .1, 0);
@@ -412,7 +419,9 @@ public final class YujiAfflictions {
             boolean legacy = !influence.getBoolean("GoatRamOwned") && influence.hasUUID("Player")
                     && influence.contains("GoatRamPreviousCooldownUntil");
             if (legacy) influence.putBoolean("GoatRamOwned", true);
-            installGoatRamTargeting(goat);
+            // Keep vanilla ram intact until betrayal actually owns the goat. Rebuilding every
+            // spawn brain was aborting PrepareRam in the same tick and writing a 600-tick lockout.
+            if (influence.getBoolean("GoatRamOwned")) installGoatRamTargeting(goat);
             // Legacy saves prove cooldown ownership, not ownership of arbitrary new runtime brain memories.
             if (!legacy && influence.getBoolean("GoatRamOwned")
                     && goat.getBrain().hasMemoryValue(MemoryModuleType.RAM_TARGET)) {
@@ -530,7 +539,9 @@ public final class YujiAfflictions {
         }
         @Override protected void start(ServerLevel level, Goat goat, long time) {
             super.start(level, goat, time);
-            if (goat.getPersistentData().getCompound(INFLUENCE).getBoolean("GoatRamOwned")) {
+            CompoundTag influence = goat.getPersistentData().getCompound(INFLUENCE);
+            if (influence.getBoolean("GoatRamOwned")) {
+                influence.putBoolean("GoatRamCompleted", true);
                 var owned = goatRamTargets.computeIfAbsent(goat, key -> new GoatRamTargets());
                 owned.walk = goat.getBrain().getMemory(MemoryModuleType.WALK_TARGET).orElse(null);
                 owned.ram = goat.getBrain().getMemory(MemoryModuleType.RAM_TARGET).orElse(null);
@@ -548,8 +559,10 @@ public final class YujiAfflictions {
             }
         }
         var owned = goatRamTargets.remove(goat);
+        boolean ownedInfluence = goat.getPersistentData().getCompound(INFLUENCE).getBoolean("GoatRamOwned");
         boolean force = takeover && active;
-        if (force || owned != null && owned.ram != null && brain.getMemory(MemoryModuleType.RAM_TARGET).orElse(null) == owned.ram) {
+        if (force || ownedInfluence || (owned != null && owned.ram != null
+                && brain.getMemory(MemoryModuleType.RAM_TARGET).orElse(null) == owned.ram)) {
             brain.eraseMemory(MemoryModuleType.RAM_TARGET);
         }
         // Vanilla timeout retains these memories. Erase only the exact values written by our ram behavior.
