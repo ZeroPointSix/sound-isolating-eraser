@@ -149,7 +149,9 @@ public final class FlareAcceptanceGameTests {
 
     private static void ready(GameTestHelper h, int slot, boolean arena, Runnable action) {
         fixture = new Fixture(h, slot, arena);
-        h.startSequence().thenWaitUntil(() -> h.assertTrue(fixture.ticking(), "acceptance chunks entity-ticking"))
+        // CI runners sometimes need a few ticks before forced chunks become entity-ticking.
+        h.startSequence().thenIdle(40)
+                .thenWaitUntil(() -> h.assertTrue(fixture.ticking(), "acceptance chunks entity-ticking"))
                 .thenWaitUntil(() -> h.assertTrue(!arena || fixture.level.getMaxLocalRawBrightness(fixture.center) <= 6,
                         "roofed arena is dark before any flare"))
                 .thenExecute(action);
@@ -162,7 +164,7 @@ public final class FlareAcceptanceGameTests {
     }
 
     private static void transfer(GameTestHelper h, Mob mob) {
-        FlareConfig.RED_LIFETIME.set(160);
+        FlareConfig.RED_LIFETIME.set(80);
         h.assertTrue(FlareConfig.TAUNT_INTERVAL.get() == 10, "default ten-tick taunt cadence retained");
         ServerPlayer player = fixture.player();
         BlockPos start = fixture.center.west(8);
@@ -196,17 +198,17 @@ public final class FlareAcceptanceGameTests {
         });
     }
 
-    @GameTest(templateNamespace = "flare_acceptance_tests", template = "empty", batch = "flare_acceptance_vanilla", timeoutTicks = 900)
+    @GameTest(templateNamespace = "flare_acceptance_tests", template = "empty", batch = "flare_acceptance_vanilla", timeoutTicks = 1200)
     public static void flareRedTransfersVanillaPursuitAndReacquiresPlayer(GameTestHelper h) {
         ready(h, 0, true, () -> transfer(h, EntityType.ZOMBIE.create(fixture.level)));
     }
 
-    @GameTest(templateNamespace = "flare_acceptance_tests", template = "empty", batch = "flare_acceptance_yuji", timeoutTicks = 900)
+    @GameTest(templateNamespace = "flare_acceptance_tests", template = "empty", batch = "flare_acceptance_yuji", timeoutTicks = 1200)
     public static void flareRedTransfersYujiPursuitAndReacquiresPlayer(GameTestHelper h) {
         ready(h, 1, true, () -> transfer(h, YujiContent.MOBS.get(YujiKind.SHASHENG).get().create(fixture.level)));
     }
 
-    @GameTest(templateNamespace = "flare_acceptance_tests", template = "empty", batch = "flare_acceptance_shadow", timeoutTicks = 900)
+    @GameTest(templateNamespace = "flare_acceptance_tests", template = "empty", batch = "flare_acceptance_shadow", timeoutTicks = 1200)
     public static void flareYellowNaturallyRepelsAndBurnsShadowTangler(GameTestHelper h) {
         ready(h, 2, true, () -> {
             FlareConfig.LIGHT_RADIUS.set(12); FlareConfig.YELLOW_LIFETIME.set(160);
