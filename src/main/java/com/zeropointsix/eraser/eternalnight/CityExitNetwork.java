@@ -33,6 +33,10 @@ public final class CityExitNetwork {
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new Fade(ticks, true));
     }
 
+    public static void cancelFade(ServerPlayer player) {
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new Fade(0, false));
+    }
+
     public static void sync(ServerLevel level) {
         var exits = CitySavedData.get(level).activeExits(level, level.getGameTime()).keySet();
         for (var player : level.players()) {

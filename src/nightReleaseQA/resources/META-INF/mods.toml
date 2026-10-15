@@ -1,0 +1,13 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="All Rights Reserved"
+[[mods]]
+modId="night_release_qa"
+version="1.0"
+displayName="Eternal Night release-process probe (test only)"
+[[dependencies.night_release_qa]]
+modId="sound_isolating_eraser"
+mandatory=true
+versionRange="[0,)"
+ordering="AFTER"
+side="SERVER"

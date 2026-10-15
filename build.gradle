@@ -287,6 +287,9 @@ if (project.hasProperty('gravityE2E')) {
 if (project.hasProperty('nightE2E')) {
     apply from: 'gradle/night-e2e.gradle'
 }
+if (project.hasProperty('nightReleaseQA')) {
+    apply from: 'gradle/night-release-qa.gradle'
+}
 
 // The pose clock is pure Java, so its regressions can run without starting Minecraft.
 def compileWingsMotionCheck = tasks.register('compileWingsMotionCheck', JavaCompile) {
@@ -318,6 +321,7 @@ tasks.named('check').configure { dependsOn checkFlightSpeedBudget }
 
 def compileNightRulesCheck = tasks.register('compileNightRulesCheck', JavaCompile) {
     source = files('src/main/java/com/zeropointsix/eraser/eternalnight/NightRules.java',
+            'src/main/java/com/zeropointsix/eraser/eternalnight/CityEntryOverlay.java',
             'src/main/java/com/zeropointsix/eraser/eternalnight/CityLayout.java', 'tools/NightRulesCheck.java')
     classpath = files()
     destinationDirectory = layout.buildDirectory.dir('night-rules-check')
