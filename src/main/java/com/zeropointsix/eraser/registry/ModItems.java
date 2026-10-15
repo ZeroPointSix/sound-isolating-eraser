@@ -7,6 +7,7 @@ import com.zeropointsix.eraser.item.WindThunderWingsItem;
 import com.zeropointsix.eraser.item.ThunderFeatherItem;
 import com.zeropointsix.eraser.item.EnhancementPillPackItem;
 import com.zeropointsix.eraser.item.ShaxiadaoItem;
+import com.zeropointsix.eraser.suxia.SuxiaPocketWatchItem;
 import net.minecraft.world.item.Item;
 import net.minecraftforge.common.ForgeSpawnEggItem;
 import net.minecraft.world.item.Rarity;
@@ -21,6 +22,12 @@ public final class ModItems {
 
     public static final RegistryObject<GravityJadePendantItem> GRAVITY_JADE_PENDANT =
             ITEMS.register("gravity_jade_pendant", GravityJadePendantItem::new);
+
+    public static final RegistryObject<SuxiaPocketWatchItem> SUXIA_POCKET_WATCH =
+            ITEMS.register("suxia_pocket_watch", SuxiaPocketWatchItem::new);
+    public static final RegistryObject<ForgeSpawnEggItem> SUXIA_SPAWN_EGG =
+            ITEMS.register("suxia_spawn_egg", () -> new ForgeSpawnEggItem(
+                    ModEntities.SUXIA, 0x16161B, 0xA8141C, new Item.Properties()));
 
     public static final RegistryObject<EnhancementPillPackItem> ENHANCEMENT_PILL_PACK =
             ITEMS.register("enhancement_pill_pack", EnhancementPillPackItem::new);

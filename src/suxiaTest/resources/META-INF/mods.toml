@@ -1,0 +1,13 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="MIT"
+[[mods]]
+modId="suxia_qa"
+version="1.0"
+displayName="Suxia QA"
+[[dependencies.suxia_qa]]
+modId="sound_isolating_eraser"
+mandatory=true
+versionRange="[0,)"
+ordering="AFTER"
+side="BOTH"

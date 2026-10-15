@@ -25,7 +25,11 @@ public final class EraserAggro {
     public static boolean blocked(Entity observer, Entity target) {
         if (!(observer instanceof Mob) || !(target instanceof Player)
                 || observer.level() != target.level() || !observer.getType().is(ISOLATED)) return false;
-        Vec3 from = observer.getEyePosition(), to = target.getEyePosition();
+        return soundBlocked(observer, target.getEyePosition());
+    }
+
+    public static boolean soundBlocked(Entity observer, Vec3 to) {
+        Vec3 from = observer.getEyePosition();
         if (from.distanceToSqr(to) > 128 * 128) return false;
         var level = observer.level();
         BlockHitResult hit = BlockGetter.traverseBlocks(from, to, null, (context, pos) -> {

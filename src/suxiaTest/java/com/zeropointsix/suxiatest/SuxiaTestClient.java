@@ -1,0 +1,123 @@
+package com.zeropointsix.suxiatest;
+
+import com.zeropointsix.eraser.client.SuxiaModel;
+import com.zeropointsix.eraser.client.SuxiaRenderer;
+import com.zeropointsix.eraser.registry.ModItems;
+import com.zeropointsix.eraser.suxia.SuxiaEntity;
+import com.zeropointsix.eraser.suxia.SuxiaSummonEntity;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.HashSet;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.Screenshot;
+import net.minecraft.client.gui.screens.TitleScreen;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.client.event.ClientChatReceivedEvent;
+import net.minecraftforge.client.event.RenderLivingEvent;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
+
+@Mod.EventBusSubscriber(modid = "suxia_qa", value = Dist.CLIENT)
+public final class SuxiaTestClient {
+    private static final Path RESULTS = Path.of(System.getProperty("suxia.qa.results"));
+    private static String phase = "";
+    private static int ticks;
+    private static boolean failed, captured;
+    private static final HashMap<Integer, float[]> poses = new HashMap<>();
+    private static void require(boolean condition, String message) { if (!condition) throw new AssertionError(message); }
+    private static void fail(Throwable error) {
+        failed = true; error.printStackTrace();
+        try { Files.writeString(RESULTS.resolve("client.failed"), error.toString()); } catch (Exception ignored) { }
+    }
+    @SubscribeEvent public static void message(ClientChatReceivedEvent event) {
+        String text = event.getMessage().getString();
+        if (text.startsWith("SUXIA_QA:")) {
+            phase = text.substring(9); ticks = 0; captured = false;
+            event.setCanceled(true);
+        }
+    }
+    @SubscribeEvent public static void tick(TickEvent.ClientTickEvent event) {
+        if (event.phase != TickEvent.Phase.END || failed || phase.isEmpty()) return;
+        var mc = Minecraft.getInstance();
+        if (mc.level == null || mc.player == null) return;
+        try {
+            ticks++;
+            if (ticks == 1) { mc.setScreen(null); mc.mouseHandler.grabMouse(); }
+            if (captured && phase.equals("gallery")) {
+                phase = "await-summon";
+                mc.gameMode.useItem(mc.player, InteractionHand.MAIN_HAND);
+            } else if (captured && phase.equals("summoned")) {
+                phase = "await-recall";
+                mc.gameMode.useItem(mc.player, InteractionHand.MAIN_HAND);
+            } else if (captured && phase.equals("recalled")) {
+                mc.level.disconnect(); mc.clearLevel(); mc.setScreen(new TitleScreen()); phase = "";
+                Files.writeString(RESULTS.resolve("client-logout.pass"), "Actual client disconnected with cooling watch.\n");
+            }
+        } catch (Throwable error) { fail(error); }
+    }
+    @SubscribeEvent public static void model(RenderLivingEvent.Post<?, ?> event) {
+        if (failed || !phase.equals("gallery") || !(event.getEntity() instanceof SuxiaEntity mob)
+                || !(event.getRenderer().getModel() instanceof SuxiaModel<?> model)) return;
+        try {
+            var body = model.root().getChild("body");
+            float[] range = poses.computeIfAbsent(mob.getId(), id -> new float[]{body.zRot, body.zRot, 0});
+            range[0] = Math.min(range[0], body.zRot); range[1] = Math.max(range[1], body.zRot); range[2]++;
+            if (ticks > 40 && mob.isCrawling()) require(body.xRot > 1.3F, "rendered crawl body leans forward");
+            if (ticks > 40 && mob.isPlayingDead()) require(model.root().xRot > 1.5F, "rendered play-dead body lies flat");
+        } catch (Throwable error) { fail(error); }
+    }
+    @SubscribeEvent public static void render(TickEvent.RenderTickEvent event) {
+        if (event.phase != TickEvent.Phase.END || failed || captured || ticks < 100) return;
+        if (!phase.equals("gallery") && !phase.equals("summoned") && !phase.equals("recalled") && !phase.equals("rejoined")) return;
+        var mc = Minecraft.getInstance();
+        if (mc.level == null || mc.player == null || mc.screen != null) return;
+        try {
+            var watch = mc.player.getMainHandItem();
+            require(watch.is(ModItems.SUXIA_POCKET_WATCH.get()), "watch synchronized in main hand");
+            var tooltip = watch.getTooltipLines(mc.player, TooltipFlag.NORMAL);
+            require(tooltip.size() > 2 && tooltip.get(1).getString().equals("\u73cd\u8d35\u56de\u5fc6"), "precious-memory label immediately below item name");
+            ItemStack closed = new ItemStack(ModItems.SUXIA_POCKET_WATCH.get());
+            ItemStack open = closed.copy(); open.getOrCreateTag().putBoolean("Open", true);
+            var closedModel = mc.getItemRenderer().getModel(closed, mc.level, mc.player, 0);
+            var openModel = mc.getItemRenderer().getModel(open, mc.level, mc.player, 0);
+            require(closedModel != openModel, "open predicate selects different baked item model");
+            require(!closedModel.getParticleIcon().contents().name().getPath().contains("missing")
+                    && !openModel.getParticleIcon().contents().name().getPath().contains("missing"), "both item textures loaded");
+            if (phase.equals("gallery")) {
+                int count = 0;
+                for (var entity : mc.level.entitiesForRendering()) if (entity instanceof SuxiaEntity mob) {
+                    count++;
+                    require(mc.getEntityRenderDispatcher().getRenderer(mob) instanceof SuxiaRenderer<?>, "shared renderer registered");
+                }
+                require(count == 3 && poses.size() == 3, "all three poses actually rendered");
+                require(poses.values().stream().anyMatch(v -> v[2] > 5 && v[1] - v[0] > .01), "standing idle animation changes rendered transforms");
+                for (String name : new String[]{"suxia", "suxia_angry", "suxia_eyes"}) {
+                    mc.getResourceManager().getResourceOrThrow(new ResourceLocation("sound_isolating_eraser", "textures/entity/suxia/" + name + ".png"));
+                }
+            } else if (phase.equals("summoned")) {
+                require(watch.getTag().getBoolean("Open") && watch.isBarVisible() && watch.getBarWidth() > 0, "real active watch and duration bar");
+                boolean rendered = false;
+                for (var entity : mc.level.entitiesForRendering()) if (entity instanceof SuxiaSummonEntity summon) {
+                    rendered = mc.getEntityRenderDispatcher().getRenderer(summon) instanceof SuxiaRenderer<?>;
+                }
+                require(rendered, "summon synchronized and rendered by same model");
+            } else {
+                require(!watch.getTag().getBoolean("Open") && mc.player.getCooldowns().isOnCooldown(watch.getItem()), "closed watch retains native cooldown after " + phase);
+            }
+            try (var screenshot = Screenshot.takeScreenshot(mc.getMainRenderTarget())) {
+                var colors = new HashSet<Integer>();
+                for (int x = 0; x < screenshot.getWidth(); x += 4) for (int y = 0; y < screenshot.getHeight(); y += 4) colors.add(screenshot.getPixelRGBA(x, y));
+                require(colors.size() > 100, "nonblank actual Minecraft framebuffer");
+                screenshot.writeToFile(RESULTS.resolve(phase + ".png"));
+            }
+            Files.writeString(RESULTS.resolve("client-" + phase + ".pass"), "Live Forge client rendering, synchronized item state and localization verified: " + phase + "\n");
+            captured = true;
+        } catch (Throwable error) { fail(error); }
+    }
+}
