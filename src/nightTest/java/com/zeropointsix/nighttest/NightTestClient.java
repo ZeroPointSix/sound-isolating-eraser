@@ -35,6 +35,7 @@ public final class NightTestClient {
         if (ROLE == null || "server".equals(ROLE) || RELOADED || finished || entryCaptionProven
                 || client.level == null || !client.level.dimension().equals(Level.OVERWORLD)
                 || !CityClientRuntime.entryCaptionVisible()) return;
+        event.getGuiGraphics().flush();
         try (var frame = Screenshot.takeScreenshot(client.getMainRenderTarget())) {
             int dark = 0, bright = 0, samples = 0;
             for (int y = frame.getHeight() / 4; y < frame.getHeight() * 3 / 4; y++) {

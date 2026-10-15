@@ -17,7 +17,11 @@ def main():
     parser.add_argument("--eula", type=Path, required=True)
     parser.add_argument("--mod-jar", type=Path, required=True,
                         help="Exact release JAR under test, not a userdev or sources JAR")
+    parser.add_argument("--timeout-seconds", type=int, default=420,
+                        help="Bounded startup budget for the installed server")
     args = parser.parse_args()
+    if args.timeout_seconds <= 0:
+        parser.error("--timeout-seconds must be positive")
     root = Path(__file__).resolve().parents[1]
     server = args.server_dir.resolve()
     launch = server / "libraries/net/minecraftforge/forge/1.20.1-47.2.0/unix_args.txt"
@@ -59,7 +63,8 @@ def main():
     command = ["java", "-Xmx1G", "-Dforge.logging.console.level=info", "@" + str(launch), "--nogui"]
     print("RUN", " ".join(command), flush=True)
     with logfile.open("w") as log:
-        completed = subprocess.run(command, cwd=server, stdout=log, stderr=subprocess.STDOUT, timeout=420)
+        completed = subprocess.run(command, cwd=server, stdout=log, stderr=subprocess.STDOUT,
+                                   timeout=args.timeout_seconds)
     text = logfile.read_text(errors="replace")
     for line in text.splitlines():
         if "NIGHT_RELEASE_DOOR_LOCK_" in line or "ModLauncher running" in line:
