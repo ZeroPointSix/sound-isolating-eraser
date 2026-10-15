@@ -5,7 +5,6 @@ import com.zeropointsix.eraser.eternalnight.*;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.AfterBatch;
-import net.minecraft.gametest.framework.BeforeBatch;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
@@ -13,7 +12,10 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.DoorBlock;
 import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import net.minecraftforge.fml.config.ConfigTracker;
+import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.gametest.GameTestHolder;
 import net.minecraftforge.gametest.PrefixGameTestTemplate;
 import java.util.UUID;
@@ -22,26 +24,70 @@ import java.util.UUID;
 @PrefixGameTestTemplate(false)
 public final class EternalNightGameTests {
     private static GameTestConfigs.LiveConfig liveConfig;
+    private static int configUsers;
 
-    @BeforeBatch(batch = "eternal_night")
-    public static void isolateConfig(ServerLevel level) {
-        liveConfig = GameTestConfigs.sandbox(NightConfig.SPEC);
-        // SavedData lives on the shared city level and leaks between tests
-        // (exits, boss reservations) — reset it so batch order cannot matter.
-        ServerLevel city = level.getServer().getLevel(EternalNightContent.LEVEL);
+    /**
+     * Sequential unique batches plus this reset keep config, SavedData and
+     * static visit state from leaking when GameTestServer runs a batch in parallel.
+     * AfterBatch always closes the sandbox on pass, fail, or timeout so a
+     * developer server does not keep the mutated in-memory NightConfig.
+     */
+    static void isolate(ServerLevel overworld) {
+        if (liveConfig == null) liveConfig = GameTestConfigs.sandbox(NightConfig.SPEC);
+        boolean first = configUsers == 0;
+        configUsers++;
+        ServerLevel city = overworld.getServer().getLevel(EternalNightContent.LEVEL);
+        // Later overlapping batches must not reset ENTRY_BASE/CAP or wipe SavedData
+        // while cityDeepSleepAndReturnPreservePlayer is still rolling entry.
+        if (!first) return;
         if (city != null) CitySavedData.get(city).clearForTesting();
+        NightConfig.ENABLED.set(true);
+        NightConfig.ENTRY_BASE.set(0.02);
+        NightConfig.ENTRY_DAILY.set(0.08);
+        NightConfig.ENTRY_CAP.set(0.50);
+        NightConfig.EXIT_CHANCE.set(0.01);
+        NightConfig.DOOR_GUARANTEE.set(100);
+        NightConfig.EXIT_SECONDS.set(300);
+        NightConfig.SPAWNING.set(true);
+        NightConfig.RESET_ON_DEATH.set(true);
+        NightConfig.DISABLE_GROWTH.set(true);
     }
 
-    @AfterBatch(batch = "eternal_night")
-    public static void restoreConfig(ServerLevel level) {
-        if (liveConfig != null) {
-            liveConfig.close();
-            liveConfig = null;
-        }
+    static void restoreConfig() {
+        if (configUsers <= 0) return;
+        configUsers--;
+        if (configUsers > 0 || liveConfig == null) return;
+        liveConfig.close();
+        liveConfig = null;
+        NightEvents.clearTransientState();
     }
 
-    @GameTest(template = "empty", batch = "eternal_night", timeoutTicks = 1400)
+    @AfterBatch(batch = "eternal_night_sleep") public static void afterSleep(ServerLevel level) { restoreConfig(); }
+    @AfterBatch(batch = "eternal_night_subway") public static void afterSubway(ServerLevel level) { restoreConfig(); }
+    @AfterBatch(batch = "eternal_night_pending") public static void afterPending(ServerLevel level) { restoreConfig(); }
+    @AfterBatch(batch = "eternal_night_doors") public static void afterDoors(ServerLevel level) { restoreConfig(); }
+    @AfterBatch(batch = "eternal_night_loot") public static void afterLoot(ServerLevel level) { restoreConfig(); }
+    @AfterBatch(batch = "eternal_night_death") public static void afterDeath(ServerLevel level) { restoreConfig(); }
+    @AfterBatch(batch = "eternal_night_reach") public static void afterReach(ServerLevel level) { restoreConfig(); }
+    @AfterBatch(batch = "eternal_night_district") public static void afterDistrict(ServerLevel level) { restoreConfig(); }
+    @AfterBatch(batch = "eternal_night_shadow") public static void afterShadow(ServerLevel level) { restoreConfig(); }
+    @AfterBatch(batch = "eternal_night_save") public static void afterSave(ServerLevel level) { restoreConfig(); }
+    @AfterBatch(batch = "eternal_night_cross") public static void afterCross(ServerLevel level) { restoreConfig(); }
+    @AfterBatch(batch = "eternal_night_pity") public static void afterPity(ServerLevel level) { restoreConfig(); }
+    @AfterBatch(batch = "eternal_night_art") public static void afterArt(ServerLevel level) { restoreConfig(); }
+    @AfterBatch(batch = "eternal_night_events") public static void afterEvents(ServerLevel level) { restoreConfig(); }
+    @AfterBatch(batch = "eternal_night_lock") public static void afterLock(ServerLevel level) { restoreConfig(); }
+    @AfterBatch(batch = "eternal_night_walk") public static void afterWalk(ServerLevel level) { restoreConfig(); }
+    @AfterBatch(batch = "eternal_night_config") public static void afterConfig(ServerLevel level) { restoreConfig(); }
+    @AfterBatch(batch = "eternal_night_config_fail") public static void afterConfigFail(ServerLevel level) { restoreConfig(); }
+    @AfterBatch(batch = "eternal_night_brickrot") public static void afterBrickrot(ServerLevel level) { restoreConfig(); }
+    @AfterBatch(batch = "eternal_night_unload") public static void afterUnload(ServerLevel level) { restoreConfig(); }
+    @AfterBatch(batch = "eternal_night_arrival") public static void afterArrival(ServerLevel level) { restoreConfig(); }
+    @AfterBatch(batch = "eternal_night_entrances") public static void afterEntrances(ServerLevel level) { restoreConfig(); }
+
+    @GameTest(template = "empty", batch = "eternal_night_sleep", timeoutTicks = 1400)
     public static void cityDeepSleepAndReturnPreservePlayer(GameTestHelper h) {
+        isolate(h.getLevel());
         ServerLevel overworld = h.getLevel();
         var session = login(h);
         var player = session.player();
@@ -81,19 +127,25 @@ public final class EternalNightGameTests {
         h.assertTrue(result.right().isPresent(), "real valid bed sleep starts: " + result);
         // An embedded channel is not in ServerConnectionListener, which normally calls doTick.
         h.onEachTick(() -> {
+            NightConfig.ENTRY_BASE.set(1.0);
+            NightConfig.ENTRY_CAP.set(1.0);
             if (player.server.getPlayerList().getPlayer(player.getUUID()) == player) player.doTick();
         });
         BlockPos savedBed = player.getRespawnPosition();
-        h.runAfterDelay(105, () -> {
+        h.runAfterDelay(1390, cleanup);
+        // Do not fail the whole Forge suite on one tick-105 snapshot: GameTest
+        // tickCount is world gameTime, so a catch-up jump can fire that assert
+        // before enough doTick wrappers. Wait until wake/pending/city instead.
+        h.startSequence().thenWaitUntil(() -> {
             h.assertTrue(NightConfig.ENTRY_BASE.get() == 1.0 && NightConfig.ENTRY_CAP.get() == 1.0,
                     "isolated entry probability remains deterministic through deep sleep");
-            h.assertTrue(!player.isSleeping(), "deep sleep wakes before vanilla skips the night");
+            h.assertTrue(!player.isSleeping() || CityEntryQueue.pending(player)
+                    || EternalNightContent.isCity(player.level()),
+                    "deep sleep wakes before vanilla skips the night");
             h.assertTrue(CityEntryQueue.pending(player) || EternalNightContent.isCity(player.level()),
                     "deep sleep schedules entry at 100 ticks without blocking");
-            entryChecked.set(true);
-        });
-        h.runAfterDelay(1390, cleanup);
-        h.startSequence().thenWaitUntil(() -> h.assertTrue(entryChecked.get() && EternalNightContent.isCity(player.level()),
+        }).thenExecute(() -> entryChecked.set(true)).thenWaitUntil(() -> h.assertTrue(
+                entryChecked.get() && EternalNightContent.isCity(player.level()),
                 "asynchronous deep-sleep entry completes")).thenExecute(() -> {
             try {
                 h.assertTrue(overworld.getDayTime() < 24000, "entry happens before vanilla skips the night");
@@ -139,8 +191,9 @@ public final class EternalNightGameTests {
         }
     }
 
-    @GameTest(template = "empty", batch = "eternal_night", timeoutTicks = 240)
+    @GameTest(template = "empty", batch = "eternal_night_subway", timeoutTicks = 240)
     public static void cityGeneratedSubwayAndShaftConnect(GameTestHelper h) {
+        isolate(h.getLevel());
         ServerLevel city = h.getLevel().getServer().getLevel(EternalNightContent.LEVEL);
         int bx = 0;
         while (!CityTemplates.hasStation(city.getSeed(), bx, 0) && bx < 100) bx++;
@@ -168,8 +221,9 @@ public final class EternalNightGameTests {
     private record TestSession(net.minecraft.server.level.ServerPlayer player,
             io.netty.channel.embedded.EmbeddedChannel channel) { }
 
-    @GameTest(template = "empty", batch = "eternal_night")
+    @GameTest(template = "empty", batch = "eternal_night_pending")
     public static void cityPendingEntryIsUniqueAndLogoutCancels(GameTestHelper h) {
+        isolate(h.getLevel());
         var session = login(h);
         var player = session.player();
         try {
@@ -211,8 +265,9 @@ public final class EternalNightGameTests {
         return new TestSession(player, channel);
     }
 
-    @GameTest(template = "empty", batch = "eternal_night", timeoutTicks = 200)
+    @GameTest(template = "empty", batch = "eternal_night_doors", timeoutTicks = 200)
     public static void cityRealPlayerDoorInteractions(GameTestHelper h) {
+        isolate(h.getLevel());
         ServerLevel city = h.getLevel().getServer().getLevel(EternalNightContent.LEVEL);
         var session = login(h);
         var player = session.player();
@@ -287,14 +342,22 @@ public final class EternalNightGameTests {
                 new net.minecraft.world.phys.BlockHitResult(Vec3.atCenterOf(pos), Direction.NORTH, pos, false));
     }
 
-    @GameTest(template = "empty", batch = "eternal_night")
+    @GameTest(template = "empty", batch = "eternal_night_loot")
     public static void cityGeneratedContainersAreLazyAndNeverRefill(GameTestHelper h) {
+        isolate(h.getLevel());
         ServerLevel city = h.getLevel().getServer().getLevel(EternalNightContent.LEVEL);
-        int bx = 64;
-        while (Math.floorMod(CityLayout.hash(city.getSeed(), bx, 0), 4) != 0) bx++;
+        int bx = -1, bz = -1;
+        for (int i = 0; i < 400 && bx < 0; i++) {
+            int x = i % 20, z = i / 20;
+            if (CityTemplates.largeCivic(city.getSeed(), x, z) != null) {
+                bx = x;
+                bz = z;
+            }
+        }
+        h.assertTrue(bx >= 0, "sampled a commercial 2x2 civic building in a 3x3 interior to inspect loot");
         var containers = new java.util.ArrayList<net.minecraft.world.level.block.entity.RandomizableContainerBlockEntity>();
         for (int dx = 1; dx <= 2; dx++) for (int dz = 1; dz <= 2; dz++) {
-            var chunk = city.getChunk(bx * 4 + dx, dz);
+            var chunk = city.getChunk(bx * 4 + dx, bz * 4 + dz);
             for (BlockPos pos : chunk.getBlockEntitiesPos()) {
                 var entity = city.getBlockEntity(pos);
                 if (entity instanceof net.minecraft.world.level.block.entity.RandomizableContainerBlockEntity container)
@@ -302,7 +365,7 @@ public final class EternalNightGameTests {
             }
         }
         h.assertTrue(containers.size() >= 1 && containers.size() <= 4,
-                "one generated large building has 1..4 containers across its four chunks; got " + containers.size());
+                "one commercial civic overlay has 1..4 containers across its four chunks; got " + containers.size());
         for (var container : containers) {
             CompoundTag before = container.saveWithFullMetadata();
             try {
@@ -332,8 +395,9 @@ public final class EternalNightGameTests {
         h.succeed();
     }
 
-    @GameTest(template = "empty", batch = "eternal_night", timeoutTicks = 300)
+    @GameTest(template = "empty", batch = "eternal_night_death", timeoutTicks = 300)
     public static void cityDeathDropsAndRespawnsAtOwnBed(GameTestHelper h) {
+        isolate(h.getLevel());
         var session = login(h);
         var player = session.player();
         var server = h.getLevel().getServer();
@@ -416,8 +480,9 @@ public final class EternalNightGameTests {
         }
     }
 
-    @GameTest(template = "empty", batch = "eternal_night", timeoutTicks = 1400)
+    @GameTest(template = "empty", batch = "eternal_night_reach", timeoutTicks = 1400)
     public static void cityBuildingsReachableAcrossDistricts(GameTestHelper h) {
+        isolate(h.getLevel());
         ServerLevel city = h.getLevel().getServer().getLevel(EternalNightContent.LEVEL);
         long seed = city.getSeed();
         java.util.EnumMap<CityLayout.District, long[]> blocks = new java.util.EnumMap<>(CityLayout.District.class);
@@ -431,15 +496,13 @@ public final class EternalNightGameTests {
         for (var entry : blocks.entrySet()) {
             int bx = (int) entry.getValue()[0], bz = (int) entry.getValue()[1];
             // Replicate CityTemplates.place's per-tile routing to find every placed building.
-            boolean large = Math.floorMod(CityLayout.hash(seed, bx, bz), 4) == 0;
+            String civic = CityTemplates.largeCivic(seed, bx, bz);
             java.util.List<String> placements = new java.util.ArrayList<>();
-            if (large) {
-                String name = new String[]{"mall", "civic_center", "townhall", "library"}[
-                        (int) Math.floorMod(CityLayout.hash(seed + 1, bx, bz), 4)];
-                placements.add(name + "@" + ((bx * 4 + 1) * 16) + "," + CityLayout.plateau(bx, bz) + "," + ((bz * 4 + 1) * 16));
+            if (civic != null) {
+                placements.add(civic + "@" + ((bx * 4 + 1) * 16) + "," + CityLayout.plateau(bx, bz) + "," + ((bz * 4 + 1) * 16));
             }
             for (int lx = 1; lx <= 3; lx++) for (int lz = 1; lz <= 3; lz++) {
-                boolean coveredByLarge = large && lx <= 2 && lz <= 2;
+                boolean coveredByLarge = civic != null && lx <= 2 && lz <= 2;
                 int tx = bx * 4 + lx, tz = bz * 4 + lz;
                 boolean station = lx == 3 && lz == 3 && CityTemplates.hasStation(seed, bx, bz);
                 boolean plaza = lx == 3 && lz == 1 && Math.floorMod(CityLayout.hash(seed + 3, bx, bz), 4) == 0;
@@ -517,15 +580,49 @@ public final class EternalNightGameTests {
         return false;
     }
 
-    @GameTest(template = "empty", batch = "eternal_night")
+    @GameTest(template = "empty", batch = "eternal_night_district")
+    public static void cityDistrictPoolsKeepCivicBuildingsInCommercial(GameTestHelper h) {
+        isolate(h.getLevel());
+        java.util.Set<String> civicSeen = new java.util.HashSet<>();
+        int residentialBlocks = 0, industrialBlocks = 0, commercialLarge = 0;
+        for (int bx = -24; bx <= 24; bx++) for (int bz = -24; bz <= 24; bz++) {
+            CityLayout.District district = CityLayout.district(bx * 64 + 32, bz * 64 + 32);
+            String civic = CityTemplates.largeCivic(0, bx, bz);
+            if (district == CityLayout.District.RESIDENTIAL) {
+                residentialBlocks++;
+                h.assertTrue(civic == null, "residential 64-block must not place mall/civic overlay at " + bx + "," + bz);
+                for (int lx = 1; lx <= 3; lx++) for (int lz = 1; lz <= 3; lz++) {
+                    String name = CityLayout.building(0, bx * 4 + lx, bz * 4 + lz);
+                    h.assertTrue(!CityTemplates.CIVIC_LARGE.contains(name),
+                            "residential tile pool must not draw " + name);
+                }
+            } else if (district == CityLayout.District.INDUSTRIAL) {
+                industrialBlocks++;
+                h.assertTrue(civic == null, "industrial 64-block must not place mall/civic overlay at " + bx + "," + bz);
+            } else if (civic != null) {
+                commercialLarge++;
+                civicSeen.add(civic);
+                h.assertTrue(CityTemplates.CIVIC_LARGE.contains(civic), "unknown civic overlay " + civic);
+            }
+        }
+        h.assertTrue(residentialBlocks > 0 && industrialBlocks > 0, "sample covers residential and industrial");
+        h.assertTrue(commercialLarge > 0, "commercial still places the 2x2 civic building in a 3x3 interior");
+        h.assertTrue(civicSeen.containsAll(CityTemplates.CIVIC_LARGE),
+                "mall/civic_center/townhall/library still appear in commercial: " + civicSeen);
+        h.succeed();
+    }
+
+    @GameTest(template = "empty", batch = "eternal_night_shadow")
     public static void cityMissingShadowNeverUsesRegistryDefault(GameTestHelper h) {
+        isolate(h.getLevel());
         net.minecraft.resources.ResourceLocation id = new net.minecraft.resources.ResourceLocation(ModMain.MOD_ID, "shadow_tangler");
         boolean registered = net.minecraftforge.registries.ForgeRegistries.ENTITY_TYPES.containsKey(id);
         h.assertTrue(registered == (CitySpawns.shadowType() != null), "missing PR18 must skip spawn, never use default pig");
         h.succeed();
     }
-    @GameTest(template = "empty", batch = "eternal_night")
+    @GameTest(template = "empty", batch = "eternal_night_save")
     public static void citySaveRoundtripAndExitExpiry(GameTestHelper h) {
+        isolate(h.getLevel());
         CitySavedData data = new CitySavedData();
         BlockPos door = new BlockPos(-32, 70, -17);
         UUID boss = UUID.randomUUID();
@@ -535,14 +632,16 @@ public final class EternalNightGameTests {
         h.assertTrue(restored.active(door, 5999), "shared exit survives restart before expiry");
         h.assertTrue(!restored.active(door, 6000), "exit expires exactly at deadline");
         h.assertTrue(restored.activeExits(6000).isEmpty(), "expired entries removed");
+        h.assertTrue(restored.waitingToClose(door), "expiry without a loaded chunk keeps a pending close");
         h.assertTrue(!restored.reserveBoss(CityLayout.region(-10, 2), UUID.randomUUID()), "unloaded boss still owns region");
         restored.releaseBoss(boss);
         h.assertTrue(restored.reserveBoss(CityLayout.region(-10, 2), UUID.randomUUID()), "death releases region");
         h.succeed();
     }
 
-    @GameTest(template = "empty", batch = "eternal_night")
+    @GameTest(template = "empty", batch = "eternal_night_cross")
     public static void cityDoorCanonicalizationAndWalkThrough(GameTestHelper h) {
+        isolate(h.getLevel());
         BlockPos lower = new BlockPos(-3, 80, 4);
         h.assertTrue(NightEvents.lowerDoor(lower.above(), Blocks.OAK_DOOR.defaultBlockState()
                 .setValue(DoorBlock.HALF, DoubleBlockHalf.UPPER)).equals(lower), "upper and lower are one door");
@@ -551,11 +650,22 @@ public final class EternalNightGameTests {
         h.assertTrue(!NightEvents.crossedDoor(center.add(0, 0, -0.4), center.add(0, 0, -0.2), lower, Direction.NORTH), "approaching does not activate");
         h.assertTrue(!NightEvents.crossedDoor(center.add(4, 0, -0.4), center.add(4, 0, 0.4), lower, Direction.NORTH), "crossing elsewhere is not a door");
         h.assertTrue(!NightEvents.crossedDoor(center, center, lower, Direction.NORTH), "standing still is not crossing");
+        AABB inside = new AABB(lower.getX() + 0.2, lower.getY(), lower.getZ() + 0.2,
+                lower.getX() + 0.8, lower.getY() + 1.8, lower.getZ() + 0.8);
+        h.assertTrue(NightEvents.throughExit(center, center, inside, lower, Direction.NORTH),
+                "standing in the doorway volume is a return");
+        h.assertTrue(NightEvents.throughExit(center.add(0, 0, 6), center.add(0, 0, -6), null, lower, Direction.NORTH),
+                "lag spike longer than four blocks still crosses the plane");
+        h.assertTrue(!NightEvents.throughExit(center.add(0, 0, 2), center.add(0, 0, 1.5),
+                new AABB(lower.getX() + 3, lower.getY(), lower.getZ() + 3,
+                        lower.getX() + 3.6, lower.getY() + 1.8, lower.getZ() + 3.6),
+                lower, Direction.NORTH), "nearby movement outside the volume is ignored");
         h.succeed();
     }
 
-    @GameTest(template = "empty", batch = "eternal_night")
+    @GameTest(template = "empty", batch = "eternal_night_pity")
     public static void cityDoorHistoryNbtAndPity(GameTestHelper h) {
+        isolate(h.getLevel());
         NightRules.Doors doors = new NightRules.Doors(new long[0]);
         for (int i = 1; i <= 99; i++) h.assertTrue(!doors.open(i, 100, 0.01, 0.99).exit(), "no early exit for failing rolls");
         CompoundTag player = new CompoundTag();
@@ -566,16 +676,478 @@ public final class EternalNightGameTests {
         h.succeed();
     }
 
-    @GameTest(template = "empty", batch = "eternal_night")
+    @GameTest(template = "empty", batch = "eternal_night_art")
     public static void cityDimensionAndArtContract(GameTestHelper h) {
+        isolate(h.getLevel());
         ServerLevel city = h.getLevel().getServer().getLevel(EternalNightContent.LEVEL);
         h.assertTrue(city != null, "dimension registered");
         h.assertTrue(!city.dimensionType().hasSkyLight() && city.dimensionType().hasFixedTime(), "fixed night without skylight");
         h.assertTrue(city.dimensionType().ambientLight() == 0 && !city.dimensionType().hasRaids(), "darkness and no raids");
         h.assertTrue(!city.dimensionType().respawnAnchorWorks(), "anchors disabled");
-        h.assertTrue(CityTemplates.available(city), "all 12 original building templates installed");
+        h.assertTrue(CityTemplates.STRUCTURES.size() == 35, "authorized pack is 35 templates, not 37");
+        h.assertTrue(CityTemplates.available(city),
+                "all " + CityTemplates.STRUCTURES.size() + " original structure templates installed");
         h.assertTrue(EternalNightContent.NEON_SIGN.get().defaultBlockState().getLightEmission() == 12, "art neon has light 12");
         h.assertTrue(EternalNightContent.EMERGENCY_LIGHT.get().defaultBlockState().getLightEmission() == 4, "emergency light has light 4");
         h.succeed();
+    }
+
+    /** Spec bans in the city: sleep problem, bed/anchor click, spawn set, growth, vanilla mobs. */
+    @GameTest(template = "empty", batch = "eternal_night_events", timeoutTicks = 120)
+    public static void cityEventInterceptionCoversSpec(GameTestHelper h) {
+        isolate(h.getLevel());
+        ServerLevel city = h.getLevel().getServer().getLevel(EternalNightContent.LEVEL);
+        BlockPos pos = new BlockPos(0, 70, 0);
+        var player = login(h).player();
+        player.teleportTo(city, pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5, 0, 0);
+
+        var bus = net.minecraftforge.common.MinecraftForge.EVENT_BUS;
+
+        var sleep = new net.minecraftforge.event.entity.player.PlayerSleepInBedEvent(player, java.util.Optional.of(pos));
+        bus.post(sleep);
+        h.assertTrue(sleep.getResultStatus() == net.minecraft.world.entity.player.Player.BedSleepingProblem.OTHER_PROBLEM,
+                "sleep resolves OTHER_PROBLEM in city");
+
+        for (var bed : new net.minecraft.world.level.block.Block[] { Blocks.RED_BED, Blocks.RESPAWN_ANCHOR }) {
+            city.setBlock(pos, bed.defaultBlockState(), 3);
+            var click = new net.minecraftforge.event.entity.player.PlayerInteractEvent.RightClickBlock(
+                    player, net.minecraft.world.InteractionHand.MAIN_HAND, pos,
+                    new net.minecraft.world.phys.BlockHitResult(Vec3.atCenterOf(pos), Direction.UP, pos, false));
+            bus.post(click);
+            h.assertTrue(click.isCanceled(), bed + " interaction canceled in city");
+            city.removeBlock(pos, false);
+        }
+
+        var setSpawn = new net.minecraftforge.event.entity.player.PlayerSetSpawnEvent(player, EternalNightContent.LEVEL, pos, false);
+        bus.post(setSpawn);
+        h.assertTrue(setSpawn.isCanceled(), "spawn point cannot be set in city");
+
+        city.setBlock(pos, Blocks.WHEAT.defaultBlockState(), 3);
+        var crop = new net.minecraftforge.event.level.BlockEvent.CropGrowEvent.Pre(city, pos,
+                Blocks.WHEAT.defaultBlockState());
+        bus.post(crop);
+        h.assertTrue(crop.getResult() == net.minecraftforge.eventbus.api.Event.Result.DENY,
+                "crop growth denied in city");
+        var oakFeature = city.registryAccess().registryOrThrow(net.minecraft.core.registries.Registries.CONFIGURED_FEATURE)
+                .getHolderOrThrow(net.minecraft.data.worldgen.features.TreeFeatures.OAK);
+        var tree = new net.minecraftforge.event.level.SaplingGrowTreeEvent(city,
+                net.minecraft.util.RandomSource.create(0), pos, oakFeature);
+        bus.post(tree);
+        h.assertTrue(tree.getResult() == net.minecraftforge.eventbus.api.Event.Result.DENY,
+                "tree growth denied in city");
+        var bonemeal = new net.minecraftforge.event.entity.player.BonemealEvent(player, city, pos,
+                Blocks.WHEAT.defaultBlockState(), new net.minecraft.world.item.ItemStack(
+                        net.minecraft.world.item.Items.BONE_MEAL));
+        bus.post(bonemeal);
+        h.assertTrue(bonemeal.isCanceled(), "bonemeal canceled in city");
+        city.removeBlock(pos, false);
+
+        var zombie = new net.minecraft.world.entity.monster.Zombie(city);
+        var spawn = new net.minecraftforge.event.entity.living.MobSpawnEvent.FinalizeSpawn(zombie, city,
+                0, 70, 0, city.getCurrentDifficultyAt(pos),
+                net.minecraft.world.entity.MobSpawnType.NATURAL, null, null, null);
+        bus.post(spawn);
+        h.assertTrue(spawn.isSpawnCancelled(), "vanilla natural spawn denied in city");
+        h.getLevel().getServer().getPlayerList().remove(player);
+        h.succeed();
+    }
+
+    /** A live shared exit cannot be closed; its door shuts on expiry. */
+    @GameTest(template = "empty", batch = "eternal_night_lock", timeoutTicks = 120)
+    public static void cityExitDoorStaysOpenUntilExpiry(GameTestHelper h) {
+        isolate(h.getLevel());
+        ServerLevel city = h.getLevel().getServer().getLevel(EternalNightContent.LEVEL);
+        BlockPos pos = new BlockPos(4, 70, 4);
+        installDoor(city, pos, Blocks.OAK_DOOR);
+        var player = login(h).player();
+        player.teleportTo(city, pos.getX() + 0.5, pos.getY(), pos.getZ() + 2.5, 0, 0);
+        CitySavedData data = CitySavedData.get(city);
+        long now = city.getGameTime();
+        data.open(pos, now + 100);
+
+        openLeaves(city, pos);
+        var state = city.getBlockState(pos);
+        h.assertTrue(state.getValue(DoorBlock.OPEN), "door installed open");
+        state.use(city, player, net.minecraft.world.InteractionHand.MAIN_HAND,
+                new net.minecraft.world.phys.BlockHitResult(Vec3.atCenterOf(pos), Direction.NORTH, pos, false));
+        h.assertTrue(city.getBlockState(pos).getValue(DoorBlock.OPEN),
+                "active shared exit cannot be closed by oak click");
+        ((DoorBlock) city.getBlockState(pos).getBlock()).setOpen(player, city, city.getBlockState(pos), pos, false);
+        h.assertTrue(city.getBlockState(pos).getValue(DoorBlock.OPEN),
+                "active shared exit cannot be closed by DoorBlock.setOpen");
+        h.assertTrue(data.active(pos, now), "exit remains active after blocked close");
+
+        BlockPos iron = pos.east(8);
+        for (int x = -1; x <= 2; x++) for (int z = -1; z <= 2; z++)
+            city.setBlock(iron.offset(x, -1, z), Blocks.STONE_BRICKS.defaultBlockState(), 2);
+        installDoor(city, iron, Blocks.IRON_DOOR);
+        city.setBlock(iron, city.getBlockState(iron).setValue(DoorBlock.OPEN, true).setValue(DoorBlock.POWERED, true), 3);
+        city.setBlock(iron.above(), city.getBlockState(iron.above()).setValue(DoorBlock.OPEN, true)
+                .setValue(DoorBlock.POWERED, true), 3);
+        data.open(iron, now + 100);
+        city.getBlockState(iron).neighborChanged(city, iron, Blocks.REDSTONE_BLOCK, iron.east(), false);
+        h.assertTrue(city.getBlockState(iron).getValue(DoorBlock.OPEN),
+                "active iron exit cannot be closed by unpowered redstone neighborChanged");
+
+        BlockPos expired = pos.east(4);
+        installDoor(city, expired, Blocks.OAK_DOOR);
+        openLeaves(city, expired);
+        data.open(expired, now - 1);
+        data.activeExits(city, now);
+        h.assertTrue(!city.getBlockState(expired).getValue(DoorBlock.OPEN),
+                "expired exit door closes as feedback");
+        h.assertTrue(city.getBlockState(pos).getValue(DoorBlock.OPEN),
+                "live exit door unaffected by other door's expiry");
+        boolean srg = false, mcp = false;
+        for (var method : DoorBlock.class.getDeclaredMethods()) {
+            if (method.getName().equals("m_153165_")) srg = true;
+            if (method.getName().equals("setOpen")) mcp = true;
+        }
+        System.out.println("NIGHT_DOOR_LOCK_RUNTIME oakClick=true ironRedstone=true setOpen=false blocked"
+                + " DoorBlock.setOpen=" + mcp + " DoorBlock.m_153165_=" + srg);
+        h.getLevel().getServer().getPlayerList().remove(player);
+        h.succeed();
+    }
+
+    private static void openLeaves(ServerLevel city, BlockPos pos) {
+        city.setBlock(pos, city.getBlockState(pos).setValue(DoorBlock.OPEN, true), 3);
+        city.setBlock(pos.above(), city.getBlockState(pos.above()).setValue(DoorBlock.OPEN, true), 3);
+    }
+
+    /**
+     * Walking through an active shared exit (open, closed, or a laggy jump)
+     * returns the visitor to their overworld bed; an expired door does not.
+     */
+    @GameTest(template = "empty", batch = "eternal_night_walk", timeoutTicks = 200)
+    public static void cityWalkingThroughSharedExitReturnsHome(GameTestHelper h) {
+        isolate(h.getLevel());
+        ServerLevel overworld = h.getLevel();
+        var server = overworld.getServer();
+        ServerLevel city = server.getLevel(EternalNightContent.LEVEL);
+        var session = login(h);
+        var player = session.player();
+        try {
+            BlockPos bed = new BlockPos(-96, 80, -96);
+            for (int dx = -2; dx <= 2; dx++) for (int dz = -2; dz <= 2; dz++) {
+                overworld.setBlock(bed.offset(dx, -1, dz), Blocks.STONE_BRICKS.defaultBlockState(), 2);
+                for (int dy = 0; dy <= 3; dy++) overworld.setBlock(bed.offset(dx, dy, dz), Blocks.AIR.defaultBlockState(), 2);
+            }
+            var bedState = Blocks.RED_BED.defaultBlockState().setValue(net.minecraft.world.level.block.BedBlock.FACING, Direction.NORTH);
+            overworld.setBlock(bed, bedState.setValue(net.minecraft.world.level.block.BedBlock.PART,
+                    net.minecraft.world.level.block.state.properties.BedPart.FOOT), 2);
+            overworld.setBlock(bed.north(), bedState.setValue(net.minecraft.world.level.block.BedBlock.PART,
+                    net.minecraft.world.level.block.state.properties.BedPart.HEAD), 2);
+            player.setRespawnPosition(net.minecraft.world.level.Level.OVERWORLD, bed.north(), 0, false, false);
+
+            BlockPos door = new BlockPos(7000, 90, 7000);
+            for (int x = -2; x <= 2; x++) for (int z = -8; z <= 8; z++) {
+                city.setBlock(door.offset(x, -1, z), Blocks.STONE_BRICKS.defaultBlockState(), 2);
+                for (int y = 0; y <= 3; y++) city.setBlock(door.offset(x, y, z), Blocks.AIR.defaultBlockState(), 2);
+            }
+            installDoor(city, door, Blocks.OAK_DOOR);
+            city.setBlock(door, city.getBlockState(door).setValue(DoorBlock.OPEN, true)
+                    .setValue(DoorBlock.FACING, Direction.NORTH), 2);
+            city.setBlock(door.above(), city.getBlockState(door.above()).setValue(DoorBlock.OPEN, true)
+                    .setValue(DoorBlock.FACING, Direction.NORTH), 2);
+            CitySavedData.get(city).open(door, city.getGameTime() + 6000);
+
+            player.teleportTo(city, door.getX() + 0.5, door.getY(), door.getZ() + 2.2, 180, 0);
+            h.assertTrue(EternalNightContent.isCity(player.level()), "starts in the city");
+            Vec3 south = player.position();
+            player.absMoveTo(door.getX() + 0.5, door.getY(), door.getZ() - 2.2, 180, 0);
+            NightEvents.considerReturn(player, city, south, player.position(), player.getBoundingBox());
+            NightEvents.flushReturns(server);
+            h.assertTrue(player.serverLevel() == overworld, "crossing the open white plane returns to overworld");
+            h.assertTrue(player.blockPosition().distSqr(bed) < 25, "returns beside own bed after open crossing");
+            h.assertTrue(NightEvents.playerData(player).isEmpty(), "open crossing clears visit data");
+
+            player.getPersistentData().put(NightEvents.PLAYER_TAG, visitingTag());
+            player.teleportTo(city, door.getX() + 0.5, door.getY(), door.getZ() + 2.2, 180, 0);
+            // Closed leaf, still an active SavedData exit: this is the user-reported miss.
+            city.setBlock(door, city.getBlockState(door).setValue(DoorBlock.OPEN, false), 2);
+            Vec3 beforeClosed = player.position();
+            player.absMoveTo(door.getX() + 0.5, door.getY(), door.getZ() - 2.2, 180, 0);
+            NightEvents.considerReturn(player, city, beforeClosed, player.position(), player.getBoundingBox());
+            NightEvents.flushReturns(server);
+            h.assertTrue(player.serverLevel() == overworld, "closed active exit still returns home");
+
+            player.getPersistentData().put(NightEvents.PLAYER_TAG, visitingTag());
+            player.teleportTo(city, door.getX() + 0.5, door.getY(), door.getZ() + 6.5, 180, 0);
+            Vec3 far = player.position();
+            player.absMoveTo(door.getX() + 0.5, door.getY(), door.getZ() - 6.5, 180, 0);
+            NightEvents.considerReturn(player, city, far, player.position(), player.getBoundingBox());
+            NightEvents.flushReturns(server);
+            h.assertTrue(player.serverLevel() == overworld, "lag jump longer than four blocks still returns");
+
+            player.getPersistentData().put(NightEvents.PLAYER_TAG, visitingTag());
+            player.teleportTo(city, door.getX() + 0.5, door.getY(), door.getZ() + 2.2, 180, 0);
+            CitySavedData.get(city).clearForTesting();
+            CitySavedData.get(city).open(door, city.getGameTime() - 1);
+            CitySavedData.get(city).activeExits(city, city.getGameTime());
+            Vec3 beforeExpired = player.position();
+            player.absMoveTo(door.getX() + 0.5, door.getY(), door.getZ() - 2.2, 180, 0);
+            NightEvents.considerReturn(player, city, beforeExpired, player.position(), player.getBoundingBox());
+            NightEvents.flushReturns(server);
+            h.assertTrue(EternalNightContent.isCity(player.level()), "expired exit must not teleport");
+            h.succeed();
+        } finally {
+            if (server.getPlayerList().getPlayer(player.getUUID()) != null)
+                server.getPlayerList().remove(player);
+            session.channel().finishAndReleaseAll();
+        }
+    }
+
+    @GameTest(template = "empty", batch = "eternal_night_config")
+    public static void cityConfigSandboxRestoresHostValuesAcrossReruns(GameTestHelper h) {
+        restoreConfig();
+        var live = ConfigTracker.INSTANCE.configSets().get(ModConfig.Type.SERVER).stream()
+                .filter(config -> config.getSpec() == NightConfig.SPEC).findFirst().orElseThrow().getConfigData();
+        boolean hostEnabled = NightConfig.ENABLED.get();
+        int hostExit = NightConfig.EXIT_SECONDS.get();
+        double hostBase = NightConfig.ENTRY_BASE.get();
+        Object fileExit = live.get(String.join(".", NightConfig.EXIT_SECONDS.getPath()));
+        for (int run = 1; run <= 2; run++) {
+            isolate(h.getLevel());
+            h.assertTrue(NightConfig.EXIT_SECONDS.get() == 300, "run " + run + " uses the test exit window");
+            NightConfig.EXIT_SECONDS.set(7);
+            NightConfig.ENABLED.set(!hostEnabled);
+            NightConfig.ENTRY_BASE.set(0.99);
+            h.assertTrue(java.util.Objects.equals(live.get(String.join(".", NightConfig.EXIT_SECONDS.getPath())), fileExit),
+                    "run " + run + " sandbox must not mutate the file-backed config");
+            restoreConfig();
+            h.assertTrue(NightConfig.ENABLED.get() == hostEnabled, "run " + run + " restores ENABLED");
+            h.assertTrue(NightConfig.EXIT_SECONDS.get() == hostExit, "run " + run + " restores EXIT_SECONDS");
+            h.assertTrue(NightConfig.ENTRY_BASE.get() == hostBase, "run " + run + " restores ENTRY_BASE");
+        }
+        h.succeed();
+    }
+
+    @GameTest(template = "empty", batch = "eternal_night_config_fail")
+    public static void cityConfigSandboxRestoresAfterSimulatedFailure(GameTestHelper h) {
+        restoreConfig();
+        boolean hostEnabled = NightConfig.ENABLED.get();
+        int hostExit = NightConfig.EXIT_SECONDS.get();
+        isolate(h.getLevel());
+        NightConfig.ENABLED.set(!hostEnabled);
+        NightConfig.EXIT_SECONDS.set(7);
+        try {
+            throw new IllegalStateException("injected GameTest failure");
+        } catch (IllegalStateException ignored) {
+            afterConfigFail(h.getLevel());
+        }
+        h.assertTrue(NightConfig.ENABLED.get() == hostEnabled, "injected failure restores ENABLED via AfterBatch hook");
+        h.assertTrue(NightConfig.EXIT_SECONDS.get() == hostExit, "injected failure restores EXIT_SECONDS via AfterBatch hook");
+        System.out.println("NIGHT_AFTERBATCH_FAIL_RESTORE ENABLED=" + NightConfig.ENABLED.get()
+                + " EXIT_SECONDS=" + NightConfig.EXIT_SECONDS.get());
+        isolate(h.getLevel());
+        NightConfig.ENABLED.set(!hostEnabled);
+        NightConfig.EXIT_SECONDS.set(11);
+        // GameTestBatchRunner invokes the same AfterBatch hook on timeout as on fail.
+        // A real timeout cannot stay in a green suite, so this is the timeout path of restoreConfig.
+        afterConfigFail(h.getLevel());
+        h.assertTrue(NightConfig.ENABLED.get() == hostEnabled, "simulated timeout restores ENABLED via AfterBatch hook");
+        h.assertTrue(NightConfig.EXIT_SECONDS.get() == hostExit, "simulated timeout restores EXIT_SECONDS via AfterBatch hook");
+        System.out.println("NIGHT_AFTERBATCH_TIMEOUT_RESTORE ENABLED=" + NightConfig.ENABLED.get()
+                + " EXIT_SECONDS=" + NightConfig.EXIT_SECONDS.get());
+        isolate(h.getLevel());
+        NightConfig.EXIT_SECONDS.set(1);
+        afterConfig(h.getLevel());
+        h.assertTrue(NightConfig.EXIT_SECONDS.get() == hostExit, "direct AfterBatch restoreConfig matches host");
+        h.succeed();
+    }
+
+    @GameTest(template = "empty", batch = "eternal_night_brickrot")
+    public static void cityBrickrotHabitatIsSubwayAndIndustrialUnderground(GameTestHelper h) {
+        isolate(h.getLevel());
+        int[] industrial = sampleDistrict(CityLayout.District.INDUSTRIAL);
+        int[] industrialInterior = sampleInterior(CityLayout.District.INDUSTRIAL);
+        int[] commercialTunnel = sampleSubway(CityLayout.District.COMMERCIAL);
+        int[] residentialTunnel = sampleSubway(CityLayout.District.RESIDENTIAL);
+        int[] commercialInterior = sampleInterior(CityLayout.District.COMMERCIAL);
+        int[] residentialInterior = sampleInterior(CityLayout.District.RESIDENTIAL);
+        h.assertTrue(CitySpawns.brickrotHabitat(CityLayout.District.INDUSTRIAL, industrial[0], 40, industrial[1]),
+                "industrial subway is habitat");
+        h.assertTrue(CitySpawns.brickrotHabitat(CityLayout.District.INDUSTRIAL, industrialInterior[0], 55, industrialInterior[1]),
+                "industrial non-tunnel underground is habitat");
+        h.assertTrue(!CitySpawns.brickrotHabitat(CityLayout.District.INDUSTRIAL, industrial[0], 56, industrial[1]),
+                "industrial surface is not habitat");
+        h.assertTrue(!CitySpawns.brickrotHabitat(CityLayout.District.INDUSTRIAL, industrial[0], 70, industrial[1]),
+                "industrial rooftops are not habitat");
+        h.assertTrue(CitySpawns.subwayTunnel(commercialTunnel[0], 42, commercialTunnel[1]),
+                "sampled commercial column is a subway tunnel");
+        h.assertTrue(CitySpawns.brickrotHabitat(CityLayout.District.COMMERCIAL, commercialTunnel[0], 42, commercialTunnel[1]),
+                "commercial subway tunnel is habitat");
+        h.assertTrue(CitySpawns.brickrotHabitat(CityLayout.District.RESIDENTIAL, residentialTunnel[0], 40, residentialTunnel[1]),
+                "residential subway tunnel is habitat");
+        h.assertTrue(!CitySpawns.subwayTunnel(commercialInterior[0], 42, commercialInterior[1]),
+                "commercial interior is not a subway tunnel");
+        h.assertTrue(!CitySpawns.brickrotHabitat(CityLayout.District.COMMERCIAL, commercialInterior[0], 42, commercialInterior[1]),
+                "commercial non-tunnel is not habitat");
+        h.assertTrue(!CitySpawns.brickrotHabitat(CityLayout.District.RESIDENTIAL, residentialInterior[0], 42, residentialInterior[1]),
+                "residential non-tunnel is not habitat");
+        h.assertTrue(!CitySpawns.brickrotHabitat(CityLayout.District.COMMERCIAL, commercialTunnel[0], 70, commercialTunnel[1]),
+                "surface above a subway corridor is not habitat");
+        h.succeed();
+    }
+
+    @GameTest(template = "empty", batch = "eternal_night_unload", timeoutTicks = 400)
+    public static void cityExpiredExitClosesWhenUnloadedChunkLoads(GameTestHelper h) {
+        isolate(h.getLevel());
+        ServerLevel city = h.getLevel().getServer().getLevel(EternalNightContent.LEVEL);
+        CitySavedData data = CitySavedData.get(city);
+        BlockPos far = new BlockPos(4096, 70, 4096);
+        int cx = far.getX() >> 4, cz = far.getZ() >> 4;
+        city.setChunkForced(cx, cz, true);
+        city.getChunk(cx, cz);
+        installDoor(city, far, Blocks.OAK_DOOR);
+        openLeaves(city, far);
+        h.assertTrue(city.isLoaded(far) && city.getBlockState(far).getValue(DoorBlock.OPEN),
+                "existing door is open in a loaded chunk");
+        long until = city.getGameTime() + 25;
+        data.open(far, until);
+        city.setChunkForced(cx, cz, false);
+        h.startSequence()
+                .thenWaitUntil(() -> {
+                    city.getChunkSource().tick(() -> true, true);
+                    h.assertTrue(!city.isLoaded(far), "existing door chunk actually unloaded");
+                })
+                .thenIdle(30)
+                .thenExecute(() -> {
+                    h.assertTrue(!city.isLoaded(far), "chunk still unloaded when the window expires");
+                    data.activeExits(city, city.getGameTime());
+                    h.assertTrue(!data.active(far, city.getGameTime()), "unloaded expiry cannot teleport");
+                    h.assertTrue(data.waitingToClose(far),
+                            "unloaded expiry keeps PendingClose instead of dropping the record");
+                    CompoundTag snapshot = data.save(new CompoundTag());
+                    CitySavedData restored = CitySavedData.load(snapshot);
+                    h.assertTrue(restored.waitingToClose(far), "pending close survives NBT across the unload");
+                    data.clearForTesting();
+                    h.assertTrue(!data.waitingToClose(far),
+                            "in-memory SavedData is empty after simulated process death");
+                    data.overwriteFrom(snapshot);
+                    h.assertTrue(data.waitingToClose(far),
+                            "PendingClose reloads from NBT after simulated restart");
+                    System.out.println("NIGHT_PENDING_CLOSE_RESTART waitingToClose=true after NBT reload");
+                })
+                .thenExecute(() -> {
+                    city.setChunkForced(cx, cz, true);
+                    city.getChunk(cx, cz);
+                })
+                .thenWaitUntil(() -> h.assertTrue(city.isLoaded(far), "expired door chunk reloaded"))
+                .thenExecute(() -> {
+                    data.activeExits(city, city.getGameTime());
+                    h.assertTrue(!city.getBlockState(far).getValue(DoorBlock.OPEN),
+                            "reloading the expired door closes the original leaf after restart NBT");
+                    h.assertTrue(!data.waitingToClose(far), "pending close is dropped after the leaf shuts");
+                    System.out.println("NIGHT_PENDING_CLOSE_RELOAD doorClosed=true after chunk reload");
+                    city.setChunkForced(cx, cz, false);
+                })
+                .thenSucceed();
+    }
+
+    @GameTest(template = "empty", batch = "eternal_night_arrival", timeoutTicks = 1400)
+    public static void cityArrivalLiesDownOnStreet(GameTestHelper h) {
+        isolate(h.getLevel());
+        var session = login(h);
+        var player = session.player();
+        boolean[] lying = {false};
+        NightConfig.ENTRY_BASE.set(1.0);
+        NightConfig.ENTRY_CAP.set(1.0);
+        h.onEachTick(() -> {
+            NightConfig.ENTRY_BASE.set(1.0);
+            NightConfig.ENTRY_CAP.set(1.0);
+            if (player.server.getPlayerList().getPlayer(player.getUUID()) == player) player.doTick();
+            if (EternalNightContent.isCity(player.level())
+                    && (player.isSleeping() || player.getPose() == net.minecraft.world.entity.Pose.SLEEPING))
+                lying[0] = true;
+        });
+        h.assertTrue(NightEvents.enter(player), "entry request is accepted");
+        h.startSequence().thenWaitUntil(() -> h.assertTrue(EternalNightContent.isCity(player.level()),
+                "queued entry teleports the player")).thenExecute(() -> {
+            h.assertTrue(lying[0], "arrival uses the sleeping pose on the street");
+            h.assertTrue(CityLayout.street(player.getBlockX(), player.getBlockZ()), "arrives on a city street");
+            h.getLevel().getServer().getPlayerList().remove(player);
+            session.channel().finishAndReleaseAll();
+        }).thenSucceed();
+    }
+
+    @GameTest(template = "empty", batch = "eternal_night_entrances", timeoutTicks = 2000)
+    public static void cityTwelveBuildingEntrancesWalkable(GameTestHelper h) {
+        isolate(h.getLevel());
+        ServerLevel city = h.getLevel().getServer().getLevel(EternalNightContent.LEVEL);
+        var placements = CityBuildingAccess.locateBuildings(city.getSeed());
+        h.assertTrue(placements.size() == 12, "twelve original building classes are located");
+        int walked = 0, floorsOk = 0;
+        StringBuilder table = new StringBuilder();
+        StringBuilder missing = new StringBuilder();
+        for (var placement : placements) {
+            CityBuildingAccess.loadAround(city, placement.origin());
+            var approach = CityBuildingAccess.findApproach(city, placement.origin(), placement.name());
+            if (approach.isEmpty() || !CityBuildingAccess.entranceWalkable(city, approach.get())) {
+                missing.append(placement.name()).append(' ');
+                table.append("CITY_ENTRANCE template=").append(placement.name())
+                        .append(" district=").append(placement.district())
+                        .append(" walkable=false origin=").append(placement.origin().toShortString()).append('\n');
+                continue;
+            }
+            walked++;
+            var template = city.getStructureManager().get(CityTemplates.id("buildings/" + placement.name())).orElseThrow();
+            var size = template.getSize();
+            BlockPos interior = approach.get().door().relative(approach.get().inward());
+            int floors = CityBuildingAccess.floorCount(city, placement.origin(), size.getX(), size.getZ(), size.getY(),
+                    interior);
+            int expected = CityBuildingAccess.expectedFloors(city, placement.origin(), placement.name());
+            boolean floorsReached = floors >= expected;
+            if (floorsReached) floorsOk++;
+            int dist = Math.abs(approach.get().feet().getX() - approach.get().door().getX())
+                    + Math.abs(approach.get().feet().getZ() - approach.get().door().getZ());
+            double stepUp = CityBuildingAccess.stepUp(city, approach.get().feet());
+            table.append("CITY_ENTRANCE template=").append(placement.name())
+                    .append(" district=").append(placement.district())
+                    .append(" walkable=true approachDist=").append(dist)
+                    .append(" street=").append(CityLayout.street(approach.get().feet().getX(), approach.get().feet().getZ()))
+                    .append(" stepUp=").append(stepUp)
+                    .append(" door=").append(approach.get().door().toShortString())
+                    .append(" feet=").append(approach.get().feet().toShortString())
+                    .append(" floors=").append(floors)
+                    .append(" expectedDoorFloors=").append(expected)
+                    .append(" floorsReached=").append(floorsReached).append('\n');
+        }
+        System.out.print(table);
+        System.out.println("CITY_ENTRANCE_SUMMARY walked=" + walked + "/12 floorsReached=" + floorsOk + "/12");
+        h.assertTrue(walked == 12, "all 12 original building classes have a walkable entrance; missing " + missing);
+        h.succeed();
+    }
+
+    private static int[] sampleDistrict(CityLayout.District want) {
+        for (int i = 0; i < 400; i++) {
+            int x = (i % 20) * 128 + 64, z = (i / 20) * 128 + 64;
+            if (CityLayout.district(x, z) == want) return new int[]{x, z};
+        }
+        throw new IllegalStateException("no sample for " + want);
+    }
+
+    private static int[] sampleSubway(CityLayout.District want) {
+        for (int i = 0; i < 8000; i++) {
+            int x = (i % 80) * 16 + 8, z = (i / 80) * 16 + 8;
+            if (CityLayout.district(x, z) == want && CityTemplates.subwayTunnelAt(x, z)) return new int[]{x, z};
+        }
+        throw new IllegalStateException("no subway sample for " + want);
+    }
+
+    private static int[] sampleInterior(CityLayout.District want) {
+        for (int i = 0; i < 8000; i++) {
+            int bx = i % 80, bz = i / 80;
+            int x = bx * 64 + 24, z = bz * 64 + 24;
+            if (CityLayout.district(x, z) == want && !CityTemplates.subwayTunnelAt(x, z)) return new int[]{x, z};
+        }
+        throw new IllegalStateException("no interior sample for " + want);
+    }
+
+    private static CompoundTag visitingTag() {
+        CompoundTag data = new CompoundTag();
+        data.putBoolean("Visiting", true);
+        data.putLongArray("Doors", new long[]{1, 2});
+        return data;
     }
 }

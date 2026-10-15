@@ -11,6 +11,7 @@ import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.*;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.block.state.properties.SlabType;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.templatesystem.*;
@@ -19,11 +20,39 @@ import java.util.*;
 public final class CityTemplates {
     public static final List<String> BUILDINGS = List.of("res_apartment_low", "res_apartment_mid", "res_apartment_high",
             "res_tenement", "office_dark", "office_tower", "shop_neon", "warehouse", "mall", "civic_center", "townhall", "library");
+    /** 2×2-chunk civic building placed in the 3×3 interior of a 64-block tile. Commercial only. */
+    public static final List<String> CIVIC_LARGE = List.of("mall", "civic_center", "townhall", "library");
+
+    /** Every structure template the generator may place, per the supplied art pack. */
+    public static final List<String> STRUCTURES = List.of(
+            "buildings/res_apartment_low", "buildings/res_apartment_mid", "buildings/res_apartment_high",
+            "buildings/res_tenement", "buildings/office_dark", "buildings/office_tower", "buildings/shop_neon",
+            "buildings/warehouse", "buildings/mall", "buildings/civic_center", "buildings/townhall", "buildings/library",
+            "plazas/plaza_fountain", "plazas/plaza_fountain_com", "plazas/plaza_parking", "plazas/plaza_station",
+            "streets/street_bend_com", "streets/street_bend_res", "streets/street_cross_com", "streets/street_cross_res",
+            "streets/street_end_com", "streets/street_end_res", "streets/street_straight_com",
+            "streets/street_straight_ns_com", "streets/street_straight_ns_res", "streets/street_straight_res",
+            "streets/street_t_com", "streets/street_t_res",
+            "subway/station_entrance", "subway/station_platform", "subway/station_platform_stairs",
+            "subway/station_shaft", "subway/tunnel_bend", "subway/tunnel_split", "subway/tunnel_straight");
 
     private CityTemplates() { }
     public static ResourceLocation id(String path) { return new ResourceLocation("qihai", path); }
     public static boolean available(ServerLevel level) {
-        return BUILDINGS.stream().allMatch(name -> level.getStructureManager().get(id("buildings/" + name)).isPresent());
+        return STRUCTURES.stream().allMatch(name -> level.getStructureManager().get(id(name)).isPresent());
+    }
+
+    /**
+     * A mall/civic/townhall/library overlay is commercial-only.
+     * The template is a 2×2-chunk (32×32) footprint starting at the north-west
+     * interior chunk of the 3×3 building plot inside a 4×4-chunk tile.
+     * Residential and industrial tiles keep {@link CityLayout#building}.
+     */
+    public static String largeCivic(long seed, int blockX, int blockZ) {
+        CityLayout.District district = CityLayout.district(blockX * 64 + 32, blockZ * 64 + 32);
+        if (district != CityLayout.District.COMMERCIAL) return null;
+        if (Math.floorMod(CityLayout.hash(seed, blockX, blockZ), 4) != 0) return null;
+        return CIVIC_LARGE.get((int) Math.floorMod(CityLayout.hash(seed + 1, blockX, blockZ), CIVIC_LARGE.size()));
     }
 
     public static void place(WorldGenRegion region, ChunkAccess chunk) {
@@ -45,13 +74,12 @@ public final class CityTemplates {
         if (lx == 0 || lz == 0) {
             String street = lx == 0 && lz == 0 ? "street_cross_" : lx == 0 ? "street_straight_ns_" : "street_straight_";
             placeOne(region, "streets/" + street + district, new BlockPos(x, CityLayout.surface(x, z) - 1, z), clip, true, null);
+            flattenLotFacingStreet(region, x, z);
         } else {
-            boolean large = Math.floorMod(CityLayout.hash(region.getSeed(), bx, bz), 4) == 0;
-            if (large && lx <= 2 && lz <= 2) {
-                String[] choices = {"mall", "civic_center", "townhall", "library"};
-                String name = choices[(int) Math.floorMod(CityLayout.hash(region.getSeed() + 1, bx, bz), choices.length)];
-                placeOne(region, "buildings/" + name, new BlockPos((bx * 4 + 1) * 16, CityLayout.plateau(bx, bz), (bz * 4 + 1) * 16),
-                        clip, false, loot(name));
+            String civic = largeCivic(region.getSeed(), bx, bz);
+            if (civic != null && lx <= 2 && lz <= 2) {
+                placeOne(region, "buildings/" + civic, new BlockPos((bx * 4 + 1) * 16, CityLayout.plateau(bx, bz), (bz * 4 + 1) * 16),
+                        clip, false, loot(civic));
             } else if (station) {
                 int top = CityLayout.plateau(bx, bz);
                 BoundingBox underground = new BoundingBox(x, CityChunkGenerator.SUBWAY_Y + 6, z, x + 15, top - 1, z + 15);
@@ -80,6 +108,13 @@ public final class CityTemplates {
         return Math.floorMod(CityLayout.hash(seed + 2, blockX, blockZ), 6) == 0;
     }
 
+    /** Chunk columns that receive subway tunnel/platform templates at {@link CityChunkGenerator#SUBWAY_Y}. */
+    public static boolean subwayTunnelAt(int x, int z) {
+        int lx = Math.floorMod(Math.floorDiv(x, 16), 4);
+        int lz = Math.floorMod(Math.floorDiv(z, 16), 4);
+        return lx == 0 || lz == 0 || lz == 3;
+    }
+
     private static String loot(String name) {
         return switch (name) {
             case "mall" -> "mall";
@@ -106,6 +141,36 @@ public final class CityTemplates {
         Set<Long> keep = chooseContainers(template, settings, adjusted, seed);
         settings.setBoundingBox(clip).addProcessor(new PlacementProcessor(keep, loot, seed, slope, origin.getY()));
         template.placeInWorld(region, adjusted, adjusted, settings, RandomSource.create(seed), 2 | 16);
+        if (path.startsWith("buildings/"))
+            CityBuildingAccess.clearBuildingApproachSlabs(region, template, adjusted, settings);
+    }
+
+    /**
+     * Street templates put bottom slabs at door Y. A 1.8-tall player on those
+     * slabs hits the lintel. Surface generation can only write the current
+     * chunk, so strip lot-facing sidewalk slabs here instead of from the building.
+     */
+    private static void flattenLotFacingStreet(WorldGenRegion region, int originX, int originZ) {
+        for (int dx = 0; dx < 16; dx++) for (int dz = 0; dz < 16; dz++) {
+            int x = originX + dx, z = originZ + dz;
+            if (!CityLayout.street(x, z) || !nearLot(x, z)) continue;
+            int surface = CityLayout.surface(x, z);
+            for (int y = surface - 1; y <= surface + 3; y++) {
+                BlockPos pos = new BlockPos(x, y, z);
+                BlockState state = region.getBlockState(pos);
+                if (state.getBlock() instanceof SlabBlock && state.hasProperty(SlabBlock.TYPE)
+                        && state.getValue(SlabBlock.TYPE) == SlabType.BOTTOM)
+                    region.setBlock(pos, Blocks.AIR.defaultBlockState(), 2 | 16);
+            }
+        }
+    }
+
+    private static boolean nearLot(int x, int z) {
+        for (int distance = 1; distance <= 3; distance++)
+            if (!CityLayout.street(x + distance, z) || !CityLayout.street(x - distance, z)
+                    || !CityLayout.street(x, z + distance) || !CityLayout.street(x, z - distance))
+                return true;
+        return false;
     }
 
     private static Set<Long> chooseContainers(StructureTemplate template, StructurePlaceSettings settings, BlockPos origin, long seed) {

@@ -189,6 +189,9 @@ public final class ShadowTanglerGameTests {
         ShadowTanglerEntity mob = spawn(h, 15, true);
         h.runAtTickTime(30, () -> {
             var player = h.makeMockSurvivalPlayer();
+            // Neighboring GameTest structures can leave stray orbs inside inflate(2).
+            h.getLevel().getEntitiesOfClass(ExperienceOrb.class, mob.getBoundingBox().inflate(4))
+                    .forEach(net.minecraft.world.entity.Entity::discard);
             mob.hurt(mob.damageSources().playerAttack(player), 1000);
             h.assertTrue(mob.isRemoved(), "bright death removes immediately");
             h.assertTrue(mob.getLootTable().equals(ShadowTanglerEntity.id("entities/shadow_tangler_shattered")), "glass loot selected");

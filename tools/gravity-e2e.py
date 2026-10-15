@@ -32,6 +32,15 @@ def launch(name, role, display=None):
     directory = RESULTS / role
     directory.mkdir(exist_ok=True)
     if role == "server":
+        category_pack = directory / "world/datapacks/qiwu_category_qa"
+        category_tags = category_pack / "data/sound_isolating_eraser/tags/items"
+        category_tags.mkdir(parents=True, exist_ok=True)
+        (category_pack / "pack.mcmeta").write_text(json.dumps({
+            "pack": {"pack_format": 15, "description": "Isolated item category reload QA"}
+        }))
+        # Reset only this harness's additive fixture after an interrupted run.
+        for category in ("qiwu", "daoju"):
+            (category_tags / f"{category}.json").write_text(json.dumps({"replace": False, "values": []}))
         (directory / "eula.txt").write_text("eula=true\n")
         (directory / "server.properties").write_text(
             "online-mode=false\nserver-ip=127.0.0.1\nserver-port=25565\n"
@@ -62,7 +71,8 @@ def launch(name, role, display=None):
                 del args[index:index + 2]
         args += ["--username", "GravityWearer" if role == "wearer" else "GravityObserver",
                  "--width", "960", "--height", "540", "--quickPlayMultiplayer", "127.0.0.1:25565"]
-    command = ["java", "-Xmx1G", f"-Dgravity.qa.results={RESULTS}", f"-Dgravity.qa.role={role}"]
+    command = ["java", "-Xmx1G", "-Dqiwu.qa=true",
+               f"-Dgravity.qa.results={RESULTS}", f"-Dgravity.qa.role={role}"]
     if profile:
         command += [f"-XX:StartFlightRecording=filename={RESULTS / (role + '.jfr')},settings=profile,dumponexit=true,maxsize=64m",
                     f"-Xlog:gc*:file={RESULTS / (role + '-gc.log')}:time,uptime,level,tags"]
@@ -110,7 +120,8 @@ try:
     required = ("wearer", "observer", "server-effects", "wearer-stress",
                 "wearer-cast", "wearer-remap", "wearer-active-pixels", "observer-active-pixels",
                 "server-pressure", "server-eraser", "wearer-eraser", "observer-eraser",
-                "server-atomic", "server-isolation", "wearer-inventory", "observer-inventory")
+                "server-atomic", "server-isolation", "wearer-inventory", "observer-inventory",
+                "wearer-category", "observer-category", "server-category")
     while not all((RESULTS / f"{role}.pass").exists() for role in required):
         sample_processes()
         failures = list(RESULTS.glob("*.failed"))
@@ -124,6 +135,7 @@ try:
     failures = list(RESULTS.glob("*.failed"))
     if failures:
         raise AssertionError("; ".join(path.read_text() for path in failures))
+    print("REAL_ITEM_CATEGORY_HOVER_LOCALE_RELOAD_PASSED", flush=True)
     print("REAL_TWO_CLIENT_E2E_PASSED", flush=True)
 finally:
     for process in reversed(processes):

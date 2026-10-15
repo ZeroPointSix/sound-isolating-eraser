@@ -76,19 +76,22 @@ public final class NightTestClient {
             if (phase.equals("SLEEP") && ticks == 80 && client.player.isSleeping()) {
                 capture(client, "sleeping");
             }
-            if (phase.equals("READY") && ticks == 80) {
-                require(EternalNightContent.isCity(client.level), "client actually loaded the city dimension");
-                client.setScreen(null);
-                org.lwjgl.glfw.GLFW.glfwFocusWindow(client.getWindow().getWindow());
-                client.mouseHandler.grabMouse();
-                for (var state : EternalNightContent.NEON_SIGN.get().getStateDefinition().getPossibleStates()) {
-                    var sprite = client.getBlockRenderer().getBlockModel(state).getParticleIcon();
-                    require(!sprite.contents().name().getPath().contains("missingno"), "original neon model resolves all 80 states");
+            if (phase.equals("READY") && ticks >= 80) {
+                if (ticks == 80) {
+                    require(EternalNightContent.isCity(client.level), "client actually loaded the city dimension");
+                    client.setScreen(null);
+                    org.lwjgl.glfw.GLFW.glfwFocusWindow(client.getWindow().getWindow());
+                    client.mouseHandler.grabMouse();
+                    for (var state : EternalNightContent.NEON_SIGN.get().getStateDefinition().getPossibleStates()) {
+                        var sprite = client.getBlockRenderer().getBlockModel(state).getParticleIcon();
+                        require(!sprite.contents().name().getPath().contains("missingno"), "original neon model resolves all 80 states");
+                    }
+                    capture(client, "original-art");
                 }
-                capture(client, "original-art");
-                client.player.connection.sendCommand("nightqa ready");
+                // CI can drop a single /nightqa ready; keep ACK-ing until the server leaves READY.
+                if (ticks % 20 == 0) client.player.connection.sendCommand("nightqa ready");
             }
-            if (phase.equals("OPEN") && ticks == 5) nativeInput("click", "3");
+            if (phase.equals("OPEN") && ticks >= 5 && ticks % 10 == 0) nativeInput("click", "3");
             if (phase.equals("WHITE") && ticks == 20) {
                 require(!CityClientRuntime.activeExits().isEmpty(), "server sent active exit snapshot");
                 hiddenFrames = 0;
@@ -105,8 +108,9 @@ public final class NightTestClient {
                         && after.white() > negativeControl.white() + 1000,
                         "continuous white plane exceeds particles-only negative control: negative=" + negativeControl + ", positive=" + after);
                 Files.writeString(RESULTS.resolve(ROLE + (RELOADED ? "-reload" : "") + "-white.pass"), "PASS original models and shared white plane with rendered negative control; negative=" + negativeControl + " positive=" + after + "\n");
-                client.player.connection.sendCommand("nightqa captured");
             }
+            if (phase.equals("WHITE") && ticks >= 60 && ticks % 20 == 0)
+                client.player.connection.sendCommand("nightqa captured");
             if (phase.equals("RESTART") && !restarting) {
                 restarting = true;
                 Files.writeString(RESULTS.resolve(ROLE + "-restart-ready.pass"), "PASS native client ready for intentional server shutdown\n");
@@ -157,14 +161,16 @@ public final class NightTestClient {
                 Files.writeString(RESULTS.resolve("owner-death.pass"), "PASS real DeathScreen, native Respawn-button click and rendered living overworld player with no diamonds\n");
                 respawnClicked = false; phase = "HOME"; ticks = 0;
             }
-            if (phase.startsWith("SURVEY_READY:") && ticks == 80) {
-                require(EternalNightContent.isCity(client.level), "survey loads the actual city");
-                client.setScreen(null);
-                org.lwjgl.glfw.GLFW.glfwFocusWindow(client.getWindow().getWindow());
-                client.mouseHandler.grabMouse();
-                capture(client, "entrance-before-" + phase.substring(13));
-                nativeInput("click", "3");
-                client.player.connection.sendCommand("nightqa survey-ready");
+            if (phase.startsWith("SURVEY_READY:") && ticks >= 80) {
+                if (ticks == 80) {
+                    require(EternalNightContent.isCity(client.level), "survey loads the actual city");
+                    client.setScreen(null);
+                    org.lwjgl.glfw.GLFW.glfwFocusWindow(client.getWindow().getWindow());
+                    client.mouseHandler.grabMouse();
+                    capture(client, "entrance-before-" + phase.substring(13));
+                    nativeInput("click", "3");
+                }
+                if (ticks % 20 == 0) client.player.connection.sendCommand("nightqa survey-ready");
             }
             if (phase.startsWith("SURVEY_WALK:") && !surveyWalking) {
                 nativeInput("keydown", "w"); surveyWalking = true;
@@ -182,9 +188,9 @@ public final class NightTestClient {
                 nativeInput("keyup", "w"); surveyWalking = false;
                 capture(client, "entrance-after-" + phase.substring(12));
             }
-            if (phase.startsWith("SURVEY_CAPTURE:") && ticks == 60) {
-                capture(client, "natural-mobs-" + phase.substring(15));
-                client.player.connection.sendCommand("nightqa survey-captured");
+            if (phase.startsWith("SURVEY_CAPTURE:") && ticks >= 60) {
+                if (ticks == 60) capture(client, "natural-mobs-" + phase.substring(15));
+                if (ticks % 20 == 0) client.player.connection.sendCommand("nightqa survey-captured");
             }
             if (phase.equals("SURVEY_DONE")) {
                 Files.writeString(RESULTS.resolve("owner-survey.complete"), "COLLECTED native generated-building and natural-entity screenshots; see server observations for failures\n");
@@ -192,7 +198,9 @@ public final class NightTestClient {
             }
             if (walking && ticks > 300) throw new AssertionError("Native walk did not cross the exit");
             if (returning && ticks > 300) throw new AssertionError("Overworld did not render after returning home");
-            if (!phase.isEmpty() && ticks > 2400) throw new AssertionError("Native phase timed out: " + phase);
+            // Observer stays in READY until the owner finishes OPEN and WHITE is broadcast.
+            int limit = phase.equals("READY") ? 8000 : 2400;
+            if (!phase.isEmpty() && ticks > limit) throw new AssertionError("Native phase timed out: " + phase);
         } catch (Throwable error) {
             hidePlane = false;
             error.printStackTrace();
