@@ -1,0 +1,18 @@
+{
+  "flare-1.exit": {
+    "bytes": 2,
+    "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+  },
+  "flare-1-worktree.patch": {
+    "bytes": 7848,
+    "sha256": "a830df92ffb163fe01aab7b77e7d6ff7aecd1ecb7b393c8fa3ac0efaba5f7d2a"
+  },
+  "flare-1.commit": {
+    "bytes": 41,
+    "sha256": "d71dfbad47ef8efb5159e39b3c743350efac0f64a75cbc4f1329c123af5b2cc6"
+  },
+  "flare-1.log": {
+    "bytes": 223837,
+    "sha256": "81a04c1cc6c856130b5331c556c487c3fa8e2c8155d7a564432d4c16e89f0da8"
+  }
+}

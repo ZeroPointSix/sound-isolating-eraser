@@ -1,0 +1,229 @@
+{
+  "tested_commit": "6ae4267c73982b2718152952a5f27002ecfa7ff5",
+  "compile_command": "bash ./gradlew --no-daemon --max-workers=2 -PsuxiaE2E writeSuxiaTestClasspath",
+  "e2e_command": "env -u SUXIA_QA_WORLD_SOURCE SUXIA_QA_TIMEOUT_SECONDS=1200 python3 -u tools/suxia/e2e.py",
+  "exit_code": 0,
+  "result_marker": "SUXIA_REAL_CLIENT_AND_DEDICATED_SERVER_E2E_PASSED",
+  "world_source": "fresh isolated world; no copied world; same saved world across the actual server JVM restart",
+  "remote_results": "/data2/suxia-20261015/build/suxia-e2e-1792094851056581735",
+  "screenshots": [
+    "cooldown-rejected.png",
+    "gallery.png",
+    "hostile-awake.png",
+    "hostile-sleep.png",
+    "recalled.png",
+    "rejoined.png",
+    "restored-awake.png",
+    "restored.png",
+    "second-recalled.png",
+    "second-summoned.png",
+    "summoned.png"
+  ],
+  "passed_steps": {
+    "client-cooldown-rejected": "Live Forge client rendering, synchronized item state and localization verified: cooldown-rejected",
+    "client-gallery": "Live Forge client rendering, synchronized item state and localization verified: gallery",
+    "client-hostile-awake": "Live Forge client rendering, synchronized item state and localization verified: hostile-awake",
+    "client-hostile-sleep": "Live Forge client rendering, synchronized item state and localization verified: hostile-sleep",
+    "client-logout": "Actual client disconnected with cooling watch.",
+    "client-recalled": "Live Forge client rendering, synchronized item state and localization verified: recalled",
+    "client-rejoined": "Live Forge client rendering, synchronized item state and localization verified: rejoined",
+    "client-restored-awake": "Live Forge client rendering, synchronized item state and localization verified: restored-awake",
+    "client-restored": "Live Forge client rendering, synchronized item state and localization verified: restored",
+    "client-second-recalled": "Live Forge client rendering, synchronized item state and localization verified: second-recalled",
+    "client-second-summoned": "Live Forge client rendering, synchronized item state and localization verified: second-summoned",
+    "client-summoned": "Live Forge client rendering, synchronized item state and localization verified: summoned",
+    "server-cooldown-rejected": "Actual cooling-watch use packet rejected by its ledger; no summon created.",
+    "server-lifecycle": "Actual client summon/recall packets, entity lifecycle and cooldown verified.",
+    "server-multi-watch": "A remains cooling; normal client slot-switch and use packet summons B without clearing cooldowns.",
+    "server-persistence": "Empty-NBT command entity remained loaded/alive 100 ticks with the only player 160 blocks away.",
+    "server-ready-restart": "Prepared real world save with sleeping persistent hostile and both cooling watches.",
+    "server-rejoin": "Actual reconnect retains watch UUID, binding and individual cooldown.",
+    "server-restart": "Actual dedicated-server JVM restart restored same hostile UUID/sleep/persistence and watch ledger cooldown.",
+    "server-restored-wake": "Restored persistent hostile woke again after actual restart and survival-player approach.",
+    "server-sleep": "Live hostile naturally entered play-dead after 600 quiet ticks.",
+    "server-wake": "Live survival player within three blocks wakes hostile, acquires target and arms ambush."
+  },
+  "notes": [
+    "Original logs and screenshots are unchanged.",
+    "A server floating disconnect warning occurred after the hostile-awake screenshot; the runner subsequently completed explicit world save and actual JVM restart.",
+    "Prior E2E runs 5 and 6 remain failures; no failure was reclassified."
+  ],
+  "files": {
+    "client-cooldown-rejected.pass": {
+      "bytes": 98,
+      "sha256": "901370aeb932378dd3aba884178e2345d6d529cbef7f3712f7a90c3cf945a2b4"
+    },
+    "client-gallery.pass": {
+      "bytes": 88,
+      "sha256": "efcd4a793ea007e46ed1999b7faa933c41e6b4fd0c1def90c9a6aeb718b3be26"
+    },
+    "client-hostile-awake.pass": {
+      "bytes": 94,
+      "sha256": "a9bb3de57821522b083940fdd3762658bdfaadd10968fffb4e8ccb49ff4d788b"
+    },
+    "client-hostile-sleep.pass": {
+      "bytes": 94,
+      "sha256": "09b0b196717f9128814cc5ed16ca77c5b6b3ac3eef8e8af459ed4cbe1c39af44"
+    },
+    "client-logout.pass": {
+      "bytes": 47,
+      "sha256": "9e995e608ffbbad240e1272c96f3b5505badd2da94b7ec4552d104187e826582"
+    },
+    "client-recalled.pass": {
+      "bytes": 89,
+      "sha256": "39462711280919018c0547f2a66df746657041d65b7951daffdf5798a4b4db0c"
+    },
+    "client-rejoin.log": {
+      "bytes": 153758,
+      "sha256": "c52d1fc49eaff063dfd84d27a97f8b90e462ab1b9dd568723a945b627c93c535"
+    },
+    "client-rejoined.pass": {
+      "bytes": 89,
+      "sha256": "36654eda129481435cd05dcf211e6cd61c503611973de863433ad4b9756346ae"
+    },
+    "client-restored-awake.pass": {
+      "bytes": 95,
+      "sha256": "76f09104253534a3aa635393dbe6908a8ba2a2a647a82c2e6af6ea4184dfe120"
+    },
+    "client-restored.log": {
+      "bytes": 153714,
+      "sha256": "f88c624c4c9ab1ca37296c96a8151d5d73db477a04a032cd9e53887733b3cad7"
+    },
+    "client-restored.pass": {
+      "bytes": 89,
+      "sha256": "41d7dfebd573c205ae29ffb5f0fdbe6efcc2ff63480a4d7207f544caf6846565"
+    },
+    "client-second-recalled.pass": {
+      "bytes": 96,
+      "sha256": "51a46d66032d2be9fd6c6628d4280d47807d9002a856df285fe15c8a0de3a728"
+    },
+    "client-second-summoned.pass": {
+      "bytes": 96,
+      "sha256": "6d0a1da8625bc07acdb94ed59c901fa33421d40c056a51be1a6755386f4f3a26"
+    },
+    "client-summoned.pass": {
+      "bytes": 89,
+      "sha256": "87419ecade58392f732346dde95325a0f1e2e11e1f4dc5519f56b34347bdea62"
+    },
+    "client.log": {
+      "bytes": 159874,
+      "sha256": "c40635de41f980c85f8e4cc1cb44567b6424b67f941e3f65e05c396b66d60f6b"
+    },
+    "compile-e2e-7.exit": {
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "compile-e2e-7.log": {
+      "bytes": 1650,
+      "sha256": "b4b73133d5c114acd3f26f3f4a29e841254dbe3aea510b5ee62adec65861e8ac"
+    },
+    "cooldown-rejected.png": {
+      "bytes": 64513,
+      "sha256": "d21686a09442c94a7cd9f65e1dfcc91c60af30837fa22a2b77dd520ee610edb4"
+    },
+    "e2e-7.commit": {
+      "bytes": 41,
+      "sha256": "d71dfbad47ef8efb5159e39b3c743350efac0f64a75cbc4f1329c123af5b2cc6"
+    },
+    "e2e-7.exit": {
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "e2e-7.log": {
+      "bytes": 15718,
+      "sha256": "be2e598ca7b79a2770eff58ea63fc51a4299382267cceedcdffcef005b221f1c"
+    },
+    "gallery.png": {
+      "bytes": 149833,
+      "sha256": "7500becb9fad516af30aa7b2c1439551fdc32664ab85518336e7711b91905be2"
+    },
+    "hostile-awake.png": {
+      "bytes": 275893,
+      "sha256": "ac411c2ca6991c86f2331568e3ff73a6a917eeee973c099e8a3b47248143dd9c"
+    },
+    "hostile-sleep.png": {
+      "bytes": 295404,
+      "sha256": "57b3af810ce5f1e9aa4f622cb7ab68f9a006fcdc4ee27fe67b6a5f11b52effaa"
+    },
+    "recalled.png": {
+      "bytes": 80691,
+      "sha256": "c1d079811b64fff91a3cef43098021adeff75cedbf0eebbcdcde4e0238a731e8"
+    },
+    "rejoined.png": {
+      "bytes": 153388,
+      "sha256": "9afcd3ec3e70d0a84bf50a0e410a48caf4a7668004196df655a101d9ce697d92"
+    },
+    "restart-state": {
+      "bytes": 84,
+      "sha256": "0ff8e9d6d59bde91c08dea98dd8ac3b5e41d0a33a35acc0fa8d8cc974779db7e"
+    },
+    "restored-awake.png": {
+      "bytes": 408086,
+      "sha256": "352f5857fa305422617bc4a3140e9dd746957c113874bfd2c4d640e5a0783376"
+    },
+    "restored.png": {
+      "bytes": 207218,
+      "sha256": "2092aa78065a6348f760b00f79e21dd373e1e57f747181c5f6002224760143c4"
+    },
+    "second-recalled.png": {
+      "bytes": 71490,
+      "sha256": "8f8cdc95fbf6f77ef9c5493bd38b63f2daa8f0e1c6fbaf03dcb4839a4c948163"
+    },
+    "second-summoned.png": {
+      "bytes": 97722,
+      "sha256": "95da15728dae4e1e1b330dfe234828654df8f24fbda71d516465afef02df7489"
+    },
+    "server-cooldown-rejected.pass": {
+      "bytes": 75,
+      "sha256": "840631453dd2220dd218627d87dd9572ddba33d3ba65f71040a3ae438c8f1ac7"
+    },
+    "server-lifecycle.pass": {
+      "bytes": 77,
+      "sha256": "504330851e8e90a6a74e84e98e68d9991ea35d7474411c5619c34836c38166fc"
+    },
+    "server-multi-watch.pass": {
+      "bytes": 98,
+      "sha256": "c1378e6f0fab7ee74e0827916b2a424c3080a946b9ab0261316f03ac1208172e"
+    },
+    "server-persistence.pass": {
+      "bytes": 95,
+      "sha256": "fdc4cf2fbc37c014fc3b3241222a1a3a3bae392e14b6dff16abca1faac13108c"
+    },
+    "server-ready-restart.pass": {
+      "bytes": 84,
+      "sha256": "d5666c27db0d2560b9feac87f531e3eacad509ca662a338b0189a8d4c2f616a0"
+    },
+    "server-rejoin.pass": {
+      "bytes": 70,
+      "sha256": "f7f7310b75da162fad52bae3df5b3d2b2a2495a7d44af7b6a38b948ffb6cfe9b"
+    },
+    "server-restart.log": {
+      "bytes": 154172,
+      "sha256": "6556440c60e25bedd050027c37f35ad50cc2b78250b907bc3f6620958a0e3385"
+    },
+    "server-restart.pass": {
+      "bytes": 108,
+      "sha256": "6b6d6988230051914c3d586e20e7b01086cc045249c8d750aaf989a9f9bafa76"
+    },
+    "server-restored-wake.pass": {
+      "bytes": 90,
+      "sha256": "114a92070f2868137b49f507bf1d91f63ebed852f87b3cf073790d11641bca53"
+    },
+    "server-sleep.pass": {
+      "bytes": 64,
+      "sha256": "6b41d56eecf771f2269a86d35db790b127bd1937f6cf9a830cc81ea087ec158e"
+    },
+    "server-wake.pass": {
+      "bytes": 89,
+      "sha256": "3ccf4cf739e0f9c640dba2d7553a3ce7cf53ae11934af36df968fac62ca9a28a"
+    },
+    "server.log": {
+      "bytes": 227767,
+      "sha256": "a23e4a38d852f51d3db9dcb388eec13d0c56a0b51facfffd38d5c71a534f6b0b"
+    },
+    "summoned.png": {
+      "bytes": 123265,
+      "sha256": "1e667e29ab0155178196f080698caea860d8e6efcf74715581ef74c7ee650fcf"
+    }
+  }
+}

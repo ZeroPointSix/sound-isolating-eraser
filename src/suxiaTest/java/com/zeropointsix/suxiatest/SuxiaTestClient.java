@@ -31,6 +31,8 @@ public final class SuxiaTestClient {
     private static int ticks;
     private static boolean failed, captured;
     private static final HashMap<Integer, float[]> poses = new HashMap<>();
+    private static final HashMap<Integer, Integer> renderedFrames = new HashMap<>();
+    private static int renderFrame;
     private static void require(boolean condition, String message) { if (!condition) throw new AssertionError(message); }
     private static void fail(Throwable error) {
         failed = true; error.printStackTrace();
@@ -48,13 +50,15 @@ public final class SuxiaTestClient {
     }
     private static boolean hasRenderedPose(SuxiaEntity mob) {
         var pose = poses.get(mob.getId());
-        return pose != null && pose[2] > 5 && mob.tickCount - pose[3] > 40;
+        return pose != null && pose[2] > 5 && mob.tickCount - pose[3] > 40
+                && renderedFrames.getOrDefault(mob.getId(), -1) == renderFrame;
     }
     @SubscribeEvent public static void message(ClientChatReceivedEvent event) {
         String text = event.getMessage().getString();
         if (text.startsWith("SUXIA_QA:")) {
             phase = text.substring(9); ticks = 0; captured = false;
             poses.clear();
+            renderedFrames.clear();
             event.setCanceled(true);
         }
     }
@@ -65,6 +69,8 @@ public final class SuxiaTestClient {
         try {
             ticks++;
             if (ticks == 1) { mc.setScreen(null); mc.mouseHandler.grabMouse(); }
+            // F1 only for creature evidence; watch/cooldown captures retain their HUD.
+            mc.options.hideGui = phase.startsWith("hostile-") || phase.startsWith("restored");
             if (phase.startsWith("hostile-") || phase.startsWith("restored")) {
                 // Follow the live entity, including its lower sleeping pose and natural movement.
                 for (var entity : mc.level.entitiesForRendering()) if (entity instanceof SuxiaEntity mob) {
@@ -76,6 +82,8 @@ public final class SuxiaTestClient {
                     mc.player.setYRot(yaw);
                     mc.player.setYHeadRot(yaw);
                     mc.player.setXRot(pitch);
+                    mc.player.yRotO = yaw;
+                    mc.player.xRotO = pitch;
                     break;
                 }
             }
@@ -107,6 +115,7 @@ public final class SuxiaTestClient {
             // Start the observation window when this entity is actually rendered, not at the phase packet.
             float[] range = poses.computeIfAbsent(mob.getId(), id -> new float[]{body.zRot, body.zRot, 0, mob.tickCount});
             range[0] = Math.min(range[0], body.zRot); range[1] = Math.max(range[1], body.zRot); range[2]++;
+            renderedFrames.put(mob.getId(), renderFrame);
             if (!hasRenderedPose(mob)) return;
             if (mob.isCrawling()) require(body.xRot > 1.3F, "rendered crawl body leans forward");
             if (mob.isPlayingDead()) require(model.root().xRot > 1.5F, "rendered play-dead body lies flat");
@@ -114,6 +123,7 @@ public final class SuxiaTestClient {
         } catch (Throwable error) { fail(error); }
     }
     @SubscribeEvent public static void render(TickEvent.RenderTickEvent event) {
+        if (event.phase == TickEvent.Phase.START) { renderFrame++; return; }
         if (event.phase != TickEvent.Phase.END || failed || captured || ticks < 100) return;
         if (!java.util.Set.of("gallery", "summoned", "recalled", "second-summoned", "second-recalled",
                 "cooldown-rejected", "rejoined", "hostile-sleep", "hostile-awake", "restored", "restored-awake").contains(phase)) return;
@@ -185,6 +195,9 @@ public final class SuxiaTestClient {
                 require(colors.size() > 100, "nonblank actual Minecraft framebuffer");
                 screenshot.writeToFile(RESULTS.resolve(phase + ".png"));
             }
+            Files.writeString(RESULTS.resolve(phase + "-camera.txt"), "phase=" + phase + " player=" + mc.player.position()
+                    + " yaw=" + mc.player.getYRot() + " pitch=" + mc.player.getXRot() + " renderFrame=" + renderFrame
+                    + " entityFrames=" + renderedFrames + "\n");
             Files.writeString(RESULTS.resolve("client-" + phase + ".pass"), "Live Forge client rendering, synchronized item state and localization verified: " + phase + "\n");
             captured = true;
         } catch (Throwable error) { fail(error); }

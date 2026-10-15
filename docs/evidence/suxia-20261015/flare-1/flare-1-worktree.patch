@@ -1,0 +1,110 @@
+diff --git a/src/main/java/com/zeropointsix/eraser/gametest/FlareAcceptanceGameTests.java b/src/main/java/com/zeropointsix/eraser/gametest/FlareAcceptanceGameTests.java
+index 2a59489..8481123 100644
+--- a/src/main/java/com/zeropointsix/eraser/gametest/FlareAcceptanceGameTests.java
++++ b/src/main/java/com/zeropointsix/eraser/gametest/FlareAcceptanceGameTests.java
+@@ -54,6 +54,7 @@ public final class FlareAcceptanceGameTests {
+         final Set<Long> originalLights = new HashSet<>();
+         final GameTestConfigs.LiveConfig config;
+         boolean prepared, completed;
++        String phase = "preparation";
+ 
+         Fixture(GameTestHelper h, int slot, boolean arena) {
+             level = h.getLevel();
+@@ -110,6 +111,30 @@ public final class FlareAcceptanceGameTests {
+                     });
+         }
+ 
++        boolean ready(boolean arena) {
++            return ticking() && (!arena || level.getMaxLocalRawBrightness(center) <= 6);
++        }
++
++        void awaitPreparation(boolean arena) {
++            if (ready(arena)) return;
++            // GameTestServer skips the normal 50 ms tick wait. Service real chunk/light
++            // work for at most one normal tick without spending the 1200-tick budget in a CPU spin.
++            long deadline = System.nanoTime() + 50_000_000L;
++            level.getChunkSource().getLightEngine().tryScheduleUpdate();
++            level.getServer().managedBlock(() -> ready(arena) || System.nanoTime() >= deadline);
++        }
++
++        String diagnostic() {
++            return "phase=" + phase + " ticking=" + ticking()
++                    + " brightness=" + level.getMaxLocalRawBrightness(center)
++                    + " lightWork=" + level.getChunkSource().getLightEngine().hasLightWork()
++                    + " entities=" + entities.stream().map(entity -> entity.getType().toShortString()
++                            + "@" + entity.position() + " alive=" + entity.isAlive()
++                            + (entity instanceof Mob mob ? " health=" + mob.getHealth() + " target="
++                                    + (mob.getTarget() == null ? "null" : mob.getTarget().getType().toShortString()) : ""))
++                            .toList();
++        }
++
+         void set(BlockPos pos, BlockState state) {
+             previous.putIfAbsent(pos.immutable(), level.getBlockState(pos));
+             level.setBlock(pos, state, 3);
+@@ -162,11 +187,15 @@ public final class FlareAcceptanceGameTests {
+         long startedAt = h.getLevel().getGameTime();
+         fixture = new Fixture(h, slot, arena);
+         Fixture preparedFixture = fixture;
+-        h.runAfterDelay(1200, () -> h.assertTrue(preparedFixture.prepared, "acceptance preparation finishes within 1200 ticks"));
++        h.runAfterDelay(1200, () -> h.assertTrue(preparedFixture.prepared,
++                "acceptance preparation finishes within 1200 ticks: " + preparedFixture.diagnostic()));
+         h.startSequence().thenIdle(40)
+-                .thenWaitUntil(() -> h.assertTrue(fixture.ticking(), "acceptance chunks entity-ticking"))
+-                .thenWaitUntil(() -> h.assertTrue(!arena || fixture.level.getMaxLocalRawBrightness(fixture.center) <= 6,
+-                        "roofed arena is dark before any flare"))
++                .thenWaitUntil(() -> {
++                    preparedFixture.awaitPreparation(arena);
++                    h.assertTrue(preparedFixture.ticking(), "acceptance chunks entity-ticking");
++                    h.assertTrue(!arena || preparedFixture.level.getMaxLocalRawBrightness(preparedFixture.center) <= 6,
++                            "roofed arena is dark before any flare");
++                })
+                 .thenExecute(() -> {
+                     preparedFixture.prepared = true;
+                     System.out.println("FLARE_ACCEPTANCE_READY slot=" + slot + " preparationTicks="
+@@ -174,7 +203,8 @@ public final class FlareAcceptanceGameTests {
+                     // World/light preparation is not part of the behavior's bounded observation window.
+                     int behaviorTicks = arena ? 900 : 1600;
+                     h.runAfterDelay(behaviorTicks, () -> h.assertTrue(preparedFixture.completed,
+-                            "acceptance behavior finishes within " + behaviorTicks + " ticks after preparation"));
++                            "acceptance behavior finishes within " + behaviorTicks + " ticks after preparation: "
++                                    + preparedFixture.diagnostic()));
+                     action.run();
+                 });
+     }
+@@ -194,6 +224,7 @@ public final class FlareAcceptanceGameTests {
+         BlockPos start = fixture.center.west(8);
+         mob.setPersistenceRequired(); fixture.add(mob, start);
+         h.assertTrue(!mob.isNoAi() && mob.getTarget() == null, "no target or AI action injected");
++        fixture.phase = "acquire-player";
+         long pursuitStartedAt = fixture.level.getGameTime();
+         h.startSequence().thenWaitUntil(() -> {
+             h.assertTrue(mob.getTarget() == player, "live AI first acquires the survival player");
+@@ -202,6 +233,7 @@ public final class FlareAcceptanceGameTests {
+             System.out.println("FLARE_PLAYER_PURSUIT mob=" + mob.getType().toShortString()
+                     + " elapsedTicks=" + (fixture.level.getGameTime() - pursuitStartedAt) + " mobTicks=" + mob.tickCount);
+             var flare = fixture.shoot(0, player, fixture.center);
++            fixture.phase = "projectile-impact";
+             h.startSequence().thenWaitUntil(() -> h.assertTrue(flare.isRemoved(), "red projectile impacts naturally"))
+                     .thenExecute(() -> {
+                         FlareDecoy target = decoy(h);
+@@ -214,11 +246,20 @@ public final class FlareAcceptanceGameTests {
+                                 "pursuit transfers to decoy within ten ticks, age=" + target.tickCount);
+                         System.out.println("FLARE_TARGET_TRANSFER mob=" + mob.getType().toShortString()
+                                 + " from=player to=decoy decoyTicks=" + target.tickCount);
++                        fixture.phase = "attack-decoy";
++                        h.runAfterDelay(remaining, () -> System.out.println("FLARE_EXPIRY_DIAGNOSTIC mob="
++                                + mob.getType().toShortString() + " distance=" + mob.distanceTo(target)
++                                + " mobTicks=" + mob.tickCount + " decoyHealth=" + target.getHealth()
++                                + " lastAttacker=" + (target.getLastHurtByMob() == mob)
++                                + " decoyRemoved=" + target.isRemoved() + " " + fixture.diagnostic()));
+                         h.startSequence().thenWaitUntil(() -> h.assertTrue(target.getHealth() < target.getMaxHealth()
+                                         && target.getLastHurtByMob() == mob, "transferred mob naturally reaches and attacks decoy"))
++                                .thenExecute(() -> { fixture.phase = "decoy-expiry"; System.out.println("FLARE_DECOY_ATTACKED mob="
++                                        + mob.getType().toShortString() + " decoyTicks=" + target.tickCount + " health=" + target.getHealth()); })
+                                 .thenWaitUntil(() -> h.assertTrue(target.isRemoved(), "decoy ends by production expiry or combat"))
+                                 .thenExecute(() -> {
+                                     Vec3 endedAt = mob.position();
++                                    fixture.phase = "reacquire-player";
+                                     h.startSequence().thenWaitUntil(() -> h.assertTrue(player.isAlive() && mob.getTarget() == player
+                                                     && mob.position().distanceTo(endedAt) > 1,
+                                             "live AI reacquires and resumes pursuit of original player"))
