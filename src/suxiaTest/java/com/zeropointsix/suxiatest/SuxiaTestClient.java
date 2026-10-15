@@ -35,6 +35,15 @@ public final class SuxiaTestClient {
     private static void fail(Throwable error) {
         failed = true; error.printStackTrace();
         try { Files.writeString(RESULTS.resolve("client.failed"), error.toString()); } catch (Exception ignored) { }
+        var mc = Minecraft.getInstance();
+        try (var screenshot = Screenshot.takeScreenshot(mc.getMainRenderTarget())) {
+            screenshot.writeToFile(RESULTS.resolve("client-failure.png"));
+            if (mc.player != null) Files.writeString(RESULTS.resolve("client-failure-camera.txt"),
+                    "phase=" + phase + " player=" + mc.player.position()
+                            + " yaw=" + mc.player.getYRot() + " pitch=" + mc.player.getXRot() + "\n");
+        } catch (Exception captureError) {
+            error.addSuppressed(captureError);
+        }
     }
     @SubscribeEvent public static void message(ClientChatReceivedEvent event) {
         String text = event.getMessage().getString();
@@ -51,6 +60,20 @@ public final class SuxiaTestClient {
         try {
             ticks++;
             if (ticks == 1) { mc.setScreen(null); mc.mouseHandler.grabMouse(); }
+            if (phase.startsWith("hostile-") || phase.startsWith("restored")) {
+                // Follow the live entity, including its lower sleeping pose and natural movement.
+                for (var entity : mc.level.entitiesForRendering()) if (entity instanceof SuxiaEntity mob) {
+                    var delta = mob.position().add(0, mob.getBbHeight() * .5, 0)
+                            .subtract(mc.player.getEyePosition());
+                    float yaw = (float) Math.toDegrees(Math.atan2(delta.z, delta.x)) - 90;
+                    float pitch = (float) -Math.toDegrees(Math.atan2(delta.y,
+                            Math.hypot(delta.x, delta.z)));
+                    mc.player.setYRot(yaw);
+                    mc.player.setYHeadRot(yaw);
+                    mc.player.setXRot(pitch);
+                    break;
+                }
+            }
             if (captured && phase.equals("gallery")) {
                 phase = "await-summon";
                 mc.gameMode.useItem(mc.player, InteractionHand.MAIN_HAND);
@@ -135,7 +158,8 @@ public final class SuxiaTestClient {
                     for (var entity : mc.level.entitiesForRendering()) if (entity instanceof SuxiaEntity mob) {
                         found = true;
                         require(poses.containsKey(mob.getId()) && poses.get(mob.getId())[2] > 5,
-                                "hostile actually rendered in this phase");
+                                "hostile actually rendered in " + phase + ": id=" + mob.getId()
+                                        + " position=" + mob.position() + " rendered=" + poses.keySet());
                         require(mob.isPlayingDead() != phase.endsWith("awake"), "live sleep/wake pose synchronized in " + phase);
                     }
                     require(found, "hostile visible in " + phase);

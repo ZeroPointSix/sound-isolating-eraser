@@ -10,6 +10,7 @@ minecraft.runs.matching { it.name == 'client' || it.name == 'server' }.configure
 }
 tasks.register('writeSuxiaTestClasspath') {
     dependsOn 'classes', 'suxiaTestClasses', 'genVSCodeRuns'
+    inputs.property('runtimeClasspath', provider { sourceSets.suxiaTest.runtimeClasspath.asPath })
     def target = layout.buildDirectory.file('suxia-test-classpath.txt')
     outputs.file(target)
     doLast { target.get().asFile.text = sourceSets.suxiaTest.runtimeClasspath.asPath }
