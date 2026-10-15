@@ -181,7 +181,7 @@ public final class YujiIsolationServer {
                         door(level, false); contacts = 0; next("door-closed");
                     }
                 }
-                case "door-closed" -> {
+                case "door-closed", "door-contact-hold" -> {
                     var doorPos = new BlockPos(0, 65, 6);
                     var doorState = level.getBlockState(doorPos);
                     require(!doorState.getValue(DoorBlock.OPEN), "husk opened door");
@@ -193,14 +193,25 @@ public final class YujiIsolationServer {
                     if (current.horizontalCollision && Math.abs(gap) <= .001) contacts++;
                     require(round == 0 || current.crawling(), "blocked second-round husk stays in crawling pose");
                     require(current.getTarget() == a, "blocked husk retains the real player target");
+                    if (stage.equals("door-contact-hold")) {
+                        require(Math.abs(gap) <= .001, "crawling husk stays at the door after actual contact: gap=" + gap);
+                        require(!current.isNoAi() && !current.isNoGravity(), "door hold preserves natural AI and gravity");
+                        require(a.getHealth() == 400, "contact hold remains harmless");
+                    }
                     if (ticks == 180) {
                         require(current.getZ() > 1.5, "husk actually approached barrier");
                         require(gap <= .35, "blocked husk remains at the actual door collision plane");
                         require(round == 0 || (Math.abs(gap) <= .001 && contacts > 0),
                                 "crawling husk physically contacts the closed door: gap=" + gap + "; contactTicks=" + contacts);
                         require(a.getHealth() == 400, "husk never damages player");
+                        if (round == 1 && stage.equals("door-closed")) {
+                            log(item + " confirmed physical contact; begin 180 additional contact-hold ticks");
+                            next("door-contact-hold");
+                            return;
+                        }
                         pass(item + "-closed", "z=" + current.getZ() + "; barrier=" + barrier + "; gap=" + gap
-                                + "; observed 180 blocked ticks; crawling=" + current.crawling() + "; doorContactTicks=" + contacts);
+                                + "; observed 180 blocked ticks; postContactHoldTicks=" + (round == 1 ? ticks : 0)
+                                + "; crawling=" + current.crawling() + "; doorContactTicks=" + contacts);
                         signalBoth(a, b, "shot:" + item + "-closed"); next("door-proof");
                     }
                 }
