@@ -14,18 +14,32 @@ import net.minecraftforge.fml.common.Mod;
 public final class CityClientRuntime {
     private static ResourceKey<Level> previous;
     private static int fadeTicks;
+    private static int fadeTotal = 40;
+    private static boolean fadeHold;
     private static java.util.List<net.minecraft.core.BlockPos> exits = java.util.List.of();
 
     public static void setExits(java.util.List<net.minecraft.core.BlockPos> doors) { exits = java.util.List.copyOf(doors); }
     public static java.util.List<net.minecraft.core.BlockPos> activeExits() { return exits; }
 
+    /** Fade to black before teleport ({@code hold}) or start a timed overlay. */
+    public static void beginFade(int ticks, boolean hold) {
+        fadeTotal = Math.max(1, ticks);
+        fadeTicks = fadeTotal;
+        fadeHold = hold;
+    }
+
     @SubscribeEvent public static void tick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
         Minecraft client = Minecraft.getInstance();
-        if (client.level == null) { previous = null; fadeTicks = 0; exits = java.util.List.of(); return; }
+        if (client.level == null) { previous = null; fadeTicks = 0; fadeHold = false; exits = java.util.List.of(); return; }
         ResourceKey<Level> dimension = client.level.dimension();
-        if (!dimension.equals(previous) && dimension.equals(EternalNightContent.LEVEL)) fadeTicks = 40;
-        else if (fadeTicks > 0) fadeTicks--;
+        if (!dimension.equals(previous) && dimension.equals(EternalNightContent.LEVEL)) {
+            fadeHold = false;
+            fadeTotal = 40;
+            fadeTicks = 40;
+        } else if (fadeHold) {
+            if (fadeTicks > 0) fadeTicks--;
+        } else if (fadeTicks > 0) fadeTicks--;
         previous = dimension;
         if (!dimension.equals(EternalNightContent.LEVEL)) exits = java.util.List.of();
     }
@@ -50,9 +64,11 @@ public final class CityClientRuntime {
         buffer.begin(com.mojang.blaze3d.vertex.VertexFormat.Mode.QUADS, com.mojang.blaze3d.vertex.DefaultVertexFormat.POSITION_COLOR);
         for (var pos : exits) {
             var state = client.level.getBlockState(pos);
-            if (!(state.getBlock() instanceof net.minecraft.world.level.block.DoorBlock)
-                    || !state.getValue(net.minecraft.world.level.block.DoorBlock.OPEN)) continue;
-            var facing = state.getValue(net.minecraft.world.level.block.DoorBlock.FACING);
+            // Snapshot membership is the authority; draw the white plane even if the
+            // leaf was forced shut so walking into the visible exit still matches the server.
+            var facing = state.getBlock() instanceof net.minecraft.world.level.block.DoorBlock
+                    ? state.getValue(net.minecraft.world.level.block.DoorBlock.FACING)
+                    : net.minecraft.core.Direction.NORTH;
             float dx = facing.getStepZ() * 0.48F, dz = -facing.getStepX() * 0.48F;
             float x = pos.getX() + 0.5F, y = pos.getY(), z = pos.getZ() + 0.5F;
             buffer.vertex(matrix, x - dx, y, z - dz).color(255, 255, 255, 240).endVertex();
@@ -68,9 +84,12 @@ public final class CityClientRuntime {
     }
 
     @SubscribeEvent public static void fade(RenderGuiEvent.Post event) {
-        if (fadeTicks <= 0) return;
+        int alpha;
+        if (fadeHold) alpha = fadeTicks <= 0 ? 255 : Math.min(255, (fadeTotal - fadeTicks) * 255 / fadeTotal);
+        else if (fadeTicks > 0) alpha = Math.min(255, fadeTicks * 255 / fadeTotal);
+        else return;
+        if (alpha <= 0) return;
         Minecraft client = Minecraft.getInstance();
-        int alpha = Math.min(255, fadeTicks * 255 / 40);
         event.getGuiGraphics().fill(0, 0, client.getWindow().getGuiScaledWidth(), client.getWindow().getGuiScaledHeight(), alpha << 24);
     }
     private CityClientRuntime() { }

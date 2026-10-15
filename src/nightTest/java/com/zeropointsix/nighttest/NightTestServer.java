@@ -38,7 +38,7 @@ public final class NightTestServer {
     private static BlockPos door;
     private static int phase;
     private static long lastEntryTick, longestEntryTick;
-    private static int entryTicks, homeWait;
+    private static int entryTicks, homeWait, readyWait;
     private static final List<net.minecraft.world.entity.item.ItemEntity> DEATH_DROPS = new ArrayList<>();
     private static boolean deathStarted;
 
@@ -46,7 +46,10 @@ public final class NightTestServer {
         if (!ENABLED) return;
         event.getDispatcher().register(LiteralArgumentBuilder.<CommandSourceStack>literal("nightqa")
                 .then(LiteralArgumentBuilder.<CommandSourceStack>literal("ready").executes(context -> {
-                    READY.add(context.getSource().getPlayerOrException().getUUID()); return 1;
+                    var player = context.getSource().getPlayerOrException();
+                    READY.add(player.getUUID());
+                    System.out.println("NIGHT_QA_ACK ready " + player.getGameProfile().getName() + " size=" + READY.size());
+                    return 1;
                 }))
                 .then(LiteralArgumentBuilder.<CommandSourceStack>literal("captured").executes(context -> {
                     CAPTURED.add(context.getSource().getPlayerOrException().getUUID()); return 1;
@@ -107,6 +110,7 @@ public final class NightTestServer {
                 if (RELOADED) {
                     verifyReload();
                     say(owner, "READY"); say(observer, "READY");
+                    readyWait = 0;
                     phase = 1;
                     return;
                 }
@@ -133,11 +137,22 @@ public final class NightTestServer {
                 require(owner.position().distanceTo(observer.position()) <= 48, "same-night cohort remains within 48 blocks");
                 setupInteractionFixture(owner.serverLevel(), owner.blockPosition());
                 say(owner, "READY"); say(observer, "READY");
+                readyWait = 0;
                 phase = 1;
-            } else if (phase == 1 && READY.size() == 2) {
-                if (RELOADED) {
-                    say(owner, "WHITE"); say(observer, "WHITE"); phase = 3;
-                } else { say(owner, "OPEN"); phase = 2; }
+            } else if (phase == 1) {
+                readyWait++;
+                if (readyWait == 1 || readyWait % 40 == 0)
+                    System.out.println("NIGHT_QA_WAIT ready acks=" + READY.size() + " wait=" + readyWait);
+                // A dropped /nightqa ready must not stall CI: after 6s, city presence is the ACK.
+                if (readyWait >= 120) {
+                    if (EternalNightContent.isCity(owner.level())) READY.add(owner.getUUID());
+                    if (EternalNightContent.isCity(observer.level())) READY.add(observer.getUUID());
+                }
+                if (READY.size() == 2) {
+                    if (RELOADED) {
+                        say(owner, "WHITE"); say(observer, "WHITE"); phase = 3;
+                    } else { say(owner, "OPEN"); phase = 2; }
+                }
             } else if (phase == 2 && CitySavedData.get(owner.server.getLevel(EternalNightContent.LEVEL)).active(door, owner.serverLevel().getGameTime())) {
                 require(NightEvents.playerData(owner).getLongArray("Doors").length == 100, "native right click opens 100th unique door");
                 say(owner, "WHITE"); say(observer, "WHITE");

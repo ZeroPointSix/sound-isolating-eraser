@@ -15,6 +15,7 @@ import net.minecraft.stats.Stats;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.Pose;
 import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
@@ -42,6 +43,7 @@ public final class NightEvents {
     private static final Map<UUID, SleepAttempt> SLEEP = new HashMap<>();
     private static final Map<UUID, Vec3> PREVIOUS_POSITION = new HashMap<>();
     private static final Set<UUID> PENDING_RETURNS = new HashSet<>();
+    private static final Map<UUID, Integer> ARRIVAL_SLEEP = new HashMap<>();
     private record SleepAttempt(long restTicks, boolean attempted) { }
 
     private NightEvents() { }
@@ -58,41 +60,93 @@ public final class NightEvents {
         SLEEP.put(player.getUUID(), new SleepAttempt(player.getStats().getValue(Stats.CUSTOM.get(Stats.TIME_SINCE_REST)), false));
     }
 
+    /**
+     * Deep-sleep entry is the same roll as {@link #playerTick}; server ticks also
+     * call this because embedded GameTest channels and awaitingTeleport can skip
+     * {@code PlayerTickEvent} the same way they skip white-door returns.
+     */
+    static void considerSleepEntry(ServerPlayer player) {
+        if (EternalNightContent.isCity(player.level()) || CityEntryQueue.pending(player)
+                || !NightConfig.ENABLED.get()
+                || !NightConfig.ENTRY_DIMENSIONS.get().contains(player.level().dimension().location().toString())) {
+            return;
+        }
+        if (!player.isSleeping()) {
+            SLEEP.remove(player.getUUID());
+            return;
+        }
+        if (!player.isSleepingLongEnough()) return;
+        SleepAttempt sleep = SLEEP.get(player.getUUID());
+        if (sleep == null) {
+            sleep = new SleepAttempt(player.getStats().getValue(Stats.CUSTOM.get(Stats.TIME_SINCE_REST)), false);
+            SLEEP.put(player.getUUID(), sleep);
+        }
+        if (sleep.attempted) return;
+        SLEEP.put(player.getUUID(), new SleepAttempt(sleep.restTicks, true));
+        double chance = NightRules.entryProbability(sleep.restTicks, NightConfig.ENTRY_BASE.get(),
+                NightConfig.ENTRY_DAILY.get(), NightConfig.ENTRY_CAP.get());
+        if (NightRules.roll(chance, player.getRandom().nextDouble())) enter(player);
+    }
+
     @SubscribeEvent
     public static void playerTick(TickEvent.PlayerTickEvent event) {
         if (event.phase != TickEvent.Phase.END || !(event.player instanceof ServerPlayer player)) return;
-        SleepAttempt sleep = SLEEP.get(player.getUUID());
-        if (sleep != null) {
-            if (!player.isSleeping()) SLEEP.remove(player.getUUID());
-            else if (!sleep.attempted && player.isSleepingLongEnough()) {
-                SLEEP.put(player.getUUID(), new SleepAttempt(sleep.restTicks, true));
-                double chance = NightRules.entryProbability(sleep.restTicks, NightConfig.ENTRY_BASE.get(),
-                        NightConfig.ENTRY_DAILY.get(), NightConfig.ENTRY_CAP.get());
-                if (NightRules.roll(chance, player.getRandom().nextDouble())) enter(player);
-            }
-        }
+        considerSleepEntry(player);
         if (!EternalNightContent.isCity(player.level())) {
             PREVIOUS_POSITION.remove(player.getUUID());
             return;
         }
-        ServerLevel level = player.serverLevel();
-        Vec3 previous = PREVIOUS_POSITION.put(player.getUUID(), player.position());
-        if (previous != null && previous.distanceToSqr(player.position()) < 16) {
-            for (long packed : CitySavedData.get(level).activeExits(level.getGameTime()).keySet()) {
-                BlockPos pos = BlockPos.of(packed);
-                if (pos.distToCenterSqr(player.position()) > 25 || !level.hasChunkAt(pos)) continue;
-                BlockState state = level.getBlockState(pos);
-                if (!(state.getBlock() instanceof DoorBlock) || !state.getValue(DoorBlock.OPEN)) continue;
-                if (crossedDoor(previous, player.position(), pos, state.getValue(DoorBlock.FACING))
-                        || player.getBoundingBox().intersects(new AABB(pos.getX(), pos.getY(), pos.getZ(),
-                                pos.getX() + 1, pos.getY() + 2, pos.getZ() + 1).inflate(0.05, 0, 0.05))) {
-                    // The connection tick restores its pre-player-tick position.
-                    // Transfer after that tick so it cannot overwrite the home coordinates.
-                    PENDING_RETURNS.add(player.getUUID());
-                    break;
-                }
+        Integer remaining = ARRIVAL_SLEEP.get(player.getUUID());
+        if (remaining != null) {
+            if (remaining <= 1) {
+                ARRIVAL_SLEEP.remove(player.getUUID());
+                if (player.isSleeping()) player.stopSleeping();
+            } else {
+                ARRIVAL_SLEEP.put(player.getUUID(), remaining - 1);
+                if (player.getPose() != Pose.SLEEPING) player.setPose(Pose.SLEEPING);
             }
         }
+        ServerLevel level = player.serverLevel();
+        Vec3 current = player.position();
+        Vec3 previous = PREVIOUS_POSITION.put(player.getUUID(), current);
+        considerReturn(player, level, previous, current, player.getBoundingBox());
+    }
+
+    /**
+     * Shared-exit return is based on the white plane volume and the movement
+     * segment, not on the leaf staying open. Closed leaves, lag spikes longer
+     * than four blocks, and standing inside the doorway all still send the
+     * visitor home while the SavedData window is active.
+     */
+    public static void considerReturn(ServerPlayer player, ServerLevel level, Vec3 previous, Vec3 current, AABB box) {
+        if (PENDING_RETURNS.contains(player.getUUID()) || !player.isAlive()) return;
+        for (long packed : CitySavedData.get(level).activeExits(level, level.getGameTime()).keySet()) {
+            BlockPos pos = BlockPos.of(packed);
+            if (!level.hasChunkAt(pos)) continue;
+            if (throughExit(previous, current, box, pos, exitFacing(level, pos))) {
+                // Connection.tick restores pre-doTick coordinates; teleport after that.
+                PENDING_RETURNS.add(player.getUUID());
+                return;
+            }
+        }
+    }
+
+    static Direction exitFacing(ServerLevel level, BlockPos pos) {
+        BlockState state = level.getBlockState(pos);
+        return state.getBlock() instanceof DoorBlock ? state.getValue(DoorBlock.FACING) : Direction.NORTH;
+    }
+
+    public static AABB exitVolume(BlockPos lower) {
+        return new AABB(lower.getX(), lower.getY(), lower.getZ(),
+                lower.getX() + 1, lower.getY() + 2, lower.getZ() + 1).inflate(0.15, 0.05, 0.15);
+    }
+
+    public static boolean throughExit(Vec3 previous, Vec3 current, AABB box, BlockPos lower, Direction facing) {
+        AABB volume = exitVolume(lower);
+        if (box != null && box.intersects(volume)) return true;
+        if (previous == null || current == null) return false;
+        if (volume.clip(previous, current).isPresent()) return true;
+        return crossedDoor(previous, current, lower, facing);
     }
 
     public static boolean crossedDoor(Vec3 previous, Vec3 current, BlockPos lower, Direction facing) {
@@ -149,6 +203,10 @@ public final class NightEvents {
         return CityEntryQueue.request(player);
     }
 
+    public static boolean keepArrivalSleep(Player player) {
+        return ARRIVAL_SLEEP.containsKey(player.getUUID());
+    }
+
     static boolean finishEntry(ServerPlayer player, ServerLevel city, int x, int z) {
         Optional<Vec3> destination = safeStreet(city, x, z);
         if (destination.isEmpty()) return false;
@@ -159,6 +217,9 @@ public final class NightEvents {
         Vec3 pos = destination.get();
         player.teleportTo(city, pos.x, pos.y, pos.z, player.getYRot(), player.getXRot());
         player.fallDistance = 0;
+        BlockPos street = BlockPos.containing(pos.x, pos.y - 1, pos.z);
+        player.startSleeping(street);
+        ARRIVAL_SLEEP.put(player.getUUID(), 40);
         player.connection.send(new ClientboundSetTitlesAnimationPacket(20, 80, 20));
         player.connection.send(new ClientboundSetTitleTextPacket(Component.translatable("message.sound_isolating_eraser.city.arrival")));
         return true;
@@ -214,6 +275,8 @@ public final class NightEvents {
             System.out.println("NIGHT_UNSAFE_HOME " + player.getGameProfile().getName() + " fallback to shared spawn");
             player.displayClientMessage(Component.translatable("message.sound_isolating_eraser.city.unsafe_home"), true);
         }
+        ARRIVAL_SLEEP.remove(player.getUUID());
+        if (player.isSleeping()) player.stopSleeping();
         player.teleportTo(overworld, target.x, target.y, target.z, player.getRespawnAngle(), 0);
         // Door exits run inside connection.tick(), which restores firstGoodXYZ after doTick().
         player.connection.resetPosition();
@@ -260,21 +323,45 @@ public final class NightEvents {
         CityEntryQueue.cancel(id);
         SLEEP.remove(id); PREVIOUS_POSITION.remove(id);
         PENDING_RETURNS.remove(id);
+        ARRIVAL_SLEEP.remove(id);
     }
     @SubscribeEvent public static void serverStopping(net.minecraftforge.event.server.ServerStoppingEvent event) {
         CityEntryQueue.clear();
     }
     @SubscribeEvent public static void serverStopped(net.minecraftforge.event.server.ServerStoppedEvent event) {
-        SLEEP.clear(); PREVIOUS_POSITION.clear(); CityDoorActions.clear();
+        clearTransientState();
+    }
+
+    /** Drops in-memory visit/sleep/exit state so GameTests cannot leak across cases. */
+    public static void clearTransientState() {
+        SLEEP.clear();
+        PREVIOUS_POSITION.clear();
         PENDING_RETURNS.clear();
+        ARRIVAL_SLEEP.clear();
+        CityDoorActions.clear();
+        CityEntryQueue.clear();
     }
 
     @SubscribeEvent public static void serverTick(TickEvent.ServerTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
-        CityEntryQueue.tick(event.getServer());
+        var server = event.getServer();
+        CityEntryQueue.tick(server);
+        // Backup scan: embedded GameTest channels and awaitingTeleport skips can
+        // omit PlayerTickEvent, so deep-sleep entry and city visitors both run here.
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            considerSleepEntry(player);
+            if (!EternalNightContent.isCity(player.level())) continue;
+            Vec3 current = player.position();
+            Vec3 previous = PREVIOUS_POSITION.get(player.getUUID());
+            considerReturn(player, player.serverLevel(), previous, current, player.getBoundingBox());
+        }
+        flushReturns(server);
+    }
+
+    public static void flushReturns(net.minecraft.server.MinecraftServer server) {
         for (UUID id : Set.copyOf(PENDING_RETURNS)) {
             PENDING_RETURNS.remove(id);
-            ServerPlayer player = event.getServer().getPlayerList().getPlayer(id);
+            ServerPlayer player = server.getPlayerList().getPlayer(id);
             if (player != null && player.isAlive() && EternalNightContent.isCity(player.level())) {
                 returnHome(player);
             }
@@ -286,7 +373,7 @@ public final class NightEvents {
                 || !EternalNightContent.isCity(level)) return;
         if (level.getGameTime() % 20 == 0) {
             CityExitNetwork.sync(level);
-            for (long packed : CitySavedData.get(level).activeExits(level.getGameTime()).keySet()) {
+            for (long packed : CitySavedData.get(level).activeExits(level, level.getGameTime()).keySet()) {
                 BlockPos pos = BlockPos.of(packed);
                 if (!level.hasChunkAt(pos)) continue;
                 level.sendParticles(ParticleTypes.END_ROD, pos.getX() + 0.5, pos.getY() + 1, pos.getZ() + 0.5,

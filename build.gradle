@@ -275,6 +275,14 @@ tasks.named('jar', Jar).configure {
     finalizedBy 'reobfJar'
 }
 
+tasks.register('verifyRemappedDoorLock', Exec) {
+    dependsOn 'reobfJar'
+    commandLine 'python3', 'tools/verify_remapped_door_lock.py'
+}
+tasks.named('jar', Jar).configure {
+    finalizedBy 'verifyRemappedDoorLock'
+}
+
 // However if you are in a multi-project build, dev time needs unobfed jar files, so you can delay the obfuscation until publishing by doing:
 // tasks.named('publish').configure {
 //     dependsOn 'reobfJar'
