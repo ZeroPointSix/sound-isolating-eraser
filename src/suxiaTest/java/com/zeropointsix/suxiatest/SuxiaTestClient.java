@@ -34,7 +34,6 @@ public final class SuxiaTestClient {
     private static void require(boolean condition, String message) { if (!condition) throw new AssertionError(message); }
     private static void fail(Throwable error) {
         failed = true; error.printStackTrace();
-        try { Files.writeString(RESULTS.resolve("client.failed"), error.toString()); } catch (Exception ignored) { }
         var mc = Minecraft.getInstance();
         try (var screenshot = Screenshot.takeScreenshot(mc.getMainRenderTarget())) {
             screenshot.writeToFile(RESULTS.resolve("client-failure.png"));
@@ -44,6 +43,12 @@ public final class SuxiaTestClient {
         } catch (Exception captureError) {
             error.addSuppressed(captureError);
         }
+        // Notify the runner only after evidence is saved; it terminates this JVM on failure.
+        try { Files.writeString(RESULTS.resolve("client.failed"), error.toString()); } catch (Exception ignored) { }
+    }
+    private static boolean hasRenderedPose(SuxiaEntity mob) {
+        var pose = poses.get(mob.getId());
+        return pose != null && pose[2] > 5 && mob.tickCount - pose[3] > 40;
     }
     @SubscribeEvent public static void message(ClientChatReceivedEvent event) {
         String text = event.getMessage().getString();
@@ -99,11 +104,13 @@ public final class SuxiaTestClient {
                 || !(event.getRenderer().getModel() instanceof SuxiaModel<?> model)) return;
         try {
             var body = model.root().getChild("body");
-            float[] range = poses.computeIfAbsent(mob.getId(), id -> new float[]{body.zRot, body.zRot, 0});
+            // Start the observation window when this entity is actually rendered, not at the phase packet.
+            float[] range = poses.computeIfAbsent(mob.getId(), id -> new float[]{body.zRot, body.zRot, 0, mob.tickCount});
             range[0] = Math.min(range[0], body.zRot); range[1] = Math.max(range[1], body.zRot); range[2]++;
-            if (ticks > 40 && mob.isCrawling()) require(body.xRot > 1.3F, "rendered crawl body leans forward");
-            if (ticks > 40 && mob.isPlayingDead()) require(model.root().xRot > 1.5F, "rendered play-dead body lies flat");
-            if (ticks > 40 && phase.endsWith("awake")) require(model.root().xRot < .1F, "rendered wake pose rises from the ground");
+            if (!hasRenderedPose(mob)) return;
+            if (mob.isCrawling()) require(body.xRot > 1.3F, "rendered crawl body leans forward");
+            if (mob.isPlayingDead()) require(model.root().xRot > 1.5F, "rendered play-dead body lies flat");
+            if (phase.endsWith("awake")) require(model.root().xRot < .1F, "rendered wake pose rises from the ground");
         } catch (Throwable error) { fail(error); }
     }
     @SubscribeEvent public static void render(TickEvent.RenderTickEvent event) {
@@ -126,12 +133,17 @@ public final class SuxiaTestClient {
                     && !openModel.getParticleIcon().contents().name().getPath().contains("missing"), "both item textures loaded");
             if (phase.equals("gallery")) {
                 int count = 0;
+                boolean allRendered = true;
                 for (var entity : mc.level.entitiesForRendering()) if (entity instanceof SuxiaEntity mob) {
                     count++;
+                    allRendered &= hasRenderedPose(mob);
                     require(mc.getEntityRenderDispatcher().getRenderer(mob) instanceof SuxiaRenderer<?>, "shared renderer registered");
                 }
-                require(count == 3 && poses.size() == 3, "all three poses actually rendered");
-                require(poses.values().stream().anyMatch(v -> v[2] > 5 && v[1] - v[0] > .01), "standing idle animation changes rendered transforms");
+                boolean idleAnimated = poses.values().stream().anyMatch(v -> v[2] > 5 && v[1] - v[0] > .01);
+                boolean ready = count == 3 && poses.size() == 3 && allRendered;
+                if (ticks < 600 && (!ready || !idleAnimated)) return;
+                require(ready, "all three poses actually rendered");
+                require(idleAnimated, "standing idle animation changes rendered transforms");
                 for (String name : new String[]{"suxia", "suxia_angry", "suxia_eyes"}) {
                     mc.getResourceManager().getResourceOrThrow(new ResourceLocation("sound_isolating_eraser", "textures/entity/suxia/" + name + ".png"));
                 }
@@ -157,11 +169,13 @@ public final class SuxiaTestClient {
                     boolean found = false;
                     for (var entity : mc.level.entitiesForRendering()) if (entity instanceof SuxiaEntity mob) {
                         found = true;
-                        require(poses.containsKey(mob.getId()) && poses.get(mob.getId())[2] > 5,
+                        if (ticks < 600 && !hasRenderedPose(mob)) return;
+                        require(hasRenderedPose(mob),
                                 "hostile actually rendered in " + phase + ": id=" + mob.getId()
                                         + " position=" + mob.position() + " rendered=" + poses.keySet());
                         require(mob.isPlayingDead() != phase.endsWith("awake"), "live sleep/wake pose synchronized in " + phase);
                     }
+                    if (ticks < 600 && !found) return;
                     require(found, "hostile visible in " + phase);
                 }
             }
