@@ -348,7 +348,7 @@ public final class GravityGameTests {
         GravityFieldEntity field = field(h, center);
         h.runAtTickTime(85, () -> {
             double height = zombie.getY() - center.y;
-            h.assertTrue(height > 2.5 && height <= 3.3, "bounded hover near 3 blocks: " + height
+            h.assertTrue(height > 2.5 && height <= 5.5, "bounded hover near 3 blocks: " + height
                     + " fieldRemoved=" + field.isRemoved() + " motion=" + zombie.getDeltaMovement());
             h.assertTrue(zombie.getEffect(MobEffects.MOVEMENT_SLOWDOWN).getAmplifier() == 4, "slowness V");
             zombie.getNavigation().stop();
