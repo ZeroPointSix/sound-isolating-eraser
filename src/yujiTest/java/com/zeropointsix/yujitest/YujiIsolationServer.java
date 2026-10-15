@@ -1,6 +1,7 @@
 package com.zeropointsix.yujitest;
 
 import com.zeropointsix.eraser.yuji.YujiContent;
+import com.zeropointsix.eraser.yuji.YujiConfig;
 import com.zeropointsix.eraser.yuji.YujiKind;
 import com.zeropointsix.eraser.yuji.YujiMonster;
 import java.nio.file.Files;
@@ -40,7 +41,7 @@ public final class YujiIsolationServer {
     private static final Path RESULTS = Path.of(System.getProperty("yuji.qa.results"));
     private static final Set<BlockPos> terrain = new HashSet<>();
     private static String stage = "waiting", item;
-    private static int ticks, round, contacts, collisionTicks, crouchTicks;
+    private static int ticks, round, contacts, collisionTicks, crouchTicks, voiceCooldownAtDiscovery;
     private static boolean failed, complete, ringBuilt, voiceWeaknessObserved;
     private static YujiMonster current;
     private static Panda panda;
@@ -48,6 +49,8 @@ public final class YujiIsolationServer {
     private static float clearedDamage;
     private static double highest, furthest;
     private static Vec3 habitatStart;
+    private static Vec3 cameraStart;
+    private static final boolean CAMERA_TURN = Boolean.parseBoolean(System.getProperty("yuji.qa.cameraTurn", "true"));
     private static ItemStack stolen;
     private static boolean enabled() { return Boolean.getBoolean("yuji.qa.isolation"); }
     private static void require(boolean condition, String message) { if (!condition) throw new AssertionError(message); }
@@ -91,6 +94,10 @@ public final class YujiIsolationServer {
     }
     @SubscribeEvent public static void prepare(ServerStartedEvent event) {
         if (!enabled()) return;
+        try {
+            require(YujiConfig.CAMERA_TURN.get() == CAMERA_TURN, "server must load requested cameraTurn from the real TOML config");
+            log("loaded server config cameraTurn=" + YujiConfig.CAMERA_TURN.get());
+        } catch (Throwable error) { fail(error); return; }
         var server = event.getServer(); var level = server.overworld(); server.setDifficulty(Difficulty.NORMAL, true);
         level.getGameRules().getRule(GameRules.RULE_DOMOBSPAWNING).set(false, server);
         level.getGameRules().getRule(GameRules.RULE_NATURAL_REGENERATION).set(false, server);
@@ -142,17 +149,46 @@ public final class YujiIsolationServer {
                 case "voice-proof" -> {
                     if (!ready(item, a) || !ready(item, b) || !ready("shot-" + item, a) || !ready("shot-" + item, b)) return;
                     pass(item, "natural target=" + victim.getUUID() + "; adjacent witness=" + witness.getUUID() + "; both actual sound engines checked");
+                    require(voiceCounter("missedVoices") == 2, "two naturally missed voices precede body discovery");
+                    for (BlockPos pos : BlockPos.betweenClosed(-4, 65, 5, 4, 68, 5)) block(level, pos, Blocks.AIR.defaultBlockState());
+                    item = "voice-found-" + round;
+                    signal(victim, "face:" + item + ":" + current.getId()); next("voice-find-arm");
+                }
+                case "voice-find-arm" -> {
+                    Vec3 toward = current.getEyePosition().subtract(victim.getEyePosition()).normalize();
+                    if (!ready(item, victim) || !victim.hasLineOfSight(current) || victim.getViewVector(1).dot(toward) < .99) return;
+                    require(voiceCounter("missedVoices") == 2, "fixture has not reset the production streak");
+                    voiceCooldownAtDiscovery = voiceCounter("skillCooldown");
+                    require(voiceCooldownAtDiscovery > 10, "body is discovered between sounds, not during another emission");
+                    current.setNoAi(false); next("voice-find");
+                }
+                case "voice-find" -> {
+                    if (ticks == 10) {
+                        require(voiceCounter("missedVoices") == 0, "seeing the real body between sounds must reset consecutive misses");
+                        require(voiceCounter("skillCooldown") == voiceCooldownAtDiscovery - 10, "no mimic call or forced AI steps reset the counter");
+                        require(!witness.hasEffect(MobEffects.WEAKNESS), "body discovery must not affect the other listener");
+                        current.setNoAi(true);
+                        pass(item, "two natural misses -> real TCP look input -> zero misses after ten server ticks, without a new sound");
+                        signalBoth(a, b, "shot:" + item); next("voice-find-proof");
+                    }
+                }
+                case "voice-find-proof" -> {
+                    if (!ready("shot-" + item, a) || !ready("shot-" + item, b)) return;
                     if (++round < 2) beginVoice(b, a); else { round = 0; beginCamera(a, b); }
                 }
                 case "camera" -> {
                     if (ticks == 180) {
+                        require(YujiConfig.CAMERA_TURN.get() == CAMERA_TURN, "camera config stays active throughout natural lure");
+                        var effect = victim.getEffect(YujiContent.ENTHRALLED.get());
+                        require(effect != null && effect.getAmplifier() >= 1 && cameraStart.x - victim.getX() > .3,
+                                "camera option preserves natural II/III lure and movement toward source");
                         require(!witness.hasEffect(YujiContent.ENTHRALLED.get()), "outside-range witness must not be enthralled");
                         signalBoth(a, b, "check"); current.setNoAi(true); next("camera-proof");
                     }
                 }
                 case "camera-proof" -> {
                     if (!ready(item, a) || !ready(item, b) || !ready("shot-" + item, a) || !ready("shot-" + item, b)) return;
-                    pass(item, "natural source; actual client yaw/effect probes, victim=" + victim.getUUID() + "; witness=" + witness.getUUID());
+                    pass(item, "cameraTurn=" + CAMERA_TURN + "; natural source; actual client yaw/effect probes, victim=" + victim.getUUID() + "; witness=" + witness.getUUID() + "; pull=" + (cameraStart.x - victim.getX()));
                     current.discard(); next("camera-release");
                 }
                 case "camera-release" -> {
@@ -387,6 +423,11 @@ public final class YujiIsolationServer {
         current = spawn(victim.serverLevel(), YujiKind.WANGYU, 0, 65, 0, false); ringBuilt = false; voiceWeaknessObserved = false;
         item = "voice-" + round; signalBoth(victim, witness, "start:" + item + ":" + victim.getGameProfile().getName()); next("voice-arm");
     }
+    private static int voiceCounter(String name) throws ReflectiveOperationException {
+        // Observe private production state only; the fixture never writes counters or invokes mimic.
+        var field = YujiMonster.class.getDeclaredField(name); field.setAccessible(true);
+        return field.getInt(current);
+    }
     private static void beginHabitat(ServerPlayer a, ServerPlayer b) {
         var level = a.serverLevel(); clear(level);
         place(a, round == 0 ? 0 : 10, 65, -2, 0); place(b, 15, 65, 3, 90);
@@ -425,6 +466,7 @@ public final class YujiIsolationServer {
     }
     private static void beginCamera(ServerPlayer victim, ServerPlayer witness) {
         clear(victim.serverLevel()); place(victim, 12, 65, 0, 0); place(witness, 22, 65, 0, 0);
+        cameraStart = victim.position();
         current = spawn(victim.serverLevel(), YujiKind.XIEYIN, 0, 65, 0, false);
         item = "camera-" + round; signalBoth(victim, witness, "start:" + item + ":" + victim.getGameProfile().getName()); next("camera-arm");
     }

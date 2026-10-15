@@ -7,13 +7,14 @@ import subprocess
 from habitat_negative_control import stop_process_group, validate_negative_log
 
 
-LOG = """[Server thread/INFO] [minecraft/GameTestBatchRunner]: Running test batch 'yuji:1' (55 tests)...
+LOG = """[Server thread/INFO] [minecraft/GameTestBatchRunner]: Running test batch 'yuji:1' (58 tests)...
 [Server thread/INFO] [minecraft/GameTestBatchRunner]: Running test batch 'yuji_city:1' (22 tests)...
 [Server thread/INFO] [minecraft/GameTestBatchRunner]: Running test batch 'yuji_city_iter:1' (1 tests)...
 [Server thread/INFO] [minecraft/GameTestBatchRunner]: Running test batch 'yuji_habitat:1' (5 tests)...
+[Server thread/INFO] [minecraft/GameTestBatchRunner]: Running test batch 'yuji_betrayal_species:1' (5 tests)...
 [Server thread/ERROR] [minecraft/LogTestReporter]: liangshewalksinsideandstaysunderroof failed! whole body must be inside room 5: (6, 1, 2) -> (7, 1, 3)
 [Server thread/ERROR] [minecraft/LogTestReporter]: xieyinwalksintobodywidthcorridor failed! Xieyin must navigate into narrow corridor: (7, 1, 2)
-[Server thread/INFO] [minecraft/GameTestServer]: ========= 83 GAME TESTS COMPLETE ======================
+[Server thread/INFO] [minecraft/GameTestServer]: ========= 91 GAME TESTS COMPLETE ======================
 [Server thread/INFO] [minecraft/GameTestServer]: 2 required tests failed :(
 [Server thread/INFO] [minecraft/GameTestServer]:    - liangshewalksinsideandstaysunderroof
 [Server thread/INFO] [minecraft/GameTestServer]:    - xieyinwalksintobodywidthcorridor
@@ -23,7 +24,7 @@ BUILD FAILED
 
 class HabitatNegativeControlTests(unittest.TestCase):
     def test_accepts_only_the_intended_rejected_behavior_run(self):
-        self.assertEqual(validate_negative_log(LOG, 1)["completed"], 83)
+        self.assertEqual(validate_negative_log(LOG, 1)["completed"], 91)
 
     def test_rejects_successful_or_killed_process(self):
         for code in (0, 124, 137, 143):
@@ -45,7 +46,7 @@ class HabitatNegativeControlTests(unittest.TestCase):
             validate_negative_log(log, 1)
 
     def test_rejects_partial_or_miscounted_run(self):
-        for log in (LOG.replace("83 GAME TESTS COMPLETE", "82 GAME TESTS COMPLETE"),
+        for log in (LOG.replace("91 GAME TESTS COMPLETE", "90 GAME TESTS COMPLETE"),
                     LOG.replace("2 required tests failed", "3 required tests failed"),
                     LOG.replace("(5 tests)", "(4 tests)")):
             with self.subTest(log=log), self.assertRaises(AssertionError):
@@ -55,7 +56,7 @@ class HabitatNegativeControlTests(unittest.TestCase):
         log = "\n".join(line for line in LOG.splitlines()
                         if "Running test batch" not in line or "yuji_habitat:" in line)
         with self.assertRaises(AssertionError):
-            validate_negative_log(log.replace("83 GAME TESTS COMPLETE", "5 GAME TESTS COMPLETE"), 1)
+            validate_negative_log(log.replace("91 GAME TESTS COMPLETE", "5 GAME TESTS COMPLETE"), 1)
 
     def test_rejects_correct_names_with_timeout_or_fixture_failure(self):
         for reason in ("Didn't succeed or fail within 500 ticks", "habitat fixture changed at BlockPos(1, 1, 1)"):

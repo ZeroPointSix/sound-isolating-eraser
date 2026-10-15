@@ -56,6 +56,9 @@ public final class YujiGameTests {
             YujiMonster mob = monster(h, kind);
             close(h, mob.getMaxHealth(), kind == YujiKind.TANYU ? 38 : kind.health, "health " + kind);
             h.assertTrue(mob.getAttribute(Attributes.ATTACK_DAMAGE) != null, "safe combat attributes");
+            if (kind == YujiKind.XIEYIN) {
+                close(h, mob.getAttributeValue(Attributes.MOVEMENT_SPEED), .20, "Xieyin movement speed matches monster card");
+            }
             h.assertTrue(!mob.getType().getDescriptionId().isEmpty(), "localized entity");
             mob.discard();
         }
@@ -449,43 +452,9 @@ public final class YujiGameTests {
                 g.getGoal().getClass().getEnclosingClass() == YujiAfflictions.class && g.getFlags().contains(Goal.Flag.TARGET)),
                 "only native targeting is locked"); h.succeed();
     }
-    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji_betrayal_species", timeoutTicks = 600)
     public static void yujiBetrayalGoatUsesNativeRamNotMelee(GameTestHelper h) {
-        var goat = h.spawn(EntityType.GOAT, new BlockPos(2, 2, 2));
-        goat.setNoAi(true); goat.setNoGravity(true);
-        goat.moveTo(goat.getX(), h.getLevel().getMaxBuildHeight() - 24, goat.getZ());
-        BlockPos origin = goat.blockPosition();
-        for (BlockPos pos : BlockPos.betweenClosed(origin.offset(-8, -1, -8), origin.offset(8, 4, 8)))
-            h.getLevel().setBlock(pos, pos.getY() == origin.getY() - 1 ? Blocks.STONE.defaultBlockState() : Blocks.AIR.defaultBlockState(), 2);
-        goat.moveTo(origin.getX() + .5, origin.getY(), origin.getZ() + .5);
-        goat.getBrain().setMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.RAM_COOLDOWN_TICKS, 400);
-        goat.getBrain().setMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.LONG_JUMP_COOLDOWN_TICKS, 1000);
-        long start = h.getLevel().getGameTime();
-        YujiMonster source = monster(h, YujiKind.LIANGSHE);
-        source.moveTo(goat.position().add(-3, 0, -3));
-        Player player = player(h, source);
-        player.moveTo(goat.getX(), goat.getY(), goat.getZ() - 6);
-        player.setHealth(20);
-        YujiAfflictions.apply(player, source, "betrayed");
-        YujiAfflictions.recruit(player, true);
-        YujiAfflictions.recruit(player, true);
-        h.assertTrue(goat.goalSelector.getAvailableGoals().stream().noneMatch(g ->
-                g.getGoal().getClass().getEnclosingClass() == YujiAfflictions.class),
-                "betrayed goat must not receive synthetic melee");
-        h.assertTrue(!goat.getBrain().hasMemoryValue(net.minecraft.world.entity.ai.memory.MemoryModuleType.RAM_COOLDOWN_TICKS),
-                "recruitment erases ram cooldown so vanilla PrepareRam can start");
-        h.assertTrue(goat.getPersistentData().getCompound("QihaiBetrayal").getLong("GoatRamPreviousCooldownUntil") == start + 400,
-                "first recruitment snapshots the previous ram cooldown");
-        goat.getBrain().setMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.RAM_TARGET, player.position());
-        h.assertTrue(goat.getBrain().hasMemoryValue(net.minecraft.world.entity.ai.memory.MemoryModuleType.RAM_TARGET),
-                "native ram target memory is usable on a betrayed goat");
-        YujiAfflictions.restore(goat);
-        h.assertTrue(!goat.getBrain().hasMemoryValue(net.minecraft.world.entity.ai.memory.MemoryModuleType.RAM_TARGET),
-                "owned ram target is cancelled on restore");
-        int left = goat.getBrain().getMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.RAM_COOLDOWN_TICKS).orElse(0);
-        h.assertTrue(left >= 0 && left <= 400, "restored cooldown is the remaining native wait");
-        source.discard(); goat.discard(); player.discard();
-        h.succeed();
+        YujiBetrayalSpeciesGameTests.naturallyRamsAndLastSourceRestores(h);
     }
     @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
     public static void yujiResistancesAndBossImmunity(GameTestHelper h) {

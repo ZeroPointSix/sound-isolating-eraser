@@ -5,17 +5,22 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.WeakHashMap;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
 import net.minecraft.tags.DamageTypeTags;
+import net.minecraft.util.valueproviders.UniformInt;
 import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.NeutralMob;
@@ -23,19 +28,25 @@ import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.ai.behavior.PrepareRamNearestTarget;
+import net.minecraft.world.entity.ai.behavior.PositionTracker;
+import net.minecraft.world.entity.ai.behavior.RamTarget;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
+import net.minecraft.world.entity.ai.memory.WalkTarget;
+import net.minecraft.world.entity.ai.targeting.TargetingConditions;
 import net.minecraft.world.entity.animal.Cat;
 import net.minecraft.world.entity.animal.IronGolem;
 import net.minecraft.world.entity.animal.Parrot;
 import net.minecraft.world.entity.animal.SnowGolem;
 import net.minecraft.world.entity.animal.Wolf;
 import net.minecraft.world.entity.animal.goat.Goat;
-import net.minecraft.world.entity.animal.goat.Goat;
+import net.minecraft.world.entity.animal.goat.GoatAi;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.monster.RangedAttackMob;
 import net.minecraft.world.entity.npc.AbstractVillager;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.schedule.Activity;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.EntityJoinLevelEvent;
@@ -55,6 +66,7 @@ public final class YujiAfflictions {
     private static final UUID ATTACK = UUID.fromString("a17de001-5350-4000-8000-000000000002");
     private static final UUID FOLLOW = UUID.fromString("a17de001-5350-4000-8000-000000000003");
     private static final String[] TYPES = {"cursed", "betrayed", "enthralled", "weakness"};
+    private static final Map<Goat, GoatRamTargets> goatRamTargets = new WeakHashMap<>();
     private static CompoundTag root(Player player) {
         if (!player.getPersistentData().contains(ROOT)) player.getPersistentData().put(ROOT, new CompoundTag());
         return player.getPersistentData().getCompound(ROOT);
@@ -314,9 +326,25 @@ public final class YujiAfflictions {
                     data.putInt("PreviousAngerTime", neutral.getRemainingPersistentAngerTime());
                 }
             }
+            boolean changedVictim = data.hasUUID("Player") && !data.getUUID("Player").equals(player.getUUID());
             data.putUUID("Player", player.getUUID()); data.putLong("Until", player.level().getGameTime() + 45);
-            if (mob instanceof Goat goat) prepareGoatRam(goat, data);
             mob.getPersistentData().put(INFLUENCE, data);
+            if (mob instanceof Goat goat) {
+                if (!data.getBoolean("GoatRamOwned")) {
+                    data.putBoolean("GoatRamOwned", true);
+                    if (!data.contains("GoatRamPreviousCooldownUntil")) {
+                        data.putLong("GoatRamPreviousCooldownUntil", player.level().getGameTime()
+                                + goat.getBrain().getMemory(MemoryModuleType.RAM_COOLDOWN_TICKS).orElse(0));
+                    }
+                    stopGoatRam(goat, true);
+                    installGoatRamTargeting(goat);
+                    // Bypass the pre-existing idle cooldown once, never on the 20-tick effect refresh.
+                    goat.getBrain().eraseMemory(MemoryModuleType.RAM_COOLDOWN_TICKS);
+                } else if (changedVictim) {
+                    stopGoatRam(goat, false);
+                    installGoatRamTargeting(goat);
+                }
+            }
             if (mob instanceof Enemy) {
                 modifier(mob, Attributes.MOVEMENT_SPEED, SPEED, YujiConfig.HOSTILE_BUFF.get());
                 modifier(mob, Attributes.ATTACK_DAMAGE, ATTACK, YujiConfig.HOSTILE_BUFF.get());
@@ -341,16 +369,26 @@ public final class YujiAfflictions {
     public static void restore(Mob mob) {
         CompoundTag data = mob.getPersistentData().getCompound(INFLUENCE);
         if (data.isEmpty()) return;
+        if (mob instanceof Goat goat && data.getBoolean("GoatRamOwned")) {
+            stopGoatRam(goat, false);
+            // Vanilla preparation retains a private candidate on stop; do not resume that old victim later.
+            installGoatRamTargeting(goat);
+            int previous = (int) Math.min(Integer.MAX_VALUE,
+                    Math.max(0, data.getLong("GoatRamPreviousCooldownUntil") - goat.level().getGameTime()));
+            int cooldown = Math.max(previous, goat.getBrain().getMemory(MemoryModuleType.RAM_COOLDOWN_TICKS).orElse(0));
+            if (cooldown > 0) goat.getBrain().setMemory(MemoryModuleType.RAM_COOLDOWN_TICKS, cooldown);
+            else goat.getBrain().eraseMemory(MemoryModuleType.RAM_COOLDOWN_TICKS);
+        }
         if (mob.getTarget() != null && data.hasUUID("Player") && mob.getTarget().getUUID().equals(data.getUUID("Player"))) {
             Entity previous = data.hasUUID("PreviousTarget") ? ((ServerLevel) mob.level()).getEntity(data.getUUID("PreviousTarget")) : null;
-            mob.setTarget(previous instanceof LivingEntity l && l.isAlive() ? l : null); mob.getNavigation().stop();
+            mob.setTarget(previous instanceof LivingEntity l && l.isAlive() ? l : null);
+            if (!(mob instanceof Goat)) mob.getNavigation().stop();
         }
         if (mob instanceof TamableAnimal pet) pet.setOrderedToSit(data.getBoolean("WasSitting"));
         if (mob instanceof NeutralMob neutral && data.hasUUID("Player") && data.getUUID("Player").equals(neutral.getPersistentAngerTarget())) {
             neutral.setPersistentAngerTarget(data.hasUUID("PreviousAnger") ? data.getUUID("PreviousAnger") : null);
             neutral.setRemainingPersistentAngerTime(data.getInt("PreviousAngerTime"));
         }
-        if (mob instanceof Goat goat) restoreGoatRam(goat, data);
         var speed = mob.getAttribute(Attributes.MOVEMENT_SPEED); if (speed != null) speed.removeModifier(SPEED);
         var attack = mob.getAttribute(Attributes.ATTACK_DAMAGE); if (attack != null) attack.removeModifier(ATTACK);
         var follow = mob.getAttribute(Attributes.FOLLOW_RANGE); if (follow != null) follow.removeModifier(FOLLOW);
@@ -369,6 +407,22 @@ public final class YujiAfflictions {
     }
     @SubscribeEvent public static void join(EntityJoinLevelEvent event) {
         if (event.getLevel().isClientSide || !(event.getEntity() instanceof Mob mob)) return;
+        if (mob instanceof Goat goat) {
+            CompoundTag influence = goat.getPersistentData().getCompound(INFLUENCE);
+            boolean legacy = !influence.getBoolean("GoatRamOwned") && influence.hasUUID("Player")
+                    && influence.contains("GoatRamPreviousCooldownUntil");
+            if (legacy) influence.putBoolean("GoatRamOwned", true);
+            installGoatRamTargeting(goat);
+            // Legacy saves prove cooldown ownership, not ownership of arbitrary new runtime brain memories.
+            if (!legacy && influence.getBoolean("GoatRamOwned")
+                    && goat.getBrain().hasMemoryValue(MemoryModuleType.RAM_TARGET)) {
+                var targets = goatRamTargets.computeIfAbsent(goat, key -> new GoatRamTargets());
+                targets.ram = goat.getBrain().getMemory(MemoryModuleType.RAM_TARGET).orElse(null);
+                targets.walk = goat.getBrain().getMemory(MemoryModuleType.WALK_TARGET).orElse(null);
+                targets.look = goat.getBrain().getMemory(MemoryModuleType.LOOK_TARGET).orElse(null);
+            }
+            return;
+        }
         if (mob instanceof Enemy) {
             // Lock the victim but preserve native ranged, charging and exploding attacks.
             mob.targetSelector.addGoal(0, new Goal() {
@@ -379,7 +433,6 @@ public final class YujiAfflictions {
             });
             return;
         }
-        if (mob instanceof Goat) return;
         mob.goalSelector.addGoal(0, new Goal() {
             private int attackTicks;
             { setFlags(EnumSet.of(Flag.MOVE, Flag.LOOK, Flag.JUMP)); }
@@ -412,24 +465,103 @@ public final class YujiAfflictions {
             event.setCancellationResult(net.minecraft.world.InteractionResult.FAIL); event.setCanceled(true);
         }
     }
-    private static final String GOAT_RAM_UNTIL = "GoatRamPreviousCooldownUntil";
-    private static void prepareGoatRam(Goat goat, CompoundTag data) {
+    private static void installGoatRamTargeting(Goat goat) {
         var brain = goat.getBrain();
-        if (!data.contains(GOAT_RAM_UNTIL)) {
-            int remaining = brain.getMemory(MemoryModuleType.RAM_COOLDOWN_TICKS).orElse(0);
-            data.putLong(GOAT_RAM_UNTIL, goat.level().getGameTime() + remaining);
+        var builder = brain.createBuilder();
+        boolean changed = false;
+        for (var activities : builder.getAvailableBehaviorsByPriority().values()) {
+            var behaviors = activities.get(Activity.RAM);
+            if (behaviors == null) continue;
+            if (behaviors.removeIf(behavior -> behavior.getClass() == PrepareRamNearestTarget.class
+                    || behavior instanceof BetrayalGoatPreparation)) {
+                behaviors.add(new BetrayalGoatPreparation(goat));
+                changed = true;
+            }
+            if (behaviors.removeIf(behavior -> behavior.getClass() == RamTarget.class || behavior instanceof BetrayalGoatRam)) {
+                behaviors.add(new BetrayalGoatRam(goat));
+                changed = true;
+            }
         }
-        // Vanilla PrepareRamNearestTarget requires RAM_COOLDOWN_TICKS to be absent, not 0.
-        brain.eraseMemory(MemoryModuleType.RAM_COOLDOWN_TICKS);
+        if (changed) {
+            // BrainBuilder copies the behavior sets but retains all untouched behavior instances.
+            brain.removeAllBehaviors();
+            brain.copyFromBuilder(builder);
+        }
     }
-    private static void restoreGoatRam(Goat goat, CompoundTag data) {
+    private static TargetingConditions goatRamTargeting(Goat goat, boolean chooseVictim) {
+        return TargetingConditions.forCombat().selector(candidate -> {
+            Player victim = chooseVictim ? influencedPlayer(goat) : null;
+            return candidate.getType() != EntityType.GOAT
+                    && candidate.level().getWorldBorder().isWithinBounds(candidate.getBoundingBox())
+                    && (victim == null || candidate == victim);
+        });
+    }
+    private static final class GoatRamTargets {
+        private WalkTarget walk;
+        private PositionTracker look;
+        private Vec3 ram;
+    }
+    private static final class BetrayalGoatPreparation extends PrepareRamNearestTarget<Goat> {
+        BetrayalGoatPreparation(Goat goat) {
+            super(g -> g.isScreamingGoat() ? 100 : 600, GoatAi.RAM_MIN_DISTANCE, GoatAi.RAM_MAX_DISTANCE,
+                    1.25F, goatRamTargeting(goat, true), GoatAi.RAM_PREPARE_TIME,
+                    g -> g.isScreamingGoat() ? SoundEvents.GOAT_SCREAMING_PREPARE_RAM : SoundEvents.GOAT_PREPARE_RAM);
+        }
+        @Override protected void tick(ServerLevel level, Goat goat, long time) {
+            var brain = goat.getBrain();
+            var walk = brain.getMemory(MemoryModuleType.WALK_TARGET).orElse(null);
+            var look = brain.getMemory(MemoryModuleType.LOOK_TARGET).orElse(null);
+            var ram = brain.getMemory(MemoryModuleType.RAM_TARGET).orElse(null);
+            super.tick(level, goat, time);
+            if (!goat.getPersistentData().getCompound(INFLUENCE).getBoolean("GoatRamOwned")) return;
+            var owned = goatRamTargets.computeIfAbsent(goat, key -> new GoatRamTargets());
+            if (brain.getMemory(MemoryModuleType.WALK_TARGET).orElse(null) != walk) owned.walk = brain.getMemory(MemoryModuleType.WALK_TARGET).orElse(null);
+            if (brain.getMemory(MemoryModuleType.LOOK_TARGET).orElse(null) != look) owned.look = brain.getMemory(MemoryModuleType.LOOK_TARGET).orElse(null);
+            if (brain.getMemory(MemoryModuleType.RAM_TARGET).orElse(null) != ram) owned.ram = brain.getMemory(MemoryModuleType.RAM_TARGET).orElse(null);
+        }
+    }
+    private static final class BetrayalGoatRam extends RamTarget {
+        BetrayalGoatRam(Goat goat) {
+            super(g -> g.isScreamingGoat() ? UniformInt.of(100, 300) : UniformInt.of(600, 6000),
+                    goatRamTargeting(goat, false), 3.0F,
+                    g -> g.isBaby() ? GoatAi.BABY_RAM_KNOCKBACK_FORCE : GoatAi.ADULT_RAM_KNOCKBACK_FORCE,
+                    g -> g.isScreamingGoat() ? SoundEvents.GOAT_SCREAMING_RAM_IMPACT : SoundEvents.GOAT_RAM_IMPACT,
+                    g -> g.isScreamingGoat() ? SoundEvents.GOAT_SCREAMING_HORN_BREAK : SoundEvents.GOAT_HORN_BREAK);
+        }
+        @Override protected void start(ServerLevel level, Goat goat, long time) {
+            super.start(level, goat, time);
+            if (goat.getPersistentData().getCompound(INFLUENCE).getBoolean("GoatRamOwned")) {
+                var owned = goatRamTargets.computeIfAbsent(goat, key -> new GoatRamTargets());
+                owned.walk = goat.getBrain().getMemory(MemoryModuleType.WALK_TARGET).orElse(null);
+                owned.ram = goat.getBrain().getMemory(MemoryModuleType.RAM_TARGET).orElse(null);
+            }
+        }
+    }
+    private static void stopGoatRam(Goat goat, boolean takeover) {
         var brain = goat.getBrain();
-        brain.eraseMemory(MemoryModuleType.RAM_TARGET);
-        brain.eraseMemory(MemoryModuleType.WALK_TARGET);
-        brain.eraseMemory(MemoryModuleType.LOOK_TARGET);
-        int left = (int) Math.max(0L, data.getLong(GOAT_RAM_UNTIL) - goat.level().getGameTime());
-        if (left > 0) brain.setMemory(MemoryModuleType.RAM_COOLDOWN_TICKS, left);
-        else brain.eraseMemory(MemoryModuleType.RAM_COOLDOWN_TICKS);
+        var level = (ServerLevel) goat.level();
+        boolean active = brain.hasMemoryValue(MemoryModuleType.RAM_TARGET);
+        for (var behavior : brain.getRunningBehaviors()) {
+            if (behavior instanceof PrepareRamNearestTarget<?> || behavior instanceof RamTarget) {
+                behavior.doStop(level, goat, level.getGameTime());
+                active = true;
+            }
+        }
+        var owned = goatRamTargets.remove(goat);
+        boolean force = takeover && active;
+        if (force || owned != null && owned.ram != null && brain.getMemory(MemoryModuleType.RAM_TARGET).orElse(null) == owned.ram) {
+            brain.eraseMemory(MemoryModuleType.RAM_TARGET);
+        }
+        // Vanilla timeout retains these memories. Erase only the exact values written by our ram behavior.
+        if (force || owned != null && owned.walk != null && brain.getMemory(MemoryModuleType.WALK_TARGET).orElse(null) == owned.walk) {
+            brain.eraseMemory(MemoryModuleType.WALK_TARGET);
+            brain.eraseMemory(MemoryModuleType.PATH);
+            goat.getNavigation().stop();
+        }
+        if (force || owned != null && owned.look != null && brain.getMemory(MemoryModuleType.LOOK_TARGET).orElse(null) == owned.look) {
+            brain.eraseMemory(MemoryModuleType.LOOK_TARGET);
+        }
+        if (active) level.broadcastEntityEvent(goat, (byte) 59);
     }
     private YujiAfflictions() {}
 }

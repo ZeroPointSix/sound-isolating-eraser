@@ -1,5 +1,32 @@
 # 雨寂佛都需求与验收对照表
 
+## 2026-10-15 a92 独立功能验收
+
+从实际远端 `11c91cdf320e334f2e372012f3d9298cbb7661b1` 接续，同一 [Draft PR29](https://github.com/ZeroPointSix/sound-isolating-eraser/pull/29)。本轮固定提交、命令、退出码、原始日志和 CI 链接统一登记于 [a92 证据评论](https://github.com/ZeroPointSix/sound-isolating-eraser/pull/29#issuecomment-6195837273)。下列测试入口不是自动通过声明；没有该提交的完成日志时仍为待验证。旧 SHA 绿灯不继承到新代码。
+
+独立核验发现并修复两舌对山羊的实际控制偏差：原版 Brain 的准备目标现在只选择受众叛玩家；首次招募可解除旧冷却，持续刷新不再反复消除原版冲撞冷却；最后来源消失时取消准备和冲撞，只清理本技能实际拥有的目标引用；旧 NBT 冷却记录在实体加入世界时迁移，无需再次招募。仍使用原版 `PrepareRamNearestTarget` / `RamTarget`，不是模拟近战。邪淫速度由 0.18 对齐原卡 0.20，F6 的巨型身体、生命和护甲保持不变。
+
+| 怪物 | 对照卡片及批准修改的实现结论 | 本轮入口和证据边界 |
+| --- | --- | --- |
+| 愚痴 | 跟随、探测、低血量爬姿及关门阻挡保留 | `YujiIsolationServer`：真实门面接触后连续 180 tick 不穿门，再自然通过开门；原断言未放宽 |
+| 杀生 | 第 6/12 tick 双斩、基础及众叛增伤保留，F4 左右斩动画保留 | `YujiGameTests` 与 `YujiBoundaryServer`；动画审美仍需人工 |
+| 偷盗 | 整组优先偷取、逃跑、持物、NBT 与死亡归还保留 | `YujiIsolationServer` 的 37 件带 NBT 物品及死亡归还；内存 NBT 往返不等于磁盘重启 |
+| 恶口 | 按 F5 远程施法，不把旧咒缚当当前技能 | 真实客户端第 15/32 tick 各 6 点伤害；资源动画时间检查保留 |
+| 妄语 | 两声之间发现本体归零实现保留，收听者与 40 tick 反应窗口保留 | 新双客户端通过实际转向包看见本体，观测自然 AI 清零；隔离移除归零代码的负对照须命中特定断言 |
+| 两舌 | 主动寻找可达室内保留；山羊原版冲撞、来源撤销、冷却和旧 NBT 修复 | 5 项原生山羊服务端集成场景，普通 ServerPlayer 手动 tick，并非 TCP/真人多人；其他全部中立物种未穷尽 |
+| 邪淫 | 主动寻窄、F6 巨型碰撞、完整碰撞形挤压保留；速度修为 0.20 | 栖息 GameTest；新增 `cameraTurn=false` 两个真实客户端互换角色，保留自然牵引、无转向、旁观者隔离和源移除检查 |
+| 绮语 | 按 F1/F7 增益与持续召唤，落地第 18 tick 再检查 `canSummon` | 现有重新检查为组件级 GameTest；删除落地条件必须被对应断言拒绝，不能称完整客户端边界闭环 |
+| 贪欲 | 层数、剥皮阈值、囤物归还、成长碰撞保护保留 | 原真实客户端 5.9/6 点阈值及同步探针；复杂地形不是穷尽证明 |
+| 嗔怒 | 首次攻击者、128 格解除、践踏、抗性与记仇保存保留 | 原服务端/双客户端边界；跨维度、断线重连和完整磁盘重启仍未签收 |
+
+复现入口：`bash ./gradlew -PyujiOnly runGameTestServer --no-daemon --max-workers=1 --console=plain`，完成后用 `python tools/yuji/verify_gametest_log.py <log>` 核对完整清单；新增后共 91 项（58 常规、22 城市、1 城市迭代、5 栖息、5 山羊）。`python -m unittest discover -s tools/yuji -p 'test_*.py' -v` 只验证静态/日志解析器，不替代游戏运行。
+
+真实客户端先执行 `bash ./gradlew -PyujiE2E writeYujiTestClasspath --no-daemon`，再执行 `YUJI_QA_ISOLATION=1 YUJI_QA_CAMERA_TURN=false python tools/yuji/e2e.py`。新增三个隔离变异入口为 `tools/yuji/habitat_negative_control.py`、`tools/yuji/mechanism_negative_control.py`、`tools/yuji/voice_negative_control.py`：必须先有同 SHA 正向完成，再认可指定行为失败；编译错误、超时、少跑或其他失败不算负对照成功。机制变异中的五项山羊失败仅证明受害者选择可被证伪，不代表冷却、清理和旧 NBT 各分支都有独立负对照。
+
+核验到的 [旧 CI38747044312](https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38747044312) 并非全绿：其 PR 合并树专项跑了 132 项，Flare 追逐超时导致 131 通过 / 1 失败；负对照未执行。旧验证器 83 项计数过期是另一问题，不冒充该次失败原因。本轮不修改 Gravity/Flare、不合并 main；分支固定 HEAD 的 `workflow_dispatch` 与合并树结果分别记录。
+
+未签收：人工听音与外观审美、真人多人、任意复杂地形、跨维度/断线重连、完整磁盘重启、全部中立物种。新增真实测试尚未完成时不能宣布 GOAL 完整签收；PR 保持 Draft，未合并、未发布、未部署。
+
 ## 2026-10-15 PR29 可失败证据补齐
 
 [a76 红绿对照与十怪边界](validation/yuji/a76-negative-control/README.md) 保留两舌主动择屋、邪淫主动寻窄生产目标及 `1eb3861` 的独立场地/逐 tick 完整性检查。在 `8b80590` 的 [CI 38688113953](https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38688113953) 中，未修改的生产实现专项 **83/83、exit 0**；隔离工作树只移除 `YujiHabitatGoal` 注册后，完整执行 **83 项、78 通过/5 个栖息地行为断言失败，Gradle exit 1、负对照验证器 exit 0**。编译错误、少跑、超时、场地异常和无关失败不计为有效负对照，主工作区源码未改变。[原始红绿日志及结果](https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38688113953/artifacts/11949819998) 已保留。

@@ -22,7 +22,8 @@ HABITAT_CASES = REQUIRED_FAILURES | {
     "xieyinrejectstoolowcorridorandchoosestallone",
     "liangsheleavesdestroyedshelterandfindsanother",
 }
-EXPECTED_BATCHES = {"yuji": 55, "yuji_city": 22, "yuji_city_iter": 1, "yuji_habitat": 5}
+EXPECTED_BATCHES = {"yuji": 58, "yuji_city": 22, "yuji_city_iter": 1, "yuji_habitat": 5,
+                    "yuji_betrayal_species": 5}
 BEHAVIOR_DIAGNOSTICS = {
     "liangshewalksinsideandstaysunderroof": (
         "whole body must be inside room", "body must be below the roof", "must reach the room interior",
@@ -45,7 +46,8 @@ BEHAVIOR_DIAGNOSTICS = {
 }
 
 
-def validate_negative_log(log, exit_code):
+def validate_negative_log(log, exit_code, required_failures=REQUIRED_FAILURES,
+                          allowed_failures=HABITAT_CASES, behavior_diagnostics=BEHAVIOR_DIAGNOSTICS):
     """A build failure alone is not evidence: both intended behavioral tests must fail."""
     if exit_code != 1:
         raise AssertionError(f"expected Gradle exit 1 for rejected mutant, got {exit_code}")
@@ -55,7 +57,7 @@ def validate_negative_log(log, exit_code):
         batch = name.split(":", 1)[0]
         discovered[batch] = discovered.get(batch, 0) + int(count)
     if discovered != EXPECTED_BATCHES:
-        raise AssertionError(f"all 83 original Yuji tests must run: {discovered}")
+        raise AssertionError(f"all {sum(EXPECTED_BATCHES.values())} current Yuji tests must run: {discovered}")
     complete = re.findall(r"(\d+) GAME TESTS COMPLETE", log)
     if not complete or int(complete[-1]) != sum(int(n) for _, n in batches):
         raise AssertionError("missing or partial GameTest completion summary")
@@ -64,9 +66,9 @@ def validate_negative_log(log, exit_code):
     failures = {name.rsplit(".", 1)[-1] for name in failures}
     if not counts or int(counts[-1]) != len(failures):
         raise AssertionError("failed-test count and named failures must agree")
-    if not REQUIRED_FAILURES <= failures:
+    if not required_failures <= failures:
         raise AssertionError(f"mutant escaped a required behavior assertion: {sorted(failures)}")
-    if not failures <= HABITAT_CASES:
+    if not failures <= allowed_failures:
         raise AssertionError(f"unrelated failure cannot count as negative-control proof: {sorted(failures)}")
     diagnostics = {}
     for name, reason in re.findall(r"\[minecraft/LogTestReporter\]:\s+([a-z0-9_.]+) failed! ([^\r\n]+)", log):
@@ -74,7 +76,7 @@ def validate_negative_log(log, exit_code):
     if set(diagnostics) != failures:
         raise AssertionError("every named failure must have its original GameTest diagnostic")
     for name, reasons in diagnostics.items():
-        if len(reasons) != 1 or not reasons[0].startswith(BEHAVIOR_DIAGNOSTICS[name]):
+        if len(reasons) != 1 or not reasons[0].startswith(behavior_diagnostics[name]):
             raise AssertionError(f"{name} failed for an unexpected reason: {reasons}")
     if "BUILD FAILED" not in log or re.search(r"All \d+ required tests passed", log):
         raise AssertionError("expected an unambiguously rejected GameTest run")

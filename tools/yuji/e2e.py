@@ -11,6 +11,9 @@ import time
 ROOT = Path(__file__).resolve().parents[2]
 BOUNDARIES = os.environ.get("YUJI_QA_BOUNDARIES") == "1"
 ISOLATION = os.environ.get("YUJI_QA_ISOLATION") == "1"
+CAMERA_TURN = os.environ.get("YUJI_QA_CAMERA_TURN", "true")
+if CAMERA_TURN not in ("true", "false") or (CAMERA_TURN == "false" and not ISOLATION):
+    raise ValueError("YUJI_QA_CAMERA_TURN must be true/false; false requires isolation acceptance")
 RECORD_AUDIO = os.environ.get("YUJI_QA_RECORD_AUDIO") == "1"
 PROFILES = os.environ.get("YUJI_QA_PROFILES", "")
 CLIENT_FPS = int(os.environ.get("YUJI_QA_CLIENT_FPS", "30"))
@@ -38,6 +41,9 @@ def launch(role, username="YujiTester"):
     directory = RESULTS / role
     directory.mkdir()
     if server:
+        (directory / "defaultconfigs").mkdir()
+        (directory / "defaultconfigs/qihai-yuji-server.toml").write_text(
+            f"[enthralled]\ncameraTurn = {CAMERA_TURN}\n")
         (directory / "eula.txt").write_text("eula=true\n")
         (directory / "server.properties").write_text(
             f"online-mode=false\nserver-ip=127.0.0.1\nserver-port={PORT}\n"
@@ -75,6 +81,7 @@ def launch(role, username="YujiTester"):
         command += ["-Dyuji.qa.boundaries=true"]
     if ISOLATION:
         command += ["-Dyuji.qa.isolation=true"]
+        command += ["-Dyuji.qa.cameraTurn=" + CAMERA_TURN]
     command += ["-Dyuji.qa.audio=" + ("OpenAL-wave" if RECORD_AUDIO else "OpenAL-null")]
     if PROFILES:
         command += ["-Dyuji.qa.profiles=" + PROFILES]
@@ -131,7 +138,7 @@ def ready():
 try:
     print(f"YUJI_QA_RESULTS={RESULTS}", flush=True)
     print(f"YUJI_QA_CONFIG profiles={PROFILES or 'all'}, fps={CLIENT_FPS}, frameDelayMs={FRAME_DELAY_MS}, "
-          f"stallBite={os.environ.get('YUJI_QA_STALL_BITE') == '1'}, recordAudio={RECORD_AUDIO}", flush=True)
+          f"stallBite={os.environ.get('YUJI_QA_STALL_BITE') == '1'}, recordAudio={RECORD_AUDIO}, cameraTurn={CAMERA_TURN}", flush=True)
     with socket.socket() as probe:
         probe.bind(("127.0.0.1", PORT))
     xvfb = subprocess.Popen(["Xvfb", "-displayfd", "1", "-screen", "0", "1280x720x24", "-nolisten", "tcp"],
