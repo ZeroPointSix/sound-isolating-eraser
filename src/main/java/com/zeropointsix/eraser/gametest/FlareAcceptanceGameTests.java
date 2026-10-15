@@ -52,6 +52,7 @@ public final class FlareAcceptanceGameTests {
         final List<Entity> entities = new ArrayList<>();
         final Set<Long> originalLights = new HashSet<>();
         final GameTestConfigs.LiveConfig config;
+        boolean prepared, completed;
 
         Fixture(GameTestHelper h, int slot, boolean arena) {
             level = h.getLevel();
@@ -148,14 +149,27 @@ public final class FlareAcceptanceGameTests {
     @AfterBatch(batch = "flare_acceptance_unload") public static void afterUnload(ServerLevel level) { close(); }
 
     private static void ready(GameTestHelper h, int slot, boolean arena, Runnable action) {
+        long startedAt = h.getLevel().getGameTime();
         fixture = new Fixture(h, slot, arena);
-        // CI runners sometimes need a few ticks before forced chunks become entity-ticking.
+        Fixture preparedFixture = fixture;
+        h.runAfterDelay(1200, () -> h.assertTrue(preparedFixture.prepared, "acceptance preparation finishes within 1200 ticks"));
         h.startSequence().thenIdle(40)
                 .thenWaitUntil(() -> h.assertTrue(fixture.ticking(), "acceptance chunks entity-ticking"))
                 .thenWaitUntil(() -> h.assertTrue(!arena || fixture.level.getMaxLocalRawBrightness(fixture.center) <= 6,
                         "roofed arena is dark before any flare"))
-                .thenExecute(action);
+                .thenExecute(() -> {
+                    preparedFixture.prepared = true;
+                    System.out.println("FLARE_ACCEPTANCE_READY slot=" + slot + " preparationTicks="
+                            + (preparedFixture.level.getGameTime() - startedAt));
+                    // World/light preparation is not part of the behavior's bounded observation window.
+                    int behaviorTicks = arena ? 900 : 1600;
+                    h.runAfterDelay(behaviorTicks, () -> h.assertTrue(preparedFixture.completed,
+                            "acceptance behavior finishes within " + behaviorTicks + " ticks after preparation"));
+                    action.run();
+                });
     }
+
+    private static void finish(GameTestHelper h) { fixture.completed = true; h.succeed(); }
 
     private static FlareDecoy decoy(GameTestHelper h) {
         var found = fixture.level.getEntitiesOfClass(FlareDecoy.class, new AABB(fixture.center).inflate(14));
@@ -170,14 +184,22 @@ public final class FlareAcceptanceGameTests {
         BlockPos start = fixture.center.west(8);
         mob.setPersistenceRequired(); fixture.add(mob, start);
         h.assertTrue(!mob.isNoAi() && mob.getTarget() == null, "no target or AI action injected");
+        long pursuitStartedAt = fixture.level.getGameTime();
         h.startSequence().thenWaitUntil(() -> {
             h.assertTrue(mob.getTarget() == player, "live AI first acquires the survival player");
             h.assertTrue(mob.position().distanceTo(Vec3.atBottomCenterOf(start)) > 1, "mob actually pursues player before red flare");
         }).thenExecute(() -> {
+            System.out.println("FLARE_PLAYER_PURSUIT mob=" + mob.getType().toShortString()
+                    + " elapsedTicks=" + (fixture.level.getGameTime() - pursuitStartedAt) + " mobTicks=" + mob.tickCount);
             var flare = fixture.shoot(0, player, fixture.center);
             h.startSequence().thenWaitUntil(() -> h.assertTrue(flare.isRemoved(), "red projectile impacts naturally"))
                     .thenExecute(() -> {
                         FlareDecoy target = decoy(h);
+                        CompoundTag saved = new CompoundTag(); target.addAdditionalSaveData(saved);
+                        long remaining = saved.getLong("FlareExpires") - fixture.level.getGameTime();
+                        h.assertTrue(remaining > 0 && remaining <= 80, "production decoy retains the configured 80-tick deadline");
+                        h.runAfterDelay(remaining + 1, () -> h.assertTrue(target.isRemoved(),
+                                "decoy is removed at its original production deadline"));
                         h.assertTrue(mob.getTarget() == target && target.tickCount <= 10,
                                 "pursuit transfers to decoy within ten ticks, age=" + target.tickCount);
                         System.out.println("FLARE_TARGET_TRANSFER mob=" + mob.getType().toShortString()
@@ -192,23 +214,23 @@ public final class FlareAcceptanceGameTests {
                                             "live AI reacquires and resumes pursuit of original player"))
                                             .thenExecute(() -> System.out.println("FLARE_TARGET_REACQUIRED mob="
                                                     + mob.getType().toShortString() + " to=player travelled=" + mob.position().distanceTo(endedAt)))
-                                            .thenSucceed();
+                                            .thenExecute(() -> finish(h));
                                 });
                     });
         });
     }
 
-    @GameTest(templateNamespace = "flare_acceptance_tests", template = "empty", batch = "flare_acceptance_vanilla", timeoutTicks = 1200)
+    @GameTest(templateNamespace = "flare_acceptance_tests", template = "empty", batch = "flare_acceptance_vanilla", timeoutTicks = 2200)
     public static void flareRedTransfersVanillaPursuitAndReacquiresPlayer(GameTestHelper h) {
         ready(h, 0, true, () -> transfer(h, EntityType.ZOMBIE.create(fixture.level)));
     }
 
-    @GameTest(templateNamespace = "flare_acceptance_tests", template = "empty", batch = "flare_acceptance_yuji", timeoutTicks = 1200)
+    @GameTest(templateNamespace = "flare_acceptance_tests", template = "empty", batch = "flare_acceptance_yuji", timeoutTicks = 2200)
     public static void flareRedTransfersYujiPursuitAndReacquiresPlayer(GameTestHelper h) {
         ready(h, 1, true, () -> transfer(h, YujiContent.MOBS.get(YujiKind.SHASHENG).get().create(fixture.level)));
     }
 
-    @GameTest(templateNamespace = "flare_acceptance_tests", template = "empty", batch = "flare_acceptance_shadow", timeoutTicks = 1200)
+    @GameTest(templateNamespace = "flare_acceptance_tests", template = "empty", batch = "flare_acceptance_shadow", timeoutTicks = 2200)
     public static void flareYellowNaturallyRepelsAndBurnsShadowTangler(GameTestHelper h) {
         ready(h, 2, true, () -> {
             FlareConfig.LIGHT_RADIUS.set(12); FlareConfig.YELLOW_LIFETIME.set(160);
@@ -237,7 +259,7 @@ public final class FlareAcceptanceGameTests {
                                             + fixture.level.getBrightness(LightLayer.BLOCK, shadow.blockPosition())
                                             + " tier=" + shadow.getLightTier() + " health=" + shadow.getHealth()
                                             + " retreat=" + shadow.isRetreating() + " target=null");
-                                    h.succeed();
+                                    finish(h);
                                 });
                     });
         });
@@ -253,7 +275,7 @@ public final class FlareAcceptanceGameTests {
         return result;
     }
 
-    @GameTest(templateNamespace = "flare_acceptance_tests", template = "empty", batch = "flare_acceptance_unload", timeoutTicks = 1600)
+    @GameTest(templateNamespace = "flare_acceptance_tests", template = "empty", batch = "flare_acceptance_unload", timeoutTicks = 3000)
     public static void flareYellowPlacedLightExpiresWhileChunkUnloaded(GameTestHelper h) {
         ready(h, 3, false, () -> {
             FlareConfig.LIGHT_RADIUS.set(3); FlareConfig.YELLOW_LIFETIME.set(600);
@@ -288,7 +310,7 @@ public final class FlareAcceptanceGameTests {
                                             "production LevelTick cleanup removes reloaded expired block");
                                     h.assertTrue(records(fixture.level, fixture.center).isEmpty(), "reload clears expired records without manual cleanup");
                                 }).thenExecute(() -> System.out.println("FLARE_CHUNK_RELOAD_CLEANUP_PASSED sources=" + original.size()))
-                                .thenSucceed();
+                                .thenExecute(() -> finish(h));
                     });
         });
     }
