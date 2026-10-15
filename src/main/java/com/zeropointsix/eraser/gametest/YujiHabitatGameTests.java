@@ -38,9 +38,13 @@ public final class YujiHabitatGameTests {
         // Spawn is the sole placement. Vanilla goals/navigation/move control and gravity do the rest.
         mob.setNoAi(false); mob.setNoGravity(false);
         if (kind == YujiKind.XIEYIN) {
+            // Only protect the stone walls we placed. Air cells can pick up gravel/dirt from
+            // neighbouring GameTests or worldgen and are not part of the corridor fixture.
             var snapshot = new java.util.LinkedHashMap<BlockPos, net.minecraft.world.level.block.state.BlockState>();
-            for (BlockPos p : BlockPos.betweenClosed(0, 0, 0, 15, 7, 15))
-                snapshot.put(p.immutable(), h.getLevel().getBlockState(h.absolutePos(p)));
+            for (BlockPos p : BlockPos.betweenClosed(0, 0, 0, 15, 7, 15)) {
+                var state = h.getLevel().getBlockState(h.absolutePos(p));
+                if (state.is(Blocks.STONE)) snapshot.put(p.immutable(), state);
+            }
             for (int tick = 1; tick < 600; tick++) h.runAtTickTime(tick, () -> {
                 if (!mob.isAlive()) return;
                 snapshot.forEach((p, state) -> {
