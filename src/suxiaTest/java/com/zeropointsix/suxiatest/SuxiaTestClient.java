@@ -2,6 +2,7 @@ package com.zeropointsix.suxiatest;
 
 import com.zeropointsix.eraser.client.SuxiaModel;
 import com.zeropointsix.eraser.client.SuxiaRenderer;
+import com.zeropointsix.eraser.client.SuxiaClient;
 import com.zeropointsix.eraser.registry.ModItems;
 import com.zeropointsix.eraser.suxia.SuxiaEntity;
 import com.zeropointsix.eraser.suxia.SuxiaSummonEntity;
@@ -39,6 +40,7 @@ public final class SuxiaTestClient {
         String text = event.getMessage().getString();
         if (text.startsWith("SUXIA_QA:")) {
             phase = text.substring(9); ticks = 0; captured = false;
+            poses.clear();
             event.setCanceled(true);
         }
     }
@@ -52,17 +54,25 @@ public final class SuxiaTestClient {
             if (captured && phase.equals("gallery")) {
                 phase = "await-summon";
                 mc.gameMode.useItem(mc.player, InteractionHand.MAIN_HAND);
-            } else if (captured && phase.equals("summoned")) {
+            } else if (captured && (phase.equals("summoned") || phase.equals("second-summoned"))) {
                 phase = "await-recall";
                 mc.gameMode.useItem(mc.player, InteractionHand.MAIN_HAND);
             } else if (captured && phase.equals("recalled")) {
+                mc.player.getInventory().selected = 1;
+                phase = "await-second";
+                mc.gameMode.useItem(mc.player, InteractionHand.MAIN_HAND);
+            } else if (captured && phase.equals("second-recalled")) {
+                phase = "await-cooldown-rejection";
+                mc.gameMode.useItem(mc.player, InteractionHand.MAIN_HAND);
+            } else if (captured && phase.equals("cooldown-rejected")) {
                 mc.level.disconnect(); mc.clearLevel(); mc.setScreen(new TitleScreen()); phase = "";
                 Files.writeString(RESULTS.resolve("client-logout.pass"), "Actual client disconnected with cooling watch.\n");
             }
         } catch (Throwable error) { fail(error); }
     }
     @SubscribeEvent public static void model(RenderLivingEvent.Post<?, ?> event) {
-        if (failed || !phase.equals("gallery") || !(event.getEntity() instanceof SuxiaEntity mob)
+        if (failed || !(phase.equals("gallery") || phase.startsWith("hostile-") || phase.startsWith("restored"))
+                || !(event.getEntity() instanceof SuxiaEntity mob)
                 || !(event.getRenderer().getModel() instanceof SuxiaModel<?> model)) return;
         try {
             var body = model.root().getChild("body");
@@ -70,11 +80,13 @@ public final class SuxiaTestClient {
             range[0] = Math.min(range[0], body.zRot); range[1] = Math.max(range[1], body.zRot); range[2]++;
             if (ticks > 40 && mob.isCrawling()) require(body.xRot > 1.3F, "rendered crawl body leans forward");
             if (ticks > 40 && mob.isPlayingDead()) require(model.root().xRot > 1.5F, "rendered play-dead body lies flat");
+            if (ticks > 40 && phase.endsWith("awake")) require(model.root().xRot < .1F, "rendered wake pose rises from the ground");
         } catch (Throwable error) { fail(error); }
     }
     @SubscribeEvent public static void render(TickEvent.RenderTickEvent event) {
         if (event.phase != TickEvent.Phase.END || failed || captured || ticks < 100) return;
-        if (!phase.equals("gallery") && !phase.equals("summoned") && !phase.equals("recalled") && !phase.equals("rejoined")) return;
+        if (!java.util.Set.of("gallery", "summoned", "recalled", "second-summoned", "second-recalled",
+                "cooldown-rejected", "rejoined", "hostile-sleep", "hostile-awake", "restored", "restored-awake").contains(phase)) return;
         var mc = Minecraft.getInstance();
         if (mc.level == null || mc.player == null || mc.screen != null) return;
         try {
@@ -100,15 +112,34 @@ public final class SuxiaTestClient {
                 for (String name : new String[]{"suxia", "suxia_angry", "suxia_eyes"}) {
                     mc.getResourceManager().getResourceOrThrow(new ResourceLocation("sound_isolating_eraser", "textures/entity/suxia/" + name + ".png"));
                 }
-            } else if (phase.equals("summoned")) {
+            } else if (phase.equals("summoned") || phase.equals("second-summoned")) {
                 require(watch.getTag().getBoolean("Open") && watch.isBarVisible() && watch.getBarWidth() > 0, "real active watch and duration bar");
                 boolean rendered = false;
                 for (var entity : mc.level.entitiesForRendering()) if (entity instanceof SuxiaSummonEntity summon) {
                     rendered = mc.getEntityRenderDispatcher().getRenderer(summon) instanceof SuxiaRenderer<?>;
                 }
                 require(rendered, "summon synchronized and rendered by same model");
+                if (phase.equals("second-summoned")) {
+                    require(SuxiaClient.cooldownFraction(mc.player.getInventory().getItem(0)) > 0
+                            && SuxiaClient.cooldownFraction(watch) == 0, "only first watch has a cooldown mask while second is active");
+                }
             } else {
-                require(!watch.getTag().getBoolean("Open") && mc.player.getCooldowns().isOnCooldown(watch.getItem()), "closed watch retains native cooldown after " + phase);
+                boolean cooling = watch.getTag().getInt("CooldownRemaining") > 0;
+                require(!watch.getTag().getBoolean("Open") && (SuxiaClient.cooldownFraction(watch) > 0) == cooling
+                        && !mc.player.getCooldowns().isOnCooldown(watch.getItem()), "closed watch retains individual cooldown after " + phase);
+                if (phase.equals("recalled") || phase.equals("second-recalled") || phase.equals("cooldown-rejected")) {
+                    require(cooling, "newly recalled watch still cooling");
+                }
+                if (phase.startsWith("hostile-") || phase.startsWith("restored")) {
+                    boolean found = false;
+                    for (var entity : mc.level.entitiesForRendering()) if (entity instanceof SuxiaEntity mob) {
+                        found = true;
+                        require(poses.containsKey(mob.getId()) && poses.get(mob.getId())[2] > 5,
+                                "hostile actually rendered in this phase");
+                        require(mob.isPlayingDead() != phase.endsWith("awake"), "live sleep/wake pose synchronized in " + phase);
+                    }
+                    require(found, "hostile visible in " + phase);
+                }
             }
             try (var screenshot = Screenshot.takeScreenshot(mc.getMainRenderTarget())) {
                 var colors = new HashSet<Integer>();

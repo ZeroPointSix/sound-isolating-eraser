@@ -21,6 +21,7 @@ public final class SuxiaSummons extends SavedData {
         public final UUID watch, owner;
         @Nullable public UUID summon;
         public long until, cooldown;
+        public int cooldownDuration = COOLDOWN;
         public String dimension = "minecraft:overworld";
         Entry(UUID watch, UUID owner) { this.watch = watch; this.owner = owner; }
         public boolean active() { return summon != null; }
@@ -45,6 +46,7 @@ public final class SuxiaSummons extends SavedData {
         if (entry == null) {
             entry = new Entry(watch, tag.hasUUID("Owner") ? tag.getUUID("Owner") : owner.getUUID());
             entry.cooldown = tag.getLong("CooldownUntil");
+            entry.cooldownDuration = tag.getInt("CooldownDuration") == DEATH_COOLDOWN ? DEATH_COOLDOWN : COOLDOWN;
             entries.put(watch, entry);
             setDirty();
         }
@@ -64,7 +66,11 @@ public final class SuxiaSummons extends SavedData {
         if (!summon.equals(entry.summon)) return false;
         entry.summon = null;
         entry.until = 0;
-        entry.cooldown = Math.max(entry.cooldown, now + (died ? DEATH_COOLDOWN : COOLDOWN));
+        int duration = died ? DEATH_COOLDOWN : COOLDOWN;
+        if (entry.cooldown <= now + duration) {
+            entry.cooldown = now + duration;
+            entry.cooldownDuration = duration;
+        }
         setDirty();
         return true;
     }
@@ -73,6 +79,7 @@ public final class SuxiaSummons extends SavedData {
         var tag = stack.getOrCreateTag();
         tag.putBoolean("Open", entry.active());
         tag.putLong("CooldownUntil", entry.cooldown);
+        tag.putInt("CooldownDuration", entry.cooldownDuration);
         tag.putInt("CooldownRemaining", (int) Math.max(0, Math.min(DEATH_COOLDOWN, entry.cooldown - now)));
         tag.putLong("SummonUntil", entry.until);
         tag.putInt("Remaining", entry.active() ? (int) Math.max(0, Math.min(DURATION, entry.until - now)) : 0);
@@ -90,6 +97,7 @@ public final class SuxiaSummons extends SavedData {
             if (t.hasUUID("Summon")) entry.summon = t.getUUID("Summon");
             entry.until = t.getLong("Until");
             entry.cooldown = t.getLong("Cooldown");
+            entry.cooldownDuration = t.getInt("CooldownDuration") == DEATH_COOLDOWN ? DEATH_COOLDOWN : COOLDOWN;
             entry.dimension = t.getString("Dimension");
             data.entries.put(entry.watch, entry);
         }
@@ -105,6 +113,7 @@ public final class SuxiaSummons extends SavedData {
             if (entry.summon != null) t.putUUID("Summon", entry.summon);
             t.putLong("Until", entry.until);
             t.putLong("Cooldown", entry.cooldown);
+            t.putInt("CooldownDuration", entry.cooldownDuration);
             t.putString("Dimension", entry.dimension);
             list.add(t);
         }

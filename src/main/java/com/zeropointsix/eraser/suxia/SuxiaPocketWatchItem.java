@@ -130,12 +130,8 @@ public final class SuxiaPocketWatchItem extends Item {
         long now = SuxiaMotion.clock(player.level());
         reconcile(ledger, entry, player.getServer(), now);
         ledger.sync(stack, entry, now);
-        if (entry.owner.equals(player.getUUID())) {
-            if (ledger.active(player.getUUID()) != null) player.getCooldowns().removeCooldown(stack.getItem());
-            else if (entry.cooldown > now && !player.getCooldowns().isOnCooldown(stack.getItem())) {
-                player.getCooldowns().addCooldown(stack.getItem(), (int) Math.min(SuxiaSummons.DEATH_COOLDOWN, entry.cooldown - now));
-            }
-        }
+        // Vanilla cooldowns gate every stack of an item before use(). The ledger gates this watch instead.
+        player.getCooldowns().removeCooldown(stack.getItem());
     }
 
     public static void syncInventory(Player player) {

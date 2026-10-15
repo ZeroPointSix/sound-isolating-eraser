@@ -3,16 +3,24 @@ import json
 import os
 from pathlib import Path
 import shlex
+import shutil
 import socket
 import subprocess
 import time
 
 ROOT = Path(__file__).resolve().parents[2]
+for source_set in ("main", "suxiaTest"):
+    source_root = ROOT / "src" / source_set / "java"
+    for source in source_root.rglob("Suxia*.java"):
+        compiled = ROOT / "build/classes/java" / source_set / source.relative_to(source_root).with_suffix(".class")
+        if not compiled.is_file() or compiled.stat().st_mtime_ns < source.stat().st_mtime_ns:
+            raise RuntimeError("Stale Suxia bytecode: run ./gradlew -PsuxiaE2E writeSuxiaTestClasspath before E2E: " + str(source))
 RESULTS = ROOT / "build" / ("suxia-e2e-" + str(time.time_ns()))
 RESULTS.mkdir(parents=True)
 CONFIGS = {c["name"]: c for c in json.loads((ROOT / ".vscode/launch.json").read_text())["configurations"]}
 CLASSPATH = (ROOT / "build/suxia-test-classpath.txt").read_text().strip()
 PORT = int(os.environ.get("SUXIA_QA_PORT", "25589"))
+TIMEOUT = int(os.environ.get("SUXIA_QA_TIMEOUT_SECONDS", "600"))
 processes, logs = [], []
 
 
@@ -24,8 +32,13 @@ def launch(role):
     server = role == "server"
     config = CONFIGS["runServer" if server else "runClient"]
     directory = RESULTS / role
-    directory.mkdir()
+    directory.mkdir(exist_ok=True)
     if server:
+        source = os.environ.get("SUXIA_QA_WORLD_SOURCE")
+        if source and not (directory / "world").exists():
+            if not (Path(source) / "level.dat").is_file():
+                raise ValueError("SUXIA_QA_WORLD_SOURCE must be an existing disposable QA world")
+            shutil.copytree(source, directory / "world", ignore=shutil.ignore_patterns("session.lock"))
         (directory / "eula.txt").write_text("eula=true\n")
         (directory / "server.properties").write_text(
             f"online-mode=false\nserver-ip=127.0.0.1\nserver-port={PORT}\n"
@@ -60,7 +73,8 @@ def launch(role):
         natives.mkdir()
         command += [f"-Dorg.lwjgl.system.SharedLibraryExtractPath={natives}"]
     command += ["-cp", CLASSPATH, config["mainClass"], *args]
-    log = (RESULTS / f"{role}.log").open("w")
+    log_name = "server-restart" if server and (RESULTS / "server.log").exists() else role
+    log = (RESULTS / f"{log_name}.log").open("w")
     logs.append(log)
     process = subprocess.Popen(command, cwd=directory, env=env, stdin=subprocess.PIPE,
                                stdout=log, stderr=subprocess.STDOUT, text=True)
@@ -69,7 +83,7 @@ def launch(role):
 
 
 def wait_for(required, running):
-    deadline = time.monotonic() + int(os.environ.get("SUXIA_QA_TIMEOUT_SECONDS", "600"))
+    deadline = time.monotonic() + TIMEOUT
     while time.monotonic() < deadline:
         failures = list(RESULTS.glob("*.failed"))
         if failures:
@@ -101,7 +115,7 @@ try:
     processes.append(xvfb)
     display = ":" + xvfb.stdout.readline().strip()
     server = launch("server")
-    deadline = time.monotonic() + 600
+    deadline = time.monotonic() + TIMEOUT
     while True:
         if server.poll() is not None or time.monotonic() > deadline:
             raise RuntimeError("Dedicated server did not become ready")
@@ -111,15 +125,35 @@ try:
         except OSError:
             time.sleep(1)
     client = launch("client")
-    wait_for(["client-gallery", "client-summoned", "client-recalled", "client-logout", "server-lifecycle"], [server, client])
+    wait_for(["client-gallery", "client-summoned", "client-recalled", "client-second-summoned",
+              "client-second-recalled", "client-cooldown-rejected", "client-logout",
+              "server-lifecycle", "server-multi-watch", "server-cooldown-rejected"], [server, client])
     stop(client)
     rejoined = launch("client-rejoin")
-    wait_for(["server-rejoin", "client-rejoined"], [server, rejoined])
+    wait_for(["server-rejoin", "client-rejoined", "server-persistence", "server-wake",
+              "client-hostile-sleep", "client-hostile-awake", "server-ready-restart"], [server, rejoined])
     stop(rejoined)
     server.stdin.write("stop\n")
     server.stdin.flush()
     if server.wait(timeout=180) != 0:
         raise RuntimeError("Dedicated server failed to shut down cleanly")
+    server = launch("server")
+    deadline = time.monotonic() + TIMEOUT
+    while True:
+        if server.poll() is not None or time.monotonic() > deadline:
+            raise RuntimeError("Restarted dedicated server did not become ready")
+        try:
+            with socket.create_connection(("127.0.0.1", PORT), timeout=1):
+                break
+        except OSError:
+            time.sleep(1)
+    restored = launch("client-restored")
+    wait_for(["server-restart", "client-restored", "server-restored-wake", "client-restored-awake"], [server, restored])
+    stop(restored)
+    server.stdin.write("stop\n")
+    server.stdin.flush()
+    if server.wait(timeout=180) != 0:
+        raise RuntimeError("Restarted dedicated server failed to shut down cleanly")
     print("SUXIA_REAL_CLIENT_AND_DEDICATED_SERVER_E2E_PASSED", flush=True)
 finally:
     for process in reversed(processes):

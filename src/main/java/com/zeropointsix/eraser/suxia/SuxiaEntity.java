@@ -63,6 +63,7 @@ public class SuxiaEntity extends Monster implements SuxiaPoseSource, VibrationSy
 
     public SuxiaEntity(EntityType<? extends Monster> type, Level level) {
         super(type, level);
+        setPersistenceRequired();
         xpReward = 20;
         lastSense = SuxiaMotion.clock(level);
     }
@@ -134,11 +135,7 @@ public class SuxiaEntity extends Monster implements SuxiaPoseSource, VibrationSy
     public void perceive(LivingEntity target) {
         if (!prey(target)) return;
         long now = SuxiaMotion.clock(level());
-        if (isPlayingDead()) {
-            setPlayingDead(false);
-            ambushUntil = now + 60;
-            setCrawling(!SuxiaMotion.canStand(this));
-        }
+        wake();
         lastSense = now;
         lastTargetSense = now;
         sound = null;
@@ -147,11 +144,23 @@ public class SuxiaEntity extends Monster implements SuxiaPoseSource, VibrationSy
     }
 
     public void investigate(BlockPos pos) {
+        wake();
         lastSense = SuxiaMotion.clock(level());
         sound = pos.immutable();
         searchUntil = 0;
         setTarget(null);
-        if (isPlayingDead()) { setPlayingDead(false); ambushUntil = lastSense + 60; }
+    }
+
+    private void wake() {
+        if (!isPlayingDead()) return;
+        setPlayingDead(false);
+        lastSense = SuxiaMotion.clock(level());
+        ambushUntil = lastSense + 60;
+        setCrawling(!SuxiaMotion.canStand(this));
+    }
+
+    private boolean canWake(LivingEntity entity) {
+        return entity != this && entity.isAlive() && !entity.isSpectator();
     }
 
     @Override public void tick() {
@@ -162,11 +171,17 @@ public class SuxiaEntity extends Monster implements SuxiaPoseSource, VibrationSy
         long now = SuxiaMotion.clock(level);
         entityData.set(CLIMB, horizontalCollision && isCrawling() && !isPlayingDead());
         if (tickCount % 5 == 0) {
-            double contactRange = isPlayingDead() ? 3 : 1.5;
-            level.getEntitiesOfClass(LivingEntity.class, getBoundingBox().inflate(contactRange),
-                    e -> prey(e) && distanceToSqr(e) <= contactRange * contactRange
-                            && (isPlayingDead() || getBoundingBox().inflate(0.2).intersects(e.getBoundingBox())))
-                    .stream().min(Comparator.comparingDouble(this::distanceToSqr)).ifPresent(this::perceive);
+            if (isPlayingDead()) {
+                level.getEntitiesOfClass(LivingEntity.class, getBoundingBox().inflate(3),
+                        e -> canWake(e) && distanceToSqr(e) <= 9).stream()
+                        .min(Comparator.comparingDouble(this::distanceToSqr))
+                        .ifPresent(e -> { if (prey(e)) perceive(e); else wake(); });
+            } else {
+                level.getEntitiesOfClass(LivingEntity.class, getBoundingBox().inflate(1.5),
+                        e -> prey(e) && distanceToSqr(e) <= 2.25
+                                && getBoundingBox().inflate(0.2).intersects(e.getBoundingBox()))
+                        .stream().min(Comparator.comparingDouble(this::distanceToSqr)).ifPresent(this::perceive);
+            }
         }
         if (tickCount % 20 == 0) {
             double radius = isPlayingDead() ? 3 : 24;
@@ -192,11 +207,17 @@ public class SuxiaEntity extends Monster implements SuxiaPoseSource, VibrationSy
 
     @Override public boolean hurt(DamageSource source, float amount) {
         boolean result = super.hurt(source, amount);
-        if (result && !level().isClientSide && prey(source.getEntity())) perceive((LivingEntity) source.getEntity());
+        if (result && !level().isClientSide) {
+            wake();
+            if (prey(source.getEntity())) perceive((LivingEntity) source.getEntity());
+        }
         return result;
     }
     @Override public void push(Entity entity) {
-        if (!level().isClientSide && prey(entity)) perceive((LivingEntity) entity);
+        if (!level().isClientSide) {
+            if (entity instanceof LivingEntity living && canWake(living)) wake();
+            if (prey(entity)) perceive((LivingEntity) entity);
+        }
         super.push(entity);
     }
     @Override public boolean doHurtTarget(Entity target) {
@@ -272,6 +293,8 @@ public class SuxiaEntity extends Monster implements SuxiaPoseSource, VibrationSy
     }
     @Override public void readAdditionalSaveData(CompoundTag tag) {
         super.readAdditionalSaveData(tag);
+        // Explicit summon NBT bypasses finalizeSpawn and can reset Mob's persistence flag.
+        setPersistenceRequired();
         setCrawling(tag.getBoolean("SuxiaCrawling")); setPlayingDead(tag.getBoolean("SuxiaPlayingDead"));
         lastSense = tag.contains("SuxiaLastSense") ? tag.getLong("SuxiaLastSense") : SuxiaMotion.clock(level());
         ambushUntil = tag.getLong("SuxiaAmbushUntil"); sleepingYaw = tag.getFloat("SuxiaSleepingYaw");
