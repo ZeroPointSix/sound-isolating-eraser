@@ -1144,7 +1144,24 @@ public final class EternalNightGameTests {
         }
         h.assertTrue(CityBuildingAccess.floorCount(level, origin, 5, 5, 13, door) == 1,
                 "ten blocks of climbable height are not extra door-bearing storeys");
-        System.out.println("CITY_FLOOR_LEVELS_PASS ladderHeight=10 doorStoreys=1");
+        // Like res_apartment_low, the ladder continues below the ground-floor entry.
+        level.setBlock(origin.offset(3, 0, 2), Blocks.STONE.defaultBlockState(), 3);
+        level.setBlock(origin.offset(2, 0, 2), Blocks.LADDER.defaultBlockState()
+                .setValue(net.minecraft.world.level.block.LadderBlock.FACING, Direction.WEST), 3);
+        BlockPos upperDoor = origin.offset(0, 7, 4);
+        level.setBlock(upperDoor.below(), Blocks.STONE.defaultBlockState(), 3);
+        level.setBlock(upperDoor, state.setValue(DoorBlock.HALF, DoubleBlockHalf.LOWER), 3);
+        level.setBlock(upperDoor.above(), state.setValue(DoorBlock.HALF, DoubleBlockHalf.UPPER), 3);
+        h.assertTrue(CityBuildingAccess.floorCount(level, origin, 5, 5, 13, door) == 1,
+                "climbing past an inaccessible door's storey height does not reach its landing");
+        BlockPos landing = origin.offset(1, 7, 2);
+        level.setBlock(landing.below(), Blocks.STONE.defaultBlockState(), 3);
+        h.assertTrue(CityBuildingAccess.floorCount(level, origin, 5, 5, 13, door) == 2,
+                "entering a ladder from the side reaches an upper landing even without standing in its door");
+        level.setBlock(origin.offset(2, 4, 2), Blocks.STONE.defaultBlockState(), 3);
+        h.assertTrue(CityBuildingAccess.floorCount(level, origin, 5, 5, 13, door) == 1,
+                "a blocked ladder prevents reaching the upper landing");
+        System.out.println("CITY_FLOOR_LEVELS_PASS ladderHeight=10 initialStoreys=1 ladderLanding=2 blockedLadder=1");
         h.succeed();
         } finally {
             previous.forEach((pos, original) -> level.setBlock(pos, original, 3));

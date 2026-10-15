@@ -77,12 +77,15 @@ public final class CityBuildingAccess {
         doors.removeIf(info -> !info.state().hasProperty(DoorBlock.HALF)
                 || info.state().getValue(DoorBlock.HALF) != DoubleBlockHalf.LOWER);
         doors.sort(Comparator.comparingInt(info -> info.pos().getY()));
+        int entranceY = doors.isEmpty() ? origin.getY() : doors.get(0).pos().getY();
         List<Approach> ranked = new ArrayList<>();
         for (var info : doors) {
             var world = city.getBlockState(info.pos());
             if (!(world.getBlock() instanceof DoorBlock) || !world.hasProperty(DoorBlock.FACING)) continue;
             openDoor(city, info.pos());
             clearApproachSlabs(city, info.pos());
+            // A survey must enter from the ground floor, never teleport onto an upper landing.
+            if (info.pos().getY() != entranceY) continue;
             Direction facing = world.getValue(DoorBlock.FACING);
             for (Direction outward : new Direction[] {facing, facing.getOpposite()}) {
                 for (int distance = 1; distance <= 4; distance++) {
@@ -180,6 +183,12 @@ public final class CityBuildingAccess {
         ArrayDeque<BlockPos> queue = new ArrayDeque<>();
         Set<Long> seen = new HashSet<>();
         TreeSet<Integer> floors = new TreeSet<>();
+        Set<Integer> storeyY = new HashSet<>();
+        for (BlockPos pos : BlockPos.betweenClosed(origin, origin.offset(sizeX - 1, sizeY - 1, sizeZ - 1))) {
+            BlockState state = city.getBlockState(pos);
+            if (state.getBlock() instanceof DoorBlock && state.getValue(DoorBlock.HALF) == DoubleBlockHalf.LOWER)
+                storeyY.add(pos.getY());
+        }
         queue.add(start);
         int budget = 12000;
         while (!queue.isEmpty() && budget > 0) {
@@ -193,11 +202,12 @@ public final class CityBuildingAccess {
             AABB body = bodyAt(pos.getX(), pos.getY(), pos.getZ());
             boolean ladder = ladderAt(city, pos) || ladderAt(city, pos.below());
             if ((!city.getBlockState(pos.below()).isSolid() && !ladder) || !city.noCollision(body)) continue;
-            BlockState at = city.getBlockState(pos);
-            // Count the same door-bearing levels as expectedFloors, not every three stair steps.
+            // Reach a standing landing at an authored storey height. The door itself can be
+            // in a separate room; merely climbing past that height on a ladder is not arrival.
             if (pos.getX() >= origin.getX() && pos.getX() < origin.getX() + sizeX
                     && pos.getZ() >= origin.getZ() && pos.getZ() < origin.getZ() + sizeZ
-                    && at.getBlock() instanceof DoorBlock && at.getValue(DoorBlock.HALF) == DoubleBlockHalf.LOWER)
+                    && storeyY.contains(pos.getY()) && !ladderAt(city, pos)
+                    && city.getBlockState(pos.below()).isSolid())
                 floors.add(pos.getY());
             for (Direction direction : Direction.Plane.HORIZONTAL) {
                 BlockPos next = pos.relative(direction);
@@ -334,7 +344,8 @@ public final class CityBuildingAccess {
         for (int dy : new int[] {0, -1, 1, -2, 2, -3, -4}) {
             int y = nearY + dy;
             BlockPos below = new BlockPos(x, y - 1, z);
-            if (city.getBlockState(below).isSolid() && walkableSpace(city, x, y, z)
+            if ((city.getBlockState(below).isSolid() || ladderAt(city, below.above()))
+                    && walkableSpace(city, x, y, z)
                     && city.getFluidState(new BlockPos(x, y, z)).isEmpty())
                 return y;
         }
