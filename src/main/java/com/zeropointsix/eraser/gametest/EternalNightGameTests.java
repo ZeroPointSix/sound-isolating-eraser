@@ -85,6 +85,7 @@ public final class EternalNightGameTests {
     @AfterBatch(batch = "eternal_night_arrival") public static void afterArrival(ServerLevel level) { restoreConfig(); }
     @AfterBatch(batch = "eternal_night_entrances") public static void afterEntrances(ServerLevel level) { restoreConfig(); }
     @AfterBatch(batch = "eternal_night_floor_levels") public static void afterFloorLevels(ServerLevel level) { restoreConfig(); }
+    @AfterBatch(batch = "eternal_night_feedback") public static void afterFeedback(ServerLevel level) { restoreConfig(); }
 
     @GameTest(template = "empty", batch = "eternal_night_sleep", timeoutTicks = 1400)
     public static void cityDeepSleepAndReturnPreservePlayer(GameTestHelper h) {
@@ -250,10 +251,15 @@ public final class EternalNightGameTests {
     }
 
     private static TestSession login(GameTestHelper h) {
+        return login(h, packet -> { });
+    }
+
+    private static TestSession login(GameTestHelper h,
+            java.util.function.Consumer<net.minecraft.network.protocol.Packet<?>> capture) {
         var connection = new net.minecraft.network.Connection(net.minecraft.network.protocol.PacketFlow.SERVERBOUND) {
-            @Override public void send(net.minecraft.network.protocol.Packet<?> packet) { }
+            @Override public void send(net.minecraft.network.protocol.Packet<?> packet) { capture.accept(packet); }
             @Override public void send(net.minecraft.network.protocol.Packet<?> packet,
-                    net.minecraft.network.PacketSendListener callback) { }
+                    net.minecraft.network.PacketSendListener callback) { capture.accept(packet); }
         };
         // Forge's login hook needs a channel before PlayerList.placeNewPlayer, unlike vanilla's helper.
         var channel = new io.netty.channel.embedded.EmbeddedChannel(connection);
@@ -691,6 +697,62 @@ public final class EternalNightGameTests {
         h.assertTrue(EternalNightContent.NEON_SIGN.get().defaultBlockState().getLightEmission() == 12, "art neon has light 12");
         h.assertTrue(EternalNightContent.EMERGENCY_LIGHT.get().defaultBlockState().getLightEmission() == 4, "emergency light has light 4");
         h.succeed();
+    }
+
+    @GameTest(template = "empty", batch = "eternal_night_feedback", timeoutTicks = 200)
+    public static void cityFeedbackMatchesSleepAndDoorRules(GameTestHelper h) {
+        isolate(h.getLevel());
+        ServerLevel city = h.getLevel().getServer().getLevel(EternalNightContent.LEVEL);
+        var messages = new java.util.ArrayList<net.minecraft.network.protocol.game.ClientboundSystemChatPacket>();
+        var session = login(h, packet -> {
+            if (packet instanceof net.minecraft.network.protocol.game.ClientboundSystemChatPacket message)
+                messages.add(message);
+        });
+        var player = session.player();
+        BlockPos pos = new BlockPos(11000, 240, 11000);
+        var before = new java.util.LinkedHashMap<BlockPos, net.minecraft.world.level.block.state.BlockState>();
+        try {
+            for (BlockPos block : java.util.List.of(pos.below(), pos, pos.above()))
+                before.put(block, city.getBlockState(block));
+            city.setBlock(pos.below(), Blocks.STONE.defaultBlockState(), 2);
+            city.setBlock(pos, Blocks.RED_BED.defaultBlockState(), 2);
+            player.teleportTo(city, pos.getX() + .5, pos.getY(), pos.getZ() - 1.5, 0, 0);
+            messages.clear();
+            var click = new net.minecraftforge.event.entity.player.PlayerInteractEvent.RightClickBlock(
+                    player, net.minecraft.world.InteractionHand.MAIN_HAND, pos,
+                    new net.minecraft.world.phys.BlockHitResult(Vec3.atCenterOf(pos), Direction.UP, pos, false));
+            net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(click);
+            h.assertTrue(click.isCanceled(), "city bed remains non-explosive and cannot sleep");
+            h.assertTrue(messages.stream().anyMatch(message -> message.overlay()
+                            && message.content().getContents() instanceof net.minecraft.network.chat.contents.TranslatableContents text
+                            && text.getKey().equals("message.sound_isolating_eraser.city.no_sleep")),
+                    "Notion 6.1: rejected city sleep explains that there is no night to skip");
+
+            installDoor(city, pos, Blocks.OAK_DOOR);
+            NightConfig.EXIT_CHANCE.set(0.0);
+            NightConfig.DOOR_GUARANTEE.set(7);
+            player.getPersistentData().remove(NightEvents.PLAYER_TAG);
+            messages.clear();
+            use(player, pos);
+            h.assertTrue(messages.stream().anyMatch(message -> message.overlay()
+                            && message.content().getContents() instanceof net.minecraft.network.chat.contents.TranslatableContents text
+                            && text.getKey().equals("message.sound_isolating_eraser.city.doors")
+                            && java.util.Arrays.equals(text.getArgs(), new Object[] {1, 7})),
+                    "Notion 5.4: action bar shows opened count and configured guarantee");
+            messages.clear();
+            use(player, pos);
+            use(player, pos);
+            h.assertTrue(messages.stream().noneMatch(message -> message.content().getContents()
+                            instanceof net.minecraft.network.chat.contents.TranslatableContents text
+                            && text.getKey().equals("message.sound_isolating_eraser.city.doors")),
+                    "reopening the same door does not create another progress notification");
+            System.out.println("NIGHT_FEEDBACK_PASS sleepHint=true configuredDoorProgress=1/7 duplicateSuppressed=true");
+            h.succeed();
+        } finally {
+            h.getLevel().getServer().getPlayerList().remove(player);
+            session.channel().finishAndReleaseAll();
+            before.forEach((block, state) -> city.setBlock(block, state, 2));
+        }
     }
 
     /** Spec bans in the city: sleep problem, bed/anchor click, spawn set, growth, vanilla mobs. */

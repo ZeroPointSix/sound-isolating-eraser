@@ -67,9 +67,10 @@ def main():
                                    timeout=args.timeout_seconds)
     text = logfile.read_text(errors="replace")
     for line in text.splitlines():
-        if "NIGHT_RELEASE_DOOR_LOCK_" in line or "ModLauncher running" in line:
+        if "NIGHT_RELEASE_DOOR_" in line or "ModLauncher running" in line:
             print(line)
-    if completed.returncode or "NIGHT_RELEASE_DOOR_LOCK_PASS" not in text or "NIGHT_RELEASE_DOOR_LOCK_FAIL" in text:
+    if (completed.returncode or "NIGHT_RELEASE_DOOR_LOCK_PASS" not in text
+            or "NIGHT_RELEASE_DOOR_ENTRYPOINTS_PASS" not in text or "NIGHT_RELEASE_DOOR_LOCK_FAIL" in text):
         raise RuntimeError(f"Release runtime verification failed (exit {completed.returncode}); see {logfile}")
     print("NIGHT_RELEASE_RUNTIME_VERIFIED", logfile)
 
