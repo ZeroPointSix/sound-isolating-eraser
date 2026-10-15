@@ -11,8 +11,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 /** Arrival lying on the street is not a bed; vanilla would otherwise wake the visitor immediately. */
 @Mixin(LivingEntity.class)
 public abstract class CityArrivalSleepMixin {
-    // Match the other city mixins: explicit userdev and release names, with a required target.
-    @Inject(method = {"stopSleeping", "m_5796_"}, at = @At("HEAD"), remap = false, cancellable = true)
+    // Dual MCP+SRG names with remap=false (see LivingEntityWallVisibilityMixin): the handwritten
+    // refmap has no entry for stopSleeping, so a remapped target crashed production Forge at boot.
+    @Inject(method = {"stopSleeping()V", "m_5796_()V"}, at = @At("HEAD"), cancellable = true, remap = false)
     private void keepCityArrivalSleep(CallbackInfo ci) {
         LivingEntity self = (LivingEntity) (Object) this;
         if (self instanceof Player player && NightEvents.keepArrivalSleep(player)) ci.cancel();

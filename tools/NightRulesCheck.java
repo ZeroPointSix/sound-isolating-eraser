@@ -71,7 +71,7 @@ public final class NightRulesCheck {
         check(mixin.contains("min = 3"), "citySetBlock group requires all three door methods");
         String arrivalMixin = java.nio.file.Files.readString(java.nio.file.Path.of(
                 "src/main/java/com/zeropointsix/eraser/mixin/CityArrivalSleepMixin.java"));
-        check(arrivalMixin.contains("\"m_5796_\""), "arrival sleep targets the official stopSleeping SRG");
+        check(arrivalMixin.contains("\"m_5796_()V\""), "arrival sleep targets the official stopSleeping SRG descriptor");
         check(arrivalMixin.contains("remap = false"), "explicit arrival aliases do not depend on an empty refmap");
         CityEntryOverlay overlay = new CityEntryOverlay();
         check(overlay.alpha() == 0 && !overlay.showsCaption(), "overlay starts clear");

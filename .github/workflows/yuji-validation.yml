@@ -6,6 +6,7 @@ on:
       - 'src/main/**'
       - 'art/yuji_fodu/**'
       - 'tools/yuji/**'
+      - 'tools/flare/**'
       - 'src/yujiTest/**'
       - 'gradle/yuji-e2e.gradle'
       - 'build.gradle'
@@ -42,12 +43,16 @@ jobs:
           mkdir -p build
           bash ./gradlew build runGameTestServer --no-daemon --stacktrace 2>&1 | tee build/yuji-gametest.log
           python tools/yuji/verify_gametest_log.py build/yuji-gametest.log
+          python tools/flare/verify_gametest_log.py build/yuji-gametest.log
       - name: Repeat all Forge GameTests in a clean world
         run: |
           set -o pipefail
           rm -rf run/world
           bash ./gradlew runGameTestServer --no-daemon --stacktrace 2>&1 | tee build/yuji-gametest-repeat.log
           python tools/yuji/verify_gametest_log.py build/yuji-gametest-repeat.log
+          python tools/flare/verify_gametest_log.py build/yuji-gametest-repeat.log
+      - name: Verify flare cleanup after an actual server process restart
+        run: python tools/flare/verify_restart.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -57,6 +62,7 @@ jobs:
             build/reports/
             run/logs/latest.log
             build/yuji-gametest*.log
+            build/flare-restart-*/*.log
 
   client-smoke:
     runs-on: ubuntu-latest
