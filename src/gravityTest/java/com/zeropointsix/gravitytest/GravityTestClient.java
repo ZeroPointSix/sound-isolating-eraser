@@ -79,6 +79,7 @@ public final class GravityTestClient {
                 if (!phase.equals("ready") || moving == null || still == null) return;
                 if (ROLE.equals("wearer") && !GravityEquipment.isEquipped(mc.player)) return;
                 if (!QijieInventoryProbe.tick(mc, renderedFrames, RESULTS, ROLE)) return;
+                if (!ItemCategoryClientProbe.tick(mc, renderedFrames, RESULTS, ROLE)) return;
                 mc.setScreen(null);
                 GLFW.glfwFocusWindow(mc.getWindow().getWindow());
                 mc.mouseHandler.grabMouse();
