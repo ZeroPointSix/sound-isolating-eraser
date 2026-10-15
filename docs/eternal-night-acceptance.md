@@ -35,7 +35,7 @@
 
 1. **回程传送**：不再要求门叶 OPEN，也不再丢弃位移 ≥4 格的包。占用门洞体积、线段 clip、原 sign-flip 任一成立即排队 `returnHome`；服务端 tick 补扫访客，避免嵌入连接漏 `PlayerTickEvent`。
 2. **窗口门锁**：`CityDoorMixin` 拦截 `use` / `neighborChanged` / `setOpen`（SRG `m_6227_` / `m_6861_` / `m_153165_`）的关门；过期 `activeExits(level, now)` 关叶反馈。开发 classpath 已测三入口；成品 JAR 有字节门禁（含 `m_7731_`）。正式 remap 进程注入仍缺。
-3. **隔离 / AfterBatch**：`isolate()` 只在第一个 sandbox 用户上写默认 NightConfig 并 `clearForTesting`；后续并行 batch 只加引用计数，避免把 `ENTRY_BASE=1` 打回 `0.02`（CI 全量套件曾因此让 `cityDeepSleepAndReturnPreservePlayer` 在 105 tick 仍睡着）。`@AfterBatch` 失败注入 + 超时路径都走同一 `restoreConfig`，日志 `NIGHT_AFTERBATCH_FAIL_RESTORE` / `NIGHT_AFTERBATCH_TIMEOUT_RESTORE`。真实 Forge 超时失败用例不能留在绿套件里。
+3. **隔离 / AfterBatch**：`isolate()` 只在第一个 sandbox 用户上写默认 NightConfig 并 `clearForTesting`；后续并行 batch 只加引用计数，避免把 `ENTRY_BASE=1` 打回 `0.02`。`restoreConfig` 在 `configUsers==0` 时不再二次 `clearTransientState`。深睡入城与白门回程一样有 **ServerTick 兜底**（`considerSleepEntry`），`cityDeepSleepAndReturnPreservePlayer` 不再用 tick-105 一次性硬断言（全量套件 `gameTime` 追赶时会在 doTick 之前触发）。`@AfterBatch` 失败注入 + 超时路径都走同一 `restoreConfig`，日志 `NIGHT_AFTERBATCH_FAIL_RESTORE` / `NIGHT_AFTERBATCH_TIMEOUT_RESTORE`。真实 Forge 超时失败用例不能留在绿套件里。
 4. **砌腐墙**：栖息地为地铁隧道（全区）+ 工业区地下，不是「只有工业区」，也不是旧 `INDUSTRIAL \|\| y<56`。
 5. **过期关门**：已存在开叶门：强制加载 → 卸载 → 过期 PendingClose → NBT 模拟重启 `overwriteFrom` → 重载关叶。
 6. **入城演出**：传送前渐黑包 + 到达躺姿；见上表 partial。
@@ -100,4 +100,4 @@ GameTest 12 入口表（碰撞 path-clear，`stepUp=0`，非原生客户端）�
 
 `res_apartment_low` 原生从该扇已穿过的门做碰撞 BFS 只到 1 层（期望 4 个门高簇）。入口已走进去（walkDepth 0.762），**不是**进不去。GameTest 在另一世界种子上从该模板的门 BFS 到 8/4。原生爬楼不得标 12/12。三怪联调仍 `threeMonsterIntegrationVerified=false`。
 
-CI 以 GitHub Checks 为准。`f4c1007` Eternal Night 原生步在 observer `Native phase timed out: READY`：双方都拍了 `original-art`，但 `/nightqa ready` 只发一次、CI 丢包后 `READY.size()` 达不到 2。现客户端周期重发 ready/captured，服务端 6 秒后用城内在场兜底。全量 GameTest 并行 isolate 踩 `ENTRY_BASE` 已修。雨寂/重力若仍偶发失败，与街道台阶剥离无直接调用关系。本轮**不合 main**，也不自称 Notion 功能验收通过。
+CI 以 GitHub Checks 为准。`f4c1007` Eternal Night 原生步在 observer `Native phase timed out: READY`：双方都拍了 `original-art`，但 `/nightqa ready` 只发一次、CI 丢包后 `READY.size()` 达不到 2。`52e05dc` 起客户端周期重发 ready/captured，服务端 6 秒后用城内在场兜底。`38656882761`（`52e05dc`）在 gradle 套件就失败：`cityDeepSleepAndReturnPreservePlayer` 仍睡着，Native READY 没跑到。现 ServerTick 深睡兜底 + 去掉 tick-105 硬断言。雨寂/重力若仍偶发失败，与街道台阶剥离无直接调用关系。本轮**不合 main**，也不自称 Notion 功能验收通过。

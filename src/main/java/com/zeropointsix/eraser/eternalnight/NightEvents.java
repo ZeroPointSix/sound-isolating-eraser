@@ -60,19 +60,38 @@ public final class NightEvents {
         SLEEP.put(player.getUUID(), new SleepAttempt(player.getStats().getValue(Stats.CUSTOM.get(Stats.TIME_SINCE_REST)), false));
     }
 
+    /**
+     * Deep-sleep entry is the same roll as {@link #playerTick}; server ticks also
+     * call this because embedded GameTest channels and awaitingTeleport can skip
+     * {@code PlayerTickEvent} the same way they skip white-door returns.
+     */
+    static void considerSleepEntry(ServerPlayer player) {
+        if (EternalNightContent.isCity(player.level()) || CityEntryQueue.pending(player)
+                || !NightConfig.ENABLED.get()
+                || !NightConfig.ENTRY_DIMENSIONS.get().contains(player.level().dimension().location().toString())) {
+            return;
+        }
+        if (!player.isSleeping()) {
+            SLEEP.remove(player.getUUID());
+            return;
+        }
+        if (!player.isSleepingLongEnough()) return;
+        SleepAttempt sleep = SLEEP.get(player.getUUID());
+        if (sleep == null) {
+            sleep = new SleepAttempt(player.getStats().getValue(Stats.CUSTOM.get(Stats.TIME_SINCE_REST)), false);
+            SLEEP.put(player.getUUID(), sleep);
+        }
+        if (sleep.attempted) return;
+        SLEEP.put(player.getUUID(), new SleepAttempt(sleep.restTicks, true));
+        double chance = NightRules.entryProbability(sleep.restTicks, NightConfig.ENTRY_BASE.get(),
+                NightConfig.ENTRY_DAILY.get(), NightConfig.ENTRY_CAP.get());
+        if (NightRules.roll(chance, player.getRandom().nextDouble())) enter(player);
+    }
+
     @SubscribeEvent
     public static void playerTick(TickEvent.PlayerTickEvent event) {
         if (event.phase != TickEvent.Phase.END || !(event.player instanceof ServerPlayer player)) return;
-        SleepAttempt sleep = SLEEP.get(player.getUUID());
-        if (sleep != null) {
-            if (!player.isSleeping()) SLEEP.remove(player.getUUID());
-            else if (!sleep.attempted && player.isSleepingLongEnough()) {
-                SLEEP.put(player.getUUID(), new SleepAttempt(sleep.restTicks, true));
-                double chance = NightRules.entryProbability(sleep.restTicks, NightConfig.ENTRY_BASE.get(),
-                        NightConfig.ENTRY_DAILY.get(), NightConfig.ENTRY_CAP.get());
-                if (NightRules.roll(chance, player.getRandom().nextDouble())) enter(player);
-            }
-        }
+        considerSleepEntry(player);
         if (!EternalNightContent.isCity(player.level())) {
             PREVIOUS_POSITION.remove(player.getUUID());
             return;
@@ -328,8 +347,9 @@ public final class NightEvents {
         var server = event.getServer();
         CityEntryQueue.tick(server);
         // Backup scan: embedded GameTest channels and awaitingTeleport skips can
-        // omit PlayerTickEvent, so also inspect city visitors here.
+        // omit PlayerTickEvent, so deep-sleep entry and city visitors both run here.
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            considerSleepEntry(player);
             if (!EternalNightContent.isCity(player.level())) continue;
             Vec3 current = player.position();
             Vec3 previous = PREVIOUS_POSITION.get(player.getUUID());
