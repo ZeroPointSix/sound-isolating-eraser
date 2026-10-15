@@ -164,6 +164,12 @@ public final class FlareAcceptanceGameTests {
             // Only outbound packets use Forge's test sink; targeting and player state are real.
             player.connection = new FakePlayer(level, profile).connection;
             player.setGameMode(GameType.SURVIVAL);
+            // Keep the mock survival player alive through melee. Entity/abilities
+            // invulnerability would make the player untargetable and fake-green the
+            // reacquire assertion; extra health does not change production flare AI.
+            player.getAttribute(Attributes.MAX_HEALTH).setBaseValue(400);
+            player.setHealth(400);
+            player.getFoodData().setFoodLevel(20);
             player.setPos(Vec3.atBottomCenterOf(center.east(10)));
             level.addNewPlayer(player); entities.add(player);
             return player;
@@ -304,11 +310,18 @@ public final class FlareAcceptanceGameTests {
                                 .thenExecute(() -> {
                                     Vec3 endedAt = mob.position();
                                     phase[0] = "reacquire player";
-                                    h.startSequence().thenWaitUntil(() -> h.assertTrue(player.isAlive() && mob.getTarget() == player
-                                                    && mob.position().distanceTo(endedAt) > 1,
-                                            "live AI reacquires and resumes pursuit of original player"))
+                                    player.setHealth(player.getMaxHealth());
+                                    h.startSequence().thenWaitUntil(() -> {
+                                                if (player.isAlive() && player.getHealth() < 40)
+                                                    player.setHealth(player.getMaxHealth());
+                                                h.assertTrue(player.isAlive() && mob.getTarget() == player
+                                                                && mob.position().distanceTo(endedAt) > 1,
+                                                        "live AI reacquires and resumes pursuit of original player");
+                                            })
                                             .thenExecute(() -> System.out.println("FLARE_TARGET_REACQUIRED mob="
-                                                    + mob.getType().toShortString() + " to=player travelled=" + mob.position().distanceTo(endedAt)))
+                                                    + mob.getType().toShortString() + " to=player travelled="
+                                                    + mob.position().distanceTo(endedAt)
+                                                    + " playerHealth=" + player.getHealth()))
                                             .thenExecute(() -> finish(h));
                                 });
                     });
