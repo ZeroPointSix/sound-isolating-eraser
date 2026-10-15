@@ -290,7 +290,11 @@ tasks.register('verifyRemappedDoorLock', Exec) {
     dependsOn 'reobfJar'
     commandLine 'python3', 'tools/verify_remapped_door_lock.py'
 }
+tasks.register('verifyMixinTargets', Exec) {
+    commandLine 'python3', 'tools/verify_mixin_targets.py'
+}
 tasks.named('jar', Jar).configure {
+    dependsOn 'verifyMixinTargets'
     finalizedBy 'verifyRemappedDoorLock'
 }
 
