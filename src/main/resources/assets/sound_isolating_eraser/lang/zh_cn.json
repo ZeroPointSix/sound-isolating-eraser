@@ -73,5 +73,8 @@
   "message.sound_isolating_eraser.city.milestone.75": "远处传来低沉的回响。",
   "message.sound_isolating_eraser.city.milestone.90": "出口已经不远了。",
   "block.qihai.neon_sign": "霓虹招牌",
-  "block.qihai.emergency_light": "应急灯"
+  "block.qihai.emergency_light": "应急灯",
+  "message.sound_isolating_eraser.fertilizer.mature": "作物已经成熟了。",
+  "message.sound_isolating_eraser.fertilizer.no_room": "这里长不开：树需要足够空间、脚下是泥土类方块，且不能压住生物。",
+  "message.sound_isolating_eraser.fertilizer.invalid_target": "请对准作物、树苗、草方块或肥沃原木使用。"
 }
