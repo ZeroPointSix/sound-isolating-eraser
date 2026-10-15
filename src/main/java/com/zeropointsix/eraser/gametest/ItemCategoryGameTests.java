@@ -30,6 +30,10 @@ public final class ItemCategoryGameTests {
             id("super_fertilizer_bag"), id("gravity_jade_pendant"),
             id("shaxiadao"), id("sound_isolating_eraser"));
 
+    private static final Set<ResourceLocation> EXPECTED_DAOJU = Set.of(
+            new ResourceLocation("qihai", "flare_gun"), new ResourceLocation("qihai", "flare_red"),
+            new ResourceLocation("qihai", "flare_yellow"), new ResourceLocation("qihai", "flare_green"));
+
     @GameTest(template = "empty")
     public static void defaultTagsContainOnlyTheRequestedItems(GameTestHelper helper) {
         Set<ResourceLocation> actual = new HashSet<>();
@@ -38,8 +42,9 @@ public final class ItemCategoryGameTests {
             if (stack.is(ModItemTags.QIWU)) {
                 actual.add(ForgeRegistries.ITEMS.getKey(item));
             }
-            helper.assertTrue(!stack.is(ModItemTags.DAOJU),
-                    "daoju starts empty until the signal items are registered");
+            ResourceLocation key = ForgeRegistries.ITEMS.getKey(item);
+            helper.assertTrue(stack.is(ModItemTags.DAOJU) == EXPECTED_DAOJU.contains(key),
+                    "daoju is exactly the flare gun and its three flares: " + key);
         });
         helper.assertTrue(actual.equals(EXPECTED_QIWU), "exactly the four requested qiwu: " + actual);
         helper.succeed();
