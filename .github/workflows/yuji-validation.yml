@@ -60,6 +60,36 @@ jobs:
             run/logs/latest.log
             build/yuji-gametest*.log
 
+  habitat-negative-control:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run unchanged Yuji tests before the negative control
+        run: |
+          set -o pipefail
+          mkdir -p build
+          bash ./gradlew -PyujiOnly runGameTestServer --no-daemon --max-workers=1 --console=plain 2>&1 | tee build/yuji-habitat-positive.log
+          python tools/yuji/verify_gametest_log.py build/yuji-habitat-positive.log
+      - name: Prove habitat movement tests reject a removed production goal
+        run: python3 tools/yuji/habitat_negative_control.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: yuji-habitat-negative-control
+          path: |
+            build/yuji-habitat-positive.log
+            build/yuji-habitat-negative-*/negative.log
+            build/yuji-habitat-negative-*/result.json
+
   client-smoke:
     runs-on: ubuntu-latest
     timeout-minutes: 50
