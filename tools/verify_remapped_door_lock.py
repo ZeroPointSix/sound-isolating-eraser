@@ -21,10 +21,10 @@ def strings(data: bytes) -> list[str]:
 
 
 def main() -> int:
-    jar = Path(sys.argv[1] if len(sys.argv) > 1 else "build/libs/sound_isolating_eraser-0.11.0.jar")
-    if not jar.is_file():
-        libs = sorted(Path("build/libs").glob("sound_isolating_eraser-*.jar"))
-        jar = next((path for path in libs if "sources" not in path.name), jar)
+    if len(sys.argv) != 2:
+        print("NIGHT_REMAPPED_DOOR_MIXIN_FAIL usage: verify_remapped_door_lock.py <exact-release.jar>", file=sys.stderr)
+        return 2
+    jar = Path(sys.argv[1])
     if not jar.is_file():
         print("NIGHT_REMAPPED_DOOR_MIXIN_FAIL missing jar", jar, file=sys.stderr)
         return 1

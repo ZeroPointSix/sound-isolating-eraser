@@ -65,6 +65,8 @@ public final class NightReleaseProbe {
             city.setBlock(ironPos.west(), Blocks.AIR.defaultBlockState(), 3);
             require(city.getBlockState(ironPos).getValue(DoorBlock.OPEN), "active shared exit rejects redstone close");
             require(city.getBlockState(ironPos.above()).getValue(DoorBlock.OPEN), "iron upper leaf remains open");
+            require(!city.getBlockState(ironPos).getValue(DoorBlock.POWERED), "active exit still records falling power edge");
+            require(!city.getBlockState(ironPos.above()).getValue(DoorBlock.POWERED), "upper leaf records falling power edge");
             // Reopening cannot shorten an existing window. Wait for real server ticks.
             data.open(pos, now - 1);
             require(data.active(pos, now), "older expiry cannot shorten the active exit window");
