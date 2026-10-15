@@ -57,6 +57,10 @@ public final class WingsQaClient {
     private static int firstCycleWaitTicks;
     private static long floodAt;
     private static int floodStartedAtTick, floodWetTicks;
+    private static long floodSettleAt;
+    private static int floodSettleStartedAtTick, floodSettledTicks;
+    private static Vec3 floodPreviousPosition;
+    private static boolean floodRequested;
 
     @SubscribeEvent
     public static void chat(ClientChatReceivedEvent event) {
@@ -226,12 +230,42 @@ public final class WingsQaClient {
             case 367 -> capture(mc, "storm-flight");
             case 371 -> nativeInput("keyup", "w");
             case 373 -> nativeInput("key", "h");
-            case 385 -> require(info(p) != null && info(p).tier() == WingsState.HOVER,
-                    "water fixture starts in real-key HOVER after STORM capture");
+            case 385 -> {
+                require(info(p) != null && info(p).tier() == WingsState.HOVER,
+                        "water fixture starts in real-key HOVER after STORM capture");
+                floodSettleAt = System.nanoTime();
+                floodSettleStartedAtTick = totalTicks;
+                floodSettledTicks = 0;
+                floodPreviousPosition = p.position();
+            }
             case 390 -> {
+                long elapsedMs = java.util.concurrent.TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - floodSettleAt);
+                int elapsedTicks = totalTicks - floodSettleStartedAtTick;
+                if (elapsedTicks > 400 || elapsedMs >= 20000) {
+                    throw new AssertionError("water fixture hover settles within 20 seconds: phase=" + phase
+                            + " pos=" + p.position() + " velocity=" + p.getDeltaMovement()
+                            + " state=" + info(p) + " stableTicks=" + floodSettledTicks
+                            + " elapsedTicks=" + elapsedTicks + " elapsedMs=" + elapsedMs);
+                }
+                boolean settled = info(p) != null && info(p).deployed()
+                        && info(p).tier() == WingsState.HOVER
+                        && p.getDeltaMovement().lengthSqr() < 1.0e-4
+                        && p.position().distanceToSqr(floodPreviousPosition) < 1.0e-4;
+                floodSettledTicks = settled ? floodSettledTicks + 1 : 0;
+                floodPreviousPosition = p.position();
+                // HOVER preserves real deceleration; place water only after the player stops drifting.
+                if (floodSettledTicks < 5) {
+                    ticks = 389;
+                    return;
+                }
+                if (floodRequested) throw new AssertionError("water fixture requested more than once");
+                System.out.println("WINGS_WATER_SETTLED stableTicks=" + floodSettledTicks
+                        + " elapsedTicks=" + elapsedTicks + " elapsedMs=" + elapsedMs
+                        + " pos=" + p.position() + " velocity=" + p.getDeltaMovement());
                 floodAt = System.nanoTime();
                 floodStartedAtTick = totalTicks;
                 floodWetTicks = 0;
+                floodRequested = true;
                 command(mc, "flood"); // after observer since>35 timeout (~t368)
             }
             case 398 -> {
