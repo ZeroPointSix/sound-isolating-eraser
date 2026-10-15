@@ -101,6 +101,22 @@ minecraft {
         // By default, the server will crash when no gametests are provided.
         // The gametest system is also enabled by default for other run configs under the /test command.
         gameTestServer {
+            if (project.hasProperty('flareAcceptanceOnly')) {
+                workingDirectory project.file('run-flare-acceptance')
+            }
+            if (project.hasProperty('flareQaRunDir')) {
+                workingDirectory project.file(providers.gradleProperty('flareQaRunDir').get())
+            }
+            if (project.hasProperty('flarePermissionsOnly')) {
+                workingDirectory project.file('run-flare-permissions')
+            }
+            if (project.hasProperty('flareEdgesOnly')) {
+                workingDirectory project.file('run-flare-edges')
+            }
+            if (project.hasProperty('flareRestartPhase')) {
+                workingDirectory project.file(providers.gradleProperty('flareRestartRunDir').get())
+                property 'flare.qa.restartPhase', providers.gradleProperty('flareRestartPhase').get()
+            }
             if (project.hasProperty('performanceOnly')) {
                 workingDirectory project.file('run-performance')
                 jvmArgs '-Xmx1G', '-XX:StartFlightRecording=filename=flee-light.jfr,settings=profile,dumponexit=true,maxsize=64m',
@@ -110,13 +126,17 @@ minecraft {
                 workingDirectory project.file(providers.gradleProperty('shadowMeleeRunDir')
                         .getOrElse('run-shadow-melee'))
             }
-            property 'forge.enabledGameTestNamespaces', project.hasProperty('performanceOnly') ? 'qijie_performance' :
+            property 'forge.enabledGameTestNamespaces', project.hasProperty('flareRestartPhase') ? 'flare_restart_tests' :
+                    project.hasProperty('flareAcceptanceOnly') ? 'flare_acceptance_tests' :
+                    project.hasProperty('flarePermissionsOnly') ? 'flare_permission_tests' :
+                    project.hasProperty('flareEdgesOnly') ? 'flare_edge_tests' :
+                    project.hasProperty('performanceOnly') ? 'qijie_performance' :
                     project.hasProperty('qijieOnly') ? 'qijie_tests' :
-                    project.hasProperty('yujiOnly') ? 'yuji_tests' :
-                    project.hasProperty('coreOnly') ? "${mod_id},yuji_tests,qijie_tests" :
+                    project.hasProperty('yujiOnly') ? 'yuji_tests,flare_edge_tests,flare_permission_tests,flare_acceptance_tests' :
+                    project.hasProperty('coreOnly') ? "${mod_id},yuji_tests,flare_edge_tests,flare_permission_tests,flare_acceptance_tests,qijie_tests" :
                     project.hasProperty('blinkOnly') ? 'wings_blink_tests' :
                     project.hasProperty('shadowMeleeOnly') ? 'shadow_melee_tests' :
-                    project.hasProperty('nightOnly') ? 'eternal_night_tests' : "${mod_id},eternal_night_tests,shadow_melee_tests,yuji_tests,qijie_tests"
+                    project.hasProperty('nightOnly') ? 'eternal_night_tests' : "${mod_id},eternal_night_tests,shadow_melee_tests,yuji_tests,flare_edge_tests,flare_permission_tests,flare_acceptance_tests,qijie_tests"
         }
 
         data {
@@ -193,6 +213,18 @@ tasks.named('processResources', ProcessResources).configure {
     from('src/main/resources/data/sound_isolating_eraser/structures/empty.nbt') {
         into 'data/yuji_tests/structures'
     }
+    from('src/main/resources/data/sound_isolating_eraser/structures/empty.nbt') {
+        into 'data/flare_restart_tests/structures'
+    }
+    from('src/main/resources/data/sound_isolating_eraser/structures/empty.nbt') {
+        into 'data/flare_edge_tests/structures'
+    }
+    from('src/main/resources/data/sound_isolating_eraser/structures/empty.nbt') {
+        into 'data/flare_permission_tests/structures'
+    }
+    from('src/main/resources/data/sound_isolating_eraser/structures/empty.nbt') {
+        into 'data/flare_acceptance_tests/structures'
+    }
     from(layout.buildDirectory.file('generated/brickrot-test-resources/data/sound_isolating_eraser/structures/brickrot_empty.nbt')) {
         into 'data/wings_blink_tests/structures'
     }
@@ -228,6 +260,10 @@ tasks.named('jar', Jar).configure {
     exclude 'data/sound_isolating_eraser/structures/shadow_arena.nbt'
     exclude 'data/eternal_night_tests/**'
     exclude 'data/yuji_tests/**'
+    exclude 'data/flare_restart_tests/**'
+    exclude 'data/flare_edge_tests/**'
+    exclude 'data/flare_permission_tests/**'
+    exclude 'data/flare_acceptance_tests/**'
     exclude 'data/wings_blink_tests/**'
     exclude 'data/shadow_melee_tests/**'
     exclude 'data/qijie_performance/**'
