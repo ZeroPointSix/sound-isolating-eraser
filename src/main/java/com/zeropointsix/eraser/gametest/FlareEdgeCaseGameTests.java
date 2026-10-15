@@ -57,7 +57,14 @@ public final class FlareEdgeCaseGameTests {
                 surface = Math.max(surface, level.getHeight(Heightmap.Types.MOTION_BLOCKING, reference.getX() + x, reference.getZ() + z));
             int ceiling = level.getMaxBuildHeight() - 136;
             center = new BlockPos(reference.getX(), Math.min(surface + 2, ceiling), reference.getZ());
+            System.out.println("FLARE_EDGE_AREA reference=" + reference + " surface=" + surface
+                    + " center=" + center + " maxHeight=" + level.getMaxBuildHeight());
             h.assertTrue(center.getY() + 128 < level.getMaxBuildHeight() - 4, "fixture permits full 128-block descent: " + center);
+            // Random mountainous terrain must not clamp the configured 128-block
+            // drop. Clear the test column and restore every changed block later.
+            for (BlockPos p : BlockPos.betweenClosed(center.offset(-9, 0, -9),
+                    new BlockPos(center.getX() + 9, level.getMaxBuildHeight() - 1, center.getZ() + 9)))
+                if (!level.getBlockState(p).isAir()) set(p, Blocks.AIR.defaultBlockState());
             for (BlockPos p : BlockPos.betweenClosed(center.offset(-8, -1, -8), center.offset(8, -1, 8)))
                 set(p, Blocks.STONE.defaultBlockState());
             owner = h.makeMockSurvivalPlayer();

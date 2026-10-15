@@ -29,6 +29,13 @@ class GameTestLogGateTests(unittest.TestCase):
         with self.assertRaises(SystemExit):
             verify_log(log + "\n" + self.success)
 
+    def test_missing_acceptance_batch(self):
+        for name in ("vanilla", "yuji", "shadow", "unload"):
+            with self.subTest(name=name):
+                log = self.batches.replace(f"Running test batch 'flare_acceptance_{name}:1' (1 tests)", "")
+                with self.assertRaises(SystemExit):
+                    verify_log(log + "\n" + self.success)
+
     def test_incomplete_run_after_old_success(self):
         with self.assertRaises(SystemExit):
             verify_log(self.success + "\n" + self.batches)
@@ -47,7 +54,7 @@ class GameTestLogGateTests(unittest.TestCase):
 
     def test_too_few_completed(self):
         with self.assertRaises(SystemExit):
-            verify_log(self.batches + "\nAll 40 required tests passed :)")
+            verify_log(self.batches + "\nAll 44 required tests passed :)")
 
     def test_failure_after_success(self):
         with self.assertRaises(SystemExit):

@@ -347,6 +347,7 @@ public final class GravityGameTests {
         h.getLevel().addFreshEntity(zombie);
         GravityFieldEntity field = field(h, center);
         h.runAtTickTime(85, () -> {
+            logHoverState(h, "hover", zombie, landing);
             double height = zombie.getY() - center.y;
             h.assertTrue(height > 2.5 && height <= 5.5, "bounded hover near 3 blocks: " + height
                     + " fieldRemoved=" + field.isRemoved() + " motion=" + zombie.getDeltaMovement());
@@ -354,8 +355,10 @@ public final class GravityGameTests {
             zombie.getNavigation().stop();
             zombie.setPos(landing.add(0, 3, 0));
             zombie.setDeltaMovement(Vec3.ZERO);
+            logHoverState(h, "exit", zombie, landing);
         });
         h.runAtTickTime(145, () -> {
+            logHoverState(h, "land", zombie, landing);
             h.assertTrue(!zombie.hasEffect(MobEffects.MOVEMENT_SLOWDOWN), "hostile debuff fades outside");
             // Outside the cylinder, vanilla gravity must pull the zombie down. Allow a few
             // ticks of settling so a lagged tick does not fail a grounded assertion.
@@ -366,6 +369,15 @@ public final class GravityGameTests {
             zombie.discard();
             h.succeed();
         });
+    }
+
+    private static void logHoverState(GameTestHelper h, String phase, LivingEntity entity, Vec3 landing) {
+        System.out.println("GRAVITY_HOVER_CLOCK phase=" + phase + " time=" + h.getLevel().getGameTime()
+                + " entityTicks=" + entity.tickCount + " pos=" + entity.position() + " landing=" + landing
+                + " ticking=" + h.getLevel().isPositionEntityTicking(entity.blockPosition())
+                + " water=" + entity.isInWater() + " fluid=" + h.getLevel().getFluidState(entity.blockPosition())
+                + " effects=" + entity.getActiveEffects() + " noGravity=" + entity.isNoGravity()
+                + " motion=" + entity.getDeltaMovement() + " ground=" + entity.onGround());
     }
 
     @GameTest(template = "empty", batch = "gravity_early")
