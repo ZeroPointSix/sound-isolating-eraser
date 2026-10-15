@@ -42,6 +42,7 @@ public final class FlareEdgeCaseGameTests {
         final Map<BlockPos, BlockState> previous = new LinkedHashMap<>();
         final List<Entity> entities = new ArrayList<>();
         GameTestConfigs.LiveConfig config;
+        boolean prepared, completed;
 
         Fixture(GameTestHelper h) {
             level = h.getLevel();
@@ -121,9 +122,26 @@ public final class FlareEdgeCaseGameTests {
     @AfterBatch(batch = "flare_edge_ai_yuji") public static void afterYujiAi(ServerLevel level) { close(); }
 
     private static void ready(GameTestHelper h, Runnable run) {
-        fixture = new Fixture(h);
-        h.startSequence().thenWaitUntil(() -> h.assertTrue(fixture.ticking(), "fixture chunks entity-ticking")).thenExecute(run);
+        ready(h, 300, run);
     }
+
+    private static void ready(GameTestHelper h, int behaviorTicks, Runnable run) {
+        long startedAt = h.getLevel().getGameTime();
+        fixture = new Fixture(h);
+        Fixture preparedFixture = fixture;
+        h.runAfterDelay(1200, () -> h.assertTrue(preparedFixture.prepared, "edge preparation finishes within 1200 ticks"));
+        h.startSequence().thenWaitUntil(() -> h.assertTrue(preparedFixture.ticking(), "fixture chunks entity-ticking"))
+                .thenExecute(() -> {
+                    preparedFixture.prepared = true;
+                    System.out.println("FLARE_EDGE_READY preparationTicks="
+                            + (preparedFixture.level.getGameTime() - startedAt) + " behaviorTicks=" + behaviorTicks);
+                    h.runAfterDelay(behaviorTicks, () -> h.assertTrue(preparedFixture.completed,
+                            "edge behavior finishes within its original " + behaviorTicks + " tick budget"));
+                    run.run();
+                });
+    }
+
+    private static void finish(GameTestHelper h) { fixture.completed = true; h.succeed(); }
 
     private static FlareDecoy decoy(GameTestHelper h) {
         var found = fixture.level.getEntitiesOfClass(FlareDecoy.class, new AABB(fixture.center).inflate(12));
@@ -141,11 +159,11 @@ public final class FlareEdgeCaseGameTests {
         h.runAfterDelay(12, () -> {
             h.assertTrue(flare.isRemoved(), "actual projectile impact activates red flare before timeout");
             var decoy = decoy(h); assertHealthy(h, decoy);
-            h.runAfterDelay(45, () -> { assertHealthy(h, decoy); h.succeed(); });
+            h.runAfterDelay(45, () -> { assertHealthy(h, decoy); finish(h); });
         });
     }
 
-    @GameTest(templateNamespace = "flare_edge_tests", template = "empty", batch = "flare_edge_wall", timeoutTicks = 300)
+    @GameTest(templateNamespace = "flare_edge_tests", template = "empty", batch = "flare_edge_wall", timeoutTicks = 1600)
     public static void flareRedWallImpactDoesNotSuffocate(GameTestHelper h) {
         ready(h, () -> {
             for (BlockPos p : BlockPos.betweenClosed(fixture.center.offset(3, 0, -3), fixture.center.offset(3, 5, 3)))
@@ -154,12 +172,12 @@ public final class FlareEdgeCaseGameTests {
         });
     }
 
-    @GameTest(templateNamespace = "flare_edge_tests", template = "empty", batch = "flare_edge_floor", timeoutTicks = 300)
+    @GameTest(templateNamespace = "flare_edge_tests", template = "empty", batch = "flare_edge_floor", timeoutTicks = 1600)
     public static void flareRedFloorImpactHasClearance(GameTestHelper h) {
         ready(h, () -> verifyImpact(h, fixture.shoot(0, new Vec3(0, 4, 0), new Vec3(0, -1, 0))));
     }
 
-    @GameTest(templateNamespace = "flare_edge_tests", template = "empty", batch = "flare_edge_lowceiling", timeoutTicks = 300)
+    @GameTest(templateNamespace = "flare_edge_tests", template = "empty", batch = "flare_edge_lowceiling", timeoutTicks = 1600)
     public static void flareRedWallUnderLowCeilingFindsClearance(GameTestHelper h) {
         ready(h, () -> {
             for (BlockPos p : BlockPos.betweenClosed(fixture.center.offset(-3, 2, -3), fixture.center.offset(3, 2, 3)))
@@ -170,7 +188,7 @@ public final class FlareEdgeCaseGameTests {
         });
     }
 
-    @GameTest(templateNamespace = "flare_edge_tests", template = "empty", batch = "flare_edge_ceiling", timeoutTicks = 300)
+    @GameTest(templateNamespace = "flare_edge_tests", template = "empty", batch = "flare_edge_ceiling", timeoutTicks = 1600)
     public static void flareRedCeilingImpactHasClearance(GameTestHelper h) {
         ready(h, () -> {
             for (BlockPos p : BlockPos.betweenClosed(fixture.center.offset(-3, 4, -3), fixture.center.offset(3, 4, 3)))
@@ -179,7 +197,7 @@ public final class FlareEdgeCaseGameTests {
         });
     }
 
-    @GameTest(templateNamespace = "flare_edge_tests", template = "empty", batch = "flare_edge_entity", timeoutTicks = 300)
+    @GameTest(templateNamespace = "flare_edge_tests", template = "empty", batch = "flare_edge_entity", timeoutTicks = 1600)
     public static void flareRedEntityImpactActivatesOnce(GameTestHelper h) {
         ready(h, () -> {
             var cow = fixture.add(EntityType.COW.create(fixture.level), Vec3.atBottomCenterOf(fixture.center.east(3)));
@@ -210,22 +228,22 @@ public final class FlareEdgeCaseGameTests {
                 System.out.println("FLARE_AI_PURSUIT_PASSED mob=" + attacker.getType().toShortString()
                         + " ticks=" + attacker.tickCount + " travelled=" + attacker.position().distanceTo(start)
                         + " distance=" + attacker.distanceTo(target) + " decoyHealth=" + target.getHealth());
-                h.succeed();
+                finish(h);
             });
         });
     }
 
-    @GameTest(templateNamespace = "flare_edge_tests", template = "empty", batch = "flare_edge_ai_vanilla", timeoutTicks = 400)
+    @GameTest(templateNamespace = "flare_edge_tests", template = "empty", batch = "flare_edge_ai_vanilla", timeoutTicks = 1700)
     public static void flareRedVanillaZombieNaturallyPursuesAndAttacks(GameTestHelper h) {
-        ready(h, () -> verifyNaturalPursuit(h, EntityType.ZOMBIE.create(fixture.level)));
+        ready(h, 400, () -> verifyNaturalPursuit(h, EntityType.ZOMBIE.create(fixture.level)));
     }
 
-    @GameTest(templateNamespace = "flare_edge_tests", template = "empty", batch = "flare_edge_ai_yuji", timeoutTicks = 400)
+    @GameTest(templateNamespace = "flare_edge_tests", template = "empty", batch = "flare_edge_ai_yuji", timeoutTicks = 1700)
     public static void flareRedYujiNaturallyPursuesAndAttacks(GameTestHelper h) {
-        ready(h, () -> verifyNaturalPursuit(h, YujiContent.MOBS.get(YujiKind.SHASHENG).get().create(fixture.level)));
+        ready(h, 400, () -> verifyNaturalPursuit(h, YujiContent.MOBS.get(YujiKind.SHASHENG).get().create(fixture.level)));
     }
 
-    @GameTest(templateNamespace = "flare_edge_tests", template = "empty", batch = "flare_edge_flight", timeoutTicks = 300)
+    @GameTest(templateNamespace = "flare_edge_tests", template = "empty", batch = "flare_edge_flight", timeoutTicks = 1600)
     public static void flareRedNaturalFlightActivatesAtSixtyTicks(GameTestHelper h) {
         ready(h, () -> {
             var flare = fixture.shoot(0, new Vec3(0, 3, 0), new Vec3(0, 1.5, 0));
@@ -234,12 +252,12 @@ public final class FlareEdgeCaseGameTests {
                 h.assertTrue(flare.isRemoved(), "red natural timer activates without direct activate call");
                 var found = fixture.level.getEntitiesOfClass(FlareDecoy.class, new AABB(fixture.center).inflate(65));
                 h.assertTrue(found.size() == 1, "red flight produces one decoy");
-                fixture.entities.addAll(found); assertHealthy(h, found.get(0)); h.succeed();
+                fixture.entities.addAll(found); assertHealthy(h, found.get(0)); finish(h);
             });
         });
     }
 
-    @GameTest(templateNamespace = "flare_edge_tests", template = "empty", batch = "flare_edge_yellow", timeoutTicks = 300)
+    @GameTest(templateNamespace = "flare_edge_tests", template = "empty", batch = "flare_edge_yellow", timeoutTicks = 1600)
     public static void flareYellowNaturalApexAndDeadline(GameTestHelper h) {
         ready(h, () -> {
             fixture.configure(); FlareConfig.LIGHT_RADIUS.set(3); FlareConfig.YELLOW_LIFETIME.set(30);
@@ -251,7 +269,7 @@ public final class FlareEdgeCaseGameTests {
             h.runAfterDelay(80, () -> {
                 h.assertTrue(apex.isRemoved() && deadline.isRemoved(), "both natural light projectiles expire");
                 h.assertTrue(FlareLights.get(fixture.level).size() == 0, "production cleanup removes their light records");
-                h.succeed();
+                finish(h);
             });
         });
     }
@@ -270,12 +288,12 @@ public final class FlareEdgeCaseGameTests {
         var block = (SupplyCrateBlockEntity) fixture.level.getBlockEntity(fixture.center);
         h.assertTrue(block.saveWithoutMetadata().contains("LootTable"), "touchdown retains unopened lazy loot");
         block.unpackLootTable(fixture.owner);
-        h.assertTrue(!block.isEmpty(), "slow airdrop has real datapack loot"); h.succeed();
+        h.assertTrue(!block.isEmpty(), "slow airdrop has real datapack loot"); finish(h);
     }
 
-    @GameTest(templateNamespace = "flare_edge_tests", template = "empty", batch = "flare_edge_slow", timeoutTicks = 3000)
+    @GameTest(templateNamespace = "flare_edge_tests", template = "empty", batch = "flare_edge_slow", timeoutTicks = 4300)
     public static void flareHighestSlowestDropReachesGround(GameTestHelper h) {
-        ready(h, () -> {
+        ready(h, 3000, () -> {
             var crate = drop(h);
             h.runAfterDelay(5, () -> {
                 CompoundTag saved = new CompoundTag(); crate.saveWithoutId(saved); crate.discard();
@@ -293,9 +311,9 @@ public final class FlareEdgeCaseGameTests {
         });
     }
 
-    @GameTest(templateNamespace = "flare_edge_tests", template = "empty", batch = "flare_edge_reload", timeoutTicks = 3000)
+    @GameTest(templateNamespace = "flare_edge_tests", template = "empty", batch = "flare_edge_reload", timeoutTicks = 4300)
     public static void flareSlowDropReloadAndLiveSpeedChange(GameTestHelper h) {
-        ready(h, () -> {
+        ready(h, 3000, () -> {
             var original = drop(h); FlareConfig.DESCENT_SPEED.set(1.0);
             h.runAfterDelay(5, () -> {
                 FlareConfig.DESCENT_SPEED.set(.05);
