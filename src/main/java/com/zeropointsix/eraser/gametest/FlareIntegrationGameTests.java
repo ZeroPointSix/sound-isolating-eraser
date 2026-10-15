@@ -102,23 +102,61 @@ public final class FlareIntegrationGameTests {
             if (pos.distSqr(center) <= 24 * 24) positions.add(pos);
         }
         h.assertTrue(!positions.isEmpty() && flare.lit(), "production projectile creates durable light field");
+        long litAt = level.getGameTime();
+        boolean[] measured = {false};
         h.runAfterDelay(20, () -> {
-            int checked = 0;
+            for (BlockPos pos : BlockPos.betweenClosed(center.offset(-24, -24, -24), center.offset(24, 24, 24))) {
+                if (pos.distSqr(center) <= 24 * 24 && level.getBrightness(LightLayer.BLOCK, pos) < 12) {
+                    BlockPos dark = pos.immutable();
+                    var nearby = positions.stream().filter(source -> source.distManhattan(dark) <= 3)
+                            .map(source -> source + ":light=" + level.getBrightness(LightLayer.BLOCK, source)).toList();
+                    System.out.println("FLARE_LIGHT_PENDING_AT_20 dark=" + dark
+                            + " brightness=" + level.getBrightness(LightLayer.BLOCK, dark)
+                            + " lightWork=" + level.getChunkSource().getLightEngine().hasLightWork()
+                            + " nearby=" + nearby);
+                    break;
+                }
+            }
+        });
+        // GameTest ticks can outrun the asynchronous light worker. Wait for real
+        // source propagation, then assert coverage once; never wait away a hole.
+        h.startSequence().thenIdle(20).thenWaitUntil(() -> h.assertTrue(
+                !level.getChunkSource().getLightEngine().hasLightWork()
+                        && positions.stream().allMatch(pos -> level.getBrightness(LightLayer.BLOCK, pos) == 15),
+                "real light sources have finished propagating")).thenExecute(() -> {
+            int checked = 0, minBrightness = 15;
             for (BlockPos pos : BlockPos.betweenClosed(center.offset(-24, -24, -24), center.offset(24, 24, 24))) {
                 if (pos.distSqr(center) > 24 * 24) continue;
                 if (level.getBlockState(pos).isAir() || level.getBlockState(pos).is(Blocks.LIGHT)) {
+                    if (level.getBrightness(LightLayer.BLOCK, pos) < 12) {
+                        BlockPos dark = pos.immutable();
+                        var nearby = positions.stream().filter(source -> source.distManhattan(dark) <= 3)
+                                .map(source -> source + ":state=" + level.getBlockState(source)
+                                        + ":light=" + level.getBrightness(LightLayer.BLOCK, source)).toList();
+                        System.out.println("FLARE_LIGHT_DIAGNOSTIC center=" + center + " dark=" + dark
+                                + " brightness=" + level.getBrightness(LightLayer.BLOCK, dark)
+                                + " lightWork=" + level.getChunkSource().getLightEngine().hasLightWork()
+                                + " lightCorrect=" + level.getChunkAt(dark).isLightCorrect()
+                                + " sources=" + positions.size() + " nearby=" + nearby);
+                    }
                     h.assertTrue(level.getBrightness(LightLayer.BLOCK, pos) >= 12, "default-radius block light at " + pos);
+                    minBrightness = Math.min(minBrightness, level.getBrightness(LightLayer.BLOCK, pos));
                     checked++;
                 }
             }
             h.assertTrue(checked == 57777, "full 24-block sphere was measured: " + checked + " positions at " + center);
+            measured[0] = true;
+            System.out.println("FLARE_FULL_LIGHT_FIELD_PASSED checked=" + checked + " minBrightness=" + minBrightness + " propagationTicks="
+                    + (level.getGameTime() - litAt) + " sources=" + positions.size());
         });
+        h.runAfterDelay(100, () -> h.assertTrue(measured[0], "complete light-field verification finishes within 100 ticks"));
         h.runAfterDelay(1190, () -> {
             for (BlockPos pos : positions) h.assertTrue(level.getBlockState(pos).is(Blocks.LIGHT), "light survives until sixty seconds");
             h.assertTrue(!flare.isRemoved(), "illumination projectile does not expire early");
         });
         h.runAfterDelay(1215, () -> {
             // No manual cleanup: this verifies the registered LevelTickEvent path.
+            h.assertTrue(measured[0], "cleanup cannot mark an unmeasured light field successful");
             for (BlockPos pos : positions) h.assertTrue(!level.getBlockState(pos).is(Blocks.LIGHT), "production timer removes owned source");
             h.assertTrue(flare.isRemoved(), "illumination projectile expires too"); h.succeed();
         });
