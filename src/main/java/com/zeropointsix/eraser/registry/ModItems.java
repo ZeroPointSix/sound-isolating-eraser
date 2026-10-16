@@ -18,6 +18,10 @@ import net.minecraftforge.common.ForgeSpawnEggItem;
 public final class ModItems {
     public static final DeferredRegister<Item> ITEMS =
             DeferredRegister.create(ForgeRegistries.ITEMS, ModMain.MOD_ID);
+    public static final RegistryObject<Item> KEEPER_CAMERA = ITEMS.register("keeper_camera",
+            com.zeropointsix.eraser.keeper.KeeperCameraItem::new);
+    public static final RegistryObject<Item> KEEPER_PHOTO = ITEMS.register("keeper_photo",
+            com.zeropointsix.eraser.keeper.KeeperPhotoItem::new);
 
     public static final RegistryObject<GravityJadePendantItem> GRAVITY_JADE_PENDANT =
             ITEMS.register("gravity_jade_pendant", GravityJadePendantItem::new);

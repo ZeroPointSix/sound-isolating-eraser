@@ -1,0 +1,32 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "sound_isolating_eraser:item/keeper_photo"
+  },
+  "overrides": [
+    {
+      "predicate": {
+        "sound_isolating_eraser:fade": 0.125
+      },
+      "model": "sound_isolating_eraser:item/keeper_photo_fade1"
+    },
+    {
+      "predicate": {
+        "sound_isolating_eraser:fade": 0.375
+      },
+      "model": "sound_isolating_eraser:item/keeper_photo_fade2"
+    },
+    {
+      "predicate": {
+        "sound_isolating_eraser:fade": 0.75
+      },
+      "model": "sound_isolating_eraser:item/keeper_photo_fade3"
+    },
+    {
+      "predicate": {
+        "sound_isolating_eraser:fade": 1.0
+      },
+      "model": "sound_isolating_eraser:item/keeper_photo_blank"
+    }
+  ]
+}

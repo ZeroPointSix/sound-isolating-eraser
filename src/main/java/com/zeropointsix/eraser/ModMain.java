@@ -51,6 +51,7 @@ public final class ModMain {
         WingsNet.register();
         EraserNetwork.register();
         PillNetwork.register();
+        com.zeropointsix.eraser.keeper.KeeperNetwork.register();
         ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER, CommonConfig.SPEC,
                 MOD_ID + "-eraser-server.toml");
         ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER, GravityConfig.SPEC);

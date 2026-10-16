@@ -5,6 +5,9 @@
   "minVersion": "0.8",
   "refmap": "mixins.sound_isolating_eraser.refmap.json",
   "mixins": [
+    "KeeperContainerMixin",
+    "KeeperDropMixin",
+    "KeeperTriggerMixin",
     "LivingEntityWallVisibilityMixin",
     "CityPlayerInteractionMixin",
     "CityDoorMixin",

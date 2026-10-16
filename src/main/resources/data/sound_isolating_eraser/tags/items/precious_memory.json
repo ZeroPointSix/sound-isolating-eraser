@@ -1,0 +1,7 @@
+{
+  "replace": false,
+  "values": [
+    "sound_isolating_eraser:keeper_camera",
+    { "id": "sound_isolating_eraser:suxia_pocket_watch", "required": false }
+  ]
+}

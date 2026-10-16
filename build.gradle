@@ -101,6 +101,9 @@ minecraft {
         // By default, the server will crash when no gametests are provided.
         // The gametest system is also enabled by default for other run configs under the /test command.
         gameTestServer {
+            if (project.hasProperty('keeperOnly')) {
+                workingDirectory project.file('run-keeper')
+            }
             if (project.hasProperty('flareAcceptanceOnly')) {
                 workingDirectory project.file('run-flare-acceptance')
             }
@@ -126,7 +129,8 @@ minecraft {
                 workingDirectory project.file(providers.gradleProperty('shadowMeleeRunDir')
                         .getOrElse('run-shadow-melee'))
             }
-            property 'forge.enabledGameTestNamespaces', project.hasProperty('flareRestartPhase') ? 'flare_restart_tests' :
+            property 'forge.enabledGameTestNamespaces', project.hasProperty('keeperOnly') ? 'keeper_tests' :
+                    project.hasProperty('flareRestartPhase') ? 'flare_restart_tests' :
                     project.hasProperty('flareAcceptanceOnly') ? 'flare_acceptance_tests' :
                     project.hasProperty('flarePermissionsOnly') ? 'flare_permission_tests' :
                     project.hasProperty('flareEdgesOnly') ? 'flare_edge_tests' :
@@ -136,7 +140,7 @@ minecraft {
                     project.hasProperty('coreOnly') ? "${mod_id},yuji_tests,flare_edge_tests,flare_permission_tests,flare_acceptance_tests,qijie_tests" :
                     project.hasProperty('blinkOnly') ? 'wings_blink_tests' :
                     project.hasProperty('shadowMeleeOnly') ? 'shadow_melee_tests' :
-                    project.hasProperty('nightOnly') ? 'eternal_night_tests' : "${mod_id},eternal_night_tests,shadow_melee_tests,yuji_tests,flare_edge_tests,flare_permission_tests,flare_acceptance_tests,qijie_tests"
+                    project.hasProperty('nightOnly') ? 'eternal_night_tests' : "${mod_id},eternal_night_tests,shadow_melee_tests,yuji_tests,flare_edge_tests,flare_permission_tests,flare_acceptance_tests,qijie_tests,keeper_tests"
         }
 
         data {
@@ -208,6 +212,9 @@ dependencies {
 // See https://docs.gradle.org/current/dsl/org.gradle.language.jvm.tasks.ProcessResources.html
 tasks.named('processResources', ProcessResources).configure {
     from('src/main/resources/data/sound_isolating_eraser/structures/empty.nbt') {
+        into 'data/keeper_tests/structures'
+    }
+    from('src/main/resources/data/sound_isolating_eraser/structures/empty.nbt') {
         into 'data/eternal_night_tests/structures'
     }
     from('src/main/resources/data/sound_isolating_eraser/structures/empty.nbt') {
@@ -268,6 +275,7 @@ tasks.named('jar', Jar).configure {
     exclude 'data/shadow_melee_tests/**'
     exclude 'data/qijie_performance/**'
     exclude 'data/qijie_tests/**'
+    exclude 'data/keeper_tests/**'
 
     manifest {
         attributes([
@@ -413,3 +421,8 @@ def verifyRainCityAssets = tasks.register('verifyRainCityAssets', Exec) {
 tasks.named('check').configure {
     dependsOn checkRainCityRules, verifyRainCityAssets
 }
+
+def verifyKeeperAssets = tasks.register('verifyKeeperAssets', Exec) {
+    commandLine 'python3', 'tools/verify_keeper_assets.py'
+}
+tasks.named('check').configure { dependsOn verifyKeeperAssets }

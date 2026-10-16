@@ -26,7 +26,9 @@ public final class CreativeTabGameTests {
         Set<ResourceLocation> expected = new HashSet<>();
         Set<String> namespaces = Set.of(ModMain.MOD_ID, "qihai");
         ForgeRegistries.ITEMS.getKeys().stream()
-                .filter(id -> namespaces.contains(id.getNamespace())).forEach(expected::add);
+                .filter(id -> namespaces.contains(id.getNamespace()))
+                .filter(id -> !id.equals(new ResourceLocation(ModMain.MOD_ID, "keeper_photo")))
+                .forEach(expected::add);
         for (String namespace : namespaces) {
             helper.assertTrue(expected.stream().anyMatch(id -> namespace.equals(id.getNamespace())),
                     "items are registered in namespace: " + namespace);
@@ -43,6 +45,8 @@ public final class CreativeTabGameTests {
                         ItemStack.isSameItemSameTags(stack, search)), "searchable entry: " + id);
             }
             helper.assertTrue(actual.equals(expected), "all registered items in both namespaces: " + actual.size());
+            helper.assertTrue(actual.contains(new ResourceLocation(ModMain.MOD_ID, "keeper_camera"))
+                    && !actual.contains(new ResourceLocation(ModMain.MOD_ID, "keeper_photo")), "camera visible; captured photos never creative");
             helper.assertTrue(tab.getDisplayItems().stream().anyMatch(stack ->
                     stack.is(ModItems.SHAXIADAO.get()) && stack.isEnchanted()), "knife keeps innate enchantment");
         }

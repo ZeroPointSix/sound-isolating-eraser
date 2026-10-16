@@ -24,6 +24,7 @@ public final class ModCreativeTabs {
                     .icon(() -> ModItems.SOUND_ISOLATING_ERASER.get().getDefaultInstance())
                     .displayItems((parameters, output) -> ForgeRegistries.ITEMS.getValues().stream()
                             .filter(item -> owns(ForgeRegistries.ITEMS.getKey(item)))
+                            .filter(item -> !(item instanceof com.zeropointsix.eraser.keeper.KeeperPhotoItem))
                             .sorted(Comparator.comparingInt(ModCreativeTabs::group)
                                     .thenComparing(item -> ForgeRegistries.ITEMS.getKey(item).toString()))
                             // Preserve default NBT, including the knife's built-in enchantments.

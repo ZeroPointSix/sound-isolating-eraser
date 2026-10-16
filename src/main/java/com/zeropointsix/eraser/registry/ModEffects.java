@@ -11,6 +11,8 @@ public final class ModEffects {
     public static final DeferredRegister<MobEffect> EFFECTS =
             DeferredRegister.create(ForgeRegistries.MOB_EFFECTS, ModMain.MOD_ID);
     public static final RegistryObject<MobEffect> CORRODED = EFFECTS.register("corroded", CorrodedEffect::new);
+    public static final RegistryObject<MobEffect> IN_PHOTO = EFFECTS.register("in_photo",
+            com.zeropointsix.eraser.keeper.InPhotoEffect::new);
 
     private ModEffects() { }
 }
