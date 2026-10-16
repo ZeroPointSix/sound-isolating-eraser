@@ -422,17 +422,16 @@ public final class RedNailsGameTests {
             var ambient = f.add(EntityType.HUSK.create(f.level), 2, 0);
             var commanded = f.add(EntityType.HUSK.create(f.level), 12, 3);
             var attacker = f.add(EntityType.HUSK.create(f.level), 12, -3);
-            ghost.setPos(p.position()); ghost.setTarget(ambient); ghost.ghostBody().grab.start();
-            check(h, ghost.ghostBody().grab.held() == ambient, "Ambient grab starts");
-            ghost.setNoAi(false); p.setLastHurtMob(commanded);
-            h.runAfterDelay(10, () -> {
-                check(h, ghost.getTarget() == commanded && ghost.ghostBody().grab.held() != ambient,
-                        "Owner command preempts ambient grab through the registered goal");
-                p.setLastHurtByMob(attacker);
-            });
-            h.runAfterDelay(20, () -> {
-                check(h, ghost.getTarget() == attacker, "Owner defence has highest priority"); h.succeed();
-            });
+            ghost.setPos(p.position()); ghost.setNoAi(false);
+            h.startSequence().thenWaitUntil(() -> check(h, ghost.ghostBody().grab.held() == ambient,
+                            "Registered AI acquires and starts the ambient grab"))
+                    .thenExecute(() -> p.setLastHurtMob(commanded))
+                    .thenIdle(10).thenExecute(() -> {
+                        check(h, ghost.getTarget() == commanded && ghost.ghostBody().grab.held() != ambient,
+                                "Owner command preempts ambient grab through the registered goal");
+                        p.setLastHurtByMob(attacker);
+                    }).thenIdle(10).thenExecute(() -> check(h, ghost.getTarget() == attacker,
+                            "Owner defence has highest priority")).thenSucceed();
         });
     }
 
