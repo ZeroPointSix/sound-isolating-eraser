@@ -65,9 +65,16 @@ public final class FlareGunTestServer {
             shots++;
     }
 
+    private static float pitchOf(String name) {
+        if (name.contains("-up-")) return -80;
+        if (name.contains("-down-")) return 80;
+        return -5;
+    }
+
     private static void phase(String name, boolean load) {
         if (load) actor.setItemInHand(InteractionHand.OFF_HAND, new ItemStack(FlareContent.RED.get()));
         actor.inventoryMenu.broadcastChanges();
+        actor.teleportTo(actor.serverLevel(), actor.getX(), actor.getY(), actor.getZ(), 0, pitchOf(name));
         actor.sendSystemMessage(Component.literal("FLARE_GUN_QA:" + name));
         observer.sendSystemMessage(Component.literal("FLARE_GUN_QA:" + name));
     }
@@ -81,7 +88,7 @@ public final class FlareGunTestServer {
             String hand = ticks < 440 ? "right" : "left";
             int previousShots = ticks < 440 ? 0 : 2;
             if (cycle == 20) phase(hand + "-first-load", true);
-            if (cycle == 100) phase(hand + "-first-fire", false);
+            if (cycle == 100) phase(hand.equals("left") ? "left-first-down-fire" : "right-first-fire", false);
             if (cycle == 140) {
                 if (shots != previousShots + 1 || !actor.getOffhandItem().isEmpty()
                         || !actor.getCooldowns().isOnCooldown(FlareContent.GUN.get()))
@@ -91,12 +98,22 @@ public final class FlareGunTestServer {
             if (cycle == 240) {
                 if (shots != previousShots + 1 || actor.getOffhandItem().getCount() != 1)
                     throw new AssertionError("Cooldown shot consumed cartridge or spawned projectile");
-                phase(hand + "-third-fire", false);
+                phase(hand.equals("right") ? "right-third-up-fire" : "left-third-fire", false);
             }
             if (cycle == 340) phase(hand + "-empty", false);
             if (ticks == 860) {
                 if (shots != 4 || !actor.getOffhandItem().isEmpty()) throw new AssertionError("Duplicate/empty shot: " + shots);
-                Files.writeString(RESULTS.resolve("server.pass"), "Dedicated server: 4 actual player shots, 4 cartridges consumed; two cooldown-refill and two empty attempts rejected; two clients synchronized.\n");
+                phase("right-first-down-load", true);
+            }
+            if (ticks == 920) phase("right-first-down-fire", false);
+            if (ticks == 980) {
+                if (shots != 5) throw new AssertionError("Right down shot missing: " + shots);
+                phase("left-third-up-load", true);
+            }
+            if (ticks == 1040) phase("left-third-up-fire", false);
+            if (ticks == 1140) {
+                if (shots != 6 || !actor.getOffhandItem().isEmpty()) throw new AssertionError("Pitch shots: " + shots);
+                Files.writeString(RESULTS.resolve("server.pass"), "Dedicated server: 6 actual player shots including up/down pitch, 6 cartridges consumed; two cooldown-refill and two empty attempts rejected; two clients synchronized.\n");
                 phase("done", false);
                 finished = true;
             }

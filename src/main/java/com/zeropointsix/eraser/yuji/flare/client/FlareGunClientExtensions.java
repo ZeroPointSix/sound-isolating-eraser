@@ -2,6 +2,7 @@ package com.zeropointsix.eraser.yuji.flare.client;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
+import com.zeropointsix.eraser.yuji.flare.FlareGunPose;
 import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer;
@@ -34,10 +35,10 @@ public final class FlareGunClientExtensions implements IClientItemExtensions {
     @Override public boolean applyForgeHandTransform(PoseStack pose, LocalPlayer player, HumanoidArm arm,
             ItemStack stack, float partialTick, float equipProcess, float swingProcess) {
         int side = arm == HumanoidArm.LEFT ? -1 : 1;
-        // Keep the short pistol below the sight line, aligned with the server muzzle offset.
-        pose.translate(side * .36, -.72 - .35 * equipProcess, -.90);
-        pose.mulPose(Axis.YP.rotationDegrees(side * -4));
-        pose.scale(.65F, .65F, .65F);
+        // Camera-space hold: below the sight line, matching FlareGunPose muzzle axes.
+        pose.translate(side * FlareGunPose.HAND_SIDE, -FlareGunPose.HAND_DOWN - .35 * equipProcess, -FlareGunPose.HAND_FORWARD);
+        pose.mulPose(Axis.YP.rotationDegrees(side * FlareGunPose.HAND_YAW));
+        pose.scale(FlareGunPose.HAND_SCALE, FlareGunPose.HAND_SCALE, FlareGunPose.HAND_SCALE);
         return true;
     }
 }

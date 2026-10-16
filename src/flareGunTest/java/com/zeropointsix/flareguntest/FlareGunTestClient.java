@@ -46,6 +46,12 @@ public final class FlareGunTestClient {
 
     private static Path file(String name) { return RESULTS.resolve(ROLE + "-" + name); }
 
+    private static float pitchOf(String name) {
+        if (name.contains("-up-")) return -80;
+        if (name.contains("-down-")) return 80;
+        return -5;
+    }
+
     private static void require(boolean condition, String message) {
         if (!condition) throw new AssertionError(ROLE + ": " + phase + ": " + message);
     }
@@ -97,6 +103,10 @@ public final class FlareGunTestClient {
             if (!OBSERVER) {
                 mc.options.mainHand().set(phase.startsWith("left") ? HumanoidArm.LEFT : HumanoidArm.RIGHT);
                 mc.options.broadcastOptions();
+                if (mc.player != null) {
+                    mc.player.setYRot(0);
+                    mc.player.setXRot(pitchOf(phase));
+                }
             }
             if (phase.equals("ready")) {
                 mc.setScreen(null);
@@ -113,9 +123,9 @@ public final class FlareGunTestClient {
                 Files.writeString(RESULTS.resolve(ROLE + ".ready"), "real client connected\n");
             }
             if (phase.equals("done")) {
-                require(completedFires == 4 && completedEmpty == 2 && completedRefills == 2,
-                        "Missing complete right/left, first/third, empty or cooldown-refill cases");
-                Files.writeString(RESULTS.resolve(ROLE + ".pass"), "PASS 4 rendered shots, 2 empty cases, 2 cooldown refills; both sound layers and all muzzle packets asserted per phase; handed muzzle coordinates checked.\n");
+                require(completedFires == 6 && completedEmpty == 2 && completedRefills == 2,
+                        "Missing complete right/left, first/third, pitch, empty or cooldown-refill cases");
+                Files.writeString(RESULTS.resolve(ROLE + ".pass"), "PASS 6 rendered shots including up/down pitch, 2 empty cases, 2 cooldown refills; recoil direction excludes break-open; camera-space muzzle checked.\n");
             }
         } catch (Throwable failure) { fail(failure); }
     }
@@ -131,13 +141,29 @@ public final class FlareGunTestClient {
             require(phase.endsWith("fire"), "Muzzle packet in rejected/load phase: " + type);
             var mc = Minecraft.getInstance();
             var actor = mc.level.players().stream().filter(p -> p.getGameProfile().getName().equals("FlareTester")).findFirst().orElseThrow();
-            double yaw = Math.toRadians(actor.getYRot());
-            int side = phase.startsWith("left") ? -1 : 1;
-            Vec3 expected = actor.getEyePosition().add(actor.getLookAngle().scale(.7))
-                    .add(new Vec3(-Math.cos(yaw), 0, -Math.sin(yaw)).scale(side * .22)).add(0, -.18, 0);
+            Vec3 look = actor.getLookAngle();
+            Vec3 right = look.cross(new Vec3(0, 1, 0));
+            if (right.lengthSqr() < 1.0E-6) {
+                double yaw = Math.toRadians(actor.getYRot());
+                right = new Vec3(-Math.cos(yaw), 0, -Math.sin(yaw));
+            } else {
+                right = right.normalize();
+            }
+            Vec3 down = look.cross(right);
+            if (down.lengthSqr() > 1.0E-12) down = down.normalize();
             Vec3 actual = new Vec3(packet.getX(), packet.getY(), packet.getZ());
-            require(actual.distanceTo(expected) < .04, "Handed muzzle packet misaligned: " + actual + " expected " + expected);
-            Files.writeString(file("muzzle.csv"), phase + "," + type + "," + actual.x + "," + actual.y + "," + actual.z + "\n",
+            Vec3 local = actual.subtract(actor.getEyePosition());
+            int side = phase.startsWith("left") ? -1 : 1;
+            require(Math.abs(local.dot(look) - .7) < .04, "Muzzle not on look axis: " + local.dot(look));
+            require(Math.abs(local.dot(right) - side * .22) < .04, "Muzzle hand offset wrong: " + local.dot(right));
+            require(Math.abs(local.dot(down) - .18) < .04, "Muzzle not camera-down of gun: " + local.dot(down));
+            if (Math.abs(actor.getXRot()) > 50) {
+                double yaw = Math.toRadians(actor.getYRot());
+                Vec3 worldDown = actor.getEyePosition().add(look.scale(.7))
+                        .add(new Vec3(-Math.cos(yaw), 0, -Math.sin(yaw)).scale(side * .22)).add(0, -.18, 0);
+                require(actual.distanceTo(worldDown) > .08, "Steep pitch still used world-down muzzle");
+            }
+            Files.writeString(file("muzzle.csv"), phase + "," + type + "," + actor.getXRot() + "," + actual.x + "," + actual.y + "," + actual.z + "\n",
                     StandardOpenOption.CREATE, StandardOpenOption.APPEND);
         } catch (Throwable failure) { fail(failure); }
     }
@@ -180,6 +206,10 @@ public final class FlareGunTestClient {
         }
         if (mc.player == null || mc.gameMode == null) return;
         ticks++;
+        if (!OBSERVER) {
+            mc.player.setYRot(0);
+            mc.player.setXRot(pitchOf(phase));
+        }
         if (!OBSERVER && ticks == 10) {
             if (phase.endsWith("refill"))
                 mc.getConnection().send(new ServerboundUseItemPacket(InteractionHand.MAIN_HAND, 0));
@@ -199,16 +229,20 @@ public final class FlareGunTestClient {
             var renderer = (FlareGunRenderer) IClientItemExtensions.of(FlareContent.GUN.get()).getCustomRenderer();
             var root = renderer.getGeoModel().getBone("root").orElseThrow();
             var barrel = renderer.getGeoModel().getBone("barrel").orElseThrow();
-            float angle = phase.endsWith("load") || phase.endsWith("refill") ? barrel.getRotX() : root.getRotX();
-            if (Math.abs(angle) > .08F) animated.add(phase);
-            // Bedrock loading tilts down (negative X); firing kicks up (positive X).
-            // Check the entire refill window, including after cooldown permits loading.
+            float rootX = root.getRotX(), barrelX = barrel.getRotX();
+            boolean kickUp = rootX > .08F && Math.abs(barrelX) < .08F;
+            boolean breakOpen = barrelX < -.08F && rootX <= .02F;
+            if (phase.endsWith("fire") && kickUp) animated.add(phase);
+            if ((phase.endsWith("load") || phase.endsWith("refill")) && breakOpen) animated.add(phase);
+            // Kick-up recoil is positive root X; break-open loading is negative barrel X.
+            if (phase.endsWith("fire"))
+                require(barrelX > -.08F, "Firing played break-open barrel: " + barrelX);
             if (phase.endsWith("load") || phase.endsWith("refill"))
-                require(root.getRotX() <= .02F, "Loading/refill played firing recoil: " + root.getRotX());
+                require(rootX <= .02F, "Loading/refill played firing recoil: " + rootX);
             if (phase.endsWith("empty") || (phase.endsWith("refill") && ticks <= 18))
-                require(Math.abs(root.getRotX()) < .02F && Math.abs(barrel.getRotX()) < .02F,
-                        "Rejected shot/early cooldown refill animated: " + root.getRotX() + "," + barrel.getRotX());
-            Files.writeString(file("poses.csv"), phase + "," + ticks + "," + root.getRotX() + "," + barrel.getRotX() + "\n",
+                require(Math.abs(rootX) < .02F && Math.abs(barrelX) < .02F,
+                        "Rejected shot/early cooldown refill animated: " + rootX + "," + barrelX);
+            Files.writeString(file("poses.csv"), phase + "," + ticks + "," + rootX + "," + barrelX + "," + kickUp + "," + breakOpen + "\n",
                     StandardOpenOption.CREATE, StandardOpenOption.APPEND);
             if (Set.of(0, 5, 10, 12, 14, 18, 22, 28, 35, 45, 55).contains(ticks)) {
                 try (var image = Screenshot.takeScreenshot(mc.getMainRenderTarget())) {
