@@ -322,9 +322,19 @@ public final class SuxiaGameTests {
             MinecraftForge.EVENT_BUS.post(new PlayerEvent.PlayerChangedDimensionEvent(p, ServerLevel.OVERWORLD, ServerLevel.NETHER));
             h.assertTrue(summon.isRemoved() && f.ledger().active(p.getUUID()) == null, "dimension change removes active summon");
             f.watch(p); summon = f.summon(p);
-            p.setPos(Vec3.atBottomCenterOf(f.center.east(70)));
+            BlockPos unsupported = f.center.east(70);
+            // Outside the arena, random terrain can provide a valid teleport floor.
+            // Clear all candidate floors, including FollowOwnerGoal's +/-1 Y search.
+            for (int x = -3; x <= 3; x++) for (int z = -3; z <= 3; z++) {
+                for (int y = -2; y <= 4; y++) f.set(unsupported.offset(x, y, z), Blocks.AIR.defaultBlockState());
+                h.assertTrue(f.level.getBlockState(unsupported.offset(x, -1, z)).isAir(),
+                        "unsupported-destination fixture has no teleport floor");
+            }
+            p.setPos(Vec3.atBottomCenterOf(unsupported));
+            h.assertTrue(summon.distanceToSqr(p) > 64 * 64, "unsupported destination is beyond 64 blocks");
             summon.tick();
             h.assertTrue(summon.isRemoved() && f.ledger().active(p.getUUID()) == null, "beyond 64 blocks without a supported teleport destination ends summon");
+            System.out.println("SUXIA_UNSUPPORTED_DESTINATION_CLEANUP_PASSED destination=" + unsupported);
             h.succeed();
         });
     }

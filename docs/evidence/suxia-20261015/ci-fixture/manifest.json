@@ -1,0 +1,37 @@
+{
+  "base_sha": "cb6be8ec9f654720efc8e4537536feb51c575d7e",
+  "branch": "feat/suxia-pocket-watch-20261015",
+  "scope": [
+    "src/main/java/com/zeropointsix/eraser/gametest/SuxiaGameTests.java"
+  ],
+  "failure_check": "https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38835294182/job/116762954672",
+  "baseline": {
+    "checks_success": 11,
+    "checks_failure": 1,
+    "game_tests_total": 508,
+    "game_tests_failed": [
+      "logout_and_dimension_remove_summon"
+    ],
+    "exit_code": 1
+  },
+  "root_cause": "The test claimed no supported teleport destination, but its 70-block destination was outside the controlled arena and could have natural terrain support.",
+  "fix": "Construct the unsupported destination by clearing the existing teleport candidate area and its floor layers. Keep the 70-block move and original summon-removal/ledger-cleanup assertion, and assert the preconditions.",
+  "local_regression": {
+    "job_id": "job-ON7X1a_FdsaJow1Z",
+    "command": "timeout 1500 bash ./gradlew --no-daemon --max-workers=2 -PsuxiaOnly -PsuxiaE2E -PflareQaRunDir=run-suxia-idle-before compileJava writeSuxiaTestClasspath runGameTestServer",
+    "required_tests_passed": 22,
+    "exit_code": 0
+  },
+  "unchanged_runtime_and_native_qa_hashes": 24,
+  "native_validation": {
+    "reused_from_sha": "cb6be8ec9f654720efc8e4537536feb51c575d7e",
+    "job_id": "job-Dea8JEWRyh1lwdDF",
+    "rerun": false,
+    "reason": "Only a GameTest fixture changed. All 24 recorded non-GameTest source/driver/class hashes match the passing native validation."
+  },
+  "assertions_and_timeouts_relaxed": false,
+  "full_e2e_8_rerun": false,
+  "historical_failures_preserved": true,
+  "new_candidate_ci": "Pending push and verification; not claimed passed by this manifest.",
+  "review_and_requirements_acceptance": "Not performed in this implementation mission."
+}
