@@ -10,7 +10,6 @@ import java.util.function.BiConsumer;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
-import net.minecraft.client.renderer.entity.EntityRenderers;
 import net.minecraft.client.renderer.item.ItemProperties;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -20,7 +19,6 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
 import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
 import net.minecraftforge.client.event.EntityRenderersEvent;
 import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
 import net.minecraftforge.event.TickEvent;
@@ -56,11 +54,6 @@ public final class RedNailsClient {
         mc.level.addParticle(ParticleTypes.DRIPPING_WATER, mc.player.getX() + (Math.random() - 0.5),
                 mc.player.getY() + 1, mc.player.getZ() + (Math.random() - 0.5), 0, 0, 0);
         if (ticks % 5 == 0) mc.player.playSound(SoundEvents.GENERIC_SWIM, 0.2F, 0.5F);
-    }
-    @SubscribeEvent public static void loggedIn(ClientPlayerNetworkEvent.LoggingIn event) {
-        bindGhostRenderers((type, provider) -> EntityRenderers.register(type, provider));
-        var mc = Minecraft.getInstance();
-        mc.getEntityRenderDispatcher().onResourceManagerReload(mc.getResourceManager());
     }
     @SuppressWarnings("unchecked")
     static void bindGhostRenderers(BiConsumer<EntityType<? extends Mob>, EntityRendererProvider<Mob>> register) {
