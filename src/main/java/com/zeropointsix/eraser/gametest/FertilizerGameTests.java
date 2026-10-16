@@ -17,6 +17,10 @@ import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.item.*;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.ambient.Bat;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.*;
 import net.minecraft.world.level.block.state.BlockState;
@@ -157,6 +161,8 @@ public final class FertilizerGameTests {
 
     private static int prepareGrove(GameTestHelper h, BlockPos root) {
         ServerLevel level=h.getLevel(); FertilizerData data=FertilizerData.get(level);
+        // Structure placement happens before this scenario; stray entities can enter in between.
+        level.getEntities((Entity)null,new AABB(root).inflate(30),e -> !(e instanceof Player)).forEach(Entity::discard);
         // GameTest resets blocks, but run/ retains SavedData between launches.
         for (Tag raw : data.save(new CompoundTag()).getList("Plants",Tag.TAG_COMPOUND)) {
             BlockPos savedRoot=BlockPos.of(((CompoundTag)raw).getLong("Root"));
@@ -232,6 +238,11 @@ public final class FertilizerGameTests {
 
     @GameTest(template = "fertilizer_arena", timeoutTicks = 300, batch = "fertilizer_growth")
     public static void fifteenTreeGroveIndependentDosesPersistenceAndThreeTiers(GameTestHelper h) {
+        assertFifteenTreeGrove(h);
+        h.succeed();
+    }
+
+    private static void assertFifteenTreeGrove(GameTestHelper h) {
         ServerLevel level=h.getLevel(); FakePlayer a=player(h), b=player(h);
         BlockPos root=h.absolutePos(new BlockPos(40,9,40));
         int before=prepareGrove(h,root);
@@ -261,6 +272,50 @@ public final class FertilizerGameTests {
         h.assertTrue(!FertilizerGrowth.use(level,root,a),"tier three is a hard cap");
         level.setBlock(root,Blocks.AIR.defaultBlockState(),3);
         h.assertTrue(data.at(level,root)==null,"destroying the root removes its saved identity");
+    }
+
+    private static Bat strayAtExpandedTrunk(GameTestHelper h, BlockPos root) {
+        Bat bat=EntityType.BAT.create(h.getLevel());
+        h.assertTrue(bat!=null,"create a real entity in the future tier-three trunk");
+        bat.setNoAi(true); bat.setNoGravity(true);
+        bat.setPos(Vec3.atBottomCenterOf(root.offset(2,1,2)));
+        h.assertTrue(h.getLevel().addFreshEntity(bat),"the stray entity is visible to real collision queries");
+        return bat;
+    }
+
+    @GameTest(template = "fertilizer_arena", timeoutTicks = 300, batch = "fertilizer_fixture_isolation")
+    public static void groveFixtureIsolatesStrayEntities(GameTestHelper h) {
+        BlockPos root=h.absolutePos(new BlockPos(40,9,40));
+        Bat stray=strayAtExpandedTrunk(h,root);
+        try {
+            assertFifteenTreeGrove(h);
+            h.assertTrue(stray.isRemoved(),"grove fixture clears entities present before its scenario starts");
+        } finally { stray.discard(); }
+        h.succeed();
+    }
+
+    @GameTest(template = "fertilizer_arena", timeoutTicks = 300, batch = "fertilizer_entity_safety")
+    public static void tierThreeGrowthStillProtectsEntitiesInsideNewTrunk(GameTestHelper h) {
+        ServerLevel level=h.getLevel(); FakePlayer p=player(h);
+        BlockPos root=h.absolutePos(new BlockPos(40,9,40));
+        prepareGrove(h,root);
+        h.assertTrue(FertilizerGrowth.use(level,root,p),"grow the real first-tier tree");
+        var data=FertilizerData.get(level); var tree=data.at(level,root);
+        tree.grove=true; tree.doses.clear(); data.setDirty();
+        h.assertTrue(FertilizerGrowth.use(level,root,p) && tree.level==2,"grow the real second-tier tree");
+        CompoundTag saved=data.save(new CompoundTag());
+        Map<BlockPos,BlockState> before=new HashMap<>();
+        for (BlockPos pos : BlockPos.betweenClosed(root.offset(-10,-8,-10),root.offset(10,21,10)))
+            before.put(pos.immutable(),level.getBlockState(pos));
+        Bat occupant=strayAtExpandedTrunk(h,root);
+        try {
+            h.assertTrue(!FertilizerGrowth.use(level,root,p),"a live entity blocks expansion into its occupied space");
+            h.assertTrue(occupant.isAlive() && !occupant.isRemoved(),"rejected growth does not remove the occupant");
+            h.assertTrue(tree.level==2 && data.save(new CompoundTag()).equals(saved),"rejected expansion preserves saved state");
+            for (var entry : before.entrySet())
+                h.assertTrue(level.getBlockState(entry.getKey()).equals(entry.getValue()),"rejected expansion leaves every block intact");
+        } finally { occupant.discard(); }
+        h.assertTrue(FertilizerGrowth.use(level,root,p) && tree.level==3,"the same tree expands after the occupant leaves");
         h.succeed();
     }
 

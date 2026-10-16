@@ -1,6 +1,7 @@
 package com.zeropointsix.yujitest;
 
 import com.zeropointsix.eraser.yuji.YujiContent;
+import com.zeropointsix.eraser.yuji.YujiConfig;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -30,6 +31,8 @@ public final class YujiIsolationClient {
     private static String phase = "ready", target = "", shot = "";
     private static int ticks, received, turnLevel = -1;
     private static float startYaw, maxTurn, startPitch, maxPitch;
+    private static double startX, maxPull;
+    private static final boolean CAMERA_TURN = Boolean.parseBoolean(System.getProperty("yuji.qa.cameraTurn", "true"));
     private static boolean failed;
     private static boolean enabled() { return Boolean.getBoolean("yuji.qa.isolation"); }
     private static String name() { return Minecraft.getInstance().getUser().getName(); }
@@ -57,6 +60,9 @@ public final class YujiIsolationClient {
                 phase = parts[1]; target = parts[2]; ticks = 0; received = 0; sounds.clear(); active.clear();
                 startYaw = Minecraft.getInstance().player.getYRot(); maxTurn = 0; turnLevel = -1;
                 startPitch = Minecraft.getInstance().player.getXRot(); maxPitch = 0;
+                startX = Minecraft.getInstance().player.getX(); maxPull = 0;
+                if (phase.startsWith("camera")) require(YujiConfig.CAMERA_TURN.get() == CAMERA_TURN,
+                        "actual server config synchronized to client: cameraTurn=" + YujiConfig.CAMERA_TURN.get());
                 record("START " + phase + " target=" + target + " yaw=" + startYaw);
             } else if (parts[0].equals("check")) {
                 boolean affected = name().equals(target);
@@ -65,11 +71,50 @@ public final class YujiIsolationClient {
                             "targeted audio isolation: affected=" + affected + " received=" + received + " active=" + active.size());
                     pass(phase, "target=" + target + " received=" + received + " resolvedActive=" + active.size());
                 } else if (phase.startsWith("camera")) {
-                    require(affected ? maxTurn > 10 && maxPitch > 1 && turnLevel >= 1 : maxTurn < .1F && maxPitch < .1F && turnLevel == -1,
-                            "camera isolation: affected=" + affected + " maxTurn=" + maxTurn + " maxPitch=" + maxPitch + " effectLevel=" + turnLevel);
-                    pass(phase, "target=" + target + " maxTurn=" + maxTurn + " maxPitch=" + maxPitch + " effectLevel=" + turnLevel);
+                    if (affected) {
+                        require(turnLevel >= 1 && maxPull > .3, "camera option must preserve natural enthrallment and pulling: level=" + turnLevel + "; pull=" + maxPull);
+                        require(CAMERA_TURN ? maxTurn > 10 && maxPitch > 1 : maxTurn < .1F && maxPitch < .1F,
+                                "configured camera behavior: cameraTurn=" + CAMERA_TURN + " maxTurn=" + maxTurn + " maxPitch=" + maxPitch);
+                    } else require(maxTurn < .1F && maxPitch < .1F && turnLevel == -1,
+                            "camera isolation: unaffected maxTurn=" + maxTurn + " maxPitch=" + maxPitch + " effectLevel=" + turnLevel);
+                    pass(phase, "cameraTurn=" + CAMERA_TURN + " target=" + target + " maxTurn=" + maxTurn + " maxPitch=" + maxPitch + " effectLevel=" + turnLevel + " pull=" + maxPull);
                 }
                 shot = phase; phase = "";
+            } else if (parts[0].equals("habitat")) {
+                var mob = Minecraft.getInstance().level.getEntity(Integer.parseInt(parts[2]));
+                require(mob instanceof com.zeropointsix.eraser.yuji.YujiMonster, "client received actual Yuji entity");
+                require(mob.getZ() >= Double.parseDouble(parts[3]) && mob.getZ() < 13, "client observes entity inside habitat: " + mob.position());
+                var box = mob.getBoundingBox();
+                require(Math.abs(box.minY - 65) < .01 && box.maxY <= (parts[1].equals("liangshe-indoor") ? 68 : 73),
+                        "client sees body below the roof or within corridor wall height");
+                require(box.minX >= (parts[1].equals("liangshe-indoor") ? -1 : 0) && box.maxX <= 2
+                        && box.minZ >= 6 && box.maxZ <= 13, "client sees entire body between habitat walls: pos=" + mob.position() + "; box=" + box);
+                pass(parts[1], "TCP-synchronized entity=" + mob.getUUID() + "; pos=" + mob.position() + "; body=" + mob.getBoundingBox());
+                shot = parts[1];
+            } else if (parts[0].equals("face")) {
+                var mc = Minecraft.getInstance();
+                var entity = mc.level.getEntity(Integer.parseInt(parts[2]));
+                require(entity != null, "voice body synchronized before looking at it");
+                var delta = entity.getEyePosition().subtract(mc.player.getEyePosition());
+                mc.player.setYRot((float) Math.toDegrees(Math.atan2(-delta.x, delta.z)));
+                mc.player.setXRot((float) -Math.toDegrees(Math.atan2(delta.y, delta.horizontalDistance())));
+                pass(parts[1], "real client looking at body=" + entity.getUUID());
+            } else if (parts[0].equals("crouch")) {
+                Minecraft.getInstance().options.keyShift.setDown(Boolean.parseBoolean(parts[1]));
+                record("crouch input=" + parts[1]);
+            } else if (parts[0].equals("attack")) {
+                var mc = Minecraft.getInstance();
+                var entity = mc.level.getEntity(Integer.parseInt(parts[1]));
+                require(entity != null && mc.gameMode != null, "attack target synchronized to client");
+                mc.gameMode.attack(mc.player, entity); mc.player.swing(net.minecraft.world.InteractionHand.MAIN_HAND);
+                record("real attack packet entity=" + entity.getUUID());
+            } else if (parts[0].equals("loot")) {
+                var entity = Minecraft.getInstance().level.getEntity(Integer.parseInt(parts[1]));
+                require(entity instanceof com.zeropointsix.eraser.yuji.YujiMonster, "thief synchronized to both clients");
+                var stack = ((com.zeropointsix.eraser.yuji.YujiMonster) entity).displayedLoot();
+                require(stack.is(net.minecraft.world.item.Items.DIAMOND) && stack.getCount() == 37 && stack.hasTag()
+                        && stack.getTag().getString("YujiReceipt").equals("a70-real-client-property"), "complete stolen stack synchronized");
+                pass("theft-loot", "count/NBT observed in synchronized loot=" + stack.save(new net.minecraft.nbt.CompoundTag()));
             } else if (parts[0].equals("shot")) shot = parts[1];
             else if (parts[0].equals("done")) { pass("isolation", "two real clients completed isolation and terrain probes"); phase = ""; }
         } catch (Throwable error) { fail(error); }
@@ -95,6 +140,7 @@ public final class YujiIsolationClient {
             if (phase.equals("ready") && ticks == 60) { pass("isolation-ready", "real TCP player=" + mc.player.getUUID()); phase = ""; }
             if ((phase.startsWith("voice") || phase.startsWith("camera")) && ticks == 20) pass("armed-" + phase, "listening before server enables natural AI");
             if (phase.startsWith("camera")) {
+                maxPull = Math.max(maxPull, startX - mc.player.getX());
                 maxTurn = Math.max(maxTurn, Math.abs(Mth.wrapDegrees(mc.player.getYRot() - startYaw)));
                 maxPitch = Math.max(maxPitch, Math.abs(mc.player.getXRot() - startPitch));
                 var effect = mc.player.getEffect(YujiContent.ENTHRALLED.get());

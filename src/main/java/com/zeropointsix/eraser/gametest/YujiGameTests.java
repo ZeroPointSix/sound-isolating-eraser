@@ -56,8 +56,33 @@ public final class YujiGameTests {
             YujiMonster mob = monster(h, kind);
             close(h, mob.getMaxHealth(), kind == YujiKind.TANYU ? 38 : kind.health, "health " + kind);
             h.assertTrue(mob.getAttribute(Attributes.ATTACK_DAMAGE) != null, "safe combat attributes");
+            if (kind == YujiKind.XIEYIN) {
+                close(h, mob.getAttributeValue(Attributes.MOVEMENT_SPEED), .20, "Xieyin movement speed matches monster card");
+            }
             h.assertTrue(!mob.getType().getDescriptionId().isEmpty(), "localized entity");
             mob.discard();
+        }
+        h.succeed();
+    }
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
+    public static void yujiTenMonsterCardAttributes(GameTestHelper h) {
+        YujiKind[] kinds = {YujiKind.YUCHI, YujiKind.SHASHENG, YujiKind.TOUDAO, YujiKind.EKOU,
+                YujiKind.WANGYU, YujiKind.LIANGSHE, YujiKind.XIEYIN, YujiKind.QIYU, YujiKind.TANYU, YujiKind.CHENNU};
+        // Literal card values, with the approved ranged chant and Xieyin giant extension.
+        double[][] expected = {{30, 0, .18, 2, .6, 1.95}, {20, 3, .30, 2, .6, 1.95},
+                {12, 1, .42, 0, .5, .7}, {24, 0, .25, 2, .6, 1.95}, {20, 3, .23, 0, .6, 2.1},
+                {16, 2, .23, 0, .6, 1.6}, {60, 0, .20, 4, 1.8, 6.3}, {20, 4, .25, 0, .6, 2.3},
+                {38, 5, .25, 4, .936, 2.808}, {500, 20, .38, 15, 4.5, 6}};
+        for (int i = 0; i < kinds.length; i++) {
+            YujiMonster mob = monster(h, kinds[i]);
+            try {
+                close(h, mob.getMaxHealth(), expected[i][0], "card health " + kinds[i]);
+                close(h, mob.getAttributeValue(Attributes.ATTACK_DAMAGE), expected[i][1], "card attack " + kinds[i]);
+                close(h, mob.getAttributeValue(Attributes.MOVEMENT_SPEED), expected[i][2], "card speed " + kinds[i]);
+                close(h, mob.getAttributeValue(Attributes.ARMOR), expected[i][3], "card armor " + kinds[i]);
+                close(h, mob.getBbWidth(), expected[i][4], "card collision width " + kinds[i]);
+                close(h, mob.getBbHeight(), expected[i][5], "card collision height " + kinds[i]);
+            } finally { mob.discard(); }
         }
         h.succeed();
     }
@@ -342,6 +367,25 @@ public final class YujiGameTests {
         h.assertTrue(YujiAfflictions.cramped(p), "opposing two-high walls crush"); h.succeed();
     }
     @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
+    public static void yujiCrushRejectsNonFullCollisionShapes(GameTestHelper h) {
+        YujiMonster source = monster(h, YujiKind.XIEYIN); Player p = player(h, source); BlockPos pos = p.blockPosition();
+        h.getLevel().setBlockAndUpdate(pos.east(), Blocks.IRON_BARS.defaultBlockState());
+        h.getLevel().setBlockAndUpdate(pos.west(), Blocks.IRON_BARS.defaultBlockState());
+        h.getLevel().setBlockAndUpdate(pos.east().above(), Blocks.IRON_BARS.defaultBlockState());
+        h.getLevel().setBlockAndUpdate(pos.west().above(), Blocks.IRON_BARS.defaultBlockState());
+        h.assertTrue(!YujiAfflictions.cramped(p), "iron bars are not solid squeeze walls");
+        h.getLevel().setBlockAndUpdate(pos.east(), Blocks.OAK_FENCE.defaultBlockState());
+        h.getLevel().setBlockAndUpdate(pos.west(), Blocks.OAK_FENCE.defaultBlockState());
+        h.getLevel().setBlockAndUpdate(pos.east().above(), Blocks.OAK_FENCE.defaultBlockState());
+        h.getLevel().setBlockAndUpdate(pos.west().above(), Blocks.OAK_FENCE.defaultBlockState());
+        h.assertTrue(!YujiAfflictions.cramped(p), "fences are not solid squeeze walls");
+        h.getLevel().setBlockAndUpdate(pos.east(), Blocks.STONE.defaultBlockState());
+        h.getLevel().setBlockAndUpdate(pos.west(), Blocks.STONE.defaultBlockState());
+        h.getLevel().setBlockAndUpdate(pos.east().above(), Blocks.STONE.defaultBlockState());
+        h.getLevel().setBlockAndUpdate(pos.west().above(), Blocks.STONE.defaultBlockState());
+        h.assertTrue(YujiAfflictions.cramped(p), "full blocks still crush"); h.succeed();
+    }
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
     public static void yujiWeaknessShortRefreshStillOwned(GameTestHelper h) {
         YujiMonster source = monster(h, YujiKind.WANGYU); Player p = player(h, source);
         YujiAfflictions.weakness(p, source, 400, 1); YujiAfflictions.weakness(p, source, 160, 1);
@@ -429,6 +473,10 @@ public final class YujiGameTests {
         h.assertTrue(ghast.targetSelector.getAvailableGoals().stream().anyMatch(g ->
                 g.getGoal().getClass().getEnclosingClass() == YujiAfflictions.class && g.getFlags().contains(Goal.Flag.TARGET)),
                 "only native targeting is locked"); h.succeed();
+    }
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji_betrayal_species", timeoutTicks = 600)
+    public static void yujiBetrayalGoatUsesNativeRamNotMelee(GameTestHelper h) {
+        YujiBetrayalSpeciesGameTests.naturallyRamsAndLastSourceRestores(h);
     }
     @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
     public static void yujiResistancesAndBossImmunity(GameTestHelper h) {
@@ -525,6 +573,144 @@ public final class YujiGameTests {
         method.setAccessible(true);
         method.invoke(mob);
     }
+
+    private static net.minecraftforge.common.util.FakePlayer voicePlayer(GameTestHelper h, YujiMonster source) {
+        var p = net.minecraftforge.common.util.FakePlayerFactory.get(h.getLevel(),
+                new com.mojang.authlib.GameProfile(UUID.randomUUID(), "YujiVoiceFixture"));
+        p.setGameMode(net.minecraft.world.level.GameType.SURVIVAL);
+        p.moveTo(source.getX() - 12, source.getY(), source.getZ());
+        p.setNoGravity(true);
+        h.getLevel().addNewPlayer(p);
+        h.assertTrue(h.getLevel().getPlayerByUUID(p.getUUID()) == p, "voice recipient is queryable in the real server level");
+        return p;
+    }
+
+    private record VoiceFixture(YujiMonster source, java.util.Map<BlockPos, net.minecraft.world.level.block.state.BlockState> blocks) {
+        void restore() {
+            blocks.forEach((pos, state) -> source.level().setBlock(pos, state, 2));
+            source.discard();
+        }
+    }
+
+    private static VoiceFixture voiceSource(GameTestHelper h) throws ReflectiveOperationException {
+        YujiMonster source = monster(h, YujiKind.WANGYU);
+        source.moveTo(source.getX(), h.getLevel().getMaxBuildHeight() - 32, source.getZ());
+        BlockPos center = source.blockPosition().west(12);
+        var blocks = new java.util.HashMap<BlockPos, net.minecraft.world.level.block.state.BlockState>();
+        // An enclosed listener makes every sampled 6-10 block voice source occluded.
+        for (BlockPos pos : BlockPos.betweenClosed(center.offset(-5, 0, -5), center.offset(5, 4, 5))) {
+            blocks.put(pos.immutable(), h.getLevel().getBlockState(pos));
+            boolean wall = Math.abs(pos.getX() - center.getX()) == 4 || Math.abs(pos.getZ() - center.getZ()) == 4;
+            h.getLevel().setBlock(pos, wall ? Blocks.STONE.defaultBlockState() : Blocks.AIR.defaultBlockState(), 2);
+        }
+        var cooldown = YujiMonster.class.getDeclaredField("skillCooldown");
+        cooldown.setAccessible(true); cooldown.setInt(source, 10000);
+        return new VoiceFixture(source, blocks);
+    }
+
+    private static net.minecraft.world.phys.Vec3 emitVoice(YujiMonster source) throws ReflectiveOperationException {
+        var method = YujiMonster.class.getDeclaredMethod("mimic");
+        method.setAccessible(true); method.invoke(source);
+        var point = YujiMonster.class.getDeclaredField("falseVoice");
+        point.setAccessible(true);
+        return (net.minecraft.world.phys.Vec3) point.get(source);
+    }
+
+    private static void faceVoice(Player p, net.minecraft.world.phys.Vec3 point, boolean toward) {
+        var direction = point.subtract(p.getEyePosition()).normalize().scale(toward ? 1 : -1);
+        p.setYRot((float) Math.toDegrees(Math.atan2(direction.z, direction.x)) - 90);
+        p.setXRot((float) -Math.toDegrees(Math.asin(direction.y)));
+    }
+
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
+    public static void yujiFakeVoiceReactionStaysWithRecipient(GameTestHelper h) throws ReflectiveOperationException {
+        var fixture = voiceSource(h); YujiMonster source = fixture.source();
+        var first = voicePlayer(h, source); var second = voicePlayer(h, source);
+        try {
+            source.setTarget(first);
+            var point = emitVoice(source);
+            h.assertTrue(point != null && first.hasEffect(MobEffects.WEAKNESS), "real mimic emits to first recipient");
+            h.assertTrue(first.getEffect(MobEffects.WEAKNESS).getAmplifier() == 0, "first unheard source starts at weakness I");
+            faceVoice(first, point, false); faceVoice(second, point, true);
+            source.setTarget(second); boundaryStep(source);
+            h.assertTrue(source.getTarget() == second, "replacement remains the actual AI target");
+            h.assertTrue(!second.hasEffect(MobEffects.WEAKNESS), "replacement target cannot react to another player's fake sound");
+            faceVoice(first, point, true); boundaryStep(source);
+            h.assertTrue(first.getEffect(MobEffects.WEAKNESS).getAmplifier() == 1, "original listener can still react after AI retargets");
+        } finally { first.discard(); second.discard(); fixture.restore(); }
+        h.succeed();
+    }
+
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
+    public static void yujiFakeVoiceMissesDoNotCrossRecipients(GameTestHelper h) throws ReflectiveOperationException {
+        var fixture = voiceSource(h); YujiMonster source = fixture.source();
+        var first = voicePlayer(h, source); var second = voicePlayer(h, source);
+        try {
+            source.setTarget(first); emitVoice(source); emitVoice(source);
+            h.assertTrue(first.hasEffect(MobEffects.WEAKNESS) && first.getEffect(MobEffects.WEAKNESS).getAmplifier() == 0,
+                    "two missed sounds do not yet reach the third-sound threshold");
+            source.setTarget(second); emitVoice(source);
+            h.assertTrue(second.hasEffect(MobEffects.WEAKNESS) && second.getEffect(MobEffects.WEAKNESS).getAmplifier() == 0,
+                    "new recipient does not inherit the first listener's two misses");
+            emitVoice(source); emitVoice(source);
+            h.assertTrue(second.getEffect(MobEffects.WEAKNESS).getAmplifier() == 1
+                    && state(second, "weakness", source).getInt("Remaining") == 400,
+                    "three actual missed sounds still give weakness II for twenty seconds");
+        } finally { first.discard(); second.discard(); fixture.restore(); }
+        h.succeed();
+    }
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
+    public static void yujiFakeVoiceFindingBodyResetsMissStreak(GameTestHelper h) throws ReflectiveOperationException {
+        var fixture = voiceSource(h); YujiMonster source = fixture.source();
+        var listener = voicePlayer(h, source);
+        try {
+            source.setTarget(listener);
+            var misses = YujiMonster.class.getDeclaredField("missedVoices");
+            misses.setAccessible(true);
+            faceVoice(listener, source.getEyePosition(), false);
+            h.assertTrue(emitVoice(source) != null && emitVoice(source) != null, "two occluded voices actually emit");
+            h.assertTrue(misses.getInt(source) == 2, "two missed voices accumulate");
+            h.assertTrue(listener.getEffect(MobEffects.WEAKNESS).getAmplifier() == 0, "two misses stay at weakness I");
+            BlockPos center = source.blockPosition().west(12);
+            for (BlockPos pos : BlockPos.betweenClosed(center.offset(4, 0, -5), center.offset(4, 4, 5)))
+                h.getLevel().setBlock(pos.immutable(), Blocks.AIR.defaultBlockState(), 2);
+            faceVoice(listener, source.getEyePosition(), true);
+            listener.setYHeadRot(listener.getYRot());
+            h.assertTrue(source.hasLineOfSight(listener), "listener can see the body between voices");
+            boundaryStep(source);
+            h.assertTrue(misses.getInt(source) == 0, "seeing the body between voices resets the miss streak");
+            emitVoice(source);
+            h.assertTrue(state(listener, "weakness", source).getInt("Remaining") != 400
+                            || listener.getEffect(MobEffects.WEAKNESS).getAmplifier() == 0,
+                    "finding the body prevents the 20-second weakness II streak");
+        } finally { listener.discard(); fixture.restore(); }
+        h.succeed();
+    }
+
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
+    public static void yujiFakeVoiceWindowExpiresWithoutTarget(GameTestHelper h) throws ReflectiveOperationException {
+        var fixture = voiceSource(h); YujiMonster source = fixture.source();
+        var listener = voicePlayer(h, source);
+        try {
+            source.setTarget(listener); var point = emitVoice(source);
+            h.assertTrue(point != null && listener.hasEffect(MobEffects.WEAKNESS), "real mimic opens a reaction window");
+            var window = YujiMonster.class.getDeclaredField("voiceWindow");
+            window.setAccessible(true);
+            h.assertTrue(window.getInt(source) == 40, "reaction window begins at forty ticks");
+            var start = listener.position();
+            listener.moveTo(start.add(100, 0, 0)); faceVoice(listener, point, false); source.setTarget(null);
+            for (int tick = 0; tick < 40; tick++) {
+                boundaryStep(source);
+                h.assertTrue(source.getTarget() == null, "listener stays outside automatic target acquisition");
+            }
+            h.assertTrue(window.getInt(source) == 0, "reaction window expires after forty production AI steps without a target");
+            listener.moveTo(start); faceVoice(listener, point, true); source.setTarget(listener); boundaryStep(source);
+            h.assertTrue(listener.getEffect(MobEffects.WEAKNESS).getAmplifier() == 0,
+                    "lost AI target cannot pause the two-second reaction deadline");
+        } finally { listener.discard(); fixture.restore(); }
+        h.succeed();
+    }
+
     private static void greedBiteSound(GameTestHelper h, boolean inReach) throws ReflectiveOperationException {
         YujiMonster greed = monster(h, YujiKind.TANYU);
         // Test grids may start underground; a relative +64 can still leave the real hit ray in terrain.
@@ -749,7 +935,8 @@ public final class YujiGameTests {
         // A private floor high above the batch grid: summons land 2-4 blocks out, beyond this tiny template.
         qiyu.moveTo(qiyu.getX(), Math.floor(qiyu.getY()) + 64, qiyu.getZ());
         summonFloor(h, qiyu, Blocks.STONE.defaultBlockState());
-        try {
+        try (var ignored = GameTestConfigs.sandbox(YujiConfig.SPEC)) {
+            YujiConfig.QIYU_SUMMONING.set(true);
             int total = 0;
             for (int cast = 0; cast < 8; cast++) total += qiyu.summonAllies();
             h.assertTrue(total == YujiMonster.SUMMON_CAP, "summons fill exactly to the cap: " + total);
@@ -766,13 +953,16 @@ public final class YujiGameTests {
             h.assertTrue(qiyu.summonAllies() == 1, "refills only the freed slot");
             for (YujiMonster s : h.getLevel().getEntitiesOfClass(YujiMonster.class, qiyu.getBoundingBox().inflate(32), y -> qiyu.getUUID().equals(y.summoner()))) s.discard();
             h.succeed();
-        } finally { summonFloor(h, qiyu, Blocks.AIR.defaultBlockState()); }
+        } finally {
+            summonFloor(h, qiyu, Blocks.AIR.defaultBlockState());
+        }
     }
     @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
     public static void yujiQiyuNeedsAudienceAndNotPeaceful(GameTestHelper h) {
         YujiMonster qiyu = monster(h, YujiKind.QIYU);
         var server = h.getLevel().getServer(); var difficulty = h.getLevel().getDifficulty();
-        try {
+        try (var ignored = GameTestConfigs.sandbox(YujiConfig.SPEC)) {
+            YujiConfig.QIYU_SUMMONING.set(true);
             server.setDifficulty(net.minecraft.world.Difficulty.NORMAL, true);
             h.assertTrue(!qiyu.canSummon(), "no summoning without a target or nearby player");
             var cow = h.spawn(EntityType.COW, new BlockPos(3, 2, 2)); cow.setNoAi(true);
@@ -780,7 +970,100 @@ public final class YujiGameTests {
             server.setDifficulty(net.minecraft.world.Difficulty.PEACEFUL, true);
             h.assertTrue(!qiyu.canSummon(), "never summons on peaceful");
             h.succeed();
-        } finally { server.setDifficulty(difficulty, true); }
+        } finally {
+            server.setDifficulty(difficulty, true);
+        }
+    }
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
+    public static void yujiQiyuRechecksAudienceWhenCastLands(GameTestHelper h) throws ReflectiveOperationException {
+        YujiMonster qiyu = monster(h, YujiKind.QIYU);
+        qiyu.moveTo(qiyu.getX(), Math.floor(qiyu.getY()) + 64, qiyu.getZ());
+        summonFloor(h, qiyu, Blocks.STONE.defaultBlockState());
+        var server = h.getLevel().getServer();
+        var difficulty = h.getLevel().getDifficulty();
+        try (var ignored = GameTestConfigs.sandbox(YujiConfig.SPEC)) {
+            YujiConfig.QIYU_SUMMONING.set(true);
+            server.setDifficulty(net.minecraft.world.Difficulty.NORMAL, true);
+            var cow = h.spawn(EntityType.COW, new BlockPos(2, 2, 2));
+            cow.setNoAi(true); cow.setNoGravity(true);
+            cow.moveTo(qiyu.position().add(0, 0, 4));
+            qiyu.setTarget(cow);
+            h.assertTrue(qiyu.canSummon(), "valid audience before delayed cast");
+            qiyu.begin("summon", 30, cow);
+            cow.discard();
+            qiyu.setTarget(null);
+            for (int tick = 0; tick <= 18; tick++) boundaryStep(qiyu);
+            h.assertTrue(qiyu.livingSummons() == 0, "lost audience cancels delayed summon");
+            var next = h.spawn(EntityType.COW, new BlockPos(3, 2, 2));
+            next.setNoAi(true); next.setNoGravity(true);
+            next.moveTo(qiyu.position().add(0, 0, 4));
+            qiyu.setTarget(next);
+            h.assertTrue(qiyu.canSummon(), "positive control still requires a live audience");
+            qiyu.begin("summon", 30, next);
+            for (int tick = 0; tick < 18; tick++) boundaryStep(qiyu);
+            h.assertTrue(qiyu.livingSummons() == 0, "summoning waits until action tick 18");
+            boundaryStep(qiyu);
+            h.assertTrue(qiyu.livingSummons() > 0, "landing with a live audience still summons");
+            next.discard();
+            for (var ally : h.getLevel().getEntitiesOfClass(YujiMonster.class, qiyu.getBoundingBox().inflate(32),
+                    y -> qiyu.getUUID().equals(y.summoner()))) ally.discard();
+            h.succeed();
+        } finally {
+            server.setDifficulty(difficulty, true);
+            summonFloor(h, qiyu, Blocks.AIR.defaultBlockState());
+            qiyu.discard();
+        }
+    }
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
+    public static void yujiQiyuSummoningDefaultsOffAndKeepsBuffs(GameTestHelper h) throws ReflectiveOperationException {
+        h.assertTrue(!YujiConfig.QIYU_SUMMONING.getDefault(), "summoning extension defaults off");
+        YujiMonster qiyu = monster(h, YujiKind.QIYU), ally = monster(h, YujiKind.YUCHI);
+        var cow = h.spawn(EntityType.COW, new BlockPos(3, 2, 2));
+        cow.setNoAi(true); qiyu.setTarget(cow);
+        try (var ignored = GameTestConfigs.sandbox(YujiConfig.SPEC)) {
+            YujiConfig.QIYU_SUMMONING.set(false);
+            h.assertTrue(!qiyu.canSummon(), "disabled summoning rejects a live audience");
+            h.assertTrue(qiyu.summonAllies() == 0, "disabled summoning rejects direct calls");
+            qiyu.begin("summon", 30, cow);
+            for (int tick = 0; tick < 31; tick++) boundaryStep(qiyu);
+            h.assertTrue(qiyu.livingSummons() == 0, "disabled summoning cannot land");
+            qiyu.begin("bless", 30, null);
+            for (int tick = 0; tick <= 15; tick++) boundaryStep(qiyu);
+            h.assertTrue(ally.hasEffect(MobEffects.DAMAGE_BOOST) && ally.hasEffect(MobEffects.MOVEMENT_SPEED)
+                    && ally.hasEffect(MobEffects.DAMAGE_RESISTANCE) && ally.hasEffect(MobEffects.REGENERATION),
+                    "disabled summoning preserves all four ally buffs");
+            h.succeed();
+        } finally {
+            qiyu.discard(); ally.discard(); cow.discard();
+        }
+    }
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
+    public static void yujiQiyuRechecksDisabledConfigWhenCastLands(GameTestHelper h) throws ReflectiveOperationException {
+        YujiMonster qiyu = monster(h, YujiKind.QIYU);
+        qiyu.moveTo(qiyu.getX(), Math.floor(qiyu.getY()) + 64, qiyu.getZ());
+        summonFloor(h, qiyu, Blocks.STONE.defaultBlockState());
+        var cow = h.spawn(EntityType.COW, new BlockPos(3, 2, 2));
+        cow.setNoAi(true); cow.setNoGravity(true); cow.moveTo(qiyu.position().add(0, 0, 4));
+        qiyu.setTarget(cow);
+        try (var ignored = GameTestConfigs.sandbox(YujiConfig.SPEC)) {
+            YujiConfig.QIYU_SUMMONING.set(true);
+            h.assertTrue(qiyu.canSummon(), "summoning enabled at cast start");
+            qiyu.begin("summon", 30, cow);
+            for (int tick = 0; tick < 18; tick++) boundaryStep(qiyu);
+            YujiConfig.QIYU_SUMMONING.set(false);
+            boundaryStep(qiyu);
+            h.assertTrue(qiyu.livingSummons() == 0, "disabling before tick 18 cancels pending summon");
+            YujiConfig.QIYU_SUMMONING.set(true);
+            qiyu.begin("summon", 30, cow);
+            for (int tick = 0; tick <= 18; tick++) boundaryStep(qiyu);
+            h.assertTrue(qiyu.livingSummons() > 0, "re-enabled summoning still lands with a live audience");
+            h.succeed();
+        } finally {
+            for (var child : h.getLevel().getEntitiesOfClass(YujiMonster.class, qiyu.getBoundingBox().inflate(32),
+                    y -> qiyu.getUUID().equals(y.summoner()))) child.discard();
+            summonFloor(h, qiyu, Blocks.AIR.defaultBlockState());
+            qiyu.discard(); cow.discard();
+        }
     }
     @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji", timeoutTicks = 60)
     public static void yujiQiyuBlessBuffsNearbyAllies(GameTestHelper h) {

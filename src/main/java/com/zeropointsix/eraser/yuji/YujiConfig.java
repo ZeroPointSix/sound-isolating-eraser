@@ -5,6 +5,7 @@ import net.minecraftforge.common.ForgeConfigSpec;
 public final class YujiConfig {
     public static final ForgeConfigSpec SPEC;
     public static final ForgeConfigSpec.BooleanValue AFFECT_PETS, AFFECT_VILLAGERS, CAMERA_TURN;
+    public static final ForgeConfigSpec.BooleanValue QIYU_SUMMONING;
     public static final ForgeConfigSpec.DoubleValue HOSTILE_BUFF, PULL_STRENGTH, MAX_CURSE_DAMAGE;
     public static final ForgeConfigSpec.IntValue MAX_LAYERS;
     static {
@@ -20,6 +21,9 @@ public final class YujiConfig {
         MAX_CURSE_DAMAGE = b.defineInRange("maxDamage", 3., 1, 20);
         b.pop().push("tanyu");
         MAX_LAYERS = b.defineInRange("maxLayers", 12, 1, 12);
+        b.pop().push("qiyu");
+        QIYU_SUMMONING = b.comment("Optional summoning extension; flute audio and ally buffs remain active when disabled.")
+                .define("summoning", false);
         b.pop();
         com.zeropointsix.eraser.yuji.flare.FlareConfig.define(b);
         SPEC = b.build();

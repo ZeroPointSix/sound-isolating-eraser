@@ -12,7 +12,7 @@ public enum YujiKind {
     EKOU(24, 0, .25, 2, .6F, 1.95F, 0x888A88, 0x6E141A),
     WANGYU(20, 3, .23, 0, .6F, 2.1F, 0xC6BAA8, 0x96505A),
     LIANGSHE(16, 2, .23, 0, .6F, 1.6F, 0xB4A696, 0xB04654),
-    XIEYIN(60, 0, .18, 4, .6F, 2.1F, 0xE2DCD6, 0x141216),
+    XIEYIN(60, 0, .20, 4, .6F, 2.1F, 0xE2DCD6, 0x141216),
     QIYU(20, 4, .25, 0, .6F, 2.3F, 0xCEC8C4, 0x141216),
     TANYU(38, 5, .25, 4, .9F, 2.7F, 0x84827E, 0x3A3634),
     CHENNU(500, 20, .38, 15, 4.5F, 6, 0x18161A, 0xD22818),

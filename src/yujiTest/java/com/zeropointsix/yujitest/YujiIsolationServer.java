@@ -1,6 +1,7 @@
 package com.zeropointsix.yujitest;
 
 import com.zeropointsix.eraser.yuji.YujiContent;
+import com.zeropointsix.eraser.yuji.YujiConfig;
 import com.zeropointsix.eraser.yuji.YujiKind;
 import com.zeropointsix.eraser.yuji.YujiMonster;
 import java.nio.file.Files;
@@ -10,14 +11,19 @@ import java.util.HashSet;
 import java.util.Set;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.animal.Panda;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameRules;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
@@ -35,13 +41,17 @@ public final class YujiIsolationServer {
     private static final Path RESULTS = Path.of(System.getProperty("yuji.qa.results"));
     private static final Set<BlockPos> terrain = new HashSet<>();
     private static String stage = "waiting", item;
-    private static int ticks, round, contacts, collisionTicks;
+    private static int ticks, round, contacts, collisionTicks, crouchTicks, voiceCooldownAtDiscovery;
     private static boolean failed, complete, ringBuilt, voiceWeaknessObserved;
     private static YujiMonster current;
     private static Panda panda;
     private static float pandaDamage;
     private static float clearedDamage;
     private static double highest, furthest;
+    private static Vec3 habitatStart;
+    private static Vec3 cameraStart;
+    private static final boolean CAMERA_TURN = Boolean.parseBoolean(System.getProperty("yuji.qa.cameraTurn", "true"));
+    private static ItemStack stolen;
     private static boolean enabled() { return Boolean.getBoolean("yuji.qa.isolation"); }
     private static void require(boolean condition, String message) { if (!condition) throw new AssertionError(message); }
     private static void log(String text) throws Exception {
@@ -84,6 +94,10 @@ public final class YujiIsolationServer {
     }
     @SubscribeEvent public static void prepare(ServerStartedEvent event) {
         if (!enabled()) return;
+        try {
+            require(YujiConfig.CAMERA_TURN.get() == CAMERA_TURN, "server must load requested cameraTurn from the real TOML config");
+            log("loaded server config cameraTurn=" + YujiConfig.CAMERA_TURN.get());
+        } catch (Throwable error) { fail(error); return; }
         var server = event.getServer(); var level = server.overworld(); server.setDifficulty(Difficulty.NORMAL, true);
         level.getGameRules().getRule(GameRules.RULE_DOMOBSPAWNING).set(false, server);
         level.getGameRules().getRule(GameRules.RULE_NATURAL_REGENERATION).set(false, server);
@@ -135,17 +149,46 @@ public final class YujiIsolationServer {
                 case "voice-proof" -> {
                     if (!ready(item, a) || !ready(item, b) || !ready("shot-" + item, a) || !ready("shot-" + item, b)) return;
                     pass(item, "natural target=" + victim.getUUID() + "; adjacent witness=" + witness.getUUID() + "; both actual sound engines checked");
+                    require(voiceCounter("missedVoices") == 2, "two naturally missed voices precede body discovery");
+                    for (BlockPos pos : BlockPos.betweenClosed(-4, 65, 5, 4, 68, 5)) block(level, pos, Blocks.AIR.defaultBlockState());
+                    item = "voice-found-" + round;
+                    signal(victim, "face:" + item + ":" + current.getId()); next("voice-find-arm");
+                }
+                case "voice-find-arm" -> {
+                    Vec3 toward = current.getEyePosition().subtract(victim.getEyePosition()).normalize();
+                    if (!ready(item, victim) || !victim.hasLineOfSight(current) || victim.getViewVector(1).dot(toward) < .99) return;
+                    require(voiceCounter("missedVoices") == 2, "fixture has not reset the production streak");
+                    voiceCooldownAtDiscovery = voiceCounter("skillCooldown");
+                    require(voiceCooldownAtDiscovery > 10, "body is discovered between sounds, not during another emission");
+                    current.setNoAi(false); next("voice-find");
+                }
+                case "voice-find" -> {
+                    if (ticks == 10) {
+                        require(voiceCounter("missedVoices") == 0, "seeing the real body between sounds must reset consecutive misses");
+                        require(voiceCounter("skillCooldown") == voiceCooldownAtDiscovery - 10, "no mimic call or forced AI steps reset the counter");
+                        require(!witness.hasEffect(MobEffects.WEAKNESS), "body discovery must not affect the other listener");
+                        current.setNoAi(true);
+                        pass(item, "two natural misses -> real TCP look input -> zero misses after ten server ticks, without a new sound");
+                        signalBoth(a, b, "shot:" + item); next("voice-find-proof");
+                    }
+                }
+                case "voice-find-proof" -> {
+                    if (!ready("shot-" + item, a) || !ready("shot-" + item, b)) return;
                     if (++round < 2) beginVoice(b, a); else { round = 0; beginCamera(a, b); }
                 }
                 case "camera" -> {
                     if (ticks == 180) {
+                        require(YujiConfig.CAMERA_TURN.get() == CAMERA_TURN, "camera config stays active throughout natural lure");
+                        var effect = victim.getEffect(YujiContent.ENTHRALLED.get());
+                        require(effect != null && effect.getAmplifier() >= 1 && cameraStart.x - victim.getX() > .3,
+                                "camera option preserves natural II/III lure and movement toward source");
                         require(!witness.hasEffect(YujiContent.ENTHRALLED.get()), "outside-range witness must not be enthralled");
                         signalBoth(a, b, "check"); current.setNoAi(true); next("camera-proof");
                     }
                 }
                 case "camera-proof" -> {
                     if (!ready(item, a) || !ready(item, b) || !ready("shot-" + item, a) || !ready("shot-" + item, b)) return;
-                    pass(item, "natural source; actual client yaw/effect probes, victim=" + victim.getUUID() + "; witness=" + witness.getUUID());
+                    pass(item, "cameraTurn=" + CAMERA_TURN + "; natural source; actual client yaw/effect probes, victim=" + victim.getUUID() + "; witness=" + witness.getUUID() + "; pull=" + (cameraStart.x - victim.getX()));
                     current.discard(); next("camera-release");
                 }
                 case "camera-release" -> {
@@ -163,9 +206,18 @@ public final class YujiIsolationServer {
                     if (++round < 2) beginCamera(b, a); else { round = 0; beginDoor(a, b); }
                 }
                 case "door-acquire" -> {
-                    if (current.getTarget() == a) { door(level, false); next("door-closed"); }
+                    var doorPos = new BlockPos(0, 65, 6);
+                    var closed = level.getBlockState(doorPos).setValue(DoorBlock.OPEN, false);
+                    double barrier = doorPos.getZ() + closed.getCollisionShape(level, doorPos).bounds().minZ;
+                    double front = current.getBoundingBox().maxZ;
+                    if (current.getTarget() == a && front >= barrier - .35) {
+                        require(front < barrier && level.noCollision(current), "mob reached door before it closes, without overlap");
+                        require(round == 0 || current.crawling(), "second door round must actually crawl");
+                        log(item + " reached barrier naturally: front=" + front + "; barrier=" + barrier + "; ticks=" + ticks);
+                        door(level, false); contacts = 0; next("door-closed");
+                    }
                 }
-                case "door-closed" -> {
+                case "door-closed", "door-contact-hold" -> {
                     var doorPos = new BlockPos(0, 65, 6);
                     var doorState = level.getBlockState(doorPos);
                     require(!doorState.getValue(DoorBlock.OPEN), "husk opened door");
@@ -173,10 +225,29 @@ public final class YujiIsolationServer {
                     double barrier = doorPos.getZ() + doorState.getCollisionShape(level, doorPos).bounds().minZ;
                     require(current.getBoundingBox().maxZ <= barrier + .001 && level.noCollision(current),
                             "husk crossed closed door: box=" + current.getBoundingBox() + " barrier=" + barrier);
+                    double gap = barrier - current.getBoundingBox().maxZ;
+                    if (current.horizontalCollision && Math.abs(gap) <= .001) contacts++;
+                    require(round == 0 || current.crawling(), "blocked second-round husk stays in crawling pose");
+                    require(current.getTarget() == a, "blocked husk retains the real player target");
+                    if (stage.equals("door-contact-hold")) {
+                        require(Math.abs(gap) <= .001, "crawling husk stays at the door after actual contact: gap=" + gap);
+                        require(!current.isNoAi() && !current.isNoGravity(), "door hold preserves natural AI and gravity");
+                        require(a.getHealth() == 400, "contact hold remains harmless");
+                    }
                     if (ticks == 180) {
                         require(current.getZ() > 1.5, "husk actually approached barrier");
+                        require(gap <= .35, "blocked husk remains at the actual door collision plane");
+                        require(round == 0 || (Math.abs(gap) <= .001 && contacts > 0),
+                                "crawling husk physically contacts the closed door: gap=" + gap + "; contactTicks=" + contacts);
                         require(a.getHealth() == 400, "husk never damages player");
-                        pass(item + "-closed", "z=" + current.getZ() + "; closed door blocked naturally pursuing husk; crawling=" + current.crawling());
+                        if (round == 1 && stage.equals("door-closed")) {
+                            log(item + " confirmed physical contact; begin 180 additional contact-hold ticks");
+                            next("door-contact-hold");
+                            return;
+                        }
+                        pass(item + "-closed", "z=" + current.getZ() + "; barrier=" + barrier + "; gap=" + gap
+                                + "; observed 180 blocked ticks; postContactHoldTicks=" + (round == 1 ? ticks : 0)
+                                + "; crawling=" + current.crawling() + "; doorContactTicks=" + contacts);
                         signalBoth(a, b, "shot:" + item + "-closed"); next("door-proof");
                     }
                 }
@@ -250,7 +321,96 @@ public final class YujiIsolationServer {
                     require(pandaDamage == clearedDamage && panda.getTarget() != a, "no panda attacks after restored state");
                     if (ticks == 60) {
                         pass("panda-clear", "removed source clears target and influence; no lingering hostility");
-                        clear(level); pass("isolation", "both recipient roles, actual audio/camera, standing/crawling doors, wall/corner/overhang and panda passed");
+                        round = 0; beginHabitat(a, b);
+                    }
+                }
+                case "habitat-seek" -> {
+                    require(level.noCollision(current) && !current.isNoAi() && !current.isNoGravity(), "habitat movement uses full-body collision, real AI and gravity");
+                    if (ticks % 20 == 0) log(item + " tick=" + ticks + " pos=" + current.position() + " target=" + current.getTarget());
+                    if (insideHabitat(level)) {
+                        require(current.position().distanceToSqr(habitatStart) > 25, "habitat reached by actual displacement");
+                        if (round == 1) require(Math.abs(current.getBbWidth() - 1.8) < .001 && Math.abs(current.getBbHeight() - 6.3) < .001,
+                                "Xieyin retains giant collision dimensions");
+                        next("habitat-hold");
+                    }
+                }
+                case "habitat-hold" -> {
+                    require(insideHabitat(level) && level.noCollision(current), "entire mob remains inside usable habitat, not beside its walls");
+                    if (ticks == 80) {
+                        require(a.hasEffect(round == 0 ? YujiContent.BETRAYED.get() : YujiContent.ENTHRALLED.get()), "habitat goal must not suppress natural aura");
+                        pass(item, "real navigation " + habitatStart + " -> " + current.position() + "; full body=" + current.getBoundingBox()
+                                + "; held 80 ticks; natural aura on TCP player=" + a.getUUID());
+                        signalBoth(a, b, "habitat:" + item + ":" + current.getId() + ":" + (round == 0 ? 9 : 7));
+                        next("habitat-proof");
+                    }
+                }
+                case "habitat-proof" -> {
+                    if (!ready(item, a) || !ready(item, b) || !ready("shot-" + item, a) || !ready("shot-" + item, b)) return;
+                    if (round == 0) { round = 1; beginHabitat(a, b); }
+                    else next("crouch-arm");
+                }
+                case "crouch-arm" -> {
+                    var data = a.getPersistentData().getCompound("QihaiAfflictions");
+                    if (a.hasEffect(YujiContent.ENTHRALLED.get()) && a.getEffect(YujiContent.ENTHRALLED.get()).getAmplifier() == 2) {
+                        require(!a.isShiftKeyDown() && data.getInt("SneakCooldown") == 0 && data.getInt("Sneaking") == 0,
+                                "partial-release probe starts at III without prior crouch or cooldown");
+                        crouchTicks = 0; signal(a, "crouch:true"); next("crouch-partial");
+                    }
+                }
+                case "crouch-partial" -> {
+                    var data = a.getPersistentData().getCompound("QihaiAfflictions");
+                    crouchTicks = a.isShiftKeyDown() ? crouchTicks + 1 : 0;
+                    if (data.getInt("SneakCooldown") > 0) {
+                        require(a.isShiftKeyDown(), "real client sends crouch input");
+                        require(crouchTicks == 40, "first partial release requires exactly 40 continuous real crouch ticks: " + crouchTicks);
+                        require(a.hasEffect(YujiContent.ENTHRALLED.get()) && a.getEffect(YujiContent.ENTHRALLED.get()).getAmplifier() == 1,
+                                "two seconds crouching reduces III to II without clearing the live source");
+                        require(current.isAlive() && current.distanceToSqr(a) <= 256, "partial release occurs within live aura");
+                        pass("xieyin-crouch-partial", "TCP crouch reduced III to II at tick=" + crouchTicks + "; cooldown=" + data.getInt("SneakCooldown") + "; player=" + a.getUUID());
+                        signal(a, "crouch:false"); beginTheft(a, b);
+                    } else {
+                        require(crouchTicks < 40 && a.hasEffect(YujiContent.ENTHRALLED.get())
+                                && a.getEffect(YujiContent.ENTHRALLED.get()).getAmplifier() == 2,
+                                "III remains until the 40th continuous crouch tick: " + crouchTicks);
+                    }
+                }
+                case "theft-snatch" -> {
+                    if (!current.displayedLoot().isEmpty()) {
+                        require(ItemStack.matches(current.displayedLoot(), stolen), "natural theft keeps count 37 and custom NBT");
+                        require(a.getInventory().getItem(0).isEmpty() && a.getItemBySlot(EquipmentSlot.CHEST).is(Items.DIAMOND_CHESTPLATE), "inventory stack removed but worn armor preserved");
+                        pass("theft-natural-stack", "real player inventory -> natural snatch; exact stack=" + stolen.save(new CompoundTag()));
+                        next("theft-sync");
+                    }
+                }
+                case "theft-sync" -> {
+                    if (ticks == 20) { signalBoth(a, b, "loot:" + current.getId()); next("theft-client-proof"); }
+                }
+                case "theft-client-proof" -> {
+                    if (!ready("theft-loot", a) || !ready("theft-loot", b)) return;
+                    CompoundTag saved = new CompoundTag(); current.addAdditionalSaveData(saved); current.discard();
+                    current = spawn(level, YujiKind.TOUDAO, 0, 65, 0, false); current.readAdditionalSaveData(saved);
+                    require(ItemStack.matches(current.displayedLoot(), stolen), "NBT round trip keeps complete stolen property");
+                    current.setHealth(1); current.setNoAi(false); place(a, 0, 65, 2.5, 180);
+                    level.getGameRules().getRule(GameRules.RULE_DOMOBLOOT).set(false, level.getServer());
+                    next("theft-kill");
+                }
+                case "theft-kill" -> {
+                    if (ticks == 30) signal(a, "attack:" + current.getId());
+                    if (!current.isAlive()) {
+                        require(current.getKillCredit() == a, "restored thief was killed by the real client player");
+                        next("theft-return");
+                    }
+                }
+                case "theft-return" -> {
+                    int total = level.getEntitiesOfClass(ItemEntity.class, current.getBoundingBox().inflate(8),
+                            e -> ItemStack.isSameItemSameTags(e.getItem(), stolen)).stream().mapToInt(e -> e.getItem().getCount()).sum();
+                    total += a.getInventory().items.stream().filter(s -> ItemStack.isSameItemSameTags(s, stolen)).mapToInt(ItemStack::getCount).sum();
+                    total += b.getInventory().items.stream().filter(s -> ItemStack.isSameItemSameTags(s, stolen)).mapToInt(ItemStack::getCount).sum();
+                    require(total == 37, "death restitution returns exactly 37 tagged items, not zero/duplicates: " + total);
+                    if (ticks == 40) {
+                        pass("theft-death-return", "real TCP attack killed NBT-restored thief; doMobLoot=false; 37 exact tagged items conserved for 40 ticks; not a disk/server restart test");
+                        level.getGameRules().getRule(GameRules.RULE_DOMOBLOOT).set(true, level.getServer());
+                        clear(level); pass("isolation", "audio/camera, arrived-at-door crawl blocking, terrain, natural habitat, partial crouch release and theft restitution passed");
                         signalBoth(a, b, "done"); complete = true;
                     }
                 }
@@ -263,8 +423,50 @@ public final class YujiIsolationServer {
         current = spawn(victim.serverLevel(), YujiKind.WANGYU, 0, 65, 0, false); ringBuilt = false; voiceWeaknessObserved = false;
         item = "voice-" + round; signalBoth(victim, witness, "start:" + item + ":" + victim.getGameProfile().getName()); next("voice-arm");
     }
+    private static int voiceCounter(String name) throws ReflectiveOperationException {
+        // Observe private production state only; the fixture never writes counters or invokes mimic.
+        var field = YujiMonster.class.getDeclaredField(name); field.setAccessible(true);
+        return field.getInt(current);
+    }
+    private static void beginHabitat(ServerPlayer a, ServerPlayer b) {
+        var level = a.serverLevel(); clear(level);
+        place(a, round == 0 ? 0 : 10, 65, -2, 0); place(b, 15, 65, 3, 90);
+        if (round == 0) {
+            fill(level, -2, 65, 6, -2, 68, 14); fill(level, 2, 65, 6, 2, 68, 14);
+            fill(level, -2, 65, 14, 2, 68, 14); fill(level, -2, 68, 6, 2, 68, 14);
+        } else {
+            fill(level, -1, 65, 6, -1, 72, 13); fill(level, 2, 65, 6, 2, 72, 13);
+            // Isolate habitat movement from player pushing. Pull/camera are exercised in their own stages.
+            place(a, 10.5, 65, -1.5, 0); place(b, 15.5, 65, 3.5, 90);
+            for (BlockPos center : new BlockPos[]{new BlockPos(10, 65, -2), new BlockPos(15, 65, 3)}) {
+                for (BlockPos wall : BlockPos.betweenClosed(center.offset(-1, 0, -1), center.offset(1, 1, 1)))
+                    if (wall.getX() != center.getX() || wall.getZ() != center.getZ())
+                        block(level, wall, Blocks.GLASS.defaultBlockState());
+            }
+            require(level.noCollision(a) && level.noCollision(b), "habitat observers start clear inside physical enclosures");
+        }
+        current = spawn(level, round == 0 ? YujiKind.LIANGSHE : YujiKind.XIEYIN, round == 0 ? .5 : 1, 65, 0, true);
+        habitatStart = current.position(); current.setNoAi(false);
+        item = round == 0 ? "liangshe-indoor" : "xieyin-narrow"; next("habitat-seek");
+    }
+    private static boolean insideHabitat(ServerLevel level) {
+        var box = current.getBoundingBox();
+        return Math.abs(box.minY - 65) < .01 && box.maxY <= (round == 0 ? 68 : 73)
+                && box.minX >= (round == 0 ? -1 : 0) && box.maxX <= 2 && box.minZ >= 6 && box.maxZ <= 13
+                && current.getZ() >= (round == 0 ? 9 : 7)
+                && (round != 0 || level.getBlockState(BlockPos.containing(current.getX(), 68, current.getZ())).is(Blocks.SMOOTH_QUARTZ));
+    }
+    private static void beginTheft(ServerPlayer a, ServerPlayer b) {
+        clear(a.serverLevel()); place(a, 0, 65, 1.6, 180); place(b, 8, 65, 3, 90);
+        stolen = new ItemStack(Items.DIAMOND, 37); stolen.getOrCreateTag().putString("YujiReceipt", "a70-real-client-property");
+        a.getInventory().setItem(0, stolen.copy()); a.setItemSlot(EquipmentSlot.CHEST, new ItemStack(Items.DIAMOND_CHESTPLATE));
+        a.containerMenu.broadcastChanges();
+        current = spawn(a.serverLevel(), YujiKind.TOUDAO, 0, 65, 0, false); current.setNoAi(false);
+        next("theft-snatch");
+    }
     private static void beginCamera(ServerPlayer victim, ServerPlayer witness) {
         clear(victim.serverLevel()); place(victim, 12, 65, 0, 0); place(witness, 22, 65, 0, 0);
+        cameraStart = victim.position();
         current = spawn(victim.serverLevel(), YujiKind.XIEYIN, 0, 65, 0, false);
         item = "camera-" + round; signalBoth(victim, witness, "start:" + item + ":" + victim.getGameProfile().getName()); next("camera-arm");
     }

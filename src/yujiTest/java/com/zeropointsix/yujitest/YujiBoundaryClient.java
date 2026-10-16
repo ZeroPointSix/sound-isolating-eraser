@@ -1,5 +1,6 @@
 package com.zeropointsix.yujitest;
 
+import com.zeropointsix.eraser.yuji.YujiMonster;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashSet;
@@ -46,6 +47,19 @@ public final class YujiBoundaryClient {
                 if (entity == null) throw new AssertionError("attack entity did not reach actual client: " + id);
                 mc.gameMode.attack(mc.player, entity); mc.player.swing(InteractionHand.MAIN_HAND);
                 System.out.println("YUJI_BOUNDARY_CLIENT sent attack packet entity=" + id + " player=" + mc.player.getUUID()); command = "";
+            } else if (command.startsWith("layers:") && ticks == 10) {
+                String[] parts = command.split(":");
+                var entity = mc.level.getEntity(Integer.parseInt(parts[2]));
+                int expected = Integer.parseInt(parts[3]);
+                if (!(entity instanceof YujiMonster monster) || monster.layers() != expected)
+                    throw new AssertionError("peel result did not synchronize to actual client: " + command);
+                pass(parts[1], "TCP-synchronized entity=" + entity.getUUID() + "; layers=" + expected); command = "";
+            } else if (command.startsWith("health:") && ticks == 10) {
+                String[] parts = command.split(":");
+                float expected = Float.parseFloat(parts[2]);
+                if (Math.abs(mc.player.getHealth() - expected) > .001)
+                    throw new AssertionError("actual client health=" + mc.player.getHealth() + "; expected=" + expected);
+                pass(parts[1], "TCP-synchronized player health=" + mc.player.getHealth()); command = "";
             } else if (command.equals("done")) { pass("boundaries", "real-client boundary sequence completed"); command = ""; }
         } catch (Throwable error) { fail(error); }
     }

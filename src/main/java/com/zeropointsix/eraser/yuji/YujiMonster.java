@@ -76,6 +76,7 @@ public final class YujiMonster extends Monster implements GeoEntity {
     private int attackCooldown, skillCooldown = 20, actionTicks, actionLength, burstCooldown, fleeTicks, followTicks, startledTicks;
     private UUID actionTarget;
     private Vec3 falseVoice;
+    @Nullable private UUID voiceRecipient;
     private int voiceWindow, missedVoices, deathAge, animationSerial = -1;
     private boolean stompBurst;
     /** Qiyu summoning: cast interval, alive cap per summoner, scan radius. */
@@ -162,7 +163,8 @@ public final class YujiMonster extends Monster implements GeoEntity {
     }
     @Override protected void registerGoals() {
         goalSelector.addGoal(0, new FloatGoal(this));
-        goalSelector.addGoal(1, new Goal() {
+        goalSelector.addGoal(1, new YujiHabitatGoal(this));
+        goalSelector.addGoal(2, new Goal() {
             { setFlags(java.util.EnumSet.of(Flag.MOVE, Flag.LOOK)); }
             @Override public boolean canUse() { return getTarget() != null && getTarget().isAlive(); }
             @Override public boolean requiresUpdateEveryTick() { return true; }
@@ -188,6 +190,17 @@ public final class YujiMonster extends Monster implements GeoEntity {
             getNavigation().moveTo(target, kind == YujiKind.TANYU && distance < 8 ? 1.36 : 1);
         } else if (distance <= stop + .5) getNavigation().stop();
         if (kind == YujiKind.QIYU && !onGround()) setDeltaMovement(getDeltaMovement().multiply(1, .75, 1));
+        tryMelee(target, distance);
+    }
+    boolean habitatMovementPaused() { return startledTicks > 0; }
+    void attendHabitatTarget() {
+        LivingEntity target = getTarget();
+        if (target != null && target.isAlive() && startledTicks == 0) {
+            getLookControl().setLookAt(target, 20, 20);
+            tryMelee(target, distanceTo(target));
+        }
+    }
+    private void tryMelee(LivingEntity target, double distance) {
         if (fleeTicks == 0 && attackCooldown == 0 && actionTicks == 0 && kind.damage > 0
                 && distance <= getBbWidth() + target.getBbWidth() + .8 && hasLineOfSight(target)) {
             String action = switch (kind) {
@@ -269,9 +282,16 @@ public final class YujiMonster extends Monster implements GeoEntity {
                         && ForgeEventFactory.onEntityDestroyBlock(this, pos, state)) level().destroyBlock(pos, false, this);
             }
         }
-        if (voiceWindow > 0 && getTarget() instanceof ServerPlayer p) {
+        if (voiceRecipient != null) {
+            Player finder = level().getPlayerByUUID(voiceRecipient);
+            if (finder instanceof ServerPlayer seen && vulnerable(seen)
+                    && hasLineOfSight(seen) && lookingAt(seen, getEyePosition(), 25)) missedVoices = 0;
+        }
+        if (voiceWindow > 0) {
             voiceWindow--;
-            if (lookingAt(p, falseVoice, 15)) { YujiAfflictions.weakness(p, this, 160, 1); voiceWindow = 0; }
+            Player recipient = voiceRecipient == null ? null : level().getPlayerByUUID(voiceRecipient);
+            if (!(recipient instanceof ServerPlayer p) || !vulnerable(p)) voiceWindow = 0;
+            else if (lookingAt(p, falseVoice, 15)) { YujiAfflictions.weakness(p, this, 160, 1); voiceWindow = 0; }
         }
     }
     public List<Player> nearbyPlayers(double range) {
@@ -365,7 +385,7 @@ public final class YujiMonster extends Monster implements GeoEntity {
                     target.hurt(damageSources().indirectMagic(this, this), 6);
             }
             case "bless" -> { if (tick == 15) blessAllies(); }
-            case "summon" -> { if (tick == 18) summonAllies(); }
+            case "summon" -> { if (tick == 18 && canSummon()) summonAllies(); }
             default -> { }
         }
     }
@@ -383,13 +403,15 @@ public final class YujiMonster extends Monster implements GeoEntity {
                 y -> y.isAlive() && getUUID().equals(y.summoner)).size();
     }
     public boolean canSummon() {
-        return level().getDifficulty() != net.minecraft.world.Difficulty.PEACEFUL
+        return kind == YujiKind.QIYU && YujiConfig.QIYU_SUMMONING.get()
+                && level().getDifficulty() != net.minecraft.world.Difficulty.PEACEFUL
                 && (getTarget() != null && getTarget().isAlive() || !nearbyPlayers(SUMMON_RANGE).isEmpty())
                 && livingSummons() < SUMMON_CAP;
     }
     /** Calls one or two random Yuji kinds (never Qiyu or the giants) beside itself, up to SUMMON_CAP alive. */
     public int summonAllies() {
-        if (!(level() instanceof ServerLevel server)) return 0;
+        if (kind != YujiKind.QIYU || !YujiConfig.QIYU_SUMMONING.get()
+                || !(level() instanceof ServerLevel server)) return 0;
         int room = SUMMON_CAP - livingSummons(), wanted = Math.min(room, 1 + random.nextInt(2)), made = 0;
         for (int attempt = 0; made < wanted && attempt < 12; attempt++) {
             YujiKind pick = SUMMONABLE[random.nextInt(SUMMONABLE.length)];
@@ -579,6 +601,9 @@ public final class YujiMonster extends Monster implements GeoEntity {
                 SoundEvents.VILLAGER_HURT, SoundEvents.WOLF_WHINE, SoundEvents.STONE_STEP};
         player.connection.send(new ClientboundSoundPacket(net.minecraft.core.registries.BuiltInRegistries.SOUND_EVENT.wrapAsHolder(voices[random.nextInt(voices.length)]),
                 SoundSource.HOSTILE, falseVoice.x, falseVoice.y, falseVoice.z, 1, 1, random.nextLong()));
+        // Keep both the delayed reaction and consecutive misses with the actual listener, not the AI target.
+        if (!player.getUUID().equals(voiceRecipient)) missedVoices = 0;
+        voiceRecipient = player.getUUID();
         if (player.hasLineOfSight(this) && lookingAt(player, getEyePosition(), 25)) missedVoices = 0; else missedVoices++;
         YujiAfflictions.weakness(player, this, missedVoices >= 3 ? 400 : 160, missedVoices >= 3 ? 1 : 0);
         voiceWindow = 40; begin("mimic", 24, player);
