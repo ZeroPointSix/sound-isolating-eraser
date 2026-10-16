@@ -1,8 +1,6 @@
 package com.zeropointsix.eraser.yuji.flare;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.particles.DustParticleOptions;
-import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
@@ -19,9 +17,9 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.network.NetworkHooks;
-import org.joml.Vector3f;
 
 public final class FlareProjectile extends ThrowableProjectile implements ItemSupplier {
+    private static final byte BURST_EVENT = 76;
     private static final EntityDataAccessor<Integer> COLOR = SynchedEntityData.defineId(FlareProjectile.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Boolean> LIT = SynchedEntityData.defineId(FlareProjectile.class, EntityDataSerializers.BOOLEAN);
     private int age;
@@ -39,13 +37,20 @@ public final class FlareProjectile extends ThrowableProjectile implements ItemSu
     @Override protected float getGravity() { return lit() ? 0 : .035F; }
     @Override public ItemStack getItem() { return new ItemStack(FlareContent.ammunition(color())); }
     @Override public void tick() {
+        Vec3 previous = position();
         if (lit()) setDeltaMovement(0, -.012, 0);
         if (color() == 2 && greenLandingSearch != null) setDeltaMovement(Vec3.ZERO);
         super.tick();
         if (isRemoved()) return;
         age++;
-        if (level().isClientSide) { particles(level(), position(), color()); return; }
+        if (level().isClientSide) { FlareEffects.trail(level(), previous, position(), color()); return; }
         if (lit()) { if (level().getGameTime() >= extinguishAt) discard(); return; }
+        if (age % 2 == 0 && greenLandingSearch == null && getDeltaMovement().lengthSqr() > .01
+                && (color() != 2 || age < FlareConfig.GREEN_DELAY.get()) && level() instanceof ServerLevel server) {
+            var player = getOwner() instanceof net.minecraft.world.entity.player.Player owner
+                    ? owner : FlarePlacement.owner(server, shooter);
+            FlareLights.get(server).flight(server, blockPosition(), player);
+        }
         if (color() == 0 && age >= FlareConfig.RED_DELAY.get()
                 || color() == 1 && (age >= FlareConfig.YELLOW_DELAY.get() || age > 1 && getDeltaMovement().y <= 0)
                 || color() == 2 && age >= FlareConfig.GREEN_DELAY.get()) activate();
@@ -64,12 +69,13 @@ public final class FlareProjectile extends ThrowableProjectile implements ItemSu
             FlareDecoy decoy = new FlareDecoy(FlareContent.DECOY.get(), server);
             if (FlarePlacement.positionDecoy(server, decoy, position(), hit)) {
                 decoy.ignite();
-                if (server.addFreshEntity(decoy)) decoy.taunt();
+                if (server.addFreshEntity(decoy)) { decoy.taunt(); server.broadcastEntityEvent(this, BURST_EVENT); }
             }
             discard();
         } else if (color() == 1) {
             FlareLights.get(server).illuminate(server, blockPosition(), FlarePlacement.owner(server, shooter));
             entityData.set(LIT, true); extinguishAt = server.getGameTime() + FlareConfig.YELLOW_LIFETIME.get();
+            server.broadcastEntityEvent(this, BURST_EVENT);
             playSound(SoundEvents.FIREWORK_ROCKET_BLAST, 1, 1.2F);
         } else {
             var owner = FlarePlacement.owner(server, shooter);
@@ -79,16 +85,18 @@ public final class FlareProjectile extends ThrowableProjectile implements ItemSu
             if (landing == null && !greenLandingSearch.finished()) return;
             if (landing != null) {
                 FallingSupplyCrate crate = new FallingSupplyCrate(FlareContent.FALLING_CRATE.get(), server);
-                crate.prepare(landing, shooter); server.addFreshEntity(crate);
+                crate.prepare(landing, shooter);
+                if (server.addFreshEntity(crate)) server.broadcastEntityEvent(this, BURST_EVENT);
             } else owner.displayClientMessage(net.minecraft.network.chat.Component.translatable("message.qihai.flare.no_landing"), true);
             discard();
         }
     }
     public static void particles(Level level, Vec3 pos, int color) {
-        Vector3f rgb = color == 1 ? new Vector3f(1, .9F, .25F) : color == 2 ? new Vector3f(.2F, 1, .35F) : new Vector3f(1, .15F, .1F);
-        level.addParticle(new DustParticleOptions(rgb, 1.4F), pos.x, pos.y, pos.z, 0, .04, 0);
-        level.addParticle(ParticleTypes.FIREWORK, pos.x, pos.y, pos.z, 0, .015, 0);
-        if (level.random.nextBoolean()) level.addParticle(ParticleTypes.SMOKE, pos.x, pos.y, pos.z, 0, .025, 0);
+        FlareEffects.trail(level, pos, pos, color);
+    }
+    @Override public void handleEntityEvent(byte event) {
+        if (event == BURST_EVENT) FlareEffects.burst(level(), position(), color());
+        else super.handleEntityEvent(event);
     }
     @Override public void addAdditionalSaveData(CompoundTag tag) {
         super.addAdditionalSaveData(tag); tag.putInt("FlareColor", color()); tag.putInt("FlareAge", age);

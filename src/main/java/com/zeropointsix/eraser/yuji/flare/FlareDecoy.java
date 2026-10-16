@@ -41,7 +41,7 @@ public final class FlareDecoy extends PathfinderMob {
     @Override public boolean canBeLeashed(net.minecraft.world.entity.player.Player player) { return false; }
     @Override public void tick() {
         super.tick();
-        if (level().isClientSide) { FlareProjectile.particles(level(), position().add(0, 1, 0), 0); return; }
+        if (level().isClientSide) { FlareEffects.decoy(level(), position(), tickCount); return; }
         if (expiresAt < 0) ignite();
         if (level().getGameTime() >= expiresAt || !isAlive()) { discard(); return; }
         if (tickCount % FlareConfig.TAUNT_INTERVAL.get() == 0) taunt();

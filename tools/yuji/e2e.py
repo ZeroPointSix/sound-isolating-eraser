@@ -4,6 +4,7 @@ import os
 import re
 from pathlib import Path
 import shlex
+import shutil
 import socket
 import subprocess
 import time
@@ -12,6 +13,7 @@ ROOT = Path(__file__).resolve().parents[2]
 BOUNDARIES = os.environ.get("YUJI_QA_BOUNDARIES") == "1"
 ISOLATION = os.environ.get("YUJI_QA_ISOLATION") == "1"
 GREEN = os.environ.get("FLARE_QA_GREEN") == "1"
+VISUALS = os.environ.get("FLARE_QA_VISUALS") == "1"
 RECORD_AUDIO = os.environ.get("YUJI_QA_RECORD_AUDIO") == "1"
 PROFILES = os.environ.get("YUJI_QA_PROFILES", "")
 CLIENT_FPS = int(os.environ.get("YUJI_QA_CLIENT_FPS", "30"))
@@ -22,7 +24,11 @@ if PROFILES and (BOUNDARIES or ISOLATION):
     raise ValueError("Focused profiles cannot replace multiplayer acceptance")
 if GREEN and (PROFILES or BOUNDARIES or ISOLATION):
     raise ValueError("Green flare evidence runs separately from monster acceptance")
-RESULTS = ROOT / "build" / (("flare-green-e2e-" if GREEN else "yuji-isolation-" if ISOLATION else "yuji-boundaries-" if BOUNDARIES else "yuji-e2e-") + str(time.time_ns()))
+if VISUALS and (GREEN or PROFILES or BOUNDARIES or ISOLATION):
+    raise ValueError("Three-color visual evidence runs separately from other acceptance modes")
+if VISUALS and shutil.which("ffmpeg") is None:
+    raise RuntimeError("Three-color visual evidence requires ffmpeg for actual framebuffer video")
+RESULTS = ROOT / "build" / (("flare-visuals-e2e-" if VISUALS else "flare-green-e2e-" if GREEN else "yuji-isolation-" if ISOLATION else "yuji-boundaries-" if BOUNDARIES else "yuji-e2e-") + str(time.time_ns()))
 RESULTS.mkdir(parents=True)
 CONFIGS = {c["name"]: c for c in json.loads((ROOT / ".vscode/launch.json").read_text())["configurations"]}
 CLASSPATH = (ROOT / "build/yuji-test-classpath.txt").read_text().strip()
@@ -80,6 +86,8 @@ def launch(role, username="YujiTester"):
         command += ["-Dyuji.qa.isolation=true"]
     if GREEN:
         command += ["-Dflare.qa.green=true"]
+    if VISUALS:
+        command += ["-Dflare.qa.visuals=true"]
     command += ["-Dyuji.qa.audio=" + ("OpenAL-wave" if RECORD_AUDIO else "OpenAL-null")]
     if PROFILES:
         command += ["-Dyuji.qa.profiles=" + PROFILES]
@@ -133,6 +141,51 @@ def ready():
         return False
 
 
+def visual_evidence():
+    from city_e2e import inspect_png
+    phases = ("red-flight", "red-activation", "red-radius", "yellow-flight", "yellow-activation",
+              "yellow-night-light", "green-flight", "green-activation", "green-descent", "green-landed")
+    captures = {phase: inspect_png(RESULTS / ("visual-" + phase + ".png")) for phase in phases}
+    if len({capture["sha256"] for capture in captures.values()}) != len(phases):
+        raise AssertionError("Three-color evidence requires ten distinct native rendered frames")
+    for color in ("red", "yellow", "green"):
+        marker = (RESULTS / ("client-visual-" + color + "-flight.pass")).read_text()
+        light = re.search(r"blockLight=(\d+)", marker)
+        if light is None or int(light.group(1)) < 12:
+            raise AssertionError("Missing real client flight block-light evidence for " + color)
+    rows = [line.split("\t") for line in (RESULTS / "visual-frames.tsv").read_text().splitlines()]
+    if len(rows) < 20 or any(len(row) != 3 for row in rows):
+        raise AssertionError("Missing actual framebuffer movie samples")
+    timestamps = [int(row[1]) for row in rows]
+    if any(second <= first for first, second in zip(timestamps, timestamps[1:])):
+        raise AssertionError("Framebuffer timestamps must advance monotonically")
+    movie_phases = {row[2] for row in rows}
+    if not set(phases).issubset(movie_phases):
+        raise AssertionError("Framebuffer movie does not cover every visual phase")
+    # Encode only captured game frames, preserving measured intervals. No generated stills or overlays.
+    concat = ["ffconcat version 1.0"]
+    for index, (name, timestamp, phase) in enumerate(rows):
+        if not re.fullmatch(r"frame-\d{6}\.png", name) or not (RESULTS / "visual-frames" / name).is_file():
+            raise AssertionError("Invalid or missing actual framebuffer capture: " + name)
+        duration = (timestamps[index + 1] - int(timestamp)) / 1_000_000_000 if index + 1 < len(rows) else .1
+        concat += [f"file 'visual-frames/{name}'", f"duration {duration:.9f}"]
+    concat.append(f"file 'visual-frames/{rows[-1][0]}'")
+    source = RESULTS / "visual-frames.ffconcat"
+    source.write_text("\n".join(concat) + "\n")
+    encoded = subprocess.run(["ffmpeg", "-nostdin", "-y", "-safe", "1", "-f", "concat", "-i", str(source),
+                              "-vf", "fps=10", "-c:v", "libx264", "-preset", "fast", "-crf", "20",
+                              "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(RESULTS / "flare-three-colors.mp4")],
+                             check=True, capture_output=True, text=True)
+    (RESULTS / "visual-video.log").write_text(encoded.stderr)
+    movie = RESULTS / "flare-three-colors.mp4"
+    if movie.stat().st_size < 10000:
+        raise AssertionError("Actual framebuffer movie is unexpectedly empty")
+    (RESULTS / "visual-screenshots.json").write_text(json.dumps({"captures": captures,
+        "native_movie_frames": len(rows), "duration_seconds": (timestamps[-1] - timestamps[0]) / 1_000_000_000,
+        "movie": movie.name, "source": "native Minecraft framebuffer, measured capture intervals"}, indent=2) + "\n")
+    print("FLARE_VISUAL_CLIENT_PASSED actualShots=3 screenshots=10 flightBlockLight>=12 nativeFrames=" + str(len(rows)), flush=True)
+
+
 try:
     print(f"YUJI_QA_RESULTS={RESULTS}", flush=True)
     print(f"YUJI_QA_CONFIG profiles={PROFILES or 'all'}, fps={CLIENT_FPS}, frameDelayMs={FRAME_DELAY_MS}, "
@@ -145,8 +198,12 @@ try:
     display = ":" + xvfb.stdout.readline().strip()
     server = launch("server")
     wait_for(ready, [server], "dedicated server startup", 600)
-    client = launch("client", "GreenFlareQA" if GREEN else "YujiTester")
-    if GREEN:
+    client = launch("client", "FlareVisualQA" if VISUALS else "GreenFlareQA" if GREEN else "YujiTester")
+    if VISUALS:
+        wait_for(lambda: all((RESULTS / (name + ".pass")).exists() for name in ["server-visuals", "client-visuals"]),
+                 [server, client], "three real flare shots, bursts, red radius and measured night block-light", 900)
+        visual_evidence()
+    elif GREEN:
         wait_for(lambda: all((RESULTS / (name + ".pass")).exists() for name in ["server-green", "client-green"]),
                  [server, client], "green shot, natural descent and real client container opening", 900)
         from city_e2e import inspect_png
@@ -214,7 +271,8 @@ finally:
     for path in sorted(RESULTS.glob("*.pass")):
         print(f"{path.name}: {path.read_text().strip()}")
 
-print("FLARE_GREEN_REAL_CLIENT_ACCEPTANCE_PASSED" if GREEN else
+print("FLARE_THREE_COLOR_REAL_CLIENT_ACCEPTANCE_PASSED" if VISUALS else
+      "FLARE_GREEN_REAL_CLIENT_ACCEPTANCE_PASSED" if GREEN else
       "YUJI_TWO_REAL_CLIENT_ISOLATION_AND_TERRAIN_PASSED" if ISOLATION else
       "YUJI_TWO_REAL_CLIENT_BOUNDARIES_PASSED" if BOUNDARIES else
       "YUJI_FOCUSED_REAL_CLIENT_PASSED profiles=" + PROFILES if PROFILES else

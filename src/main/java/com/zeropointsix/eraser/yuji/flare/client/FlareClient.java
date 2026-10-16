@@ -23,6 +23,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.EntityRenderersEvent;
+import net.minecraftforge.client.event.RegisterParticleProvidersEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
@@ -32,6 +33,11 @@ public final class FlareClient {
     private static final ModelLayerLocation PARACHUTE = new ModelLayerLocation(YujiContent.id("flare_parachute"), "main");
     private static final ResourceLocation RED_TEXTURE = YujiContent.id("textures/entity/flare_decoy.png");
     private static final ResourceLocation PARACHUTE_TEXTURE = YujiContent.id("textures/entity/flare_parachute.png");
+    @SubscribeEvent public static void particles(RegisterParticleProvidersEvent event) {
+        event.registerSpriteSet(FlareContent.RED_SPARK.get(), sprites -> new FlareSparkParticle.Provider(sprites, 0));
+        event.registerSpriteSet(FlareContent.YELLOW_SPARK.get(), sprites -> new FlareSparkParticle.Provider(sprites, 1));
+        event.registerSpriteSet(FlareContent.GREEN_SPARK.get(), sprites -> new FlareSparkParticle.Provider(sprites, 2));
+    }
     @SubscribeEvent public static void renderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerEntityRenderer(FlareContent.FLARE.get(), context -> new ThrownItemRenderer<>(context, .8F, true));
         event.registerEntityRenderer(FlareContent.DECOY.get(), DecoyRenderer::new);

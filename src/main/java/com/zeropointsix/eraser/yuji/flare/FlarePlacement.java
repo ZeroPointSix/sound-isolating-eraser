@@ -91,6 +91,10 @@ public final class FlarePlacement {
         return place(level, pos, state, player, false);
     }
 
+    static boolean placeVisualLight(ServerLevel level, BlockPos pos, BlockState state, @Nullable Player player) {
+        return place(level, pos, state, player, true, Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE);
+    }
+
     public static boolean canRenew(ServerLevel level, BlockPos pos, BlockState state, @Nullable Player player) {
         if (!allowed(level, pos, player) || !level.getBlockState(pos).equals(state)) return false;
         // Renewal changes only the expiry; consult protection without replacing the block or notifying observers.
@@ -100,6 +104,11 @@ public final class FlarePlacement {
     }
 
     private static boolean place(ServerLevel level, BlockPos pos, BlockState state, @Nullable Player player, boolean commit) {
+        return place(level, pos, state, player, commit, Block.UPDATE_ALL);
+    }
+
+    private static boolean place(ServerLevel level, BlockPos pos, BlockState state, @Nullable Player player,
+                                 boolean commit, int flags) {
         if (!allowed(level, pos, player) || !level.getBlockState(pos).isAir() || !level.getFluidState(pos).isEmpty()) return false;
         BlockSnapshot snapshot = BlockSnapshot.create(level.dimension(), level, pos);
         boolean capture = level.captureBlockSnapshots;
@@ -110,7 +119,7 @@ public final class FlarePlacement {
             if (ForgeEventFactory.onBlockPlace(player, snapshot, Direction.UP)) return false;
             if (!commit) return true;
             committed = true;
-            level.markAndNotifyBlock(pos, level.getChunkAt(pos), snapshot.getReplacedBlock(), state, Block.UPDATE_ALL, 512);
+            level.markAndNotifyBlock(pos, level.getChunkAt(pos), snapshot.getReplacedBlock(), state, flags, 512);
             return true;
         } finally {
             // The snapshot helper's false flag still updates shapes and observers.
