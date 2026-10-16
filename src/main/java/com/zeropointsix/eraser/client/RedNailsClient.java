@@ -10,6 +10,7 @@ import java.util.function.BiConsumer;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
+import net.minecraft.client.renderer.entity.EntityRenderers;
 import net.minecraft.client.renderer.item.ItemProperties;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -75,6 +76,9 @@ public final class RedNailsClient {
         }
         @SubscribeEvent public static void setup(FMLClientSetupEvent event) {
             event.enqueueWork(() -> {
+                bindGhostRenderers((type, provider) -> EntityRenderers.register(type, provider));
+                var mc = Minecraft.getInstance();
+                mc.getEntityRenderDispatcher().onResourceManagerReload(mc.getResourceManager());
                 RedNailsItem.keyName = KEY::getTranslatedKeyMessage;
                 ItemProperties.register(ModItems.RED_NAILS.get(), new ResourceLocation(ModMain.MOD_ID, "fallen_nails"),
                         (stack, level, entity, seed) -> RedNailsItem.coolingCount(stack) / 4F);
