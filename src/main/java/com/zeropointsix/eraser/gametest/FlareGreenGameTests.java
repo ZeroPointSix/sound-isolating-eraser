@@ -243,7 +243,7 @@ public final class FlareGreenGameTests {
     public static void greenSearchNeverBypassesPlacementProtection(GameTestHelper h) {
         ready(h, () -> {
             Fixture f = fixture;
-            FlareConfig.DROP_MAX.set(64);
+            FlareConfig.DROP_MAX.set(64.0);
             Set<BlockPos> denied = new HashSet<>();
             Map<Long, Integer> eventsPerTick = new LinkedHashMap<>();
             f.guard = event -> {
