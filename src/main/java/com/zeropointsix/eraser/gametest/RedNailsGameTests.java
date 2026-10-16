@@ -158,7 +158,14 @@ public final class RedNailsGameTests {
     @GameTest(template = "empty", batch = BATCH, timeoutTicks = 160) public static void server_chant_release_and_latch(GameTestHelper h) {
         var f = new Fixture(h); var p = f.player(0, 0); var stack = f.wear(p);
         RedNailsInput.key(p, true);
-        h.runAfterDelay(10, () -> { RedNailsInput.key(p, false); check(h, f.entry(stack) == null, "Short press cannot summon"); });
+        check(h, RedNailsInput.chanting(p.getUUID()), "Press packet starts a server chant");
+        h.runAfterDelay(10, () -> {
+            RedNailsInput.key(p, false);
+            check(h, !RedNailsInput.chanting(p.getUUID()), "Release packet clears the chant");
+            check(h, RedNailsInput.releasedAt(p.getUUID()) >= RedNailsInput.pressedAt(p.getUUID()),
+                    "Server observed press then release");
+            check(h, f.entry(stack) == null, "Short press cannot summon");
+        });
         h.runAfterDelay(15, () -> RedNailsInput.key(p, true));
         h.runAfterDelay(45, () -> check(h, f.entry(stack) != null && f.entry(stack).active() == 1, "Server authorizes after 20 ticks"));
         h.runAfterDelay(80, () -> {
@@ -417,7 +424,7 @@ public final class RedNailsGameTests {
             h.succeed();
         });
     }
-    @GameTest(template = "empty", batch = BATCH, timeoutTicks = 200) public static void hostile_ai_grabs_and_drags_in_water(GameTestHelper h) {
+    @GameTest(template = "empty", batch = BATCH, timeoutTicks = 280) public static void hostile_ai_grabs_and_drags_in_water(GameTestHelper h) {
         var f = new Fixture(h);
         f.water(-4, 4);
         var g = ModEntities.WATER_GHOST.get().create(f.level);
@@ -431,11 +438,60 @@ public final class RedNailsGameTests {
         f.level.addFreshEntity(victim);
         f.entities.add(victim);
         double startY = g.getY();
+        long[] grabAt = { -1 };
+        long[] releaseAt = { -1 };
+        int[] airAtGrab = { -1 };
         h.startSequence().thenWaitUntil(() -> {
             check(h, g.ghostBody().grab.held() == victim, "Goal selector grabs without a direct start() call");
             check(h, g.ghostBody().swimming(), "AI grab is in water");
+        }).thenExecute(() -> {
+            grabAt[0] = f.level.getGameTime();
+            airAtGrab[0] = victim.getAirSupply();
+        }).thenWaitUntil(() -> {
+            check(h, g.ghostBody().grab.held() == victim, "AI grab still holds before water-stage expiry");
             check(h, g.getY() < startY - 0.8, "Ghost sank under effective AI");
             check(h, victim.getY() < startY, "Victim was dragged downward");
+            check(h, victim.getAirSupply() < airAtGrab[0], "Water grab drains oxygen");
+        }).thenWaitUntil(() -> check(h, g.ghostBody().grab.held() == null,
+                "AI grab releases without extending production duration"))
+        .thenExecute(() -> {
+            releaseAt[0] = f.level.getGameTime();
+            long lived = releaseAt[0] - grabAt[0];
+            System.out.println("RED_NAILS_AI_GRAB t0=" + grabAt[0] + " release=" + releaseAt[0] + " dt=" + lived);
+            check(h, lived <= 110, "Observed water grab lifetime stays near 100 ticks: " + lived);
+            check(h, WaterGhostGrab.grabbable(victim), "Natural release clears victim lease");
+            long remaining = g.ghostBody().grab.cooldownUntil() - f.level.getGameTime();
+            check(h, remaining >= 150 && remaining <= 160,
+                    "Natural release starts 160-tick cooldown: remaining=" + remaining);
+        }).thenSucceed();
+    }
+    @GameTest(template = "empty", batch = BATCH, timeoutTicks = 240) public static void summon_ai_carries_enemy_from_shore_into_water(GameTestHelper h) {
+        var f = new Fixture(h);
+        var p = f.player(0, 0);
+        var stack = f.wear(p);
+        for (int x = 2; x <= 5; x++) for (int z = -2; z <= 2; z++) for (int y = 0; y < 4; y++)
+            f.set(f.center.offset(x, y, z), Blocks.WATER.defaultBlockState());
+        var g = f.summon(p, stack);
+        g.setNoAi(false);
+        g.setPos(Vec3.atBottomCenterOf(f.center));
+        g.setYRot(0);
+        var victim = f.add(EntityType.ZOMBIE.create(f.level), 0, 1);
+        victim.setNoAi(true);
+        victim.setTarget(p);
+        p.setLastHurtMob(victim);
+        g.setTarget(victim);
+        double startX = g.getX();
+        h.startSequence().thenWaitUntil(() -> {
+            check(h, g.ghostBody().grab.held() == victim, "Summon goal selector grabs on shore without start()");
+            check(h, !g.ghostBody().swimming(), "First grab is still on land");
+        }).thenWaitUntil(() -> {
+            check(h, g.ghostBody().grab.held() == victim, "Shore grab keeps the enemy while walking to water");
+            check(h, g.getX() > startX + 0.4 || g.isInWater() || g.ghostBody().swimming(),
+                    "Summon carries the enemy toward nearby water");
+        }).thenWaitUntil(() -> {
+            check(h, g.ghostBody().grab.held() == victim, "Hold survives the AI shore-to-water carry");
+            check(h, g.ghostBody().swimming() && g.isInWater(), "Summon entered water under its own AI");
+            check(h, victim.isInWater() || victim.getX() > startX + 0.8, "Victim was carried into or toward the water");
         }).thenSucceed();
     }
 }

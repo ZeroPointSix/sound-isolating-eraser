@@ -28,7 +28,8 @@ public final class RedNailsTestServer {
     private static final Path RESULTS = Path.of(System.getProperty("rednails.qa.results"));
     private static ServerPlayer player;
     private static int stage, ticks;
-    private static boolean failed, shortPressAcked;
+    private static boolean failed, shortPressAcked, shortPressSeen, shortPressReleased;
+    private static int shortPressQuiet;
     private static UUID itemId;
     private static long deadline, stageNanos;
     private static WaterGhostEntity swimmer;
@@ -104,10 +105,28 @@ public final class RedNailsTestServer {
                 var stack = RedNailsItem.findWorn(player);
                 var entry = RedNailsState.get(player.getServer()).read(stack);
                 if (!shortPressAcked) {
-                    if (!Files.exists(RESULTS.resolve("client-short-press.signal"))) return;
-                    require(entry == null, "Short real-client key hold must not summon");
+                    UUID id = player.getUUID();
+                    if (!shortPressSeen) {
+                        if (RedNailsInput.pressedAt(id) == Long.MIN_VALUE) return;
+                        shortPressSeen = true;
+                    }
+                    if (!shortPressReleased) {
+                        if (RedNailsInput.releasedAt(id) < RedNailsInput.pressedAt(id)) return;
+                        require(!RedNailsInput.chanting(id), "Release packet cleared the chant");
+                        require(entry == null, "Short real-client key hold must not summon");
+                        shortPressReleased = true;
+                        shortPressQuiet = 0;
+                        return;
+                    }
+                    shortPressQuiet++;
+                    require(entry == null && !RedNailsInput.chanting(id),
+                            "No-summon interval after observed press/release");
+                    if (shortPressQuiet < 15) return;
                     Files.writeString(RESULTS.resolve("server-short-press.ack"),
-                            "no summon after acknowledged short hold\n");
+                            "pressAt=" + RedNailsInput.pressedAt(id)
+                                    + " releaseAt=" + RedNailsInput.releasedAt(id)
+                                    + " quietTicks=" + shortPressQuiet
+                                    + " chanting=false entry=null\n");
                     shortPressAcked = true;
                     return;
                 }

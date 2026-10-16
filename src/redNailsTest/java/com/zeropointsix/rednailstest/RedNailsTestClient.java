@@ -100,12 +100,12 @@ public final class RedNailsTestClient {
             if (phase.equals("input")) {
                 if (!shortAcked) {
                     if (ticks == 1) RedNailsClient.KEY.setDown(true);
-                    if (ticks == 10) {
-                        RedNailsClient.KEY.setDown(false);
+                    if (ticks == 10) RedNailsClient.KEY.setDown(false);
+                    if (ticks == 11) {
                         Files.writeString(RESULTS.resolve("client-short-press.signal"),
-                                "short hold released windowActive=true\n");
+                                "short hold released after production client tick windowActive=true\n");
                     }
-                    if (ticks >= 10 && Files.exists(RESULTS.resolve("server-short-press.ack"))) {
+                    if (ticks >= 11 && Files.exists(RESULTS.resolve("server-short-press.ack"))) {
                         shortAcked = true;
                         ticks = 0;
                         RedNailsClient.KEY.setDown(false);
