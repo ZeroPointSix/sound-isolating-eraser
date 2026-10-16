@@ -60,7 +60,7 @@ def launch(role, display):
         args += ["--username", "FlareObserver" if role == "observer" else "FlareTester", "--width", "960", "--height", "540",
                  "--quickPlayMultiplayer", f"127.0.0.1:{PORT}"]
     command = ["java", "-Xmx1024M" if server else "-Xmx1536M", f"-Dflare.gun.qa.results={RESULTS}",
-               f"-Dflare.gun.qa.role={role}"]
+               f"-Dflare.gun.qa.role={role}", f"-Dflare.gun.qa.port={PORT}"]
     command += shlex.split(expand(config["vmArgs"]))
     if not server:
         natives = directory / "lwjgl-natives"

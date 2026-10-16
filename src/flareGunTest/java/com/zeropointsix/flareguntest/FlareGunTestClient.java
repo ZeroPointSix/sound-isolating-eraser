@@ -12,6 +12,11 @@ import java.util.Set;
 import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
+import net.minecraft.client.gui.screens.ConnectScreen;
+import net.minecraft.client.gui.screens.DisconnectedScreen;
+import net.minecraft.client.gui.screens.TitleScreen;
+import net.minecraft.client.multiplayer.ServerData;
+import net.minecraft.client.multiplayer.resolver.ServerAddress;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.protocol.game.ClientboundLevelParticlesPacket;
 import net.minecraft.network.protocol.game.ServerboundUseItemPacket;
@@ -34,8 +39,8 @@ public final class FlareGunTestClient {
     private static final Set<String> animated = new HashSet<>();
     private static String phase = "";
     private static int ticks, lastFrame = -1, reports, launches, clicks, flashes, flames, smoke;
-    private static int completedFires, completedEmpty, completedRefills, samples;
-    private static boolean failed;
+    private static int completedFires, completedEmpty, completedRefills, samples, bootTicks;
+    private static boolean failed, connecting;
 
     private static Path file(String name) { return RESULTS.resolve(ROLE + "-" + name); }
 
@@ -146,8 +151,28 @@ public final class FlareGunTestClient {
     }
 
     @SubscribeEvent public static void tick(TickEvent.ClientTickEvent event) {
-        if (event.phase != TickEvent.Phase.END || failed || phase.isEmpty()) return;
+        if (event.phase != TickEvent.Phase.END || failed) return;
         var mc = Minecraft.getInstance();
+        if (phase.isEmpty()) {
+            bootTicks++;
+            try {
+                if (bootTicks % 100 == 0 && mc.getOverlay() == null) {
+                    System.out.println("FLARE_GUN_BOOT screen=" + mc.screen);
+                    try (var image = Screenshot.takeScreenshot(mc.getMainRenderTarget())) {
+                        image.writeToFile(file("bootstrap.png"));
+                    }
+                }
+                if (mc.screen instanceof DisconnectedScreen)
+                    throw new AssertionError(mc.screen.getNarrationMessage().getString());
+                if (!connecting && mc.screen instanceof TitleScreen && mc.getOverlay() == null) {
+                    connecting = true;
+                    String address = "127.0.0.1:" + System.getProperty("flare.gun.qa.port", "25594");
+                    ConnectScreen.startConnecting(mc.screen, mc, ServerAddress.parseString(address),
+                            new ServerData("Flare QA", address, false), false);
+                }
+            } catch (Throwable failure) { fail(failure); }
+            return;
+        }
         if (mc.player == null || mc.gameMode == null) return;
         ticks++;
         if (!OBSERVER && ticks == 10) {
