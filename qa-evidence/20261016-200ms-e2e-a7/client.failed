@@ -1,0 +1,1 @@
+java.lang.AssertionError: Render readiness unavailable within 90s: need 2s of real frames with gaps <=50ms before native shutter; stable_frames=1

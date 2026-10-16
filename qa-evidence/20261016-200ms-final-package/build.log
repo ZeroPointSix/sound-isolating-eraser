@@ -1,0 +1,47 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. See https://docs.gradle.org/8.1.1/userguide/gradle_daemon.html#sec:disabling_the_daemon.
+Daemon will be stopped at the end of the build 
+
+> Configure project :
+Java: 17.0.20.1, JVM: 17.0.20.1+1-1-24.04-Ubuntu (Ubuntu), Arch: amd64
+Path for java installation '/usr/lib/jvm/openjdk-17' (Common Linux Locations) does not contain a java executable
+
+> Task :compileJava
+> Task :compileJava UP-TO-DATE
+> Task :generateBrickrotTestTemplate UP-TO-DATE
+> Task :generateFertilizerResources UP-TO-DATE
+> Task :generateGravityTexture UP-TO-DATE
+> Task :processResources UP-TO-DATE
+> Task :classes UP-TO-DATE
+
+> Task :verifyBrickrotAssets
+cebbc944e19c4e10433ea84ef2c420da79e375df3c3b9dc1203a941589dd3fcd geo/brickrot_head.geo.json
+56bb6b252e432d406a6e361939c38fe04d92124813ab026029c3eabfdaae08cf geo/brickrot_neck.geo.json
+26c16193c0da86bc8a21e9de2fd42b91e691b2cd6c8ba080345a0c373b858638 geo/brickrot_neck_breached.geo.json
+08b0d244720d07f5935cb278c8b0974cf94a775619c510b6f7a8b12833d1a22d geo/brickrot_segment_grey.geo.json
+663f4ec9845a279a2cc9e5602355586cb0237897ccb557590cd82b1f8981e82f geo/brickrot_segment_red.geo.json
+dae77423c7eb810018fbcba2c7a6e542ba5a5cedae35f3b9365108ea4d3a0191 geo/brickrot_segment_tail.geo.json
+b965c627fa86fb5a59592f0590da75d30844c773a257a56a7a769c718aabdcc2 animations/brickrot.animation.json
+549eb882af4352ed5a3ceecc1842bb734133047a7327baa1888cb58fa89c281d textures/entity/brickrot.png
+2771b6e82581f960c1d6d89f44a8c0f99ab402ca68d1d5eb58b19616ca05f636 textures/entity/brickrot_glowmask.png
+56cd4c535ad675983cfe868386d678d14c413859a84b02ec6f63e0fd97556e4a textures/item/brickrot_spawn_egg.png
+d2d67b22443c23da9188100f1a63ddf1f7ec4e0e4a3dcc4e6a1d04d87b2213ef models/item/brickrot_spawn_egg.json
+Brickrot art verified: 6 geometries, 11 animations, 3 textures, spawn egg model
+
+> Task :verifyMixinTargets
+MIXIN_TARGETS checked=17 failures=0
+
+> Task :jar
+> Task :downloadMcpConfig
+> Task :extractSrg UP-TO-DATE
+> Task :createMcpToSrg UP-TO-DATE
+> Task :reobfJar
+
+> Task :verifyRemappedDoorLock
+NIGHT_REMAPPED_DOOR_MIXIN jar=/data2/keeper-camera-20261016/build/libs/sound_isolating_eraser-0.13.0-keeper.1.jar
+NIGHT_REMAPPED_DOOR_MIXIN srg=m_6227_,m_6861_,m_153165_ present=True
+NIGHT_REMAPPED_DOOR_MIXIN setOpen_redirect_target_m_7731_=True
+NIGHT_REMAPPED_DOOR_MIXIN CityDoorMixin.json=True
+NIGHT_REMAPPED_DOOR_MIXIN_PASS bytecode contains use/neighborChanged/setOpen SRG ids and mixin json
+
+BUILD SUCCESSFUL in 8m 45s
+13 actionable tasks: 6 executed, 7 up-to-date

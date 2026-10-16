@@ -1,0 +1,26 @@
+{
+  "delivery": {
+    "tested_jar_archive": "qa-evidence/20261016-200ms-final-package/prebuild/delivery.jar",
+    "repacked_jar": "build/libs/sound_isolating_eraser-0.13.0-keeper.2.jar",
+    "tested_sha256": "856a24df553aa98e2feb10847653ed4787429effc861406836d6855d29f8bd98",
+    "repacked_sha256": "2dc4f746ebeea31eed48cc6040d15f9c5ad31bfc675adeeec69edb42aa6d36c0",
+    "entry_count": 1315,
+    "changed_entries": [
+      "META-INF/MANIFEST.MF"
+    ],
+    "all_non_manifest_entry_bytes_equal": true,
+    "manifest_change": "Implementation-Timestamp only"
+  },
+  "runtime": {
+    "tested_jar_archive": "qa-evidence/20261016-200ms-final-package/prebuild/runtime.jar",
+    "repacked_jar": "build/keeper-runtime/keeper-runtime.jar",
+    "tested_sha256": "2e0ee23eb0bbcff46543fee05fdd1e59fb926a2f6c8678a7286974ceb774b88d",
+    "repacked_sha256": "5d39ee45df3ce5977419407b7593df13c83106a356ad35cc4756b25e54fc8fe6",
+    "entry_count": 1315,
+    "changed_entries": [
+      "META-INF/MANIFEST.MF"
+    ],
+    "all_non_manifest_entry_bytes_equal": true,
+    "manifest_change": "Implementation-Timestamp only"
+  }
+}

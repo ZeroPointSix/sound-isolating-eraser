@@ -1,0 +1,9 @@
+com.zeropointsix.eraser.keeper.client.KeeperVisuals
+source=union:/data2/keeper-camera-20261016/build/keeper-runtime/keeper-runtime.jar%23187!/
+resource=union:/data2/keeper-camera-20261016/build/keeper-runtime/keeper-runtime.jar%23187!/com/zeropointsix/eraser/keeper/client/KeeperVisuals.class
+sha256=27f1edd8f3f902b969c96e659923f2b7fe9ea131ec0bb9af09bccae3c3369965
+com.zeropointsix.eraser.keeper.client.KeeperVisuals$Registration
+source=union:/data2/keeper-camera-20261016/build/keeper-runtime/keeper-runtime.jar%23187!/
+resource=union:/data2/keeper-camera-20261016/build/keeper-runtime/keeper-runtime.jar%23187!/com/zeropointsix/eraser/keeper/client/KeeperVisuals$Registration.class
+sha256=8cbd5cc6948655a1cc7da0930a65a5e19654de64ebeac62d95e9bd5c15700baf
+duration_nanos=200000000

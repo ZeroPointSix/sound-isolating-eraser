@@ -1,0 +1,305 @@
+2026-10-16 20:17:52,375 main WARN Advanced terminal features are not available in this environment
+[20:17:52] [main/INFO] [cp.mo.mo.Launcher/MODLAUNCHER]: ModLauncher running: args [--launchTarget, forgeserveruserdev, --gameDir, ., --fml.forgeVersion, 47.2.0, --fml.mcVersion, 1.20.1, --fml.forgeGroup, net.minecraftforge, --fml.mcpVersion, 20230612.114412, --mixin.config, sound_isolating_eraser.mixins.json, --mixin.config, gravity.mixins.json, --nogui]
+[20:17:52] [main/INFO] [cp.mo.mo.Launcher/MODLAUNCHER]: ModLauncher 10.0.9+10.0.9+main.dcd20f30 starting: java version 17.0.20.1 by Ubuntu; OS Linux arch amd64 version 6.8.0-138-generic
+[20:17:53] [main/WARN] [ne.mi.fm.lo.FMLConfig/CORE]: Configuration file /data2/keeper-camera-20261016/qa-evidence/20261016-200ms-e2e-a7/server/config/fml.toml is not correct. Correcting
+[20:17:53] [main/INFO] [ne.mi.fm.lo.FMLConfig/CORE]: Incorrect key [earlyWindowSkipGLVersions] was corrected from null to []
+[20:17:53] [main/INFO] [ne.mi.fm.lo.FMLConfig/CORE]: Incorrect key [earlyWindowSquir] was corrected from null to false
+[20:17:53] [main/INFO] [ne.mi.fm.lo.ImmediateWindowHandler/]: ImmediateWindowProvider not loading because launch target is forgeserveruserdev
+[20:17:53] [main/INFO] [mixin/]: SpongePowered MIXIN Subsystem Version=0.8.5 Source=union:/root/.gradle/caches/modules-2/files-2.1/org.spongepowered/mixin/0.8.5/9d1c0c3a304ae6697ecd477218fa61b850bf57fc/mixin-0.8.5.jar%23116!/ Service=ModLauncher Env=SERVER
+[20:17:54] [main/WARN] [ne.mi.fm.lo.mo.ModFileParser/LOADING]: Mod file /root/.gradle/caches/modules-2/files-2.1/net.minecraftforge/javafmllanguage/1.20.1-47.2.0/7f9181f85acc66547685a72020713fc8cbde98/javafmllanguage-1.20.1-47.2.0.jar is missing mods.toml file
+[20:17:54] [main/WARN] [ne.mi.fm.lo.mo.ModFileParser/LOADING]: Mod file /root/.gradle/caches/modules-2/files-2.1/net.minecraftforge/lowcodelanguage/1.20.1-47.2.0/7872f5205685fdd26fae39b1be79b0e60ca5b7bd/lowcodelanguage-1.20.1-47.2.0.jar is missing mods.toml file
+[20:17:54] [main/WARN] [ne.mi.fm.lo.mo.ModFileParser/LOADING]: Mod file /root/.gradle/caches/modules-2/files-2.1/net.minecraftforge/mclanguage/1.20.1-47.2.0/d501d161cabed08b3c139a2c6217b02a39f3c3e9/mclanguage-1.20.1-47.2.0.jar is missing mods.toml file
+[20:17:54] [main/WARN] [ne.mi.fm.lo.mo.ModFileParser/LOADING]: Mod file /root/.gradle/caches/modules-2/files-2.1/net.minecraftforge/fmlcore/1.20.1-47.2.0/ffd3c6debac0a388c9e33ac43c9f5eafb91cb466/fmlcore-1.20.1-47.2.0.jar is missing mods.toml file
+[20:17:55] [main/INFO] [ne.mi.fm.lo.mo.JarInJarDependencyLocator/]: Found 1 dependencies adding them to mods collection
+[20:18:01] [main/INFO] [mixin/]: Compatibility level set to JAVA_17
+[20:18:01] [main/INFO] [cp.mo.mo.LaunchServiceHandler/MODLAUNCHER]: Launching target 'forgeserveruserdev' with arguments [--gameDir, ., --nogui]
+[20:18:03] [main/INFO] [mixin/]: Remapping refMap mixins.sound_isolating_eraser.refmap.json using /data2/keeper-camera-20261016/build/createSrgToMcp/output.srg
+[20:18:03] [main/INFO] [mixin/]: Remapping refMap gravity.refmap.json using /data2/keeper-camera-20261016/build/createSrgToMcp/output.srg
+[20:18:04] [main/INFO] [mixin/]: Remapping refMap curios.refmap.json using /data2/keeper-camera-20261016/build/createSrgToMcp/output.srg
+[20:18:04] [main/INFO] [mixin/]: Remapping refMap geckolib.refmap.json using /data2/keeper-camera-20261016/build/createSrgToMcp/output.srg
+[20:18:10] [main/WARN] [mixin/]: @Redirect conflict. Skipping sound_isolating_eraser.mixins.json:CityDoorMixin->@Redirect::cityChangedSrg(Lnet/minecraft/world/level/Level;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/state/BlockState;I)Z with priority 1000, already redirected by sound_isolating_eraser.mixins.json:CityDoorMixin->@Redirect::cityChanged(Lnet/minecraft/world/level/Level;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/state/BlockState;I)Z with priority 1000
+[20:18:10] [main/WARN] [mixin/]: @Redirect conflict. Skipping sound_isolating_eraser.mixins.json:CityDoorMixin->@Redirect::cityChangedSrg(Lnet/minecraft/world/level/Level;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/state/BlockState;I)Z with priority 1000, already redirected by sound_isolating_eraser.mixins.json:CityDoorMixin->@Redirect::cityChanged(Lnet/minecraft/world/level/Level;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/state/BlockState;I)Z with priority 1000
+[20:18:10] [main/WARN] [mixin/]: @Redirect conflict. Skipping sound_isolating_eraser.mixins.json:CityDoorMixin->@Redirect::cityChangedSrg(Lnet/minecraft/world/level/Level;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/state/BlockState;I)Z with priority 1000, already redirected by sound_isolating_eraser.mixins.json:CityDoorMixin->@Redirect::cityChanged(Lnet/minecraft/world/level/Level;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/state/BlockState;I)Z with priority 1000
+[20:18:21] [modloading-worker-0/INFO] [ne.mi.co.ForgeMod/FORGEMOD]: Forge mod loading, version 47.2.0, for MC 1.20.1 with MCP 20230612.114412
+[20:18:21] [modloading-worker-0/INFO] [ne.mi.co.MinecraftForge/FORGE]: MinecraftForge v47.2.0 Initialized
+[20:18:24] [main/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Configuration file /data2/keeper-camera-20261016/qa-evidence/20261016-200ms-e2e-a7/server/config/curios-common.toml is not correct. Correcting
+[20:18:24] [main/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key slots was corrected from null to its default, []. 
+[20:18:25] [Forge Version Check/INFO] [ne.mi.fm.VersionChecker/]: [forge] Starting version check at https://files.minecraftforge.net/net/minecraftforge/forge/promotions_slim.json
+[20:18:27] [Forge Version Check/INFO] [ne.mi.fm.VersionChecker/]: [forge] Found status: OUTDATED Current: 47.2.0 Target: 47.4.10
+[20:18:31] [main/INFO] [mojang/YggdrasilAuthenticationService]: Environment: authHost='https://authserver.mojang.com', accountsHost='https://api.mojang.com', sessionHost='https://sessionserver.mojang.com', servicesHost='https://api.minecraftservices.com', name='PROD'
+[20:18:31] [main/INFO] [ne.mi.re.GameData/REGISTRIES]: Injecting existing registry data into this CLIENT instance
+[20:18:34] [main/WARN] [minecraft/VanillaPackResourcesBuilder]: Assets URL 'union:/root/.gradle/caches/forge_gradle/minecraft_user_repo/net/minecraftforge/forge/1.20.1-47.2.0_mapped_official_1.20.1/forge-1.20.1-47.2.0_mapped_official_1.20.1.jar%23181!/assets/.mcassetsroot' uses unexpected schema
+[20:18:34] [main/WARN] [minecraft/VanillaPackResourcesBuilder]: Assets URL 'union:/root/.gradle/caches/forge_gradle/minecraft_user_repo/net/minecraftforge/forge/1.20.1-47.2.0_mapped_official_1.20.1/forge-1.20.1-47.2.0_mapped_official_1.20.1.jar%23181!/data/.mcassetsroot' uses unexpected schema
+[20:18:34] [main/WARN] [mixin/]: @Redirect conflict. Skipping sound_isolating_eraser.mixins.json:CityPlayerInteractionMixin->@Redirect::cityUseSrg(Lnet/minecraft/world/level/block/state/BlockState;Lnet/minecraft/world/level/Level;Lnet/minecraft/world/entity/player/Player;Lnet/minecraft/world/InteractionHand;Lnet/minecraft/world/phys/BlockHitResult;)Lnet/minecraft/world/InteractionResult; with priority 1000, already redirected by sound_isolating_eraser.mixins.json:CityPlayerInteractionMixin->@Redirect::cityUse(Lnet/minecraft/world/level/block/state/BlockState;Lnet/minecraft/world/level/Level;Lnet/minecraft/world/entity/player/Player;Lnet/minecraft/world/InteractionHand;Lnet/minecraft/world/phys/BlockHitResult;)Lnet/minecraft/world/InteractionResult; with priority 1000
+[20:21:32] [main/INFO] [minecraft/RecipeManager]: Loaded 7 recipes
+[20:21:42] [main/INFO] [minecraft/AdvancementList]: Loaded 1271 advancements
+[20:21:44] [main/INFO] [to.th.cu.Curios/]: Loaded 10 curio slots
+[20:21:44] [main/INFO] [to.th.cu.Curios/]: Loaded 1 curio entities
+[20:22:15] [Server thread/INFO] [minecraft/DedicatedServer]: Starting minecraft server version 1.20.1
+[20:22:15] [Server thread/INFO] [minecraft/DedicatedServer]: Loading properties
+[20:22:16] [Server thread/INFO] [minecraft/DedicatedServer]: Default game type: SURVIVAL
+[20:22:16] [Server thread/INFO] [minecraft/MinecraftServer]: Generating keypair
+[20:22:18] [Server thread/INFO] [minecraft/DedicatedServer]: Starting Minecraft server on 127.0.0.1:25578
+[20:22:23] [Server thread/INFO] [minecraft/ServerConnectionListener]: Using epoll channel type
+[20:22:30] [Server thread/WARN] [minecraft/DedicatedServer]: **** SERVER IS RUNNING IN OFFLINE/INSECURE MODE!
+[20:22:30] [Server thread/WARN] [minecraft/DedicatedServer]: The server will make no attempt to authenticate usernames. Beware.
+[20:22:30] [Server thread/WARN] [minecraft/DedicatedServer]: While this makes the game possible to play without internet access, it also opens up the ability for hackers to connect with any username they choose.
+[20:22:30] [Server thread/WARN] [minecraft/DedicatedServer]: To change this, set "online-mode" to "true" in the server.properties file.
+[20:22:42] [Server thread/INFO] [minecraft/DedicatedServer]: Preparing level "world"
+[20:22:58] [Server thread/INFO] [minecraft/MinecraftServer]: Preparing start region for dimension minecraft:overworld
+[20:23:51] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:51] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:52] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:52] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:53] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:53] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:53] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:53] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:53] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:53] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:53] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:53] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:53] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:53] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:53] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:53] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:53] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:53] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:53] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:53] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:53] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:53] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:53] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:53] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:53] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:53] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:53] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:53] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:53] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:53] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:53] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:53] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:53] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:53] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:53] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:53] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:53] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:54] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:55] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:55] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:56] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:56] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:57] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:57] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:58] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:58] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:59] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:23:59] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:24:00] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:24:00] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:24:01] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:24:01] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:24:03] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:24:03] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:24:03] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:24:03] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:24:04] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:24:04] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:24:05] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:24:05] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:24:06] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:24:06] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:24:07] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:24:07] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:24:08] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:24:08] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:24:09] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:24:09] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:24:10] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:24:10] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:24:11] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:24:11] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:24:12] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:24:12] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:24:13] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:24:13] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:24:14] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:24:14] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:24:15] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:24:15] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:24:16] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:24:16] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:24:17] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:24:17] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:24:18] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:24:18] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:24:19] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:24:19] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:24:20] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:24:22] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:24:23] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:24:23] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:24:23] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:24:23] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:24:23] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:24:23] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[20:24:24] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 5%
+[20:24:24] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 5%
+[20:24:25] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 54%
+[20:24:25] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 54%
+[20:24:26] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 54%
+[20:24:26] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 54%
+[20:24:27] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 54%
+[20:24:27] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 55%
+[20:24:28] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 57%
+[20:24:29] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 57%
+[20:24:29] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 57%
+[20:24:29] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 57%
+[20:24:30] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 59%
+[20:24:30] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 60%
+[20:24:31] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 60%
+[20:24:31] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 61%
+[20:24:32] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 63%
+[20:24:32] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 65%
+[20:24:33] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 66%
+[20:24:33] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 68%
+[20:24:34] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 68%
+[20:24:34] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 68%
+[20:24:35] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 68%
+[20:24:36] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 68%
+[20:24:36] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 68%
+[20:24:36] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 71%
+[20:24:37] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 71%
+[20:24:37] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 72%
+[20:24:38] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 73%
+[20:24:38] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 75%
+[20:24:39] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 76%
+[20:24:39] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 77%
+[20:24:40] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 79%
+[20:24:40] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 81%
+[20:24:41] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 83%
+[20:24:41] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 83%
+[20:24:42] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 83%
+[20:24:42] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 84%
+[20:24:43] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 84%
+[20:24:43] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 85%
+[20:24:44] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 85%
+[20:24:44] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 85%
+[20:24:45] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 86%
+[20:24:45] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 86%
+[20:24:46] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 87%
+[20:24:46] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 87%
+[20:24:47] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 87%
+[20:24:47] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 88%
+[20:24:48] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 90%
+[20:24:48] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 91%
+[20:24:49] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 92%
+[20:24:49] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 95%
+[20:24:50] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 96%
+[20:24:50] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 97%
+[20:24:52] [Server thread/INFO] [minecraft/LoggerChunkProgressListener]: Time elapsed: 113879 ms
+[20:24:52] [Server thread/INFO] [minecraft/DedicatedServer]: Done (135.507s)! For help, type "help"
+[20:24:52] [Server thread/INFO] [ne.mi.ga.ForgeGameTestHooks/]: Enabled Gametest Namespaces: [sound_isolating_eraser]
+[20:24:53] [Server thread/INFO] [ne.mi.se.pe.PermissionAPI/]: Successfully initialized permission handler forge:default_handler
+[20:25:00] [Server thread/WARN] [minecraft/MinecraftServer]: Can't keep up! Is the server overloaded? Running 7022ms or 140 ticks behind
+[20:25:45] [Server thread/WARN] [minecraft/MinecraftServer]: Can't keep up! Is the server overloaded? Running 2184ms or 43 ticks behind
+[20:26:09] [Server thread/WARN] [minecraft/MinecraftServer]: Can't keep up! Is the server overloaded? Running 3493ms or 69 ticks behind
+[20:30:09] [Server thread/WARN] [minecraft/MinecraftServer]: Can't keep up! Is the server overloaded? Running 3197ms or 63 ticks behind
+[20:35:12] [Server thread/WARN] [minecraft/MinecraftServer]: Can't keep up! Is the server overloaded? Running 2891ms or 57 ticks behind
+[20:38:16] [Server thread/WARN] [minecraft/MinecraftServer]: Can't keep up! Is the server overloaded? Running 2374ms or 47 ticks behind
+[20:38:49] [Server thread/INFO] [minecraft/PlayerList]: KeeperUser[/127.0.0.1:52438] logged in with entity id 1 at (0.5, -56.0, 0.5)
+[20:39:01] [Server thread/INFO] [minecraft/MinecraftServer]: KeeperUser joined the game
+[20:39:12] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: KeeperUser lost connection: Timed out
+[20:39:12] [Server thread/INFO] [minecraft/MinecraftServer]: KeeperUser left the game
+[20:39:14] [Server thread/WARN] [minecraft/MinecraftServer]: Can't keep up! Is the server overloaded? Running 33016ms or 660 ticks behind
+[20:39:14] [Server thread/WARN] [minecraft/Connection]: handleDisconnection() called twice
+[20:40:01] [Server thread/INFO] [minecraft/PlayerList]: KeeperUser[/127.0.0.1:34168] logged in with entity id 2 at (0.5, -56.0, 0.5)
+[20:40:04] [Server thread/INFO] [minecraft/MinecraftServer]: KeeperUser joined the game
+[20:40:07] [Server thread/WARN] [minecraft/MinecraftServer]: Can't keep up! Is the server overloaded? Running 8735ms or 174 ticks behind
+KEEPER_QA_GROUND=-56
+KEEPER_QA_PHASE=baseline photo=false inPhoto=false selected=0
+KEEPER_QA_PHASE=shoot photo=false inPhoto=false selected=1
+[20:41:16] [Server thread/WARN] [minecraft/MinecraftServer]: Can't keep up! Is the server overloaded? Running 54035ms or 1080 ticks behind
+[20:42:06] [Server thread/WARN] [minecraft/MinecraftServer]: Can't keep up! Is the server overloaded? Running 34456ms or 689 ticks behind
+[20:42:28] [Server thread/WARN] [minecraft/MinecraftServer]: Can't keep up! Is the server overloaded? Running 3352ms or 67 ticks behind
+[20:42:57] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: KeeperUser lost connection: Disconnected
+[20:42:57] [Server thread/INFO] [minecraft/MinecraftServer]: KeeperUser left the game
+[20:42:58] [Server thread/INFO] [minecraft/MinecraftServer]: Stopping server
+[20:42:58] [Server thread/INFO] [minecraft/MinecraftServer]: Saving players
+[20:42:58] [Server thread/INFO] [minecraft/MinecraftServer]: Saving worlds

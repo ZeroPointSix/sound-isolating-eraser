@@ -1,0 +1,90 @@
+--- client.log ---
+	at net.minecraft.client.Minecraft.run(Minecraft.java:718) ~[forge-1.20.1-47.2.0_mapped_official_1.20.1.jar:?] {re:mixin,pl:accesstransformer:B,pl:runtimedistcleaner:A,re:classloading,pl:accesstransformer:B,pl:mixin:APP:gravity.mixins.json:GravityOutlineMixin,pl:mixin:A,pl:runtimedistcleaner:A}
+	at net.minecraft.client.main.Main.main(Main.java:218) ~[forge-1.20.1-47.2.0_mapped_official_1.20.1.jar:?] {re:classloading,pl:runtimedistcleaner:A}
+	at jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method) ~[?:?] {}
+	at jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77) ~[?:?] {}
+	at jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43) ~[?:?] {}
+	at java.lang.reflect.Method.invoke(Method.java:569) ~[?:?] {}
+	at net.minecraftforge.fml.loading.targets.CommonLaunchHandler.runTarget(CommonLaunchHandler.java:111) ~[fmlloader-1.20.1-47.2.0.jar:?] {}
+	at net.minecraftforge.fml.loading.targets.CommonLaunchHandler.clientService(CommonLaunchHandler.java:99) ~[fmlloader-1.20.1-47.2.0.jar:?] {}
+	at net.minecraftforge.fml.loading.targets.ForgeClientUserdevLaunchHandler.devService(ForgeClientUserdevLaunchHandler.java:19) ~[fmlloader-1.20.1-47.2.0.jar:?] {}
+	at net.minecraftforge.fml.loading.targets.CommonDevLaunchHandler.lambda$makeService$7(CommonDevLaunchHandler.java:135) ~[fmlloader-1.20.1-47.2.0.jar:?] {}
+	at cpw.mods.modlauncher.LaunchServiceHandlerDecorator.launch(LaunchServiceHandlerDecorator.java:30) ~[modlauncher-10.0.9.jar:?] {}
+	at cpw.mods.modlauncher.LaunchServiceHandler.launch(LaunchServiceHandler.java:53) ~[modlauncher-10.0.9.jar:?] {}
+	at cpw.mods.modlauncher.LaunchServiceHandler.launch(LaunchServiceHandler.java:71) ~[modlauncher-10.0.9.jar:?] {}
+	at cpw.mods.modlauncher.Launcher.run(Launcher.java:108) ~[modlauncher-10.0.9.jar:?] {}
+	at cpw.mods.modlauncher.Launcher.main(Launcher.java:78) ~[modlauncher-10.0.9.jar:?] {}
+	at cpw.mods.modlauncher.BootstrapLaunchConsumer.accept(BootstrapLaunchConsumer.java:26) ~[modlauncher-10.0.9.jar:?] {}
+	at cpw.mods.modlauncher.BootstrapLaunchConsumer.accept(BootstrapLaunchConsumer.java:23) ~[modlauncher-10.0.9.jar:?] {}
+	at cpw.mods.bootstraplauncher.BootstrapLauncher.main(BootstrapLauncher.java:141) ~[bootstraplauncher-1.1.2.jar:?] {}
+[20:36:29] [Render thread/INFO] [minecraft/TextureAtlas]: Created: 1024x1024x4 minecraft:textures/atlas/blocks.png-atlas
+[20:36:31] [Render thread/INFO] [minecraft/TextureAtlas]: Created: 256x256x4 minecraft:textures/atlas/signs.png-atlas
+[20:36:31] [Render thread/INFO] [minecraft/TextureAtlas]: Created: 512x512x4 minecraft:textures/atlas/shield_patterns.png-atlas
+[20:36:31] [Render thread/INFO] [minecraft/TextureAtlas]: Created: 512x512x4 minecraft:textures/atlas/banner_patterns.png-atlas
+[20:36:31] [Render thread/INFO] [minecraft/TextureAtlas]: Created: 1024x1024x4 minecraft:textures/atlas/armor_trims.png-atlas
+[20:36:31] [Render thread/INFO] [minecraft/TextureAtlas]: Created: 128x64x4 minecraft:textures/atlas/decorated_pot.png-atlas
+[20:36:31] [Render thread/INFO] [minecraft/TextureAtlas]: Created: 256x256x4 minecraft:textures/atlas/chest.png-atlas
+[20:36:31] [Render thread/INFO] [minecraft/TextureAtlas]: Created: 512x256x4 minecraft:textures/atlas/beds.png-atlas
+[20:36:31] [Render thread/INFO] [minecraft/TextureAtlas]: Created: 512x256x4 minecraft:textures/atlas/shulker_boxes.png-atlas
+[20:36:39] [Render thread/WARN] [minecraft/ShaderInstance]: Shader rendertype_entity_translucent_emissive could not find sampler named Sampler2 in the specified shader program.
+[20:36:44] [Render thread/INFO] [minecraft/TextureAtlas]: Created: 512x256x0 minecraft:textures/atlas/particles.png-atlas
+[20:36:45] [Render thread/INFO] [minecraft/TextureAtlas]: Created: 256x256x0 minecraft:textures/atlas/paintings.png-atlas
+[20:36:45] [Render thread/INFO] [minecraft/TextureAtlas]: Created: 256x128x0 minecraft:textures/atlas/mob_effects.png-atlas
+[20:36:47] [Render thread/INFO] [co.ze.er.cl.WingsMesh/]: Loaded Wind Thunder mesh: 153 parts, 2340 triangles
+[20:36:52] [Render thread/INFO] [minecraft/ConnectScreen]: Connecting to 127.0.0.1, 25578
+[20:38:09] [Render thread/INFO] [minecraft/ConnectScreen]: Connecting to 127.0.0.1, 25578
+[20:38:31] [Render thread/INFO] [ne.mi.re.GameData/REGISTRIES]: Injecting existing registry data into this CLIENT instance
+[20:38:42] [Netty Epoll Client IO #1/INFO] [ne.mi.ne.NetworkHooks/]: Connected to a modded server.
+[20:39:44] [Render thread/INFO] [minecraft/ConnectScreen]: Connecting to 127.0.0.1, 25578
+[20:39:49] [Render thread/INFO] [ne.mi.re.GameData/REGISTRIES]: Injecting existing registry data into this CLIENT instance
+[20:39:59] [Netty Epoll Client IO #2/INFO] [ne.mi.ne.NetworkHooks/]: Connected to a modded server.
+[20:40:50] [Render thread/INFO] [minecraft/AdvancementList]: Loaded 2 advancements
+--- sampler.log ---
+
+--- server.log ---
+[20:24:46] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 87%
+[20:24:46] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 87%
+[20:24:47] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 87%
+[20:24:47] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 88%
+[20:24:48] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 90%
+[20:24:48] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 91%
+[20:24:49] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 92%
+[20:24:49] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 95%
+[20:24:50] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 96%
+[20:24:50] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 97%
+[20:24:52] [Server thread/INFO] [minecraft/LoggerChunkProgressListener]: Time elapsed: 113879 ms
+[20:24:52] [Server thread/INFO] [minecraft/DedicatedServer]: Done (135.507s)! For help, type "help"
+[20:24:52] [Server thread/INFO] [ne.mi.ga.ForgeGameTestHooks/]: Enabled Gametest Namespaces: [sound_isolating_eraser]
+[20:24:53] [Server thread/INFO] [ne.mi.se.pe.PermissionAPI/]: Successfully initialized permission handler forge:default_handler
+[20:25:00] [Server thread/WARN] [minecraft/MinecraftServer]: Can't keep up! Is the server overloaded? Running 7022ms or 140 ticks behind
+[20:25:45] [Server thread/WARN] [minecraft/MinecraftServer]: Can't keep up! Is the server overloaded? Running 2184ms or 43 ticks behind
+[20:26:09] [Server thread/WARN] [minecraft/MinecraftServer]: Can't keep up! Is the server overloaded? Running 3493ms or 69 ticks behind
+[20:30:09] [Server thread/WARN] [minecraft/MinecraftServer]: Can't keep up! Is the server overloaded? Running 3197ms or 63 ticks behind
+[20:35:12] [Server thread/WARN] [minecraft/MinecraftServer]: Can't keep up! Is the server overloaded? Running 2891ms or 57 ticks behind
+[20:38:16] [Server thread/WARN] [minecraft/MinecraftServer]: Can't keep up! Is the server overloaded? Running 2374ms or 47 ticks behind
+[20:38:49] [Server thread/INFO] [minecraft/PlayerList]: KeeperUser[/127.0.0.1:52438] logged in with entity id 1 at (0.5, -56.0, 0.5)
+[20:39:01] [Server thread/INFO] [minecraft/MinecraftServer]: KeeperUser joined the game
+[20:39:12] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: KeeperUser lost connection: Timed out
+[20:39:12] [Server thread/INFO] [minecraft/MinecraftServer]: KeeperUser left the game
+[20:39:14] [Server thread/WARN] [minecraft/MinecraftServer]: Can't keep up! Is the server overloaded? Running 33016ms or 660 ticks behind
+[20:39:14] [Server thread/WARN] [minecraft/Connection]: handleDisconnection() called twice
+[20:40:01] [Server thread/INFO] [minecraft/PlayerList]: KeeperUser[/127.0.0.1:34168] logged in with entity id 2 at (0.5, -56.0, 0.5)
+[20:40:04] [Server thread/INFO] [minecraft/MinecraftServer]: KeeperUser joined the game
+[20:40:07] [Server thread/WARN] [minecraft/MinecraftServer]: Can't keep up! Is the server overloaded? Running 8735ms or 174 ticks behind
+KEEPER_QA_GROUND=-56
+KEEPER_QA_PHASE=baseline photo=false inPhoto=false selected=0
+KEEPER_QA_PHASE=shoot photo=false inPhoto=false selected=1
+[20:41:16] [Server thread/WARN] [minecraft/MinecraftServer]: Can't keep up! Is the server overloaded? Running 54035ms or 1080 ticks behind
+[20:42:06] [Server thread/WARN] [minecraft/MinecraftServer]: Can't keep up! Is the server overloaded? Running 34456ms or 689 ticks behind
+[20:42:28] [Server thread/WARN] [minecraft/MinecraftServer]: Can't keep up! Is the server overloaded? Running 3352ms or 67 ticks behind
+[20:42:57] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: KeeperUser lost connection: Disconnected
+[20:42:57] [Server thread/INFO] [minecraft/MinecraftServer]: KeeperUser left the game
+[20:42:58] [Server thread/INFO] [minecraft/MinecraftServer]: Stopping server
+[20:42:58] [Server thread/INFO] [minecraft/MinecraftServer]: Saving players
+[20:42:58] [Server thread/INFO] [minecraft/MinecraftServer]: Saving worlds
+Traceback (most recent call last):
+  File "/data2/keeper-camera-20261016/tools/keeper-e2e.py", line 191, in <module>
+    wait_evidence(["sepia", "hud", "countdown", "exit", "server"], [server, client])
+  File "/data2/keeper-camera-20261016/tools/keeper-e2e.py", line 114, in wait_evidence
+    raise AssertionError("; ".join(messages))
+AssertionError: client.failed: java.lang.AssertionError: Render readiness unavailable within 90s: need 2s of real frames with gaps <=50ms before native shutter; stable_frames=1

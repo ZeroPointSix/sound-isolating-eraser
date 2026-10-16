@@ -1,0 +1,4 @@
+[feat/keeper-camera-20261016 3e3e530] test(keeper): require stable rendered frames before native shutter
+ 1 file changed, 44 insertions(+), 4 deletions(-)
+{"keeper_classes_matched": 13, "delivery_sha256": "856a24df553aa98e2feb10847653ed4787429effc861406836d6855d29f8bd98", "loaded_runtime_verified": false}
+{"keeper_classes_matched": 13, "delivery_sha256": "856a24df553aa98e2feb10847653ed4787429effc861406836d6855d29f8bd98", "loaded_runtime_verified": true}

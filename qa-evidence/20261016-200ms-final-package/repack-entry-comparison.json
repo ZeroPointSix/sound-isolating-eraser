@@ -1,0 +1,12 @@
+{
+  "entry_count": 1315,
+  "all_non_manifest_entry_bytes_equal": true,
+  "changed_entries": [
+    "META-INF/MANIFEST.MF"
+  ],
+  "manifest_difference": "Implementation-Timestamp only",
+  "old_manifest": "Manifest-Version: 1.0\r\nSpecification-Title: sound_isolating_eraser\r\nSpecification-Vendor: ZeroPointSix\r\nSpecification-Version: 1\r\nImplementation-Title: keeper-camera-20261016\r\nImplementation-Version: 0.13.0-keeper.2\r\nImplementation-Vendor: ZeroPointSix\r\nImplementation-Timestamp: 2026-10-16T19:25:35+0000\r\nMixinConfigs: sound_isolating_eraser.mixins.json,gravity.mixins.json\r\n\r\n",
+  "new_manifest": "Manifest-Version: 1.0\r\nSpecification-Title: sound_isolating_eraser\r\nSpecification-Vendor: ZeroPointSix\r\nSpecification-Version: 1\r\nImplementation-Title: keeper-camera-20261016\r\nImplementation-Version: 0.13.0-keeper.2\r\nImplementation-Vendor: ZeroPointSix\r\nImplementation-Timestamp: 2026-10-16T20:55:32+0000\r\nMixinConfigs: sound_isolating_eraser.mixins.json,gravity.mixins.json\r\n\r\n",
+  "old_sha256": "856a24df553aa98e2feb10847653ed4787429effc861406836d6855d29f8bd98",
+  "new_sha256": "2dc4f746ebeea31eed48cc6040d15f9c5ad31bfc675adeeec69edb42aa6d36c0"
+}

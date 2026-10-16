@@ -1,0 +1,2 @@
+856a24df553aa98e2feb10847653ed4787429effc861406836d6855d29f8bd98  build/libs/sound_isolating_eraser-0.13.0-keeper.2.jar
+2e0ee23eb0bbcff46543fee05fdd1e59fb926a2f6c8678a7286974ceb774b88d  build/keeper-runtime/keeper-runtime.jar

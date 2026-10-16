@@ -1,0 +1,2 @@
+build/libs/sound_isolating_eraser-0.13.0-keeper.2.jar: OK
+build/keeper-runtime/keeper-runtime.jar: OK
