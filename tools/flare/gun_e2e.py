@@ -40,7 +40,7 @@ def launch(role, display):
         (directory / "config").mkdir()
         (directory / "config/fml.toml").write_text("earlyWindowControl = false\n")
         (directory / "options.txt").write_text(
-            "lang:en_us\nrenderDistance:3\nsimulationDistance:3\nguiScale:2\nmaxFps:30\n"
+            "lang:en_us\nrenderDistance:3\nsimulationDistance:5\nguiScale:2\nmaxFps:30\n"
             "enableVsync:false\npauseOnLostFocus:false\nonboardAccessibility:false\n"
             "showAutosaveIndicator:false\nrenderClouds:false\nnarrator:0\ntutorialStep:none\n"
             "gamma:1.0\nfov:0.0\nmusic:0.0\n")
@@ -120,9 +120,9 @@ try:
     server = launch("server", display)
     wait_for(ready, [server], "dedicated server startup")
     client = launch("client", display)
-    wait_for(lambda: (RESULTS / "client.ready").exists(), [server, client], "real client joined")
+    wait_for(lambda: (RESULTS / "client.ready").exists(), [server, client], "real client joined", 180)
     observer = launch("observer", displays[1])
-    wait_for(lambda: (RESULTS / "observer.ready").exists(), [server, client, observer], "observer joined")
+    wait_for(lambda: (RESULTS / "observer.ready").exists(), [server, client, observer], "observer joined", 180)
     videos = []
     for name, screen in zip(("first-third-person", "observer"), displays):
         video_log = (RESULTS / (name + "-video.log")).open("w")

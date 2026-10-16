@@ -13,6 +13,7 @@ import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
 import net.minecraft.client.gui.screens.ConnectScreen;
+import net.minecraft.client.gui.screens.AccessibilityOnboardingScreen;
 import net.minecraft.client.gui.screens.DisconnectedScreen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.multiplayer.ServerData;
@@ -27,6 +28,7 @@ import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.ClientChatReceivedEvent;
 import net.minecraftforge.client.event.sound.PlaySoundEvent;
 import net.minecraftforge.client.extensions.common.IClientItemExtensions;
+import net.minecraftforge.client.loading.LoadingErrorScreen;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -162,9 +164,12 @@ public final class FlareGunTestClient {
                         image.writeToFile(file("bootstrap.png"));
                     }
                 }
+                if (mc.screen instanceof LoadingErrorScreen)
+                    throw new AssertionError("Forge loading error/warning screen: " + mc.screen.getNarrationMessage().getString());
                 if (mc.screen instanceof DisconnectedScreen)
                     throw new AssertionError(mc.screen.getNarrationMessage().getString());
-                if (!connecting && mc.screen instanceof TitleScreen && mc.getOverlay() == null) {
+                if (!connecting && (mc.screen instanceof TitleScreen || mc.screen instanceof AccessibilityOnboardingScreen)
+                        && mc.getOverlay() == null) {
                     connecting = true;
                     String address = "127.0.0.1:" + System.getProperty("flare.gun.qa.port", "25594");
                     ConnectScreen.startConnecting(mc.screen, mc, ServerAddress.parseString(address),
