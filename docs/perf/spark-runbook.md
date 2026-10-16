@@ -2,6 +2,8 @@
 
 本手册针对 `e1703317583858b73fb1cd29c3db3f0a177c068b`。命令及场景定义可供下一轮复现；没有实际运行日志的步骤不标作已执行。本文只提供隔离测试步骤，不连接或更改生产专服。
 
+2026-10-16 20:52 UTC 更新：沿用同一运行时代码的 PR1 `bb325dc` 已在独立 GitHub runner 完成生产专服启动与 A 空载 300 秒采样。[真实报告、启动证据、恢复命令及计数修正](evidence/2026-10-16-production-idle-baseline.md)。本地/Daytona 网络问题仍是历史环境限制，不能再笼统写成“无任何专服或 spark”。B1/B2/C、真实 GPU FPS、前后对比仍待验证。
+
 ## 回源发现
 
 | 来源 | 已确认的入口 | 对性能采样的意义 |
@@ -108,14 +110,14 @@ enable-rcon=false
 ```text
 /scoreboard objectives add t2_perf dummy
 /scoreboard players set all t2_perf 0
-/execute in minecraft:overworld as @e[type=!minecraft:player] run scoreboard players add all t2_perf 1
+/execute in minecraft:overworld as @e[distance=0..,type=!minecraft:player] run scoreboard players add all t2_perf 1
 /scoreboard players get all t2_perf
 /scoreboard players set parents t2_perf 0
-/execute in minecraft:overworld as @e[type=qihai:qiyu,tag=t2_parent] run scoreboard players add parents t2_perf 1
+/execute in minecraft:overworld as @e[distance=0..,type=qihai:qiyu,tag=t2_parent] run scoreboard players add parents t2_perf 1
 /scoreboard players get parents t2_perf
 ```
 
-计数脚本本身会遍历实体，采样前后使用相同频率，并记录这部分测量开销。总数包含非怪物实体；按类型补充计数，不能直接用总数减父数声称得到召唤子实体数。卸载实体不在 `@e` 可见集合内，计数口径写明“当前已加载实体”。不要用大范围 `/kill @e` 清理复用世界，应正常停服后使用新的副本。
+`execute in` 本身不会把没有位置/范围限制的 `@e` 收窄到该维度，必须保留 `distance=0..` 等维度限制。首轮 A 的 CSV 三列曾重复记录同一全局数，已用 spark 世界统计交叉核验并明确纠错，不能相加。计数脚本本身会遍历实体，采样前后使用相同频率，并记录这部分测量开销。总数包含非怪物实体；按类型补充计数，不能直接用总数减父数声称得到召唤子实体数。卸载实体不在 `@e` 可见集合内，计数口径写明“当前已加载实体”。不要用大范围 `/kill @e` 清理复用世界，应正常停服后使用新的副本。
 
 ## 300 秒采样与产物
 
@@ -123,7 +125,8 @@ A、B1、B2、C 四个正式窗口分别执行，不能用一个维度的结果�
 
 ```text
 /spark profiler info
-/spark health show
+/spark health
+/spark tps
 /spark profiler start --timeout 300
 ```
 
@@ -131,7 +134,7 @@ A、B1、B2、C 四个正式窗口分别执行，不能用一个维度的结果�
 
 基线不能使用 `--only-ticks-over` 过滤长 tick 后又声称代表所有 tick。CPU 采样与 `--alloc` 分配采样分开运行，且前后使用同一采样配置。服务器 profile 和客户端 `/sparkc` profile 分开记录；服务器报告不能生成客户端 FPS。
 
-结束后再保存一次 `/spark health show` 或对应版本支持的 health 上传结果，作为环境与滚动指标快照。它们不自动等于完整 300 秒的均值/分位数；如果当前 spark 版本没有导出对应窗口指标，完整窗口字段仍记“未取得”，补充受控指标采集后再验收，不能用两张快照拼造分布。
+本次实际安装的 spark 1.10.53 不接受 `health show`，会报 `Expected flag at position 0 but got 'show' instead!`；使用该版本支持的 `/spark health`、`/spark tps`，不要照抄新版文档的子命令。结束后保留报告 metadata 中的 `platformStatistics.mspt.last5m` 和明确的滚动窗口口径。滚动快照不自动等于逐 tick 原始分布；不能用两张快照拼造分位数。
 
 建议记录项：
 
@@ -155,7 +158,7 @@ A、B1、B2、C 四个正式窗口分别执行，不能用一个维度的结果�
 - 基线完整命令 `build runGameTestServer` 实际失败在 Gradle 8.1.1 分发下载阶段，Java 报 `java.net.SocketException: Connection reset`、退出码 1。**编译和 GameTest 都未开始，不是用例失败，更不是通过。**
 - 对同一 Gradle URL 改用 curl，仍报退出码 35、`Connection reset by peer`；ForgeGradle 元数据与 GeckoLib POM 端点也同样失败，HTTP 状态为 `000`。2026-10-16 16:39:27 UTC 对下列三个 URL 的 curl 复测仍全部为退出码 35 / HTTP `000`。Gradle 有 Java 与 curl 两种客户端证据，Forge/Cloudsmith 此处记录的是 curl 探针，不把它们冒充成已执行的 Java 构建解析。GitHub 仓库与官方 JDK Release 下载成功，因此只能确认这些端点的连接问题，尚不能认定具体防火墙、代理或服务端根因。
 - [脱敏终端证据](evidence/2026-10-16-isolated-validation.log) 保存命令、退出码、错误栈、域名、复测时间和两个 PR 提交的 Mixin 结果。没有关闭 TLS 校验，没有改项目下载源，没有借用高负载共享机生成基线。
-- 本地专服/客户端尚未启动，A、B1、B2、C 均未采样，spark 链接、MSPT、实体数和 FPS 仍缺失。CI 在独立的 GitHub runner 上运行，结果不能反推本地构建或性能采样已完成。
+- 截至 16:39 UTC 的本地专服/客户端尚未启动，A、B1、B2、C 当时均未采样。这是历史事实；20:52 UTC 已有独立 CI 生产专服的 A 报告。功能 CI 不自动证明采样，后者由独立启动日志、300 秒 spark metadata、实体 CSV 与停服记录证明。
 
 ### GitHub Actions 按提交记录
 
@@ -175,6 +178,8 @@ A、B1、B2、C 四个正式窗口分别执行，不能用一个维度的结果�
 修正提交后的工作流链接和逐项状态保留在 PR 描述中，并标明查询时间与新 HEAD；不要为了更新 CI 状态反复制造文档提交，从而取消仍在运行的检查。
 
 ## 阻塞后的下一动作
+
+最新可用替代路径已实际跑通：标准 Gradle 构建准确提交，然后在独立 CI runner 用官方 Forge installer 安装生产专服，装入构建出的 0.14.2 jar、既有 Curios/GeckoLib 依赖及独立 spark。见[验证命令与报告](evidence/2026-10-16-production-idle-baseline.md)。没有删除 foojay、改 TLS 校验、升级付费套餐或修改现有 CI 来掩盖失败。后续优先复用该路径及世界副本推进 B1/B2/C；保留下述失败环境证据，不再无变化地反复创建沙箱。
 
 2026-10-16 续办补证：复用 `da45d57` 与已有官方 Gradle/JDK 后，`runServer --offline` 仍在 foojay 插件解析阶段退出 1，未拉起专服。见 [缓存/启动原始摘要](evidence/2026-10-16-codexweb-cache-check.md)；[PR2 具体清单](pr2-spawn-cap-plan.md) 仅供采样完成后实施，当前开工门禁仍关闭。
 
