@@ -184,7 +184,9 @@ public final class SuxiaTestClient {
             }
             return;
         }
-        if (failed || !(phase.equals("gallery") || phase.startsWith("hostile-") || phase.startsWith("restored"))
+        // A captured phase is complete. The server may already be preparing the
+        // next state (including restart sleep) before another phase packet arrives.
+        if (failed || captured || !(phase.equals("gallery") || phase.startsWith("hostile-") || phase.startsWith("restored"))
                 || !(event.getEntity() instanceof SuxiaEntity mob)
                 || !(event.getRenderer().getModel() instanceof SuxiaModel<?> model)) return;
         try {

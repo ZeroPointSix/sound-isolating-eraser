@@ -54,6 +54,7 @@ jobs:
       - name: Verify evidence summary rejects incomplete runs
         run: python3 -m unittest discover -s tools/suxia -p 'test_*.py'
       - name: Run all 26 Suxia Forge regressions and prepare native driver
+        id: prepare
         run: |
           bash ./gradlew --no-daemon --max-workers=2 -PsuxiaOnly -PsuxiaE2E -PflareQaRunDir=run-suxia-ci verifySuxiaAssets writeSuxiaTestClasspath runGameTestServer | tee build/suxia-forge.log
           grep -F 'All 26 required tests passed' build/suxia-forge.log
@@ -63,16 +64,20 @@ jobs:
           grep -F 'SUXIA_ACCEPT_PVP_ON_PASS' build/suxia-forge.log
           grep -F 'SUXIA_ACCEPT_PRIORITY_PASS' build/suxia-forge.log
       - name: Install software rendering support
+        id: rendering
         run: sudo apt-get update && sudo apt-get install --no-install-recommends -y xvfb libgl1-mesa-dri
       - name: Verify idle position and owner head direction
+        if: ${{ !cancelled() && steps.prepare.outcome == 'success' && steps.rendering.outcome == 'success' }}
         run: |
           env -u SUXIA_QA_WORLD_SOURCE -u SUXIA_QA_COOLDOWN_ONLY SUXIA_QA_IDLE_ONLY=1 SUXIA_QA_TIMEOUT_SECONDS=600 python3 -u tools/suxia/e2e.py | tee build/suxia-idle.log
           grep -F 'SUXIA_IDLE_REAL_CLIENT_PASSED' build/suxia-idle.log
       - name: Verify complete E2E-8 lifecycle and saved-world restart
+        if: ${{ !cancelled() && steps.prepare.outcome == 'success' && steps.rendering.outcome == 'success' }}
         run: |
           env -u SUXIA_QA_WORLD_SOURCE -u SUXIA_QA_IDLE_ONLY -u SUXIA_QA_COOLDOWN_ONLY SUXIA_QA_TIMEOUT_SECONDS=1200 python3 -u tools/suxia/e2e.py | tee build/suxia-full.log
           grep -F 'SUXIA_REAL_CLIENT_AND_DEDICATED_SERVER_E2E_PASSED' build/suxia-full.log
       - name: Verify visible cooldown after pickup, reconnect and new server JVM
+        if: ${{ !cancelled() && steps.prepare.outcome == 'success' && steps.rendering.outcome == 'success' }}
         run: |
           env -u SUXIA_QA_WORLD_SOURCE -u SUXIA_QA_IDLE_ONLY SUXIA_QA_COOLDOWN_ONLY=1 SUXIA_QA_TIMEOUT_SECONDS=600 python3 -u tools/suxia/e2e.py | tee build/suxia-cooldown.log
           grep -F 'SUXIA_COOLDOWN_BOUNDARIES_REAL_CLIENT_PASSED' build/suxia-cooldown.log
