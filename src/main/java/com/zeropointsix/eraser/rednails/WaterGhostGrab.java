@@ -84,49 +84,56 @@ public final class WaterGhostGrab extends Goal {
             if (WaterGhostBody.waterAt(mob, pos)) { ownerNearWater = true; break; }
         }
         if (!ownerNearWater) return null;
+        Vec3 edge = null;
         for (var pos : BlockPos.withinManhattan(mob.blockPosition(), 4, 1, 4)) {
-            if (WaterGhostBody.waterAt(mob, pos) && WaterGhostBody.waterAt(mob, pos.above())) {
-                Vec3 at = Vec3.atBottomCenterOf(pos);
-                if (mob.level().noCollision(mob, WaterGhostBody.SWIMMING.makeBoundingBox(at))) return at;
-            }
+            if (!WaterGhostBody.waterAt(mob, pos) || !WaterGhostBody.waterAt(mob, pos.above())) continue;
+            Vec3 at = Vec3.atBottomCenterOf(pos);
+            if (!mob.level().noCollision(mob, WaterGhostBody.SWIMMING.makeBoundingBox(at))) continue;
+            if (WaterGhostBody.waterAt(mob, pos.below())) return at;
+            if (edge == null) edge = at;
         }
-        return null;
+        return edge;
     }
     private void lock() {
         target.getPersistentData().putUUID(HOLDER, mob.getUUID());
         target.getPersistentData().putLong(UNTIL, mob.level().getGameTime() + 5);
     }
+    private boolean blocked(Vec3 hold) {
+        var holdBox = target.getDimensions(target.getPose()).makeBoundingBox(hold);
+        return !mob.level().getWorldBorder().isWithinBounds(holdBox)
+                || mob.level().getBlockCollisions(target, holdBox).iterator().hasNext();
+    }
     @Override public void tick() {
         if (target == null) return;
         if (!canContinueToUse()) { stop(); return; }
         lock();
-        if (!body.swimming() && shoreWater != null) {
+        Vec3 shoreStep = Vec3.ZERO;
+        if (shoreWater != null) {
             Vec3 toward = shoreWater.subtract(mob.position()).multiply(1, 0, 1);
             if (toward.lengthSqr() > 0.04) {
                 Vec3 step = toward.normalize().scale(0.12);
                 if (mob.level().noCollision(mob, mob.getBoundingBox().move(step))) {
                     mob.setYRot((float) (Mth.atan2(step.z, step.x) * Mth.RAD_TO_DEG) - 90);
                     mob.yBodyRot = mob.getYRot();
-                    mob.setDeltaMovement(step.x, mob.getDeltaMovement().y, step.z);
+                    shoreStep = step;
                 }
             }
         }
         Vec3 forward = Vec3.directionFromRotation(0, mob.getYRot());
         Vec3 hold = mob.position().add(forward.scale(1.1)).add(0, body.swimming() ? 0 : 0.6, 0);
-        // A dismounted boat must not cancel the grab; only solid terrain blocks the hold.
-        var holdBox = target.getDimensions(target.getPose()).makeBoundingBox(hold);
-        if (!mob.level().getWorldBorder().isWithinBounds(holdBox)
-                || mob.level().getBlockCollisions(target, holdBox).iterator().hasNext()) {
-            stop(); return;
+        // A dismounted boat must not cancel the grab. Terrain must not either: lift or skip
+        // the relocation so a seafloor or pool lip cannot drop a live hold.
+        if (blocked(hold)) hold = mob.position().add(0, body.swimming() ? 0 : 0.6, 0);
+        if (!blocked(hold)) {
+            if (target instanceof ServerPlayer player) {
+                player.setDeltaMovement(hold.subtract(player.position()).scale(0.5));
+                player.hurtMarked = true;
+            } else {
+                target.setPos(hold);
+                target.setDeltaMovement(Vec3.ZERO);
+            }
+            target.fallDistance = 0;
         }
-        if (target instanceof ServerPlayer player) {
-            player.setDeltaMovement(hold.subtract(player.position()).scale(0.5));
-            player.hurtMarked = true;
-        } else {
-            target.setPos(hold);
-            target.setDeltaMovement(Vec3.ZERO);
-        }
-        target.fallDistance = 0;
         if (body.swimming()) {
             if (!enteredWater) {
                 enteredWater = true;
@@ -134,10 +141,16 @@ public final class WaterGhostGrab extends Goal {
                 startY = mob.getY();
             }
             double down = Math.max(-0.08, startY - 6 - mob.getY());
+            Vec3 swim = new Vec3(shoreStep.x, 0, shoreStep.z);
             if (mob.getY() > startY - 6 && !mob.verticalCollisionBelow
-                    && mob.level().noCollision(mob, mob.getBoundingBox().move(0, down, 0))) {
-                mob.setDeltaMovement(0, down, 0);
-            } else mob.setDeltaMovement(Vec3.ZERO);
+                    && mob.level().noCollision(mob, mob.getBoundingBox().move(shoreStep.x, down, shoreStep.z))
+                    && !blocked(hold.add(shoreStep.x, down, shoreStep.z))) {
+                swim = new Vec3(shoreStep.x, down, shoreStep.z);
+            } else if (shoreStep.lengthSqr() > 0
+                    && mob.level().noCollision(mob, mob.getBoundingBox().move(shoreStep))) {
+                swim = shoreStep;
+            }
+            mob.setDeltaMovement(swim);
             if (target.isEyeInFluid(FluidTags.WATER) && !target.canBreatheUnderwater()
                     && !target.hasEffect(MobEffects.WATER_BREATHING) && !target.hasEffect(MobEffects.CONDUIT_POWER)) {
                 int air = target.getAirSupply() - 3;
@@ -145,6 +158,8 @@ public final class WaterGhostGrab extends Goal {
                 if (air <= -20) { target.setAirSupply(0); target.hurt(target.damageSources().drown(), 2); }
                 else target.setAirSupply(air);
             }
+        } else if (shoreStep.lengthSqr() > 0) {
+            mob.setDeltaMovement(shoreStep.x, mob.getDeltaMovement().y, shoreStep.z);
         }
         if (++ticks % 20 == 0) {
             target.hurt(mob.damageSources().mobAttack(mob), 2);

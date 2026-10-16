@@ -484,9 +484,8 @@ public final class RedNailsGameTests {
         var f = new Fixture(h);
         var p = f.player(0, 0);
         var stack = f.wear(p);
-        // Dig a pool instead of stacking water on the stone floor: a 0.5-block sink would
-        // otherwise shove the taller victim into terrain and cancel the hold.
-        for (int x = 2; x <= 6; x++) for (int z = -2; z <= 2; z++) {
+        // Shore at y=0, pool with depth below and water above so the carry can sink.
+        for (int x = 2; x <= 7; x++) for (int z = -3; z <= 3; z++) {
             f.set(f.center.offset(x, -5, z), Blocks.STONE.defaultBlockState());
             for (int y = -4; y <= 3; y++) f.set(f.center.offset(x, y, z), Blocks.WATER.defaultBlockState());
         }
