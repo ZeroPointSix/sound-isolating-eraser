@@ -9,6 +9,7 @@ import java.util.HexFormat;
 import java.awt.image.BufferedImage;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import javax.imageio.ImageIO;
 import net.minecraft.client.Minecraft;
@@ -34,6 +35,7 @@ public final class KeeperTestClient {
     private static int baselineWhite;
     private static boolean photoSaved;
     private static boolean grabberStarted;
+    private static boolean shutterSent;
     private static final StringBuilder frameTimes = new StringBuilder("epoch_ms,elapsed_ms,left_ms,phase,in_photo\n");
     private static Field flashDeadline;
     private static volatile long observedDeadline;
@@ -195,6 +197,13 @@ public final class KeeperTestClient {
 
     private static volatile boolean samplerReady;
 
+    private static void atomicSignal(String name, String value) throws Exception {
+        Path temporary = RESULTS.resolve(name + ".tmp");
+        Files.writeString(temporary, value);
+        Files.move(temporary, RESULTS.resolve(name), StandardCopyOption.ATOMIC_MOVE,
+                StandardCopyOption.REPLACE_EXISTING);
+    }
+
     private static void startFlashGrabber() {
         if (grabberStarted) return;
         grabberStarted = true;
@@ -204,23 +213,35 @@ public final class KeeperTestClient {
                 while (!Files.exists(RESULTS.resolve("sampler.ready")) && System.nanoTime() < timeout)
                     Thread.sleep(1);
                 require(Files.exists(RESULTS.resolve("sampler.ready")), "external X11 sampler ready");
-                long before = System.nanoTime();
-                Files.writeString(RESULTS.resolve("clock-request.txt"), Long.toString(before));
-                String reply = "";
-                while (System.nanoTime() < timeout) {
-                    if (Files.exists(RESULTS.resolve("clock-response.txt")))
-                        reply = Files.readString(RESULTS.resolve("clock-response.txt")).trim();
-                    if (!reply.isEmpty()) break;
-                    Thread.sleep(1);
+                // Retry scheduling outliers without relaxing the 50ms clock-domain bound.
+                for (int attempt = 1; attempt <= 30; attempt++) {
+                    long before = System.nanoTime();
+                    atomicSignal("clock-request.txt", attempt + "," + before);
+                    long remote = 0;
+                    while (System.nanoTime() - before < 1_000_000_000L) {
+                        if (Files.exists(RESULTS.resolve("clock-response.txt"))) {
+                            String[] reply = Files.readString(RESULTS.resolve("clock-response.txt")).trim().split(",");
+                            if (reply.length == 2 && Integer.parseInt(reply[0]) == attempt) {
+                                remote = Long.parseLong(reply[1]);
+                                break;
+                            }
+                        }
+                        Thread.sleep(1);
+                    }
+                    long after = System.nanoTime();
+                    String record = "attempt=" + attempt + " client_before_ns=" + before + " sampler_ns=" + remote
+                            + " client_after_ns=" + after + " bound_ms=" + (after - before) / 1_000_000.0 + "\n";
+                    Files.writeString(RESULTS.resolve("sampler-clock-attempts.txt"), record,
+                            StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+                    if (remote >= before && remote <= after && after - before < 50_000_000L) {
+                        Files.writeString(RESULTS.resolve("sampler-clock-check.txt"), record);
+                        atomicSignal("clock-accepted.txt", Integer.toString(attempt));
+                        samplerReady = true;
+                        return;
+                    }
+                    Thread.sleep(25);
                 }
-                long after = System.nanoTime();
-                long remote = Long.parseLong(reply);
-                require(remote >= before && remote <= after && after - before < 50_000_000L,
-                        "sampler and client share the monotonic clock, round trip under 50ms");
-                Files.writeString(RESULTS.resolve("sampler-clock-check.txt"),
-                        "client_before_ns=" + before + " sampler_ns=" + remote
-                        + " client_after_ns=" + after + " bound_ms=" + (after - before) / 1_000_000.0 + "\n");
-                samplerReady = true;
+                throw new AssertionError("No clock handshake under 50ms in 30 attempts; see sampler-clock-attempts.txt");
             } catch (Throwable error) {
                 try { Files.writeString(RESULTS.resolve("client.failed"), error.toString()); } catch (Exception ignored) { }
                 failed = true;
@@ -283,8 +304,10 @@ public final class KeeperTestClient {
             if (phase.equals("shoot")) {
                 if (ticks == 4) startFlashGrabber();
                 if (ticks == 8) input("key", "1");
-                if (ticks == 20) {
-                    require(samplerReady, "X11 capture and monotonic clock verified before shutter");
+                if (ticks >= 20 && !shutterSent && samplerReady
+                        && Files.exists(RESULTS.resolve("capture.ready"))) {
+                    shutterSent = true;
+                    Files.writeString(RESULTS.resolve("shutter-input.txt"), "native_right_click_ns=" + System.nanoTime() + "\n");
                     input("click", "3");
                 }
             }

@@ -3,7 +3,8 @@ import java.awt.Robot;
 import java.awt.image.BufferedImage;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
+import java.nio.file.StandardCopyOption;
+import java.util.ArrayDeque;
 import javax.imageio.ImageIO;
 
 /** Independent X11 observer: Minecraft intentionally makes its own JVM headless. */
@@ -16,6 +17,13 @@ public final class KeeperX11Sampler {
         return value.isEmpty() ? 0 : Long.parseLong(value);
     }
 
+    private static void atomicSignal(Path results, String name, String value) throws Exception {
+        Path temporary = results.resolve(name + ".tmp");
+        Files.writeString(temporary, value);
+        Files.move(temporary, results.resolve(name), StandardCopyOption.ATOMIC_MOVE,
+                StandardCopyOption.REPLACE_EXISTING);
+    }
+
     public static void main(String[] args) throws Exception {
         Path results = Path.of(args[0]);
         try {
@@ -25,20 +33,35 @@ public final class KeeperX11Sampler {
             Files.writeString(results.resolve("sampler.ready"), "real X11 Robot; headless=false\n");
             long startupSeconds = Long.parseLong(System.getenv().getOrDefault("KEEPER_QA_TIMEOUT_SECONDS", "1200"));
             long timeout = System.nanoTime() + startupSeconds * 1_000_000_000L;
-            while (readLong(results.resolve("clock-request.txt")) == 0) {
-                if (System.nanoTime() > timeout) throw new AssertionError("No client clock request");
+            int answered = 0;
+            while (!Files.exists(results.resolve("clock-accepted.txt"))) {
+                if (System.nanoTime() > timeout) throw new AssertionError("No accepted client clock handshake");
+                Path request = results.resolve("clock-request.txt");
+                if (Files.exists(request)) {
+                    String[] fields = Files.readString(request).trim().split(",");
+                    if (fields.length == 2) {
+                        int attempt = Integer.parseInt(fields[0]);
+                        if (attempt != answered) {
+                            atomicSignal(results, "clock-response.txt", attempt + "," + System.nanoTime());
+                            answered = attempt;
+                        }
+                    }
+                }
                 Thread.sleep(1);
             }
-            Files.writeString(results.resolve("clock-response.txt"), Long.toString(System.nanoTime()));
-            ArrayList<Capture> captures = new ArrayList<>();
-            timeout = System.nanoTime() + 20_000_000_000L;
+            ArrayDeque<Capture> captures = new ArrayDeque<>();
+            timeout = System.nanoTime() + 60_000_000_000L;
             long deadline = 0;
             while (System.nanoTime() < timeout) {
                 long before = System.nanoTime();
                 BufferedImage image = robot.createScreenCapture(roi);
                 long after = System.nanoTime();
                 captures.add(new Capture(before, after, image));
+                if (captures.size() == 1) atomicSignal(results, "capture.ready", Long.toString(after));
                 if (deadline == 0) deadline = readLong(results.resolve("flash-deadline.txt"));
+                // Retain a short pre-shutter window while the real client is still scheduling input.
+                while (deadline == 0 && captures.getFirst().after() < after - 1_000_000_000L)
+                    captures.removeFirst();
                 if (deadline != 0 && after > deadline + 600_000_000L) break;
                 Thread.sleep(10);
             }
