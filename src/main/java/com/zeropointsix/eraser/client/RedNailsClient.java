@@ -16,8 +16,9 @@ import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.packs.resources.ResourceManagerReloadListener;
+import net.minecraft.server.packs.resources.PreparableReloadListener;
 import net.minecraft.sounds.SoundEvents;
+import net.minecraft.util.Unit;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
 import net.minecraftforge.api.distmarker.Dist;
@@ -34,17 +35,11 @@ import org.lwjgl.glfw.GLFW;
 public final class RedNailsClient {
     public static final KeyMapping KEY = new KeyMapping("key." + ModMain.MOD_ID + ".red_nails",
             InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_V, "key.categories." + ModMain.MOD_ID);
-    private static boolean down, blocked, renderersReady;
+    private static boolean down, blocked;
     private static int ticks;
     @SubscribeEvent public static void tick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
         var mc = Minecraft.getInstance();
-        if (!renderersReady && mc.getOverlay() == null && mc.getEntityRenderDispatcher() != null) {
-            bindGhostRenderers((type, provider) -> EntityRenderers.register(type, provider));
-            mc.getEntityRenderDispatcher().onResourceManagerReload(mc.getResourceManager());
-            renderersReady = true;
-            System.out.println("RED_NAILS_RENDERERS rebuilt after overlay");
-        }
         if (mc.player == null || mc.getConnection() == null) { down = false; ticks = 0; blocked = true; return; }
         boolean key = KEY.isDown();
         if (!key) blocked = false;
@@ -83,8 +78,11 @@ public final class RedNailsClient {
             bindGhostRenderers((type, provider) -> event.registerEntityRenderer(type, provider));
         }
         @SubscribeEvent public static void reload(RegisterClientReloadListenersEvent event) {
-            event.registerReloadListener((ResourceManagerReloadListener) manager ->
-                    bindGhostRenderers((type, provider) -> EntityRenderers.register(type, provider)));
+            event.registerReloadListener((PreparableReloadListener) (barrier, manager, prep, reload, background, game) -> {
+                bindGhostRenderers((type, provider) -> EntityRenderers.register(type, provider));
+                System.out.println("RED_NAILS_RENDERERS providers bound before dispatcher apply");
+                return barrier.wait(Unit.INSTANCE).thenRun(() -> {});
+            });
         }
         @SubscribeEvent public static void setup(FMLClientSetupEvent event) {
             event.enqueueWork(() -> {
