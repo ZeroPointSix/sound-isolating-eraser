@@ -402,6 +402,54 @@ public final class EternalNightGameTests {
         h.succeed();
     }
 
+    @GameTest(template = "empty", batch = "eternal_night_loot", timeoutTicks = 240)
+    public static void cityGeneratedStationSupplyUsesCommonLoot(GameTestHelper h) {
+        isolate(h.getLevel());
+        ServerLevel city = h.getLevel().getServer().getLevel(EternalNightContent.LEVEL);
+        int bx = 0;
+        while (!CityTemplates.hasStation(city.getSeed(), bx, 0) && bx < 100) bx++;
+        h.assertTrue(bx < 100, "deterministic nearby station exists");
+        int originX = bx * 64 + 48, originZ = 48;
+        city.getBlockState(new BlockPos(originX + 8, CityChunkGenerator.SUBWAY_Y + 2, originZ + 7));
+        city.getBlockState(new BlockPos(originX + 8, CityLayout.plateau(bx, 0) + 1, originZ + 8));
+        var containers = new java.util.ArrayList<net.minecraft.world.level.block.entity.RandomizableContainerBlockEntity>();
+        var chunk = city.getChunk(originX >> 4, originZ >> 4);
+        for (BlockPos pos : chunk.getBlockEntitiesPos()) {
+            var entity = city.getBlockEntity(pos);
+            if (entity instanceof net.minecraft.world.level.block.entity.RandomizableContainerBlockEntity container) {
+                CompoundTag tag = container.saveWithFullMetadata();
+                if (CityTemplates.STATION_COMMON_LOOT.toString().equals(tag.getString("LootTable")))
+                    containers.add(container);
+            }
+        }
+        System.out.println("STATION_SUPPLY_FOUND count=" + containers.size() + " chunk=" + originX + "," + originZ);
+        h.assertTrue(!containers.isEmpty(), "runtime station supply injects at least one common container; got " + containers.size());
+        for (var container : containers) {
+            CompoundTag before = container.saveWithFullMetadata();
+            try {
+                h.assertTrue(CityTemplates.STATION_COMMON_LOOT.toString().equals(before.getString("LootTable")),
+                        "station container uses chests/eternal_night/common");
+                h.assertTrue(!before.contains("Items"), "generator does not prefill station inventory");
+                container.unpackLootTable(null);
+                h.assertTrue(!container.isEmpty(), "common loot table produces equipment");
+                for (int slot = 0; slot < container.getContainerSize(); slot++) {
+                    var stack = container.getItem(slot);
+                    h.assertTrue(!stack.isEdible() && !(stack.getItem() instanceof net.minecraft.world.item.PotionItem)
+                            && !stack.is(net.minecraft.world.item.Items.WATER_BUCKET), "no food, potion or water in station loot");
+                }
+                container.clearContent();
+                container.unpackLootTable(null);
+                h.assertTrue(container.isEmpty(), "empty station container never refills");
+                CompoundTag emptied = container.saveWithFullMetadata();
+                h.assertTrue(!emptied.contains("LootTable"), "consumed station loot marker is removed");
+            } finally {
+                container.load(before);
+                container.setChanged();
+            }
+        }
+        h.succeed();
+    }
+
     @GameTest(template = "empty", batch = "eternal_night_death", timeoutTicks = 300)
     public static void cityDeathDropsAndRespawnsAtOwnBed(GameTestHelper h) {
         isolate(h.getLevel());
