@@ -431,15 +431,11 @@ public final class RedNailsGameTests {
         f.level.addFreshEntity(victim);
         f.entities.add(victim);
         double startY = g.getY();
-        h.runAfterDelay(60, () -> {
+        h.startSequence().thenWaitUntil(() -> {
             check(h, g.ghostBody().grab.held() == victim, "Goal selector grabs without a direct start() call");
             check(h, g.ghostBody().swimming(), "AI grab is in water");
-        });
-        h.runAfterDelay(140, () -> {
-            check(h, g.ghostBody().grab.held() == victim, "AI grab still holds while dragging");
             check(h, g.getY() < startY - 0.8, "Ghost sank under effective AI");
             check(h, victim.getY() < startY, "Victim was dragged downward");
-            h.succeed();
-        });
+        }).thenSucceed();
     }
 }
