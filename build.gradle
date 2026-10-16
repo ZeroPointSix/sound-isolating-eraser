@@ -383,6 +383,9 @@ tasks.named('check').configure { dependsOn verifyCityAssets }
 if (project.hasProperty('pillE2E')) {
     apply from: 'gradle/pill-e2e.gradle'
 }
+if (project.hasProperty('keeperE2E')) {
+    apply from: 'gradle/keeper-e2e.gradle'
+}
 
 if (project.hasProperty('shaxiaE2E')) {
     apply from: 'gradle/shaxia-e2e.gradle'

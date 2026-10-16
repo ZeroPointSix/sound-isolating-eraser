@@ -6,6 +6,8 @@ import com.zeropointsix.eraser.ModMain;
 import com.zeropointsix.eraser.keeper.KeeperData;
 import com.zeropointsix.eraser.registry.ModEffects;
 import com.zeropointsix.eraser.registry.ModItems;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
@@ -30,17 +32,26 @@ import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 public final class KeeperVisuals {
     private static final ResourceLocation FILTER = new ResourceLocation(ModMain.MOD_ID, "shaders/post/keeper_photo.json");
     private static final ResourceLocation FRAME = new ResourceLocation(ModMain.MOD_ID, "textures/gui/photo_world_frame.png");
+    private static final long FLASH_MS = 800L;
     private static PostChain filter;
     private static boolean failed;
     private static boolean awaitRelease;
-    private static int width, height, flashTicks;
+    private static int width, height;
+    private static long flashUntil;
     private static final Set<UUID> HIDDEN = new HashSet<>();
 
     private static boolean active() {
         var player = Minecraft.getInstance().player;
         return player != null && player.hasEffect(ModEffects.IN_PHOTO.get());
     }
-    public static void flash() { flashTicks = 4; }
+    public static void flash() {
+        flashUntil = System.currentTimeMillis() + FLASH_MS;
+        String dir = System.getProperty("keeper.qa.results");
+        if (dir != null && !dir.isBlank()) {
+            try { Files.writeString(Path.of(dir, "flash-called.txt"), Long.toString(System.currentTimeMillis()) + System.lineSeparator()); }
+            catch (Exception ignored) { }
+        }
+    }
     public static void visibility(UUID player, boolean hidden) {
         if (hidden) HIDDEN.add(player); else HIDDEN.remove(player);
         var mc = Minecraft.getInstance();
@@ -55,14 +66,13 @@ public final class KeeperVisuals {
     }
     @SubscribeEvent public static void tick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
-        if (flashTicks > 0) flashTicks--;
         var mc = Minecraft.getInstance();
         if (!mc.options.keyUse.isDown()) awaitRelease = false;
         else if (mc.player != null && mc.player.isUsingItem()
                 && mc.player.getUseItem().is(ModItems.KEEPER_PHOTO.get())
                 && mc.player.getUseItemRemainingTicks() <= 1) awaitRelease = true;
         if (!active()) close();
-        if (Minecraft.getInstance().player == null) { flashTicks = 0; failed = false; awaitRelease = false; HIDDEN.clear(); }
+        if (Minecraft.getInstance().player == null) { flashUntil = 0; failed = false; awaitRelease = false; HIDDEN.clear(); }
     }
     @SubscribeEvent public static void hidePlayer(RenderPlayerEvent.Pre event) {
         if (HIDDEN.contains(event.getEntity().getUUID())
@@ -104,7 +114,13 @@ public final class KeeperVisuals {
                     gui.drawCenteredString(mc.font, text, w / 2, h * 238 / 256 - mc.font.lineHeight / 2, 0x5A4632);
                     RenderSystem.disableBlend();
                 }
-                if (flashTicks > 0) gui.fill(0, 0, w, h, (Math.round(255F * flashTicks / 4F) << 24) | 0xFFFFFF);
+                long left = flashUntil - System.currentTimeMillis();
+                if (left > 0) {
+                    RenderSystem.enableBlend();
+                    RenderSystem.defaultBlendFunc();
+                    gui.fill(0, 0, w, h, (Math.round(255F * Math.min(1F, left / (float) FLASH_MS)) << 24) | 0xFFFFFF);
+                    RenderSystem.disableBlend();
+                }
             });
         }
     }

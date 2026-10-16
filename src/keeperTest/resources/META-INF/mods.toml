@@ -1,0 +1,13 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="MIT"
+[[mods]]
+modId="keeper_qa"
+version="1.0.0"
+displayName="Keeper Camera Client E2E Driver"
+[[dependencies.keeper_qa]]
+modId="sound_isolating_eraser"
+mandatory=true
+versionRange="[0.4.0,)"
+ordering="AFTER"
+side="BOTH"
