@@ -2,7 +2,7 @@
 
 本手册针对 `e1703317583858b73fb1cd29c3db3f0a177c068b`。命令及场景定义可供下一轮复现；没有实际运行日志的步骤不标作已执行。本文只提供隔离测试步骤，不连接或更改生产专服。
 
-2026-10-16 20:52 UTC 更新：沿用同一运行时代码的 PR1 `bb325dc` 已在独立 GitHub runner 完成生产专服启动与 A 空载 300 秒采样。[真实报告、启动证据、恢复命令及计数修正](evidence/2026-10-16-production-idle-baseline.md)。本地/Daytona 网络问题仍是历史环境限制，不能再笼统写成“无任何专服或 spark”。B1/B2/C、真实 GPU FPS、前后对比仍待验证。
+2026-10-16 21:43 UTC 更新：沿用同一运行时代码的 PR1 `bb325dc` 已在独立 GitHub runner 完成生产专服启动与 A/B1/B2/C 各 300 秒采样。见[四窗口报告、命令、快照和限制](evidence/2026-10-16-four-window-baseline.md)。C 存在碰撞推位且未连续记录坐标，四份真实 profile 不等于严格固定站位的优化前后验收。真实 GPU FPS、重复方差与优化后对照仍缺；本地/Daytona 网络失败不再阻止已跑通的 CI 替代路径。
 
 ## 回源发现
 
@@ -74,7 +74,7 @@ enable-rcon=false
 
 ### B2：永夜城市，正式 300 秒
 
-永夜与雨寂是不同维度。正常入口是主世界深睡后按配置概率进入，不存在本文可用的 `/night enter` 命令；不能只传送坐标绕过 Visiting 状态和入城队列。入口控制流见 [`NightEvents.java:52`](https://github.com/ZeroPointSix/sound-isolating-eraser/blob/e1703317583858b73fb1cd29c3db3f0a177c068b/src/main/java/com/zeropointsix/eraser/eternalnight/NightEvents.java#L52)，概率配置见 [`NightConfig.java:17`](https://github.com/ZeroPointSix/sound-isolating-eraser/blob/e1703317583858b73fb1cd29c3db3f0a177c068b/src/main/java/com/zeropointsix/eraser/eternalnight/NightConfig.java#L17)。以下为待执行的隔离存档准备流程，不是已运行证据：
+永夜与雨寂是不同维度。正常入口是主世界深睡后按配置概率进入，不存在本文可用的 `/night enter` 命令；不能只传送坐标绕过 Visiting 状态和入城队列。入口控制流见 [`NightEvents.java:52`](https://github.com/ZeroPointSix/sound-isolating-eraser/blob/e1703317583858b73fb1cd29c3db3f0a177c068b/src/main/java/com/zeropointsix/eraser/eternalnight/NightEvents.java#L52)，概率配置见 [`NightConfig.java:17`](https://github.com/ZeroPointSix/sound-isolating-eraser/blob/e1703317583858b73fb1cd29c3db3f0a177c068b/src/main/java/com/zeropointsix/eraser/eternalnight/NightConfig.java#L17)。下面为复现流程；本次实际日志、截图与八份快照中的配置恢复核验见[四窗口证据](evidence/2026-10-16-four-window-baseline.md#场景真实性与限制)，不以文字流程代替执行证据：
 
 1. 使用独立世界副本，正常停服后备份 `run/world/serverconfig/eternal-night-server.toml`。仅为准备入口，在 `[eternalNight]` 下临时设置 `entryBase=1.0`、`entryCap=1.0`；这两个值在现有配置合法范围内，不改运行时代码或刷怪配置。
 2. 启动后让固定身份的真实生存玩家在主世界夜间安全床位正常深睡，等待概率判定、入城队列、到达睡眠及唤醒完成。确认玩家确实位于 `sound_isolating_eraser:eternal_night`，记录区域、坐标、装备、防护和模式。
@@ -104,6 +104,8 @@ enable-rcon=false
 ```
 
 先观测 16 个父实体自然施放和子实体生成，逐级另建 32/64 父实体副本，不在正式采样中追加实体。选定最终规模后锁定副本及配置，并记录实际存活父/子实体数量与类型；不能把“16x4”当成已测实体数，因为范围、生成失败、战斗、移动和死亡都会改变数量。该合成场景的持久化标签与生产情况不同，结果必须注明。
+
+2026-10-16 首轮 C 实测为 16 父 / 64 归属子，尚未做 32/64 父规模。固定输入不保证固定位置：抗击退没有阻止碰撞推位，采样前坐标已偏移。下一次必须记录逐秒 Pos/方向以及起止状态；若要求严格固定站位，先确定不改变目标搜索和召唤语义的场地约束，再从同一快照重复基线。不能把此轮未记录的轨迹补写为固定。
 
 计数可用原版命令做每秒快照，命令由控制台或 OP 执行。示例中的维度应替换成已选场景的固定维度：
 
@@ -162,6 +164,8 @@ A、B1、B2、C 四个正式窗口分别执行，不能用一个维度的结果�
 
 ### GitHub Actions 按提交记录
 
+最新已完成提交 `bb7d241`：默认434/434 GameTest 与 Mixin14/0；七项 success，Gravity 一项 failure，唯一一次同 HEAD 复验仍在真实客户端入水步骤失败。逐项运行、job 与断言见[固定 SHA 记录](evidence/2026-10-16-four-window-baseline.md#pr-提交级验证)。以下 16:42 表格仅为历史，不代表当前 HEAD；新文档提交结果在原 PR 评论逐项补齐。
+
 2026-10-16 16:42 UTC 回源查询的工作流级快照如下。首提交 `509d3e5` 为 **2 项成功、6 项 cancelled**；补证据提交 `fef5dd4` 当时为 **5 项成功、3 项运行中**。这是两个固定 SHA 的记录，不是后续新 HEAD 的结论。取消和运行中均不等于通过，不能汇总为 CI 全绿或全量 GameTest 已验收；单个 job 的绿色也不能替代所属工作流整体状态。
 
 | 工作流 | `509d3e5` 结果 | `fef5dd4` 在 16:42 UTC 的状态 |
@@ -179,13 +183,13 @@ A、B1、B2、C 四个正式窗口分别执行，不能用一个维度的结果�
 
 ## 阻塞后的下一动作
 
-最新可用替代路径已实际跑通：标准 Gradle 构建准确提交，然后在独立 CI runner 用官方 Forge installer 安装生产专服，装入构建出的 0.14.2 jar、既有 Curios/GeckoLib 依赖及独立 spark。见[验证命令与报告](evidence/2026-10-16-production-idle-baseline.md)。没有删除 foojay、改 TLS 校验、升级付费套餐或修改现有 CI 来掩盖失败。后续优先复用该路径及世界副本推进 B1/B2/C；保留下述失败环境证据，不再无变化地反复创建沙箱。
+最新替代路径已实际跑通：标准 Gradle 构建准确提交，然后在独立 CI runner 用官方 Forge installer 安装生产专服，装入构建出的 0.14.2 jar、既有 Curios/GeckoLib 依赖及独立 spark。见[四窗口验证命令与报告](evidence/2026-10-16-four-window-baseline.md)。没有删除 foojay、改 TLS 校验、升级付费套餐或修改已有 CI 来掩盖失败。后续复用已归档的四场景 before 快照，补严格轨迹/重复运行及真实 GPU 观测；保留下述失败环境历史证据，不再反复创建同条件沙箱。
 
-2026-10-16 续办补证：复用 `da45d57` 与已有官方 Gradle/JDK 后，`runServer --offline` 仍在 foojay 插件解析阶段退出 1，未拉起专服。见 [缓存/启动原始摘要](evidence/2026-10-16-codexweb-cache-check.md)；[PR2 具体清单](pr2-spawn-cap-plan.md) 仅供采样完成后实施，当前开工门禁仍关闭。
+2026-10-16 19:52 的历史补证：复用 `da45d57` 与已有官方 Gradle/JDK 后，`runServer --offline` 在 foojay 插件解析阶段退出 1，该环境未拉起专服。见[缓存/启动原始摘要](evidence/2026-10-16-codexweb-cache-check.md)。该失败已由成功 CI 路径绕开，不再作为当前等待事项；[PR2 清单](pr2-spawn-cap-plan.md) 记录已有硬数据及尚未冻结的有限默认值和验收条件。
 
 19:42 UTC 的[后续分层诊断](evidence/2026-10-16-network-diagnosis.md)已从官方 GitHub 分发恢复 Gradle 8.1.1 / Java 17 并核对摘要，项目实际执行到 foojay 插件解析后失败。原 Gradle 服务入口仍重置，官方资产替代仅解决工具链启动，不代表 Forge、GeckoLib 或插件依赖已恢复。
 
-当前缺的是隔离环境到公开依赖服务的正常出站连接，**不是待索取的密钥、生产控制台或已有存档**：`services.gradle.org`、`plugins.gradle.org`、`maven.minecraftforge.net`、`dl.cloudsmith.io`；`spark.lucko.me` 也需单独恢复/验证。DNS/TCP 可达而 TLS 被重置，不能把问题简化为缺 Java、缺 CA 或上游全面宕机。先核实组织级出站限制，或使用已有授权开发机的低负载独占窗口，不扩大网络权限、不用当前高负载窗口凑基线。修复后先运行下列探针，再运行完整构建命令。成功后按本文创建合成世界；默认目录为独立检出的 `run/world`，没有尚待人工提供的生产存档路径。
+上述连接缺口仅指 19:42 UTC 的 Daytona/原生隔离环境，**不是待索取的密钥、生产控制台或已有存档**：`services.gradle.org`、`plugins.gradle.org`、`maven.minecraftforge.net`、`dl.cloudsmith.io` 和 spark 服务。该环境 DNS/TCP 可达而 TLS 被重置，不能把问题简化为缺 Java、缺 CA 或上游全面宕机。20:52 UTC 已用独立 GitHub runner 成功完成准确源码构建、生产专服与 spark；不再等待这条失败路径恢复。若后续复用 Daytona，先核实其组织级出站限制并运行下列探针，不扩大网络权限、不用高负载窗口凑基线。新场景使用合成世界和已存档副本，没有尚待人工提供的生产存档路径；生产验证脚本目录为 `source/build/t2-perf/server/world`，开发态 `runServer` 默认目录为独立检出的 `run/world`。
 
 ```bash
 curl -fIL --connect-timeout 10 --max-time 30 https://services.gradle.org/distributions/gradle-8.1.1-bin.zip

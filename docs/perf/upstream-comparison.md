@@ -11,7 +11,7 @@
 | [FerriteCore](https://github.com/malte0811/FerriteCore)，仓库 `summary.md` | 不可变状态、谓词、模型和部分数组/形状共享或去重 | 复用不可变常量；减少重复模型数据；区分初始化分配和逐帧临时分配 | Suxia 动画工作区是可变数据，不能把它当不可变数组跨实体共享。历史整合包的 MB 节约值不适用于当前工程 |
 | [ModernFix](https://github.com/embeddedt/ModernFix) | 加载、内存等多项优化，具有可配置、可关闭的兼容策略 | 把每项优化做成小范围、可回退的变更；缓存避免无效重复工作 | 本轮未证实某个 ModernFix 选项就是本仓库热点的修复；不宣称安装即能降低目标场景 MSPT |
 | [Lithium](https://github.com/CaffeineMC/lithium) 与 [配置说明](https://github.com/CaffeineMC/lithium/blob/develop/lithium-mixin-config.md) | AI、寻路等机制的细粒度性能改进，按配置项禁用不兼容项 | PR3 通过缓存、局部更新和准确失效保持行为；逐项验证与回退 | 当前发行版与 Forge 1.20.1 的加载器适配不能凭项目名推断；学习算法不等于可直接安装 Fabric/NeoForge 包 |
-| Canary；[ModernFix 维护者历史讨论 #179](https://github.com/embeddedt/ModernFix/issues/179) | 历史讨论涉及重叠的 ItemStack 缓存及兼容处理 | 合并优化前检查重复缓存、相同注入点和生命周期依赖 | 常见官方仓库路径本轮读取未成功，未完成当前源码核验。历史讨论仅用于说明重叠风险，不证明今天的支持状态或兼容性 |
+| [Canary 作者发布页](https://www.curseforge.com/minecraft/mc-mods/canary)；[ModernFix 维护者历史讨论 #179](https://github.com/embeddedt/ModernFix/issues/179) | 作者明确说明为 Forge 的 Lithium 非官方分支，涉及 AI、区块加载、物理优化，可分别关闭补丁；历史讨论涉及重叠的 ItemStack 缓存 | 保留可逐项禁用的优化边界，检查重复缓存、相同注入点和生命周期依赖；不叠加两个未经验证的相同优化 | 作者页列出 1.20.1 的 0.3.3 发布及 LGPLv3，但 `AbdElAziz333/Canary` 仓库在 2026-10-16 复核仍返回404，未完成具体实现/源码许可文件核验；不能据发布页断言与本整合包兼容或直接复制实现 |
 
 ## 面向本仓库的设计结论
 

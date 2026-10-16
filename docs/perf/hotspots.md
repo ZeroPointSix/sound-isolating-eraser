@@ -2,6 +2,20 @@
 
 基线固定为 `e1703317583858b73fb1cd29c3db3f0a177c068b`。本页的“频率”来自控制流，不是采样计数；“候选”不表示已证实的主要瓶颈。源码路径均相对于 `src/main/java/com/zeropointsix/eraser/`。
 
+## 本轮实测调用路径
+
+2026-10-16 的四窗口使用未改变上述运行时逻辑的 `bb325dc`。完整环境、限制与实体数见[诊断基线](evidence/2026-10-16-four-window-baseline.md)。以下数值取对应 viewer 的 `?raw=1&full=true` 数据，对 `Server thread` 中同类/方法的节点选择**最大的单条调用路径**并累计该节点的 `times`。它是包含子调用的采样墙钟毫秒，不是方法自身 CPU 耗时，也不是该方法在所有路径的总和；不得将祖先与后代相加。采样粒度 4ms，线程约300秒包含等待，不能把占总墙钟的比例当CPU占用或MSPT降幅。
+
+| 场景 | 已观测路径及最大单路径包含时间 | 可支持与不能支持的结论 |
+| --- | --- | --- |
+| [B1 雨寂](https://spark.lucko.me/BQ1iJ9qI3b) | `RecliningBuddha.m_8119_` 7188ms；`RainCityEvents.tick` 292ms；`RainCitySpawns.tick` 216ms；`YujiMonster.nearbyPlayers` 156ms | 确认实体 AI 和刷怪/查询路径被采到；tick override 包含原版父类逻辑，7188ms 不能全部归因于自定义代码。不能认定 Ambient 重复计数就是最大热点 |
+| [B2 永夜](https://spark.lucko.me/Scz8kd12Ic) | `ShadowTanglerEntity.m_8119_` 6664ms；`LightAversionNodeEvaluator.m_6065_` 172ms；`refreshLightTier` 144ms；`FleeLightGoal.m_8037_` 64ms | 确认缠影 AI/光照路径存在。单玩家早期城市只有8至11个区域实体，不代表多人/高密度城市瓶颈；不应重做已存在的分片 |
+| [C 召唤物](https://spark.lucko.me/aCKjSDJu2S) | `YujiMonster.pursue` 1940ms；`m_8024_` 940ms；`resolveAction` 552ms；`YujiAfflictions.mobTick` 408ms；`strike` 352ms | 16父/64子下追逐与战斗链值得复测；这些节点可能相互嵌套，不能相加。C 站位存在碰撞偏移，尚非严格固定站位的前后验收 |
+
+C 的计数探针也被采到：`EntityDataAccessor.m_6184_` 单条包含时间 528ms，说明 NBT 计数并非零开销。优先在下一次固定快照重复运行中量化探针与场景方差，再决定 cap 与扫描缓存的优先级。爬行动画数组、`PoseStack`、SavedData 序列化和账本增长仍只是下文静态证据，服务端这四份 profile 没有补上客户端分配或长期存档测量。
+
+原始数据结构以 [spark 官方 Raw data 文档](https://spark.lucko.me/docs/misc/Raw-spark-data) 为准；仓库记录筛选口径，原始二进制和完整 metadata 在 Actions 制品中保留，不用截图读数替代原数据。
+
 ## 刷怪与实体查询
 
 | 位置 / 方法 | 已核实触发频率与工作量 | 采样重点和后续风险 |
