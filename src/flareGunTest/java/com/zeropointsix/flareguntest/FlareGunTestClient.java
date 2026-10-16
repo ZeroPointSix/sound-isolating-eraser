@@ -201,6 +201,10 @@ public final class FlareGunTestClient {
             var barrel = renderer.getGeoModel().getBone("barrel").orElseThrow();
             float angle = phase.endsWith("load") || phase.endsWith("refill") ? barrel.getRotX() : root.getRotX();
             if (Math.abs(angle) > .08F) animated.add(phase);
+            // Bedrock loading tilts down (negative X); firing kicks up (positive X).
+            // Check the entire refill window, including after cooldown permits loading.
+            if (phase.endsWith("load") || phase.endsWith("refill"))
+                require(root.getRotX() <= .02F, "Loading/refill played firing recoil: " + root.getRotX());
             if (phase.endsWith("empty") || (phase.endsWith("refill") && ticks <= 18))
                 require(Math.abs(root.getRotX()) < .02F && Math.abs(barrel.getRotX()) < .02F,
                         "Rejected shot/early cooldown refill animated: " + root.getRotX() + "," + barrel.getRotX());
