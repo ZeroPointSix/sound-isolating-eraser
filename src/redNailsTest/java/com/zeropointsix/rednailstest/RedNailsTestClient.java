@@ -31,7 +31,7 @@ import org.lwjgl.glfw.GLFW;
 public final class RedNailsTestClient {
     private static final Path RESULTS = Path.of(System.getProperty("rednails.qa.results"));
     private static String phase = "";
-    private static int ticks, frame;
+    private static int ticks, frame, longPresses, longPhase, longPhaseTicks;
     private static boolean failed, captured, shortAcked;
     private static ArmorStand camera;
     private static final HashMap<Integer, Integer> rendered = new HashMap<>();
@@ -55,6 +55,7 @@ public final class RedNailsTestClient {
                 }
             }
             phase = text.substring("RED_NAILS_QA:".length()); ticks = 0; captured = false; shortAcked = false;
+            longPresses = 0; longPhase = 0; longPhaseTicks = 0;
             rendered.clear(); poses.clear(); RedNailsClient.KEY.setDown(false); event.setCanceled(true);
         }
     }
@@ -92,8 +93,9 @@ public final class RedNailsTestClient {
                 mc.setScreen(null);
                 mc.mouseHandler.grabMouse();
                 if (!mc.isWindowActive()) {
-                    ticks = 0;
                     RedNailsClient.KEY.setDown(false);
+                    if (!shortAcked) ticks = 0;
+                    else if (longPhase == 1) longPhaseTicks = 0;
                     return;
                 }
             }
@@ -108,12 +110,40 @@ public final class RedNailsTestClient {
                     if (ticks >= 11 && Files.exists(RESULTS.resolve("server-short-press.ack"))) {
                         shortAcked = true;
                         ticks = 0;
+                        longPresses = 0;
+                        longPhase = 0;
+                        longPhaseTicks = 0;
                         RedNailsClient.KEY.setDown(false);
                     }
                     return;
                 }
-                if (ticks == 1 || ticks == 25 || ticks == 65 || ticks == 105 || ticks == 145) RedNailsClient.KEY.setDown(true);
-                if (ticks == 10 || ticks == 55 || ticks == 95 || ticks == 135 || ticks == 175) RedNailsClient.KEY.setDown(false);
+                if (longPresses >= 4) {
+                    RedNailsClient.KEY.setDown(false);
+                    return;
+                }
+                if (longPhase == 0) {
+                    RedNailsClient.KEY.setDown(false);
+                    if (++longPhaseTicks >= 20) { longPhase = 1; longPhaseTicks = 0; }
+                    return;
+                }
+                if (longPhase == 1) {
+                    if (longPhaseTicks == 0) {
+                        System.out.println("RED_NAILS_QA_LONG_PRESS=" + (longPresses + 1));
+                    }
+                    RedNailsClient.KEY.setDown(true);
+                    if (++longPhaseTicks >= 25) {
+                        RedNailsClient.KEY.setDown(false);
+                        longPhase = 2;
+                        longPhaseTicks = 0;
+                    }
+                    return;
+                }
+                RedNailsClient.KEY.setDown(false);
+                if (++longPhaseTicks >= 15) {
+                    longPresses++;
+                    longPhase = 1;
+                    longPhaseTicks = 0;
+                }
             }
             if (phase.equals("recall")) {
                 if (ticks == 1) {
