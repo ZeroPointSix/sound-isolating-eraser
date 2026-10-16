@@ -110,8 +110,14 @@ public final class FlareVisualGameTests {
             h.assertTrue(decoy.tauntRadius() == 1, "existing decoy boundary shrinks when the gameplay radius shrinks");
             FlareConfig.TAUNT_RADIUS.set(64.); decoy.taunt();
             h.assertTrue(decoy.tauntRadius() == 64, "existing decoy boundary expands with gameplay radius");
+            CompoundTag saved = decoy.saveWithoutId(new CompoundTag());
+            FlareConfig.TAUNT_RADIUS.set(8.5); FlareConfig.TAUNT_INTERVAL.set(100);
+            var restored = new FlareDecoy(FlareContent.DECOY.get(), h.getLevel()); entities.add(restored);
+            restored.load(saved);
+            h.assertTrue(restored.tauntRadius() == 8.5,
+                    "reloaded decoy immediately publishes current radius before any tick or delayed taunt");
         }
-        System.out.println("T5_RED_RING_SYNC_PASSED initial=12.5 shrink=1 expand=64 configRestored=true");
+        System.out.println("T5_RED_RING_SYNC_PASSED initial=12.5 shrink=1 expand=64 reload=8.5 beforeFirstTick=true configRestored=true");
         h.succeed();
     }
 

@@ -65,5 +65,9 @@ public final class FlareDecoy extends PathfinderMob {
     }
     @Override public void die(DamageSource source) { super.die(source); discard(); }
     @Override public void addAdditionalSaveData(CompoundTag tag) { super.addAdditionalSaveData(tag); tag.putLong("FlareExpires", expiresAt); }
-    @Override public void readAdditionalSaveData(CompoundTag tag) { super.readAdditionalSaveData(tag); expiresAt = tag.contains("FlareExpires") ? tag.getLong("FlareExpires") : -1; }
+    @Override public void readAdditionalSaveData(CompoundTag tag) {
+        super.readAdditionalSaveData(tag);
+        expiresAt = tag.contains("FlareExpires") ? tag.getLong("FlareExpires") : -1;
+        if (!level().isClientSide) entityData.set(RADIUS, FlareConfig.TAUNT_RADIUS.get().floatValue());
+    }
 }
