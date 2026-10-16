@@ -12,6 +12,7 @@ import java.util.HashSet;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
 import net.minecraft.client.renderer.item.ItemProperties;
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ServerboundPlayerCommandPacket;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.decoration.ArmorStand;
@@ -135,8 +136,13 @@ public final class RedNailsTestClient {
                 require(RedNailsItem.coolingCount(stack) == 1, "Client receives one torn nail");
                 var predicate = ItemProperties.getProperty(stack.getItem(), new ResourceLocation(ModMain.MOD_ID, "fallen_nails"));
                 require(predicate != null && predicate.call(stack, mc.level, mc.player, 0) == 0.25F, "Item switches to three-nail texture");
-                String tooltip = stack.getTooltipLines(mc.player, TooltipFlag.NORMAL).toString();
-                require(!tooltip.contains("tooltip." + ModMain.MOD_ID), "Chinese tooltips resolve");
+                var lines = stack.getTooltipLines(mc.player, TooltipFlag.NORMAL).stream()
+                        .map(Component::getString).toList();
+                String tooltip = String.join("\n", lines);
+                require(lines.stream().noneMatch(line -> line.contains("tooltip." + ModMain.MOD_ID)),
+                        "Chinese tooltips resolve");
+                require(lines.size() > 2 && lines.get(1).equals("\u73cd\u8d35\u56de\u5fc6"),
+                        "precious-memory label immediately below item name");
                 Files.writeString(RESULTS.resolve(phase + "-tooltip.txt"), tooltip);
             }
             for (String asset : new String[]{"textures/entity/water_ghost/water_ghost.png", "textures/entity/water_ghost/water_ghost_eyes.png", "textures/item/red_nails.png"})
