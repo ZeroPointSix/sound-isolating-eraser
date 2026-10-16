@@ -1,0 +1,462 @@
+{
+  "schema_version": 1,
+  "description": "PR1 registry inventory. All six section keys exist in both locales; partial and placeholder content is completed by module in PR2.",
+  "items": [
+    {
+      "id": "qihai:chennu_spawn_egg",
+      "module": "creatures",
+      "category": "spawn_egg",
+      "controls": [
+        "key.use"
+      ],
+      "text_status": "placeholder"
+    },
+    {
+      "id": "qihai:ekou_spawn_egg",
+      "module": "creatures",
+      "category": "spawn_egg",
+      "controls": [
+        "key.use"
+      ],
+      "text_status": "placeholder"
+    },
+    {
+      "id": "qihai:emergency_light",
+      "module": "city",
+      "category": "block",
+      "controls": [
+        "key.use"
+      ],
+      "text_status": "placeholder"
+    },
+    {
+      "id": "qihai:flare_green",
+      "module": "flare",
+      "category": "daoju",
+      "controls": [
+        "key.use"
+      ],
+      "text_status": "placeholder"
+    },
+    {
+      "id": "qihai:flare_gun",
+      "module": "flare",
+      "category": "daoju",
+      "controls": [
+        "key.use"
+      ],
+      "text_status": "partial"
+    },
+    {
+      "id": "qihai:flare_red",
+      "module": "flare",
+      "category": "daoju",
+      "controls": [
+        "key.use"
+      ],
+      "text_status": "placeholder"
+    },
+    {
+      "id": "qihai:flare_yellow",
+      "module": "flare",
+      "category": "daoju",
+      "controls": [
+        "key.use"
+      ],
+      "text_status": "placeholder"
+    },
+    {
+      "id": "qihai:holy_light_source",
+      "module": "city",
+      "category": "block",
+      "controls": [
+        "key.use"
+      ],
+      "text_status": "placeholder"
+    },
+    {
+      "id": "qihai:incense_burner",
+      "module": "city",
+      "category": "block",
+      "controls": [
+        "key.use"
+      ],
+      "text_status": "placeholder"
+    },
+    {
+      "id": "qihai:karma_mark_chennu",
+      "module": "yuji",
+      "category": "material",
+      "controls": [],
+      "text_status": "placeholder"
+    },
+    {
+      "id": "qihai:karma_mark_ekou",
+      "module": "yuji",
+      "category": "material",
+      "controls": [],
+      "text_status": "placeholder"
+    },
+    {
+      "id": "qihai:karma_mark_liangshe",
+      "module": "yuji",
+      "category": "material",
+      "controls": [],
+      "text_status": "placeholder"
+    },
+    {
+      "id": "qihai:karma_mark_qiyu",
+      "module": "yuji",
+      "category": "material",
+      "controls": [],
+      "text_status": "placeholder"
+    },
+    {
+      "id": "qihai:karma_mark_shasheng",
+      "module": "yuji",
+      "category": "material",
+      "controls": [],
+      "text_status": "placeholder"
+    },
+    {
+      "id": "qihai:karma_mark_tanyu",
+      "module": "yuji",
+      "category": "material",
+      "controls": [],
+      "text_status": "placeholder"
+    },
+    {
+      "id": "qihai:karma_mark_toudao",
+      "module": "yuji",
+      "category": "material",
+      "controls": [],
+      "text_status": "placeholder"
+    },
+    {
+      "id": "qihai:karma_mark_wangyu",
+      "module": "yuji",
+      "category": "material",
+      "controls": [],
+      "text_status": "placeholder"
+    },
+    {
+      "id": "qihai:karma_mark_xieyin",
+      "module": "yuji",
+      "category": "material",
+      "controls": [],
+      "text_status": "placeholder"
+    },
+    {
+      "id": "qihai:karma_mark_yuchi",
+      "module": "yuji",
+      "category": "material",
+      "controls": [],
+      "text_status": "placeholder"
+    },
+    {
+      "id": "qihai:liangshe_spawn_egg",
+      "module": "creatures",
+      "category": "spawn_egg",
+      "controls": [
+        "key.use"
+      ],
+      "text_status": "placeholder"
+    },
+    {
+      "id": "qihai:mural",
+      "module": "city",
+      "category": "block",
+      "controls": [
+        "key.use"
+      ],
+      "text_status": "placeholder"
+    },
+    {
+      "id": "qihai:neon_sign_pink",
+      "module": "city",
+      "category": "block",
+      "controls": [
+        "key.use"
+      ],
+      "text_status": "placeholder"
+    },
+    {
+      "id": "qihai:qiyu_spawn_egg",
+      "module": "creatures",
+      "category": "spawn_egg",
+      "controls": [
+        "key.use"
+      ],
+      "text_status": "placeholder"
+    },
+    {
+      "id": "qihai:shasheng_spawn_egg",
+      "module": "creatures",
+      "category": "spawn_egg",
+      "controls": [
+        "key.use"
+      ],
+      "text_status": "placeholder"
+    },
+    {
+      "id": "qihai:shifotou_spawn_egg",
+      "module": "creatures",
+      "category": "spawn_egg",
+      "controls": [
+        "key.use"
+      ],
+      "text_status": "placeholder"
+    },
+    {
+      "id": "qihai:supply_crate",
+      "module": "flare",
+      "category": "block",
+      "controls": [
+        "key.use"
+      ],
+      "text_status": "placeholder"
+    },
+    {
+      "id": "qihai:tanyu_spawn_egg",
+      "module": "creatures",
+      "category": "spawn_egg",
+      "controls": [
+        "key.use"
+      ],
+      "text_status": "placeholder"
+    },
+    {
+      "id": "qihai:toudao_spawn_egg",
+      "module": "creatures",
+      "category": "spawn_egg",
+      "controls": [
+        "key.use"
+      ],
+      "text_status": "placeholder"
+    },
+    {
+      "id": "qihai:wall_corpse",
+      "module": "city",
+      "category": "block",
+      "controls": [
+        "key.use"
+      ],
+      "text_status": "placeholder"
+    },
+    {
+      "id": "qihai:wangyu_spawn_egg",
+      "module": "creatures",
+      "category": "spawn_egg",
+      "controls": [
+        "key.use"
+      ],
+      "text_status": "placeholder"
+    },
+    {
+      "id": "qihai:xieyin_spawn_egg",
+      "module": "creatures",
+      "category": "spawn_egg",
+      "controls": [
+        "key.use"
+      ],
+      "text_status": "placeholder"
+    },
+    {
+      "id": "qihai:yuchi_spawn_egg",
+      "module": "creatures",
+      "category": "spawn_egg",
+      "controls": [
+        "key.use"
+      ],
+      "text_status": "placeholder"
+    },
+    {
+      "id": "sound_isolating_eraser:brickrot_spawn_egg",
+      "module": "creatures",
+      "category": "spawn_egg",
+      "controls": [
+        "key.use"
+      ],
+      "text_status": "placeholder"
+    },
+    {
+      "id": "sound_isolating_eraser:empty_fertilizer_bag",
+      "module": "fertilizer",
+      "category": "material",
+      "controls": [],
+      "text_status": "placeholder"
+    },
+    {
+      "id": "sound_isolating_eraser:empty_pill_pack",
+      "module": "equipment",
+      "category": "material",
+      "controls": [],
+      "text_status": "placeholder"
+    },
+    {
+      "id": "sound_isolating_eraser:enhancement_pill_pack",
+      "module": "equipment",
+      "category": "qiwu",
+      "controls": [
+        "key.use"
+      ],
+      "text_status": "partial"
+    },
+    {
+      "id": "sound_isolating_eraser:fertile_fruit",
+      "module": "fertilizer",
+      "category": "material",
+      "controls": [
+        "key.use"
+      ],
+      "text_status": "placeholder"
+    },
+    {
+      "id": "sound_isolating_eraser:fertile_leaves",
+      "module": "fertilizer",
+      "category": "block",
+      "controls": [
+        "key.use"
+      ],
+      "text_status": "placeholder"
+    },
+    {
+      "id": "sound_isolating_eraser:fertile_log",
+      "module": "fertilizer",
+      "category": "block",
+      "controls": [
+        "key.use"
+      ],
+      "text_status": "placeholder"
+    },
+    {
+      "id": "sound_isolating_eraser:fertile_planks",
+      "module": "fertilizer",
+      "category": "block",
+      "controls": [
+        "key.use"
+      ],
+      "text_status": "placeholder"
+    },
+    {
+      "id": "sound_isolating_eraser:fertile_sapling",
+      "module": "fertilizer",
+      "category": "block",
+      "controls": [
+        "key.use"
+      ],
+      "text_status": "placeholder"
+    },
+    {
+      "id": "sound_isolating_eraser:gravity_jade_pendant",
+      "module": "equipment",
+      "category": "qiwu",
+      "controls": [
+        "key.sound_isolating_eraser.gravity_target"
+      ],
+      "text_status": "partial"
+    },
+    {
+      "id": "sound_isolating_eraser:neon_tumor_spawn_egg",
+      "module": "creatures",
+      "category": "spawn_egg",
+      "controls": [
+        "key.use"
+      ],
+      "text_status": "placeholder"
+    },
+    {
+      "id": "sound_isolating_eraser:red_nails",
+      "module": "equipment",
+      "category": "precious_memory",
+      "controls": [
+        "key.sound_isolating_eraser.red_nails",
+        "key.sneak"
+      ],
+      "text_status": "partial"
+    },
+    {
+      "id": "sound_isolating_eraser:shadow_tangler_spawn_egg",
+      "module": "creatures",
+      "category": "spawn_egg",
+      "controls": [
+        "key.use"
+      ],
+      "text_status": "placeholder"
+    },
+    {
+      "id": "sound_isolating_eraser:shaxiadao",
+      "module": "equipment",
+      "category": "qiwu",
+      "controls": [
+        "key.attack"
+      ],
+      "text_status": "partial"
+    },
+    {
+      "id": "sound_isolating_eraser:sound_isolating_eraser",
+      "module": "equipment",
+      "category": "qiwu",
+      "controls": [
+        "key.use",
+        "key.sound_isolating_eraser.eraser_mode"
+      ],
+      "text_status": "partial"
+    },
+    {
+      "id": "sound_isolating_eraser:super_fertilizer_bag",
+      "module": "fertilizer",
+      "category": "qiwu",
+      "controls": [
+        "key.use"
+      ],
+      "text_status": "placeholder"
+    },
+    {
+      "id": "sound_isolating_eraser:suxia_pocket_watch",
+      "module": "equipment",
+      "category": "precious_memory",
+      "controls": [
+        "key.use"
+      ],
+      "text_status": "partial"
+    },
+    {
+      "id": "sound_isolating_eraser:suxia_spawn_egg",
+      "module": "creatures",
+      "category": "spawn_egg",
+      "controls": [
+        "key.use"
+      ],
+      "text_status": "placeholder"
+    },
+    {
+      "id": "sound_isolating_eraser:thunder_feather",
+      "module": "equipment",
+      "category": "material",
+      "controls": [],
+      "text_status": "partial"
+    },
+    {
+      "id": "sound_isolating_eraser:water_ghost_spawn_egg",
+      "module": "creatures",
+      "category": "spawn_egg",
+      "controls": [
+        "key.use"
+      ],
+      "text_status": "placeholder"
+    },
+    {
+      "id": "sound_isolating_eraser:wind_thunder_wings",
+      "module": "equipment",
+      "category": "qiwu",
+      "controls": [
+        "key.jump",
+        "key.sound_isolating_eraser.cycle_tier",
+        "key.sound_isolating_eraser.hover",
+        "key.sound_isolating_eraser.blink"
+      ],
+      "text_status": "partial"
+    }
+  ]
+}
