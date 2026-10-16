@@ -11,6 +11,7 @@ import time
 ROOT = Path(__file__).resolve().parents[2]
 BOUNDARIES = os.environ.get("YUJI_QA_BOUNDARIES") == "1"
 ISOLATION = os.environ.get("YUJI_QA_ISOLATION") == "1"
+GREEN = os.environ.get("FLARE_QA_GREEN") == "1"
 RECORD_AUDIO = os.environ.get("YUJI_QA_RECORD_AUDIO") == "1"
 PROFILES = os.environ.get("YUJI_QA_PROFILES", "")
 CLIENT_FPS = int(os.environ.get("YUJI_QA_CLIENT_FPS", "30"))
@@ -19,7 +20,9 @@ if not 10 <= CLIENT_FPS <= 260 or not 0 <= FRAME_DELAY_MS <= 2000:
     raise ValueError("Client FPS must be 10..260; gallery frame delay must be 0..2000 ms")
 if PROFILES and (BOUNDARIES or ISOLATION):
     raise ValueError("Focused profiles cannot replace multiplayer acceptance")
-RESULTS = ROOT / "build" / (("yuji-isolation-" if ISOLATION else "yuji-boundaries-" if BOUNDARIES else "yuji-e2e-") + str(time.time_ns()))
+if GREEN and (PROFILES or BOUNDARIES or ISOLATION):
+    raise ValueError("Green flare evidence runs separately from monster acceptance")
+RESULTS = ROOT / "build" / (("flare-green-e2e-" if GREEN else "yuji-isolation-" if ISOLATION else "yuji-boundaries-" if BOUNDARIES else "yuji-e2e-") + str(time.time_ns()))
 RESULTS.mkdir(parents=True)
 CONFIGS = {c["name"]: c for c in json.loads((ROOT / ".vscode/launch.json").read_text())["configurations"]}
 CLASSPATH = (ROOT / "build/yuji-test-classpath.txt").read_text().strip()
@@ -75,6 +78,8 @@ def launch(role, username="YujiTester"):
         command += ["-Dyuji.qa.boundaries=true"]
     if ISOLATION:
         command += ["-Dyuji.qa.isolation=true"]
+    if GREEN:
+        command += ["-Dflare.qa.green=true"]
     command += ["-Dyuji.qa.audio=" + ("OpenAL-wave" if RECORD_AUDIO else "OpenAL-null")]
     if PROFILES:
         command += ["-Dyuji.qa.profiles=" + PROFILES]
@@ -140,8 +145,18 @@ try:
     display = ":" + xvfb.stdout.readline().strip()
     server = launch("server")
     wait_for(ready, [server], "dedicated server startup", 600)
-    client = launch("client")
-    if ISOLATION:
+    client = launch("client", "GreenFlareQA" if GREEN else "YujiTester")
+    if GREEN:
+        wait_for(lambda: all((RESULTS / (name + ".pass")).exists() for name in ["server-green", "client-green"]),
+                 [server, client], "green shot, natural descent and real client container opening", 900)
+        from city_e2e import inspect_png
+        captures = {phase: inspect_png(RESULTS / ("green-" + phase + ".png"))
+                    for phase in ("flight", "descent", "landed", "open")}
+        if len({capture["sha256"] for capture in captures.values()}) != 4:
+            raise AssertionError("Green evidence must show four distinct rendered frames")
+        (RESULTS / "green-screenshots.json").write_text(json.dumps(captures, indent=2) + "\n")
+        print("FLARE_GREEN_CLIENT_PASSED shot=1 spawned=1 landed=1 opened=1 screenshots=4", flush=True)
+    elif ISOLATION:
         # Avoid simultaneous resource/renderer bootstrap starving the other client's login on small hosts.
         wait_for(lambda: (RESULTS / "client-isolation-ready-YujiTester.pass").exists(),
                  [server, client], "first real client fully joined", 600)
@@ -199,7 +214,8 @@ finally:
     for path in sorted(RESULTS.glob("*.pass")):
         print(f"{path.name}: {path.read_text().strip()}")
 
-print("YUJI_TWO_REAL_CLIENT_ISOLATION_AND_TERRAIN_PASSED" if ISOLATION else
+print("FLARE_GREEN_REAL_CLIENT_ACCEPTANCE_PASSED" if GREEN else
+      "YUJI_TWO_REAL_CLIENT_ISOLATION_AND_TERRAIN_PASSED" if ISOLATION else
       "YUJI_TWO_REAL_CLIENT_BOUNDARIES_PASSED" if BOUNDARIES else
       "YUJI_FOCUSED_REAL_CLIENT_PASSED profiles=" + PROFILES if PROFILES else
       "YUJI_REAL_CLIENT_AI_COLLISION_AND_AUDIO_ACCEPTANCE_PASSED", flush=True)

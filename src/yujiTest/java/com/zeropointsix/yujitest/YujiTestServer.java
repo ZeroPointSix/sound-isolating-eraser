@@ -64,7 +64,7 @@ public final class YujiTestServer {
     }
 
     @SubscribeEvent public static void prepare(ServerStartedEvent event) {
-        if (Boolean.getBoolean("yuji.qa.boundaries") || Boolean.getBoolean("yuji.qa.isolation")) return;
+        if (Boolean.getBoolean("yuji.qa.boundaries") || Boolean.getBoolean("yuji.qa.isolation") || Boolean.getBoolean("flare.qa.green")) return;
         var level = event.getServer().overworld();
         level.setDayTime(6000);
         level.setWeatherParameters(6000, 0, false, false);
@@ -81,7 +81,7 @@ public final class YujiTestServer {
     }
 
     @SubscribeEvent public static void login(PlayerEvent.PlayerLoggedInEvent event) {
-        if (Boolean.getBoolean("yuji.qa.boundaries") || Boolean.getBoolean("yuji.qa.isolation")) return;
+        if (Boolean.getBoolean("yuji.qa.boundaries") || Boolean.getBoolean("yuji.qa.isolation") || Boolean.getBoolean("flare.qa.green")) return;
         if (!(event.getEntity() instanceof ServerPlayer player) || !player.getGameProfile().getName().equals("YujiTester")) return;
         player.setGameMode(GameType.CREATIVE);
         player.getAbilities().flying = true;
@@ -91,7 +91,7 @@ public final class YujiTestServer {
     }
 
     @SubscribeEvent public static void tick(TickEvent.ServerTickEvent event) {
-        if (Boolean.getBoolean("yuji.qa.boundaries") || Boolean.getBoolean("yuji.qa.isolation")) return;
+        if (Boolean.getBoolean("yuji.qa.boundaries") || Boolean.getBoolean("yuji.qa.isolation") || Boolean.getBoolean("flare.qa.green")) return;
         if (event.phase != TickEvent.Phase.END || failed || complete) return;
         var player = event.getServer().getPlayerList().getPlayerByName("YujiTester");
         if (player == null) return;
