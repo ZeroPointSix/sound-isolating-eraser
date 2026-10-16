@@ -552,8 +552,9 @@ public final class RedNailsGameTests {
         // activate() may spawn in nearby water. Let the relocated fixture update its
         // real fluid/pose state on dry land before the goal selector can start a grab.
         h.startSequence().thenWaitUntil(() -> {
-            check(h, g.onGround() && !g.isInWater() && !g.ghostBody().swimming(),
-                    "Shore fixture has settled on dry land before enabling AI");
+            // NoAI teleports never set onGround; wait for real fluid/pose instead.
+            check(h, !g.isInWater() && !g.ghostBody().swimming() && g.getY() >= f.center.getY() - 0.01,
+                    "Shore fixture is dry and on the bank before enabling AI");
             check(h, g.ghostBody().grab.held() == null, "Shore fixture has no pre-existing grab");
         }).thenExecute(() -> {
             System.out.println("RED_NAILS_SHORE_READY t=" + f.level.getGameTime()
