@@ -236,11 +236,7 @@ public final class RedNailsItem extends Item implements ICurioItem {
     public static String time(long ticks) { long seconds = Math.max(0, (ticks + 19) / 20); return String.format(Locale.ROOT, "%d:%02d", seconds / 60, seconds % 60); }
     public static void message(Player player, String key, Object... args) { player.displayClientMessage(Component.translatable(MESSAGE + key, args), true); }
     @Override public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> lines, TooltipFlag flag) {
-        lines.add(Component.translatable(TIP + "flavor").withStyle(ChatFormatting.GRAY));
-        lines.add(Component.translatable(TIP + "usage", keyName.get()).withStyle(ChatFormatting.GRAY));
-        lines.add(Component.translatable(TIP + "recall", keyName.get()).withStyle(ChatFormatting.GRAY));
-        lines.add(Component.translatable(TIP + "stay").withStyle(ChatFormatting.GRAY));
-        lines.add(Component.translatable(TIP + "cost").withStyle(ChatFormatting.GRAY));
+        if (!com.zeropointsix.eraser.item.ItemGuideTooltips.showDetails()) return;
         var tag = stack.getTag();
         int[] left = tag == null ? new int[0] : tag.getIntArray("NailLeft");
         var out = tag == null ? new net.minecraft.nbt.ListTag() : tag.getList("NailOut", Tag.TAG_COMPOUND);
