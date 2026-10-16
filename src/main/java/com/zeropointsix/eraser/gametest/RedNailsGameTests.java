@@ -14,6 +14,8 @@ import net.minecraft.gametest.framework.AfterBatch;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.network.Connection;
 import net.minecraft.network.ConnectionProtocol;
 import net.minecraft.network.protocol.PacketFlow;
@@ -29,6 +31,7 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
@@ -126,6 +129,17 @@ public final class RedNailsGameTests {
         FIXTURES.forEach(Fixture::close); FIXTURES.clear(); RedNailsInput.clear();
     }
     private static void check(GameTestHelper h, boolean value, String message) { h.assertTrue(value, message); }
+    private static int tooltipAvailable(ItemStack stack, ServerPlayer player) {
+        for (Component line : stack.getTooltipLines(player, TooltipFlag.NORMAL)) {
+            if (line.getContents() instanceof TranslatableContents text
+                    && text.getKey().equals("tooltip.sound_isolating_eraser.red_nails.nails")
+                    && text.getArgs().length > 1) {
+                Object count = text.getArgs()[1];
+                return count instanceof Number n ? n.intValue() : Integer.parseInt(count.toString());
+            }
+        }
+        throw new IllegalStateException("Missing nails available tooltip");
+    }
 
     @GameTest(template = "empty", batch = BATCH) public static void accessory_only(GameTestHelper h) {
         var f = new Fixture(h); var p = f.player(0, 0);
@@ -466,7 +480,7 @@ public final class RedNailsGameTests {
                     "Natural release starts 160-tick cooldown: remaining=" + remaining);
         }).thenSucceed();
     }
-    @GameTest(template = "empty", batch = BATCH, timeoutTicks = 240) public static void summon_ai_carries_enemy_from_shore_into_water(GameTestHelper h) {
+    @GameTest(template = "empty", batch = BATCH, timeoutTicks = 280) public static void summon_ai_carries_enemy_from_shore_into_water(GameTestHelper h) {
         var f = new Fixture(h);
         var p = f.player(0, 0);
         var stack = f.wear(p);
@@ -495,6 +509,10 @@ public final class RedNailsGameTests {
             check(h, g.ghostBody().grab.held() == victim, "Hold survives the AI shore-to-water carry");
             check(h, g.ghostBody().swimming() && g.isInWater(), "Summon entered water under its own AI");
             check(h, victim.isInWater(), "Victim actually entered water under the summon AI");
+            var tag = victim.getPersistentData();
+            check(h, tag.hasUUID("sound_isolating_eraser_grabbed_by")
+                            && tag.getUUID("sound_isolating_eraser_grabbed_by").equals(g.getUUID()),
+                    "Victim water state is still locked to this summon");
         }).thenExecute(() -> {
             waterEntryY[0] = g.getY();
             airAtWaterEntry[0] = victim.getAirSupply();
@@ -504,10 +522,86 @@ public final class RedNailsGameTests {
             check(h, victim.isEyeInFluid(net.minecraft.tags.FluidTags.WATER)
                     && victim.getY() < waterEntryY[0], "Carried victim is submerged and dragged downward");
             check(h, victim.getAirSupply() < airAtWaterEntry[0], "Carried victim loses oxygen underwater");
-        }).thenExecute(() -> System.out.println("RED_NAILS_SHORE_AI victimInWater=" + victim.isInWater()
+        }).thenExecute(() -> System.out.println("RED_NAILS_SHORE_AI t=" + f.level.getGameTime()
+                + " ghost=" + g.position() + " victim=" + victim.position()
+                + " victimInWater=" + victim.isInWater()
                 + " submerged=" + victim.isEyeInFluid(net.minecraft.tags.FluidTags.WATER)
                 + " descent=" + (waterEntryY[0] - g.getY())
                 + " airBefore=" + airAtWaterEntry[0] + " airAfter=" + victim.getAirSupply()))
         .thenSucceed();
+    }
+    @GameTest(template = "empty", batch = BATCH, timeoutTicks = 80) public static void tooltip_counts_active_healthy_nails(GameTestHelper h) {
+        var f = new Fixture(h); var p = f.player(0, 0); var stack = f.wear(p);
+        h.runAfterDelay(65, () -> {
+            f.summon(p, stack); f.summon(p, stack); f.summon(p, stack); f.summon(p, stack);
+            check(h, tooltipAvailable(stack, p) == 4, "Four healthy active nails count as 4/4");
+            var ghost = RedNailsItem.resolve(p.getServer(), f.entry(stack).ghosts[RedNailsState.ORDER[0]]);
+            ghost.hurt(ghost.damageSources().genericKill(), 1000);
+            check(h, tooltipAvailable(stack, p) == 3 && RedNailsItem.coolingCount(stack) == 1,
+                    "Three healthy active nails plus one cooling nail are 3/4");
+            p.setShiftKeyDown(true); RedNailsItem.activate(p); p.setShiftKeyDown(false);
+            check(h, tooltipAvailable(stack, p) == 3 && f.entry(stack).active() == 0,
+                    "Three idle healthy nails plus one cooling nail stay 3/4");
+            h.succeed();
+        });
+    }
+    @GameTest(template = "empty", batch = BATCH, timeoutTicks = 80) public static void player_velocity_correction_blocks_boat_and_swim_escape(GameTestHelper h) {
+        var f = new Fixture(h); f.water(-5, 5);
+        var g = f.hostile(0, 0);
+        var p = f.player(0, 1);
+        var boat = f.add(EntityType.BOAT.create(f.level), 0, 1);
+        g.setPos(Vec3.atBottomCenterOf(f.center.offset(0, 2, 0)));
+        p.setPos(Vec3.atBottomCenterOf(f.center.offset(0, 2, 1)));
+        boat.setPos(p.position());
+        p.startRiding(boat, true);
+        boat.setDeltaMovement(0.35, 0, 0);
+        h.runAfterDelay(4, () -> {
+            g.setPos(p.position().add(0, 0, -1));
+            g.setTarget(p);
+            g.ghostBody().grab.start();
+            check(h, !p.isPassenger(), "Grab dismounts a moving boat player");
+            check(h, g.ghostBody().grab.held() == p, "ServerPlayer velocity-correction branch holds the rider");
+        });
+        h.onEachTick(() -> {
+            if (g.ghostBody().grab.held() != p) return;
+            p.zza = 1;
+            p.xxa = 1;
+            p.setJumping(true);
+            p.setSprinting(true);
+            p.setDeltaMovement(new Vec3(0.8, 0.45, 0.8));
+            g.ghostBody().grab.tick();
+        });
+        h.runAfterDelay(24, () -> {
+            check(h, g.ghostBody().grab.held() == p, "Walk/jump/swim input cannot break the player hold");
+            check(h, p.distanceTo(g) < 3.5, "Corrected velocity keeps the real player at the hold point");
+            h.succeed();
+        });
+    }
+    @GameTest(template = "empty", batch = BATCH, timeoutTicks = 200) public static void hostile_ai_grabs_moving_swimmer(GameTestHelper h) {
+        var f = new Fixture(h); f.water(-5, 5);
+        var g = ModEntities.WATER_GHOST.get().create(f.level);
+        g.setPos(Vec3.atBottomCenterOf(f.center.offset(0, 3, 0)));
+        g.setNoAi(false);
+        f.level.addFreshEntity(g); f.entities.add(g);
+        var victim = EntityType.VILLAGER.create(f.level);
+        victim.setPos(Vec3.atBottomCenterOf(f.center.offset(1, 3, 0)));
+        victim.setNoAi(false);
+        f.level.addFreshEntity(victim); f.entities.add(victim);
+        g.setTarget(victim);
+        h.onEachTick(() -> {
+            if (g.ghostBody().grab.held() == victim) return;
+            victim.setDeltaMovement(0.35, victim.getDeltaMovement().y, 0.2);
+        });
+        h.startSequence().thenWaitUntil(() -> {
+            check(h, g.ghostBody().grab.held() == victim, "AI grab catches a moving swimmer");
+            check(h, g.ghostBody().swimming(), "Moving-swimmer grab is in water");
+        }).thenExecute(() -> victim.setDeltaMovement(0.5, 0.2, 0.5))
+        .thenIdle(15)
+        .thenExecute(() -> {
+            check(h, g.ghostBody().grab.held() == victim, "Hold survives the swimmer trying to swim away");
+            check(h, victim.distanceTo(g) < 3.5, "Swimmer cannot walk or swim out of the hold");
+            check(h, g.getVoicePitch() == 0.7F, "Hostile hurt/death voice pitch matches design");
+            h.succeed();
+        });
     }
 }
