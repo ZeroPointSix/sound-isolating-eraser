@@ -1,0 +1,56 @@
+{
+  "tested_commit": "79a2e004bab14600b875267e0a9afb8e9ab89422",
+  "github_checks_terminal": {
+    "total": 12,
+    "success": 11,
+    "failure": 1,
+    "pending": 0
+  },
+  "status": "NOT ALL GREEN: Enhancement Pill Validation failed the city twelve-building sample lookup; other 11 checks passed.",
+  "runs": [
+    {
+      "job": "116658885567",
+      "url": "https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38803672416/job/116658885567",
+      "result": "All 408 required tests passed, includes 19 suxia and all 45 flare"
+    },
+    {
+      "job": "116658890751",
+      "url": "https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38803672439/job/116658890751",
+      "result": "All 408 required tests passed, includes 19 suxia and all 45 flare"
+    },
+    {
+      "job": "116658885174",
+      "url": "https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38803672587/job/116658885174",
+      "result": "exit 1: citytwelvebuildingentranceswalkable could not locate every original building class; townhall absent from initial search window"
+    }
+  ],
+  "flare_log_verification": [
+    {
+      "command": "python3 tools/flare/verify_gametest_log.py /data2/suxia-evidence-20261015/ci-79a2e00-gravity-116658885567.log",
+      "exit_code": 0,
+      "output": "PASS: all 45 flare GameTests (27 original + 11 edge + 3 permission + 4 acceptance) completed in one successful GameTest run\n"
+    },
+    {
+      "command": "python3 tools/flare/verify_gametest_log.py /data2/suxia-evidence-20261015/ci-79a2e00-night-116658890751.log",
+      "exit_code": 0,
+      "output": "PASS: all 45 flare GameTests (27 original + 11 edge + 3 permission + 4 acceptance) completed in one successful GameTest run\n"
+    }
+  ],
+  "files": [
+    {
+      "name": "ci-79a2e00-gravity-116658885567.log",
+      "bytes": 1051739,
+      "sha256": "e7d97a63d476e3099507efa0034c3ffc134e9f698afed07acdaffbe56bd38f19"
+    },
+    {
+      "name": "ci-79a2e00-night-116658890751.log",
+      "bytes": 948450,
+      "sha256": "759188c23f974084095513c2af5e43d1612cb7d7c3dcc9b34df57cfe6fda879f"
+    },
+    {
+      "name": "ci-79a2e00-verify-116658885174.log",
+      "bytes": 937836,
+      "sha256": "752ce2cc4507b94b4e2e895f9225c5cff2309739e602f0ce9903bb62cbd309c5"
+    }
+  ]
+}

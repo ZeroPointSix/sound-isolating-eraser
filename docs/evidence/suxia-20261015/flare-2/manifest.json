@@ -1,0 +1,30 @@
+{
+  "tested_commit": "79a2e004bab14600b875267e0a9afb8e9ab89422",
+  "command": "bash ./gradlew --no-daemon --max-workers=2 -PflareAcceptanceOnly -PflareQaRunDir=run-flare-suxia-2 compileJava runGameTestServer",
+  "exit_code": 0,
+  "result": "All 4 required tests passed",
+  "sequence": "Started only after E2E-8 exited; no second concurrent test JVM",
+  "thresholds": "Unchanged: preparation 1200 ticks, arena behavior 900 ticks, nonarena 1600 ticks, total 2200 ticks, decoy expiry 80 ticks",
+  "files": [
+    {
+      "name": "flare-2.command",
+      "bytes": 129,
+      "sha256": "fef94f2573ff3f2c06908a550f55d67e8280e6893ee7079b7e4305cdc8229f0c"
+    },
+    {
+      "name": "flare-2.commit",
+      "bytes": 41,
+      "sha256": "0593f70dfe5349bf81f9afba11dae3f460ff310bb074faf05b685b93b7305ee2"
+    },
+    {
+      "name": "flare-2.exit",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "name": "flare-2.log",
+      "bytes": 228845,
+      "sha256": "86b3ae58a4c2b86ad04121df7f07a8fe3a7eb58adba3e95efde667e0fa77d37d"
+    }
+  ]
+}

@@ -4,6 +4,8 @@ import com.zeropointsix.eraser.ModMain;
 import com.zeropointsix.eraser.gravity.GravityFieldEntity;
 import com.zeropointsix.eraser.shadow.ShadowTanglerEntity;
 import com.zeropointsix.eraser.neon.NeonTumorEntity;
+import com.zeropointsix.eraser.suxia.SuxiaEntity;
+import com.zeropointsix.eraser.suxia.SuxiaSummonEntity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraftforge.registries.DeferredRegister;
@@ -21,6 +23,13 @@ public final class ModEntities {
                     .build(ModMain.MOD_ID + ":gravity_field"));
 
     private ModEntities() { }
+
+    public static final RegistryObject<EntityType<SuxiaEntity>> SUXIA =
+            ENTITIES.register("suxia", () -> EntityType.Builder.of(SuxiaEntity::new, MobCategory.MONSTER)
+                    .sized(0.6F, 2.9F).clientTrackingRange(10).build(ModMain.MOD_ID + ":suxia"));
+    public static final RegistryObject<EntityType<SuxiaSummonEntity>> SUXIA_SUMMON =
+            ENTITIES.register("suxia_summon", () -> EntityType.Builder.of(SuxiaSummonEntity::new, MobCategory.MISC)
+                    .sized(0.6F, 2.9F).clientTrackingRange(10).build(ModMain.MOD_ID + ":suxia_summon"));
 
     public static final RegistryObject<EntityType<ShadowTanglerEntity>> SHADOW_TANGLER =
             ENTITIES.register("shadow_tangler", () -> EntityType.Builder

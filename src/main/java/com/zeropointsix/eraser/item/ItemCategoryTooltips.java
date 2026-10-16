@@ -23,7 +23,10 @@ public final class ItemCategoryTooltips {
         }
 
         MutableComponent label;
-        if (stack.is(ModItemTags.QIWU)) {
+        if (stack.is(ModItemTags.PRECIOUS_MEMORY)) {
+            label = Component.translatable("tooltip.sound_isolating_eraser.suxia_pocket_watch.category")
+                    .withStyle(ChatFormatting.GOLD);
+        } else if (stack.is(ModItemTags.QIWU)) {
             label = Component.translatable("tooltip.sound_isolating_eraser.qiwu")
                     .withStyle(ChatFormatting.GOLD);
         } else if (stack.is(ModItemTags.DAOJU)) {

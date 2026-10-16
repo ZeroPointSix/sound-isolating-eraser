@@ -36,6 +36,7 @@ public final class ModCreativeTabs {
     }
 
     private static int group(Item item) {
+        if (item == ModItems.SUXIA_SPAWN_EGG.get()) return 0;
         if (item instanceof SpawnEggItem || item instanceof BrickrotSpawnEggItem) return 2;
         return item instanceof BlockItem ? 1 : 0;
     }

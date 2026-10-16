@@ -1,0 +1,59 @@
+SUXIA_QA_RESULTS=/data2/suxia-20261015/build/suxia-e2e-1792111433538326600
+--- client.log ---
+[00:50:33] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Dispatching wrapped packet reply for channel fml:handshake with index 25
+[00:50:33] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Recieved login wrapper packet event for channel fml:handshake with index 26
+[00:50:33] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.HandshakeHandler/FMLHANDSHAKE]: Received config sync from server
+[00:50:33] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Dispatching wrapped packet reply for channel fml:handshake with index 26
+[00:50:33] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Recieved login wrapper packet event for channel fml:handshake with index 27
+[00:50:33] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.HandshakeHandler/FMLHANDSHAKE]: Received config sync from server
+[00:50:33] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Dispatching wrapped packet reply for channel fml:handshake with index 27
+[00:50:33] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Recieved login wrapper packet event for channel fml:handshake with index 28
+[00:50:33] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.HandshakeHandler/FMLHANDSHAKE]: Received config sync from server
+[00:50:33] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Dispatching wrapped packet reply for channel fml:handshake with index 28
+[00:50:33] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Recieved login wrapper packet event for channel fml:handshake with index 29
+[00:50:33] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.HandshakeHandler/FMLHANDSHAKE]: Received config sync from server
+[00:50:33] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Dispatching wrapped packet reply for channel fml:handshake with index 29
+[00:50:33] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Recieved login wrapper packet event for channel fml:handshake with index 30
+[00:50:33] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.HandshakeHandler/FMLHANDSHAKE]: Received config sync from server
+[00:50:33] [Netty Epoll Client IO #0/DEBUG] [ne.mi.co.ForgeConfig/FORGEMOD]: Forge config just got changed on the file system!
+[00:50:33] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Dispatching wrapped packet reply for channel fml:handshake with index 30
+[00:50:34] [Netty Epoll Client IO #0/INFO] [ne.mi.ne.NetworkHooks/]: Connected to a modded server.
+[00:50:48] [Render thread/DEBUG] [ne.mi.ne.fi.NetworkFilters/]: Injected net.minecraftforge.network.filters.ForgeConnectionNetworkFilter@646bf8a6 into net.minecraft.network.Connection@4a094f90
+[00:50:59] [Render thread/INFO] [minecraft/AdvancementList]: Loaded 2 advancements
+[00:51:02] [Render thread/INFO] [minecraft/ChatComponent]: [System] [CHAT] 回忆属性：召唤
+[00:51:02] [Render thread/INFO] [minecraft/ChatComponent]: [System] [CHAT] 召唤物：素霞
+[00:51:02] [Render thread/INFO] [minecraft/ChatComponent]: [System] [CHAT] 素霞的中药是苦的，素霞的生活是苦的。
+[00:51:02] [Render thread/INFO] [minecraft/ChatComponent]: [System] [CHAT] 当你明白素霞的苦时，你就成为了素霞的朋友。
+[00:51:02] [Render thread/INFO] [minecraft/ChatComponent]: [System] [CHAT] 在你遇到危险时，素霞愿意为你战斗至最后一刻。
+--- server.log ---
+[00:50:33] [Server thread/DEBUG] [ne.mi.ne.HandshakeHandler/FMLHANDSHAKE]: Handshake complete!
+[00:50:38] [Server thread/INFO] [minecraft/PlayerList]: SuxiaTester[/127.0.0.1:37098] logged in with entity id 2 at (14.404399731759055, 67.7554953174728, -3.9341546223204586)
+[00:50:38] [Server thread/DEBUG] [ne.mi.ne.fi.NetworkFilters/]: Injected net.minecraftforge.network.filters.ForgeConnectionNetworkFilter@2d916bef into net.minecraft.network.Connection@68ccce42
+[00:50:39] [Server thread/INFO] [minecraft/MinecraftServer]: SuxiaTester joined the game
+[00:50:44] [Server thread/WARN] [minecraft/MinecraftServer]: Can't keep up! Is the server overloaded? Running 10945ms or 218 ticks behind
+SUXIA_QA_PHASE=idle-ready
+[00:51:04] [Server thread/WARN] [minecraft/MinecraftServer]: Can't keep up! Is the server overloaded? Running 2509ms or 50 ticks behind
+java.lang.AssertionError: Idle QA stage stalled: 1
+	at TRANSFORMER/suxia_qa@1.0/com.zeropointsix.suxiatest.SuxiaTestServer.idleTick(SuxiaTestServer.java:168)
+	at TRANSFORMER/suxia_qa@1.0/com.zeropointsix.suxiatest.SuxiaTestServer.tick(SuxiaTestServer.java:175)
+	at TRANSFORMER/suxia_qa@1.0/com.zeropointsix.suxiatest.__SuxiaTestServer_tick_ServerTickEvent.invoke(.dynamic)
+	at MC-BOOTSTRAP/net.minecraftforge.eventbus/net.minecraftforge.eventbus.ASMEventHandler.invoke(ASMEventHandler.java:73)
+	at MC-BOOTSTRAP/net.minecraftforge.eventbus/net.minecraftforge.eventbus.EventBus.post(EventBus.java:315)
+	at MC-BOOTSTRAP/net.minecraftforge.eventbus/net.minecraftforge.eventbus.EventBus.post(EventBus.java:296)
+	at TRANSFORMER/forge@47.2.0/net.minecraftforge.event.ForgeEventFactory.onPostServerTick(ForgeEventFactory.java:950)
+	at TRANSFORMER/minecraft@1.20.1/net.minecraft.server.MinecraftServer.tickServer(MinecraftServer.java:835)
+	at TRANSFORMER/minecraft@1.20.1/net.minecraft.server.MinecraftServer.runServer(MinecraftServer.java:661)
+	at TRANSFORMER/minecraft@1.20.1/net.minecraft.server.MinecraftServer.lambda$spin$2(MinecraftServer.java:251)
+	at java.base/java.lang.Thread.run(Thread.java:840)
+[00:51:08] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: SuxiaTester lost connection: Disconnected
+[00:51:08] [Server thread/INFO] [minecraft/MinecraftServer]: SuxiaTester left the game
+[00:51:09] [Server thread/INFO] [minecraft/MinecraftServer]: Stopping server
+[00:51:09] [Server thread/INFO] [minecraft/MinecraftServer]: Saving players
+[00:51:09] [Server thread/INFO] [minecraft/MinecraftServer]: Saving worlds
+[00:51:16] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[world]'/minecraft:overworld
+Traceback (most recent call last):
+  File "/data2/suxia-20261015/tools/suxia/e2e.py", line 135, in <module>
+    wait_for(["server-idle-stationary", "client-idle-stationary",
+  File "/data2/suxia-20261015/tools/suxia/e2e.py", line 96, in wait_for
+    raise AssertionError("; ".join(p.read_text() for p in failures))
+AssertionError: java.lang.AssertionError: Idle QA stage stalled: 1

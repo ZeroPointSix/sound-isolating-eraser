@@ -1,0 +1,1 @@
+phase=idle-stationary owner=(-0.15734657218651504, 65.0, -12.132479615061298) yaw=0.0 pitch=-20.0 summon=(0.125732421875, 65.0, -13.80859375) headYaw=-1.40625 pitch=-21.09375 bodyYaw=-1.40625 entityYaw=149.0625 modelHeadPitch=-0.7076767 renderFrame=336

@@ -1,0 +1,3 @@
+NIGHT_ORIGINAL_PIXEL_RULE negative=Pixels[white=4077, square=256], positive=Pixels[white=14882, square=1024]
+Exception in thread "main" java.lang.AssertionError: continuous white plane exceeds particles-only negative control: negative=Pixels[white=4077, square=256], positive=Pixels[white=14882, square=1024]
+	at NightPixelProbe.main(NightPixelProbe.java:35)

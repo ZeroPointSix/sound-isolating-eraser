@@ -1,0 +1,14 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "sound_isolating_eraser:item/suxia_pocket_watch"
+  },
+  "overrides": [
+    {
+      "predicate": {
+        "sound_isolating_eraser:open": 1
+      },
+      "model": "sound_isolating_eraser:item/suxia_pocket_watch_open"
+    }
+  ]
+}

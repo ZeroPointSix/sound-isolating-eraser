@@ -1,0 +1,94 @@
+{
+  "base_head": "639b1903cc029bc3e646db0340c40028d4f8f4d7",
+  "source_change": "Only NightTestServer QA observer position/yaw/pitch; no product code",
+  "compile_command": "bash ./gradlew --no-daemon --max-workers=2 -PnightE2E writeNightTestClasspath",
+  "compile_exit": 0,
+  "local_e2e_command": "NIGHT_QA_TIMEOUT_SECONDS=900 python3 tools/night-e2e.py",
+  "local_e2e_exit": 1,
+  "local_e2e_result": "Failed before white-plane observation: original 10-second responsiveness assertion saw 40409 ms tick gap. Not passed; preserved for audit. Requires CI validation of camera change.",
+  "suxia_hashes_unchanged": 30,
+  "night_pixel_client_and_timeout_driver_byte_identical": true,
+  "original_pixel_failure_reproduced_exit": 1,
+  "files": [
+    {
+      "name": "NightPixelProbe.java",
+      "bytes": 1959,
+      "sha256": "0439c85086e7fba73c586419ec9a4f27a50f66737f8f81451f701d82bbf06240"
+    },
+    {
+      "name": "local-run-1/observer-before-sleep.png",
+      "bytes": 62262,
+      "sha256": "9d0ac9c2b86f70c931926865d032548f45951da22a9e3ec277d23d3f73ce043e"
+    },
+    {
+      "name": "local-run-1/observer-sleeping.png",
+      "bytes": 74383,
+      "sha256": "bf4ef6d5a0d2c2dbd1fbce17288c98a1e36d26f706bd2fdd8a878c726de8db34"
+    },
+    {
+      "name": "local-run-1/observer.log",
+      "bytes": 158414,
+      "sha256": "3c3de9831db24e0ba273f94c34d51345b50f635ea8d374a60251adb628ccd4a1"
+    },
+    {
+      "name": "local-run-1/owner-before-sleep.png",
+      "bytes": 75862,
+      "sha256": "c373819c16d60fb6932152f62a0628145b9f70822dd964f45eda9716018b811a"
+    },
+    {
+      "name": "local-run-1/owner.log",
+      "bytes": 153532,
+      "sha256": "27d2a6a843f39ea39bf06fd6623da352953d0d67eb24bc37c06f853fc56b4dd9"
+    },
+    {
+      "name": "local-run-1/server.failed",
+      "bytes": 74,
+      "sha256": "3bd39d664a66ac044994c4f864e01f61ec34505c71b772a0d9ca28e2e5ada0eb"
+    },
+    {
+      "name": "local-run-1/server.log",
+      "bytes": 236344,
+      "sha256": "657688451b31901648c5c78851d03b73152733d343ef55dbe99fefc4562954a1"
+    },
+    {
+      "name": "night-framing-compile-1.exit",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "name": "night-framing-compile-1.log",
+      "bytes": 1628,
+      "sha256": "cc32bb5d02d5230e293df331be4d2c691a5b45f24de84b1d98525718213aa3f0"
+    },
+    {
+      "name": "night-framing-e2e-1.exit",
+      "bytes": 2,
+      "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+    },
+    {
+      "name": "night-framing-e2e-1.log",
+      "bytes": 399,
+      "sha256": "61221250ad804e73f72c41ed6bef9558bcf4ba5a3037ae39b2f80a8d08224fec"
+    },
+    {
+      "name": "night-framing-noninterference.json",
+      "bytes": 4471,
+      "sha256": "4003f7dc8df21376644c1590d513e7bee668e44aba5d6f86c1627fd2da6a4f44"
+    },
+    {
+      "name": "night-observer-framing.patch",
+      "bytes": 1112,
+      "sha256": "e109c6fd7a419f9da67ac7622658c63d357d29a07579d2309eb41911422ab4e4"
+    },
+    {
+      "name": "night-pixel-original-failure.exit",
+      "bytes": 2,
+      "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+    },
+    {
+      "name": "night-pixel-original-failure.log",
+      "bytes": 359,
+      "sha256": "0420ffdf5720a21808f84deba09fbf00d7ae6498a5959ee1d0aba18e28183ca7"
+    }
+  ]
+}

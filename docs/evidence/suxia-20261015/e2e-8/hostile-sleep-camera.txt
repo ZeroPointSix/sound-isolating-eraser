@@ -1,0 +1,1 @@
+phase=hostile-sleep player=(18.016141239068237, 65.0, -2.0161346531799422) yaw=14.074341 pitch=6.5870466 renderFrame=310 entityFrames={10=310}

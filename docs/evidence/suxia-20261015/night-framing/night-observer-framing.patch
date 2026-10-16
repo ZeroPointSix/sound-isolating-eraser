@@ -1,0 +1,14 @@
+diff --git a/src/nightTest/java/com/zeropointsix/nighttest/NightTestServer.java b/src/nightTest/java/com/zeropointsix/nighttest/NightTestServer.java
+--- a/src/nightTest/java/com/zeropointsix/nighttest/NightTestServer.java
++++ b/src/nightTest/java/com/zeropointsix/nighttest/NightTestServer.java
+@@ -306,7 +306,9 @@ public final class NightTestServer {
+         var data = NightEvents.playerData(owner); data.putLongArray("Doors", prior);
+         owner.getPersistentData().put(NightEvents.PLAYER_TAG, data);
+         owner.teleportTo(city, base.getX() + 0.5, base.getY(), base.getZ() + 0.5, 0, 12);
+-        observer.teleportTo(city, base.getX() + 2.5, base.getY(), base.getZ() + 0.5, 33.7F, 10);
++        // Keep a distinct, non-colliding viewpoint without foreshortening the plane
++        // below the unchanged pixel test's resolution when particles cross it.
++        observer.teleportTo(city, base.getX() + 1.5, base.getY(), base.getZ() + 0.5, 18.435F, 12);
+     }
+     private static void assertHome(ServerPlayer player) {
+         require(player.blockPosition().distSqr(BEDS.get(player.getUUID())) < 25,

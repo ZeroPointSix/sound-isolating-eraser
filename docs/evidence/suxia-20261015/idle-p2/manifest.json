@@ -1,0 +1,180 @@
+{
+  "base_commit": "cf4c4a9c82d96998f48ae6d07086257aade0a7c5",
+  "branch": "feat/suxia-pocket-watch-20261015",
+  "changed_sources": [
+    "src/main/java/com/zeropointsix/eraser/suxia/SuxiaSummonEntity.java",
+    "src/main/java/com/zeropointsix/eraser/gametest/SuxiaGameTests.java",
+    "src/suxiaTest/java/com/zeropointsix/suxiatest/SuxiaTestClient.java",
+    "src/suxiaTest/java/com/zeropointsix/suxiatest/SuxiaTestServer.java",
+    "tools/suxia/e2e.py"
+  ],
+  "candidate_diff_sha256": "9b398b4f1513f0e165872c796faef233c4d846bc217b07f033b0d48028b543c2",
+  "scope": "P2 idle rear positioning, owner view synchronization, client head packet preservation, and opt-in idle-only real-client evidence",
+  "forge_runs": [
+    {
+      "job_id": "job-kuToCPzZwu7-ubeb",
+      "log": "suxia-idle-before.log",
+      "exit_code": 1,
+      "all_22_marker": false,
+      "build_successful": false,
+      "fully_passed": false,
+      "sha256": "c5abd05983eb2f05d76dd2b3762ad20aeda2cbb6711c9398911cba402c5dca85"
+    },
+    {
+      "job_id": "job-KwIepEa_Jw8sc5YV",
+      "log": "suxia-idle-after.log",
+      "exit_code": 1,
+      "all_22_marker": false,
+      "build_successful": false,
+      "fully_passed": false,
+      "sha256": "0e5643c00f932bfb468163689ed2bc071a4d4f2d4e8f0523986534cb68680ed5"
+    },
+    {
+      "job_id": "job-MjdE4LOIJh6qQGzv",
+      "log": "suxia-idle-after-2.log",
+      "exit_code": 124,
+      "all_22_marker": true,
+      "build_successful": false,
+      "fully_passed": false,
+      "sha256": "0fd6a62a6bfe810592069a58142787f1e5d3248dfc717062b6afe01c894e5fba"
+    },
+    {
+      "job_id": "job-Luw5bXl4PFfYB8jr",
+      "log": "suxia-idle-after-3.log",
+      "exit_code": 0,
+      "all_22_marker": true,
+      "build_successful": true,
+      "fully_passed": true,
+      "sha256": "1dc396e447f26176cf52d626e78b477d76ae29f2dc2308954b3345ba1c7a66be"
+    },
+    {
+      "job_id": "job-Ibjvkb37yP2grPyZ",
+      "log": "suxia-idle-after-4.log",
+      "exit_code": 0,
+      "all_22_marker": true,
+      "build_successful": true,
+      "fully_passed": true,
+      "sha256": "9fa3aa5f40a8ad4d0c8a22f517eb5a988d6f2d7271cc8ccedddcf56d12a75674"
+    },
+    {
+      "job_id": "job-6mHpWwiGa-Tri-Wc",
+      "log": "suxia-idle-after-5.log",
+      "exit_code": 0,
+      "all_22_marker": true,
+      "build_successful": true,
+      "fully_passed": true,
+      "sha256": "9f6d2893e3c164df49bb391913b76b22a07b95d16318d5b2ba817ef6f57a527c"
+    }
+  ],
+  "native_runs": [
+    {
+      "job_id": "job-JwAo5aOLemWVHOAw",
+      "exit_code": 1,
+      "fully_passed": false,
+      "evidence_directory": "native-1-failed",
+      "original_results": "/data2/suxia-20261015/build/suxia-e2e-1792109515556228897",
+      "checkpoints": {
+        "server-idle-stationary": true,
+        "client-idle-stationary": false,
+        "server-idle-turned": false,
+        "client-idle-turned": false,
+        "server-idle-complete": false
+      },
+      "image_sha256": {
+        "client-failure.png": "debba450085e513a08386d4436fd1a2b8e71a56ba55b6f630c87980057352426"
+      },
+      "failure_files": [
+        "client.failed"
+      ]
+    },
+    {
+      "job_id": "job-WEXqSf0xeLOx9vqi",
+      "exit_code": 1,
+      "fully_passed": false,
+      "evidence_directory": "native-2-failed",
+      "original_results": "/data2/suxia-20261015/build/suxia-e2e-1792110472809302308",
+      "checkpoints": {
+        "server-idle-stationary": true,
+        "client-idle-stationary": true,
+        "server-idle-turned": true,
+        "client-idle-turned": false,
+        "server-idle-complete": false
+      },
+      "image_sha256": {
+        "client-failure.png": "20bdbc9f49e21b57b83ec91041bd2b2546fc0aebd21689363caeba05c83c27e3",
+        "idle-stationary.png": "663cb5c932cedd830ffedf00345879d2085a28e39cd10cd59c3e979230ec4f21"
+      },
+      "failure_files": [
+        "client.failed"
+      ]
+    },
+    {
+      "job_id": "job-9rt1iGD7LHo4UC5Q",
+      "exit_code": 1,
+      "fully_passed": false,
+      "evidence_directory": "native-3-failed",
+      "original_results": "/data2/suxia-20261015/build/suxia-e2e-1792111433538326600",
+      "checkpoints": {
+        "server-idle-stationary": false,
+        "client-idle-stationary": false,
+        "server-idle-turned": false,
+        "client-idle-turned": false,
+        "server-idle-complete": false
+      },
+      "image_sha256": {},
+      "failure_files": [
+        "server.failed"
+      ]
+    },
+    {
+      "job_id": "job-Dea8JEWRyh1lwdDF",
+      "exit_code": 0,
+      "fully_passed": true,
+      "evidence_directory": "native-4-passed",
+      "original_results": "/data2/suxia-20261015/build/suxia-e2e-1792113388270204280",
+      "checkpoints": {
+        "server-idle-stationary": true,
+        "client-idle-stationary": true,
+        "server-idle-turned": true,
+        "client-idle-turned": true,
+        "server-idle-complete": true
+      },
+      "image_sha256": {
+        "idle-stationary.png": "7d4a03e50a1fd0a1d7518f04334848bf51eab47a5de0555fa94f42dcabd90013",
+        "idle-turned.png": "76e4436626a61e34f8c8d9821ebee8c4e2baf618ae893a7eb360b78330e03c9e"
+      },
+      "failure_files": []
+    }
+  ],
+  "commands": {
+    "forge_final": "timeout 1500 bash ./gradlew --no-daemon --max-workers=2 -PsuxiaOnly -PsuxiaE2E -PflareQaRunDir=run-suxia-idle-before compileJava writeSuxiaTestClasspath runGameTestServer",
+    "native": "SUXIA_QA_IDLE_ONLY=1 SUXIA_QA_WORLD_SOURCE=/data2/suxia-20261015/build/suxia-e2e-1792096743110322937/server/world timeout 1800 python3 tools/suxia/e2e.py"
+  },
+  "unchanged_gates": {
+    "rear_distance_max_blocks": 0.75,
+    "vertical_distance_strict_max_blocks": 0.5,
+    "yaw_pitch_strict_max_degrees": 5,
+    "rendered_pitch_strict_max_radians": 0.05,
+    "framebuffer_sampled_colors_strict_min": 100,
+    "server_phase_ticks": 300,
+    "driver_wait_seconds": 600,
+    "server_shutdown_seconds": 180,
+    "native_outer_timeout_seconds": 1800,
+    "forge_outer_timeout_seconds": 1500,
+    "new_forge_test_timeout_ticks": [
+      300,
+      400,
+      400
+    ]
+  },
+  "readiness_scheduling": "The real client must render the world, receive the teleport and watch inventory before the unchanged server behavior clock starts. The existing 600-second runner deadline bounds readiness. The .signal file is not a passing checkpoint.",
+  "historical_evidence": "gametest-source-and-bytecode.sha256 describes the earlier after-3 snapshot, not the final candidate. The exit-124 run remains unsuccessful. Native attempt 3 failed before a checkpoint screenshot was produced.",
+  "old_e2e8": "Historical only; not rerun and not claimed as validation of this changed runtime.",
+  "remaining": [
+    "New candidate GitHub Actions terminal results",
+    "Second independent reviews",
+    "Original-requirements functional acceptance"
+  ],
+  "merged": false,
+  "released": false
+}

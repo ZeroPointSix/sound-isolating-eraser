@@ -1,0 +1,60 @@
+SUXIA_QA_RESULTS=/data2/suxia-20261015/build/suxia-e2e-1792110472809302308
+--- client.log ---
+	at TRANSFORMER/suxia_qa@1.0/com.zeropointsix.suxiatest.SuxiaTestClient.render(SuxiaTestClient.java:203)
+	at TRANSFORMER/suxia_qa@1.0/com.zeropointsix.suxiatest.__SuxiaTestClient_render_RenderTickEvent.invoke(.dynamic)
+	at MC-BOOTSTRAP/net.minecraftforge.eventbus/net.minecraftforge.eventbus.ASMEventHandler.invoke(ASMEventHandler.java:73)
+	at MC-BOOTSTRAP/net.minecraftforge.eventbus/net.minecraftforge.eventbus.EventBus.post(EventBus.java:315)
+	at MC-BOOTSTRAP/net.minecraftforge.eventbus/net.minecraftforge.eventbus.EventBus.post(EventBus.java:296)
+	at TRANSFORMER/forge@47.2.0/net.minecraftforge.event.ForgeEventFactory.onRenderTickEnd(ForgeEventFactory.java:910)
+	at TRANSFORMER/minecraft@1.20.1/net.minecraft.client.Minecraft.runTick(Minecraft.java:1148)
+	at TRANSFORMER/minecraft@1.20.1/net.minecraft.client.Minecraft.run(Minecraft.java:718)
+	at TRANSFORMER/minecraft@1.20.1/net.minecraft.client.main.Main.main(Main.java:218)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:569)
+	at MC-BOOTSTRAP/fmlloader@1.20.1-47.2.0/net.minecraftforge.fml.loading.targets.CommonLaunchHandler.runTarget(CommonLaunchHandler.java:111)
+	at MC-BOOTSTRAP/fmlloader@1.20.1-47.2.0/net.minecraftforge.fml.loading.targets.CommonLaunchHandler.clientService(CommonLaunchHandler.java:99)
+	at MC-BOOTSTRAP/fmlloader@1.20.1-47.2.0/net.minecraftforge.fml.loading.targets.ForgeClientUserdevLaunchHandler.devService(ForgeClientUserdevLaunchHandler.java:19)
+	at MC-BOOTSTRAP/fmlloader@1.20.1-47.2.0/net.minecraftforge.fml.loading.targets.CommonDevLaunchHandler.lambda$makeService$7(CommonDevLaunchHandler.java:135)
+	at MC-BOOTSTRAP/cpw.mods.modlauncher@10.0.9/cpw.mods.modlauncher.LaunchServiceHandlerDecorator.launch(LaunchServiceHandlerDecorator.java:30)
+	at MC-BOOTSTRAP/cpw.mods.modlauncher@10.0.9/cpw.mods.modlauncher.LaunchServiceHandler.launch(LaunchServiceHandler.java:53)
+	at MC-BOOTSTRAP/cpw.mods.modlauncher@10.0.9/cpw.mods.modlauncher.LaunchServiceHandler.launch(LaunchServiceHandler.java:71)
+	at MC-BOOTSTRAP/cpw.mods.modlauncher@10.0.9/cpw.mods.modlauncher.Launcher.run(Launcher.java:108)
+	at MC-BOOTSTRAP/cpw.mods.modlauncher@10.0.9/cpw.mods.modlauncher.Launcher.main(Launcher.java:78)
+	at MC-BOOTSTRAP/cpw.mods.modlauncher@10.0.9/cpw.mods.modlauncher.BootstrapLaunchConsumer.accept(BootstrapLaunchConsumer.java:26)
+	at MC-BOOTSTRAP/cpw.mods.modlauncher@10.0.9/cpw.mods.modlauncher.BootstrapLaunchConsumer.accept(BootstrapLaunchConsumer.java:23)
+	at cpw.mods.bootstraplauncher@1.1.2/cpw.mods.bootstraplauncher.BootstrapLauncher.main(BootstrapLauncher.java:141)
+--- server.log ---
+SUXIA_QA_PHASE=idle-ready
+SUXIA_QA_PASS=idle-stationary Actual item-use/look packets; owner=(0.0, 65.0, -12.0) yaw=0.0 pitch=-20.0 summon=(0.12583128184648554, 65.0, -13.808618695237417) headYaw=-7.6293945E-6 pitch=-19.995543; rear error <=0.75, view error <5 degrees, navigation stopped for 20 ticks.
+SUXIA_QA_PHASE=idle-stationary
+SUXIA_QA_PHASE=idle-turning
+SUXIA_QA_PASS=idle-turned Actual item-use/look packets; owner=(0.0, 65.0, -12.0) yaw=90.0 pitch=35.0 summon=(1.7933139129709486, 65.0, -12.202934042852855) headYaw=89.999985 pitch=34.99703; rear error <=0.75, view error <5 degrees, navigation stopped for 20 ticks.
+SUXIA_QA_PHASE=idle-turned
+[00:31:19] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: SuxiaTester lost connection: Disconnected
+[00:31:19] [Server thread/INFO] [minecraft/MinecraftServer]: SuxiaTester left the game
+[00:31:19] [Server thread/INFO] [minecraft/MinecraftServer]: Stopping server
+[00:31:19] [Server thread/INFO] [minecraft/MinecraftServer]: Saving players
+[00:31:19] [Server thread/INFO] [minecraft/MinecraftServer]: Saving worlds
+[00:31:23] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[world]'/minecraft:overworld
+[00:31:36] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_end
+[00:31:36] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[world]'/qihai:yuji_fodu
+[00:31:36] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_nether
+[00:31:36] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[world]'/sound_isolating_eraser:eternal_night
+[00:31:36] [Server thread/DEBUG] [ne.mi.co.ForgeHooks/WP]: Gathering id map for writing to world save world
+[00:31:36] [Server thread/DEBUG] [ne.mi.co.ForgeHooks/WP]: ID Map collection complete world
+[00:31:36] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (world): All chunks are saved
+[00:31:36] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (DIM1): All chunks are saved
+[00:31:36] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (yuji_fodu): All chunks are saved
+[00:31:36] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (DIM-1): All chunks are saved
+[00:31:36] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (eternal_night): All chunks are saved
+[00:31:36] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage: All dimensions are saved
+[00:31:36] [Server thread/DEBUG] [ne.mi.fm.co.ConfigTracker/CONFIG]: Unloading configs type SERVER
+Traceback (most recent call last):
+  File "/data2/suxia-20261015/tools/suxia/e2e.py", line 135, in <module>
+    wait_for(["server-idle-stationary", "client-idle-stationary",
+  File "/data2/suxia-20261015/tools/suxia/e2e.py", line 96, in wait_for
+    raise AssertionError("; ".join(p.read_text() for p in failures))
+AssertionError: java.lang.AssertionError: client receives owner-mirrored head yaw and pitch: phase=idle-turned owner=(-0.15734657218651504, 65.0, -12.132479615061298) yaw=90.0 pitch=35.0 summon=(1.793212890625, 65.0, -12.202880859375) headYaw=388.59375 pitch=33.75 bodyYaw=388.59375 entityYaw=313.59375 modelHeadPitch=-0.22907472 renderFrame=516
+

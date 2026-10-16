@@ -1,0 +1,1 @@
+phase=idle-stationary player=(-0.06763124137227565, 65.0, -11.975885336125744) yaw=0.0 pitch=-20.0

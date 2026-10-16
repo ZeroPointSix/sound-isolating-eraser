@@ -1,0 +1,1 @@
+phase=gallery player=(0.0, 65.0, -12.0) yaw=0.0 pitch=5.0 renderFrame=282 entityFrames={2=282, 3=282, 4=282}

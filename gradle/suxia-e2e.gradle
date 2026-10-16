@@ -1,0 +1,17 @@
+// Opt-in real-client validation, excluded from the distributable mod.
+sourceSets {
+    suxiaTest {
+        compileClasspath += sourceSets.main.compileClasspath + sourceSets.main.output
+        runtimeClasspath += sourceSets.main.runtimeClasspath + sourceSets.main.output
+    }
+}
+minecraft.runs.matching { it.name == 'client' || it.name == 'server' }.configureEach {
+    mods { suxia_qa { source sourceSets.suxiaTest } }
+}
+tasks.register('writeSuxiaTestClasspath') {
+    dependsOn 'classes', 'suxiaTestClasses', 'genVSCodeRuns'
+    inputs.property('runtimeClasspath', provider { sourceSets.suxiaTest.runtimeClasspath.asPath })
+    def target = layout.buildDirectory.file('suxia-test-classpath.txt')
+    outputs.file(target)
+    doLast { target.get().asFile.text = sourceSets.suxiaTest.runtimeClasspath.asPath }
+}
