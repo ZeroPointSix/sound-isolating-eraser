@@ -22,8 +22,10 @@ import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.ClientChatReceivedEvent;
 import net.minecraftforge.client.event.RenderLivingEvent;
 import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+import org.lwjgl.glfw.GLFW;
 
 @Mod.EventBusSubscriber(modid = "red_nails_qa", value = Dist.CLIENT)
 public final class RedNailsTestClient {
@@ -56,7 +58,7 @@ public final class RedNailsTestClient {
             rendered.clear(); poses.clear(); RedNailsClient.KEY.setDown(false); event.setCanceled(true);
         }
     }
-    @SubscribeEvent public static void tick(TickEvent.ClientTickEvent event) {
+    @SubscribeEvent(priority = EventPriority.HIGH) public static void tick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END || failed) return;
         var mc = Minecraft.getInstance();
         if (mc.level == null || mc.player == null) return;
@@ -72,7 +74,9 @@ public final class RedNailsTestClient {
                 }
             }
             if (phase.isEmpty()) {
+                if (mc.getOverlay() != null) return;
                 if (!RedNailsItem.findWorn(mc.player).isEmpty() && mc.level.hasChunkAt(mc.player.blockPosition())) {
+                    GLFW.glfwFocusWindow(mc.getWindow().getWindow());
                     mc.setScreen(null); mc.mouseHandler.grabMouse();
                     Files.writeString(RESULTS.resolve("client-ready.signal"), "Actual Curios slot synchronized.\n");
                 }
@@ -81,6 +85,10 @@ public final class RedNailsTestClient {
             ticks++;
             mc.options.hideGui = phase.equals("guard") || phase.equals("water");
             if (phase.equals("input")) {
+                if (ticks == 1) {
+                    GLFW.glfwFocusWindow(mc.getWindow().getWindow());
+                    mc.setScreen(null); mc.mouseHandler.grabMouse();
+                }
                 if (ticks == 1 || ticks == 25 || ticks == 65 || ticks == 105 || ticks == 145) RedNailsClient.KEY.setDown(true);
                 if (ticks == 10 || ticks == 55 || ticks == 95 || ticks == 135 || ticks == 175) RedNailsClient.KEY.setDown(false);
             }

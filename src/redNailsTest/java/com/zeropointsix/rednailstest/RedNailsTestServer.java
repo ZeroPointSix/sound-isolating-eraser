@@ -30,7 +30,7 @@ public final class RedNailsTestServer {
     private static int stage, ticks;
     private static boolean failed;
     private static UUID itemId;
-    private static long deadline;
+    private static long deadline, stageNanos;
     private static WaterGhostEntity swimmer;
     private static void require(boolean condition, String message) { if (!condition) throw new AssertionError(message); }
     private static void pass(String name, String evidence) throws Exception {
@@ -38,7 +38,10 @@ public final class RedNailsTestServer {
         System.out.println("RED_NAILS_QA_PASS=" + name + " " + evidence);
     }
     private static void signal(String phase) {
-        ticks = 0; player.sendSystemMessage(Component.literal("RED_NAILS_QA:" + phase));
+        ticks = 0;
+        stageNanos = System.nanoTime();
+        player.sendSystemMessage(Component.literal("RED_NAILS_QA:" + phase));
+        System.out.println("RED_NAILS_QA_STAGE=" + phase);
     }
     private static boolean captured(String phase) { return Files.exists(RESULTS.resolve("client-" + phase + ".pass")); }
     private static void fail(Throwable error) {
@@ -61,7 +64,7 @@ public final class RedNailsTestServer {
     }
     @SubscribeEvent public static void login(PlayerEvent.PlayerLoggedInEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer p) || !p.getGameProfile().getName().equals("NailsTester")) return;
-        player = p; ticks = 0;
+        player = p; ticks = 0; stageNanos = System.nanoTime();
         p.setGameMode(GameType.SURVIVAL);
         p.teleportTo(p.serverLevel(), 0.5, 70, -10.5, 0, 0);
         if (stage == 0) {
@@ -87,7 +90,11 @@ public final class RedNailsTestServer {
         if (event.phase != TickEvent.Phase.END || player == null || failed) return;
         if (player.hasDisconnected() || player.isRemoved()) { player = null; return; }
         try {
-            if (++ticks > 1800) throw new AssertionError("QA stage timeout: " + stage);
+            ticks++;
+            // Wall-clock, not tick count: catch-up after a join hitch can burn 1800 ticks
+            // in a few seconds before the real client has processed RED_NAILS_QA:input.
+            if (System.nanoTime() - stageNanos > 120_000_000_000L)
+                throw new AssertionError("QA stage timeout: " + stage);
             if (stage == 0) {
                 if (ticks >= 30 && !equipRing()) return;
                 if (ticks >= 60 && Files.exists(RESULTS.resolve("client-ready.signal"))) {
