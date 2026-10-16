@@ -1,0 +1,67 @@
+name: T2 isolated spark baseline
+
+on:
+  push:
+    branches: [verify/zer-1542-t2-spark-bb325dc]
+    paths:
+      - .github/workflows/t2-spark-probe.yml
+      - tools/perf/**
+
+permissions:
+  contents: read
+
+concurrency:
+  group: t2-spark-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  dedicated-server:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: harness
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: bb325dc9ccf3d99565d8a1eedb7efee372fdcd45
+          path: source
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: true
+      - name: Build the exact PR1 source
+        working-directory: source
+        run: |
+          mkdir -p build/t2-perf
+          git rev-parse HEAD | tee build/t2-perf/source-sha.txt
+          python3 tools/verify_mixin_targets.py | tee build/t2-perf/mixin.log
+          bash ./gradlew --no-daemon --max-workers=2 build 2>&1 | tee build/t2-perf/build.log
+      - name: Start production Forge and record idle baseline
+        env:
+          T2_SOURCE_DIR: ${{ github.workspace }}/source
+          T2_HARNESS_SHA: ${{ github.sha }}
+        run: python3 harness/tools/perf/production_probe.py
+      - name: Preserve evidence, including failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: t2-spark-baseline-${{ github.run_id }}
+          path: |
+            source/build/t2-perf/*.json
+            source/build/t2-perf/*.jsonl
+            source/build/t2-perf/*.csv
+            source/build/t2-perf/*.log
+            source/build/t2-perf/*.txt
+            source/build/t2-perf/*.tar.gz
+            source/build/t2-perf/server/logs/
+            source/build/t2-perf/server/config/spark/
+            source/build/t2-perf/server/server.properties
+            source/build/t2-perf/server/world/serverconfig/
+          if-no-files-found: error
+          retention-days: 30
