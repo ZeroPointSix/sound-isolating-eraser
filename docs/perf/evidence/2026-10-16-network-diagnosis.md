@@ -2,6 +2,8 @@
 
 关联 [PR #43](https://github.com/ZeroPointSix/sound-isolating-eraser/pull/43) / [ZER-1542](https://linear.app/zerodotsix/issue/ZER-1542)。所有时间为 UTC。被测源码是 `3a213afeb5ef71412560b5a90259f2b620cd1326`，`mod_version=0.14.2`。本次只补证据，不改运行时、Mixin、依赖声明或 CI。
 
+> 历史记录：下文描述 19:37 至 19:44 UTC 的 Daytona 连接与启动失败，不代表当前仍无专服或采样。随后已在隔离 GitHub runner 正常构建生产模组、启动专服并完成 A/B1/B2/C 各 300 秒采样，见[四窗口实测报告](2026-10-16-four-window-baseline.md)。原 Daytona TLS 问题没有被声称已经修复；成功的是不改项目依赖的替代执行路径。
+
 ## 结论与证据边界
 
 - 官方 GitHub 分发的 Gradle 8.1.1 和 Temurin 17 已下载、校验并运行。原来的 Gradle 分发下载问题已有可复现的官方替代入口，未修改仓库 wrapper URL。

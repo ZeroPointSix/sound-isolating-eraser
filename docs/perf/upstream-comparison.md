@@ -1,11 +1,11 @@
-# 开源方案对照与适用边界
+# 上游方案对照与适用边界
 
 检索日期：2026-10-16。只以作者文档、仓库和维护者讨论为依据；以下是思路迁移，不是直接复制代码或推荐安装一组优化模组。外部默认分支会变化，实施 PR 必须锁定实际参照的版本与许可。
 
 | 项目 / 一手来源 | 可核实的方法 | 可借鉴到本仓库 | 限制与尚未核实项 |
 | --- | --- | --- | --- |
 | [In Control!，1.20 文档](https://mcjty.eu/docs/mods/control-mods/control-mods-20) | `mincount/maxcount` 规则、按玩家或区块数缩放的计数限制；生成尝试和规则分离 | PR2 配置化总量、玩家/可刷怪区块相关预算；保留已有局部种类 cap | 按区块数量缩放总量不等于每个区块硬 cap。缩放分母、加载区块和可刷怪区块口径须依据实际版本确认，不照搬未核实公式 |
-| Mob Spawn Controller | 尚未唯一定位到用户所指的官方开源项目 | 暂不提出其“特有实现” | 搜索结果含名称相似的组件，不作为替代。待提供或确认准确项目 URL、版本和许可证；本行明确保留调研缺口 |
+| [MobSpawnController 作者发布页](https://modrinth.com/mod/mobspawncontroller) / [对应仓库](https://github.com/taisuiyileba/MobSpawnController) | 按实体类型与生成原因分别允许/拒绝，在入世前检查；自然刷怪条件包含邻域数量；每世界 JSON 规则于启动加载、停止保存 | PR2 在受控生成入口提前准入，区分自然生成/召唤/加载原因，配置与热路径分离；保留本仓库波次余额及剧情实体例外 | 本次采用 taisuiyileba 的同名项目作对照，作者页列有 Forge 1.20.1；不混用同名旧模组或插件。发布页/CurseForge 标 ARR、GitHub 根 LICENSE 标 MIT，许可存在不一致，复制前须核对具体版本。未审计其计数索引/缓存算法，不能据功能说明声称它实现了区块硬 cap |
 | [Clumps](https://github.com/jaredlll08/Clumps) | 合并经验球以减少同质实体及交互负担 | 同质、可合并载荷的减量思路；先测实体数量，再谈每实体效率 | 有所有权、AI、独立掉落和冷却的召唤物不能照搬合并；不把经验球收益百分比套到本模组 |
 | [Entity Culling](https://github.com/tr7zw/EntityCulling) | 异步遮挡/可见性计算与客户端渲染剔除 | PR4 缓存可见性、跳过不可见渲染、为特殊实体设置例外 | 客户端优化不等于服务器 tick 减少。不得跨线程直接访问不安全世界状态；本项目先用实测决定是否只需距离判断，不自造遮挡引擎 |
 | [FerriteCore](https://github.com/malte0811/FerriteCore)，仓库 `summary.md` | 不可变状态、谓词、模型和部分数组/形状共享或去重 | 复用不可变常量；减少重复模型数据；区分初始化分配和逐帧临时分配 | Suxia 动画工作区是可变数据，不能把它当不可变数组跨实体共享。历史整合包的 MB 节约值不适用于当前工程 |
@@ -24,3 +24,5 @@
 7. **持久化需要语义**：长期账本先考虑 owner 索引和观测基数；回收条目需要证明没有有效物品/离线/卸载引用。性能不能以丢进度、重置冷却或复活召唤物为代价。
 
 每条结论都是针对当前源码的工程推断，收益仍待本项目实测。任何第三方代码复用前单独核对固定提交的 LICENSE，不把此调研表当作再分发授权。
+
+2026-10-16 22:10 UTC 补核：MobSpawnController 的 Modrinth 官方 Source 链接从 `taisuiyileba/MobSpawnSwitch` 重定向到上述仓库；名称变更由作者页说明支持。其[发行许可页](https://www.curseforge.com/minecraft/mc-mods/mobspawncontroller/license)与[仓库 LICENSE](https://github.com/taisuiyileba/MobSpawnController/blob/master/LICENSE)显示不同许可，因此本表仅总结设计思路，不将公开仓库等同于所有已发布制品都获得相同授权。没有把用户所说的名字擅自替换成近似的其他项目。

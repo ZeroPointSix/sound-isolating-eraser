@@ -110,4 +110,4 @@ T2_SOURCE_DIR="$PWD/source" T2_HARNESS_SHA=013f97061b004248a2ca6510536daa3552280
 
 Gravity [attempt 1 job 117195165038](https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38966801616/job/117195165038) 于 21:19:14 报 `AssertionError: entering water while deployed keeps wings open`，`water=false`，位置 `(173.6559,95.9367,0.5)`。不改代码/门禁，只进行一次同 HEAD 复验；[attempt 2 job 117203973825](https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38966801616/job/117203973825) 于 21:43:06 同断言失败，`water=false`，位置 `(163.5497,96.6537,0.5)`。日志里的 wings deployed=true 不能解释为已经进水，也不能无证据归因为 flaky。保留失败，不无限重试。
 
-**结论：构建/专服启动和四个真实 profile 已完成；当前 CI 为 7 success / 1 failure，严格固定站位重复对照、真实客户端 FPS、有限 cap 决策与优化后验证未完成。T2 GOAL 不完成、不合 main、不 force push。**
+**结论：构建/专服启动和四个真实 profile 已完成；上述 `bb7d241` 的 CI 为 7 success / 1 failure，不是后续 HEAD 的状态。当前提交的逐项检查以原 PR 中绑定 SHA 的记录为准。严格固定站位重复对照、真实客户端 FPS、有限 cap 决策与优化后验证未完成。T2 GOAL 不完成、不合 main、不 force push。**

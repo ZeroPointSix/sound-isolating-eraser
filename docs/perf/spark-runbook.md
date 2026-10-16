@@ -164,7 +164,7 @@ A、B1、B2、C 四个正式窗口分别执行，不能用一个维度的结果�
 
 ### GitHub Actions 按提交记录
 
-最新已完成提交 `bb7d241`：默认434/434 GameTest 与 Mixin14/0；七项 success，Gravity 一项 failure，唯一一次同 HEAD 复验仍在真实客户端入水步骤失败。逐项运行、job 与断言见[固定 SHA 记录](evidence/2026-10-16-four-window-baseline.md#pr-提交级验证)。以下 16:42 表格仅为历史，不代表当前 HEAD；新文档提交结果在原 PR 评论逐项补齐。
+21:43 UTC 已完成的固定提交 `bb7d241`：默认434/434 GameTest 与 Mixin14/0；七项 success，Gravity 一项 failure，唯一一次同 HEAD 复验仍在真实客户端入水步骤失败。逐项运行、job 与断言见[固定 SHA 记录](evidence/2026-10-16-four-window-baseline.md#pr-提交级验证)。此记录与以下 16:42 表格均为历史，不代表当前 HEAD；后续提交结果在原 PR 评论逐项补齐并绑定准确 SHA。
 
 2026-10-16 16:42 UTC 回源查询的工作流级快照如下。首提交 `509d3e5` 为 **2 项成功、6 项 cancelled**；补证据提交 `fef5dd4` 当时为 **5 项成功、3 项运行中**。这是两个固定 SHA 的记录，不是后续新 HEAD 的结论。取消和运行中均不等于通过，不能汇总为 CI 全绿或全量 GameTest 已验收；单个 job 的绿色也不能替代所属工作流整体状态。
 

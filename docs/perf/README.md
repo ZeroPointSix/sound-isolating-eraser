@@ -42,7 +42,7 @@
 
 ## 验证记录
 
-最新进展（21:43 UTC）：准确源码 `bb325dc` 在独立 GitHub runner 正常构建，四个生产专服 spark 窗口完成、全部正常停服；无需修改 foojay、项目依赖或网络权限。验证脚本仅在独立分支，未修改本 PR 或既有 CI 门禁。`bb7d241` 已核实默认完整 GameTest 434/434、Mixin14/0，但八项 CI 为 7 success / 1 failure：Gravity 真实双客户端入水断言两次均 `water=false`。完整证据和逐项链接见[四窗口记录](evidence/2026-10-16-four-window-baseline.md#pr-提交级验证)。这些结果绑定指定 SHA，不自动继承到下一文档提交。
+21:43 UTC 固定记录：准确源码 `bb325dc` 在独立 GitHub runner 正常构建，四个生产专服 spark 窗口完成、全部正常停服；无需修改 foojay、项目依赖或网络权限。验证脚本仅在独立分支，未修改本 PR 或既有 CI 门禁。`bb7d241` 已核实默认完整 GameTest 434/434、Mixin14/0，但八项 CI 为 7 success / 1 failure：Gravity 真实双客户端入水断言两次均 `water=false`。完整证据和逐项链接见[四窗口记录](evidence/2026-10-16-four-window-baseline.md#pr-提交级验证)。这些结果绑定指定 SHA，不自动继承到下一文档提交；当前 HEAD 状态以原 PR 的逐项检查记录为准。
 
 2026-10-16 15:52:58 至 15:53:00 UTC，基线独立源码快照执行：
 
@@ -56,7 +56,7 @@ exit_code=0
 
 当前 PR 的全量 GameTest、构建及 CI 结果应以 [PR #43](https://github.com/ZeroPointSix/sound-isolating-eraser/pull/43) 当前 HEAD 检查和 [采样手册的验证记录](spark-runbook.md#验证记录) 为准。未运行、失败或排队必须单独写明；已有 CI 绿色结果不能追认尚未采集的 spark 数据。
 
-19:42 UTC 更新：已从官方 GitHub 发行资产恢复并校验 Gradle 8.1.1 / Java 17，实际构建推进到 `settings.gradle:12` 的 foojay 插件解析后退出 1；本地专服和采样仍未开始。主力开发机依赖访问恢复，但负载不符合可靠基线条件。详见[本轮诊断](evidence/2026-10-16-network-diagnosis.md)，其中明确区分已证实的握手重置与尚未核实的组织级策略假设。
+19:42 UTC 历史记录：当时已从官方 GitHub 发行资产恢复并校验 Gradle 8.1.1 / Java 17，实际构建推进到 `settings.gradle:12` 的 foojay 插件解析后退出 1；该次本地专服和采样未开始。主力开发机依赖访问恢复，但负载不符合可靠基线条件。详见[当时诊断](evidence/2026-10-16-network-diagnosis.md)，其中明确区分已证实的握手重置与尚未核实的组织级策略假设；不覆盖后续四窗口采样成功的事实。
 
 ## 四个 PR 的边界
 
