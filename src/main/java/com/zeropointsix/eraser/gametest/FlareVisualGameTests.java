@@ -87,6 +87,12 @@ public final class FlareVisualGameTests {
                         "all segments stay above the ground with no gaps or duplicate points");
                 h.assertTrue(bounds.inflate(.001).contains(origin.add(FlareRangeRing.point(radius + .24, i))),
                         "expanded frustum bounds include the whole ribbon, not only the decoy model");
+                Vec3 a = FlareRangeRing.vertex(radius, .24, i, 0), b = FlareRangeRing.vertex(radius, .24, i, 1);
+                Vec3 c = FlareRangeRing.vertex(radius, .24, i, 2), d = FlareRangeRing.vertex(radius, .24, i, 3);
+                h.assertTrue(b.subtract(a).cross(c.subtract(a)).y > 0 && c.subtract(a).cross(d.subtract(a)).y > 0,
+                        "both triangles face upward and cannot be culled from the overhead view");
+                h.assertTrue(b.equals(FlareRangeRing.vertex(radius, .24, i + 1, 0))
+                        && c.equals(FlareRangeRing.vertex(radius, .24, i + 1, 3)), "rendered quads join exactly without gaps");
             }
         }
         System.out.println("T5_RED_RING_GEOMETRY_PASSED radii=1,24,64 segments=128 closed=true accurate=true bounded=true");

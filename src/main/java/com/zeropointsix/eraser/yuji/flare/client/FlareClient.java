@@ -93,9 +93,8 @@ public final class FlareClient {
         private static void ring(PoseStack pose, VertexConsumer vertices, double radius, double halfWidth,
                                  double lift, float red, float green, float blue, float alpha) {
             for (int i = 0; i < FlareRangeRing.SEGMENTS; i++) {
-                for (Vec3 point : new Vec3[]{FlareRangeRing.point(radius - halfWidth, i),
-                        FlareRangeRing.point(radius + halfWidth, i), FlareRangeRing.point(radius + halfWidth, i + 1),
-                        FlareRangeRing.point(radius - halfWidth, i + 1)}) {
+                for (int corner = 0; corner < 4; corner++) {
+                    Vec3 point = FlareRangeRing.vertex(radius, halfWidth, i, corner);
                     vertices.vertex(pose.last().pose(), (float) point.x, (float) (point.y + lift), (float) point.z)
                             .color(red, green, blue, alpha).endVertex();
                 }

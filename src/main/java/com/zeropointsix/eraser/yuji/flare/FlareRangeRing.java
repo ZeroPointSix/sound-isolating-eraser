@@ -14,6 +14,11 @@ public final class FlareRangeRing {
         return new Vec3(Math.cos(angle) * radius, HEIGHT, Math.sin(angle) * radius);
     }
 
+    public static Vec3 vertex(double radius, double halfWidth, int segment, int corner) {
+        return point(radius + (corner < 2 ? -halfWidth : halfWidth),
+                segment + (corner == 1 || corner == 2 ? 1 : 0));
+    }
+
     public static AABB bounds(Vec3 center, double radius) {
         double extent = radius + HALF_WIDTH;
         return new AABB(center.x - extent, center.y, center.z - extent,

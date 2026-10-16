@@ -11,6 +11,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.HashSet;
 import java.util.Set;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.ParticleStatus;
 import net.minecraft.client.Screenshot;
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.Mth;
@@ -39,22 +40,30 @@ public final class FlareVisualClient {
     private static boolean failed, complete;
     private static boolean classifierChecked;
 
-    private record RingPixels(int pixels, int sectors, int outside, double radius) {
-        boolean visible() { return pixels >= 96 && sectors == 32 && outside <= pixels / 4; }
+    private record RingPixels(int pixels, int sectors, int outside, int angles, int maxGap, double radius) {
+        boolean visible() { return pixels >= Math.max(96, Math.ceil(2 * Math.PI * radius)) && sectors == 32
+                && outside <= pixels / 4 && angles >= 354 && maxGap <= 2; }
         String evidence() { return "ringPixels=" + pixels + " ringSectors=" + sectors + " ringOutside=" + outside
+                + " ringAngles=" + angles + " ringMaxGap=" + maxGap
                 + " projectedRadius=" + radius + " ringStableFrames=" + ringStableFrames; }
+    }
+
+    private static boolean redPixel(int pixel) {
+        int red = pixel & 255, green = pixel >>> 8 & 255, blue = pixel >>> 16 & 255;
+        return red >= 100 && red >= green * 1.6 && red >= blue * 1.5;
     }
 
     // Inspect the actual framebuffer around the projected gameplay boundary, not QA-drawn geometry.
     private static RingPixels ringPixels(NativeImage shot, double radius) {
+        if (!Double.isFinite(radius) || radius < 4 || radius >= Math.min(shot.getWidth(), shot.getHeight()) / 2. - 8)
+            return new RingPixels(0, 0, 0, 0, 360, radius);
         int[] sectors = new int[32]; int pixels = 0, outside = 0;
         double tolerance = Math.max(3, radius * .025);
         for (int y = 0; y < shot.getHeight(); y++) for (int x = 0; x < shot.getWidth(); x++) {
             double dx = x + .5 - shot.getWidth() / 2., dy = y + .5 - shot.getHeight() / 2.;
             double distance = Math.hypot(dx, dy);
             if (distance < radius * .5 || distance > radius * 1.3) continue;
-            int pixel = shot.getPixelRGBA(x, y), red = pixel & 255, green = pixel >>> 8 & 255, blue = pixel >>> 16 & 255;
-            if (red < 100 || red < green * 1.6 || red < blue * 1.5) continue;
+            if (!redPixel(shot.getPixelRGBA(x, y))) continue;
             if (Math.abs(distance - radius) <= tolerance) {
                 pixels++;
                 int sector = Math.min(31, (int) ((Math.atan2(dy, dx) + Math.PI) * 32 / (Math.PI * 2)));
@@ -63,19 +72,37 @@ public final class FlareVisualClient {
         }
         int occupied = 0;
         for (int count : sectors) if (count >= 3) occupied++;
-        return new RingPixels(pixels, occupied, outside, radius);
+        boolean[] hits = new boolean[360]; int angles = 0;
+        for (int i = 0; i < hits.length; i++) {
+            double angle = Math.PI * 2 * i / hits.length;
+            for (double offset = -tolerance; offset <= tolerance; offset += .5) {
+                int x = (int) Math.floor(shot.getWidth() / 2. + Math.cos(angle) * (radius + offset));
+                int y = (int) Math.floor(shot.getHeight() / 2. + Math.sin(angle) * (radius + offset));
+                if (x >= 0 && x < shot.getWidth() && y >= 0 && y < shot.getHeight()
+                        && redPixel(shot.getPixelRGBA(x, y))) { hits[i] = true; angles++; break; }
+            }
+        }
+        int gap = 0, maxGap = 0;
+        for (int i = 0; i < hits.length * 2; i++) {
+            gap = hits[i % hits.length] ? 0 : gap + 1;
+            maxGap = Math.max(maxGap, Math.min(gap, hits.length));
+        }
+        return new RingPixels(pixels, occupied, outside, angles, maxGap, radius);
     }
 
     private static void verifyRingClassifier() {
-        String[] cases = {"complete", "blank", "center", "half", "wrong-radius", "solid-red", "yellow", "green"};
+        String[] cases = {"complete", "blank", "center", "half", "wrong-radius", "solid-red", "yellow", "green", "dotted", "broken"};
         for (String sample : cases) try (var image = new NativeImage(256, 256, false)) {
             for (int y = 0; y < 256; y++) for (int x = 0; x < 256; x++) {
                 double distance = Math.hypot(x + .5 - 128, y + .5 - 128);
+                double angle = Math.atan2(y + .5 - 128, x + .5 - 128);
                 boolean ring = Math.abs(distance - (sample.equals("wrong-radius") ? 48 : 80)) <= 1.5;
                 boolean lit = switch (sample) {
                     case "blank" -> false;
                     case "center" -> distance < 10;
                     case "half" -> ring && x < 128;
+                    case "dotted" -> ring && Math.cos(angle * 32) > .97;
+                    case "broken" -> ring && Math.abs(angle) > Math.toRadians(5);
                     case "solid-red" -> true;
                     default -> ring;
                 };
@@ -86,7 +113,7 @@ public final class FlareVisualClient {
                 throw new AssertionError("red-ring pixel classifier failed control: " + sample);
         }
         classifierChecked = true;
-        System.out.println("FLARE_RING_PIXEL_CONTROLS_PASSED positive=1 negative=7");
+        System.out.println("FLARE_RING_PIXEL_CONTROLS_PASSED positive=1 negative=9");
     }
 
     private static boolean enabled() { return Boolean.getBoolean("flare.qa.visuals"); }
@@ -147,9 +174,11 @@ public final class FlareVisualClient {
             }
             if (phase.equals("red-radius")) {
                 mc.options.fov().set(70); mc.options.fovEffectScale().set(0.); mc.options.bobView().set(false);
+                mc.options.particles().set(ParticleStatus.MINIMAL);
                 mc.player.setYRot(0); mc.player.setXRot(90);
                 if (ticks > 240 && !captured.contains(phase)) throw new AssertionError("complete red ring never became visible");
             } else {
+                mc.options.particles().set(ParticleStatus.ALL);
                 if (subject != null) target = subject.position().add(0, .4, 0);
                 look(target);
             }
@@ -203,7 +232,7 @@ public final class FlareVisualClient {
                     Files.writeString(RESULTS.resolve("client-visual-" + phase + ".pass"),
                             "phase=" + phase + " frames=" + frames + " ticks=" + ticks + " blockLight=" + brightness
                                     + " night=" + mc.level.getDayTime() + " camera=" + mc.player.position() + " target=" + target
-                                    + (ring == null ? "" : " radius=24 " + ring.evidence()) + "\n");
+                                    + (ring == null ? "" : " radius=24 particles=MINIMAL " + ring.evidence()) + "\n");
                     captured.add(phase);
                     System.out.println("FLARE_VISUAL_CAPTURE " + phase + " blockLight=" + brightness
                             + (ring == null ? "" : " radius=24 " + ring.evidence()));
