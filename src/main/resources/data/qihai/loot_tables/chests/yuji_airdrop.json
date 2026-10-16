@@ -1,0 +1,14 @@
+{
+  "type": "minecraft:chest",
+  "pools": [{"rolls": 1, "entries": [
+    {"type": "minecraft:item", "name": "minecraft:cooked_beef", "weight": 6, "functions": [{"function": "minecraft:set_count", "count": 16}]},
+    {"type": "minecraft:item", "name": "minecraft:golden_apple", "weight": 2, "functions": [{"function": "minecraft:set_count", "count": 2}]},
+    {"type": "minecraft:item", "name": "minecraft:potion", "weight": 4, "functions": [{"function": "minecraft:set_potion", "id": "minecraft:healing"}]},
+    {"type": "minecraft:loot_table", "name": "qihai:chests/yuji_airdrop_armor", "weight": 3},
+    {"type": "minecraft:loot_table", "name": "qihai:chests/yuji_airdrop_crossbow", "weight": 3},
+    {"type": "minecraft:item", "name": "minecraft:ender_pearl", "weight": 3, "functions": [{"function": "minecraft:set_count", "count": 4}]},
+    {"type": "minecraft:item", "name": "qihai:flare_red", "weight": 1},
+    {"type": "minecraft:item", "name": "qihai:flare_yellow", "weight": 1},
+    {"type": "minecraft:item", "name": "qihai:flare_green", "weight": 1}
+  ]}]
+}

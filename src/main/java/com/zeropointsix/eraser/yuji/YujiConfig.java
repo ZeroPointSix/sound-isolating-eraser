@@ -21,6 +21,7 @@ public final class YujiConfig {
         b.pop().push("tanyu");
         MAX_LAYERS = b.defineInRange("maxLayers", 12, 1, 12);
         b.pop();
+        com.zeropointsix.eraser.yuji.flare.FlareConfig.define(b);
         SPEC = b.build();
     }
     private YujiConfig() {}
