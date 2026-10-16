@@ -22,8 +22,16 @@ HABITAT_CASES = REQUIRED_FAILURES | {
     "xieyinrejectstoolowcorridorandchoosestallone",
     "liangsheleavesdestroyedshelterandfindsanother",
 }
-EXPECTED_BATCHES = {"yuji": 58, "yuji_city": 22, "yuji_city_iter": 1, "yuji_habitat": 5,
-                    "yuji_betrayal_species": 5}
+# -PyujiOnly also includes Flare's shared namespace after syncing main.
+EXPECTED_BATCHES = {"yuji": 61, "yuji_city": 22, "yuji_city_iter": 1, "yuji_habitat": 5,
+                    "yuji_betrayal_species": 5, "flare": 15, "flare_regression": 10,
+                    "flare_edge_ceiling": 1, "flare_permission_allowed": 1, "flare_edge_wall": 1,
+                    "flare_edge_slow": 1, "flare_full_lighting": 1, "flare_edge_floor": 1,
+                    "flare_acceptance_shadow": 1, "flare_edge_lowceiling": 1, "flare_acceptance_vanilla": 1,
+                    "flare_permission_event": 1, "flare_edge_entity": 1, "flare_full_airdrop": 1,
+                    "flare_edge_ai_vanilla": 1, "flare_edge_ai_yuji": 1, "flare_edge_flight": 1,
+                    "flare_acceptance_unload": 1, "flare_edge_reload": 1, "flare_permission_build": 1,
+                    "flare_edge_yellow": 1, "flare_acceptance_yuji": 1}
 BEHAVIOR_DIAGNOSTICS = {
     "liangshewalksinsideandstaysunderroof": (
         "whole body must be inside room", "body must be below the roof", "must reach the room interior",

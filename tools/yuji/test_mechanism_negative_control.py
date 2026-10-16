@@ -16,7 +16,7 @@ def rejected_log():
 
 class MechanismNegativeControlTests(unittest.TestCase):
     def test_accepts_complete_exact_behavior_failures(self):
-        self.assertEqual(validate(rejected_log(), 1)["completed"], 91)
+        self.assertEqual(validate(rejected_log(), 1)["completed"], 139)
 
     def test_rejects_timeout_instead_of_behavior_failure(self):
         log = rejected_log().replace(next(iter(DIAGNOSTICS.values()))[0], "Didn't succeed within 600 ticks")
