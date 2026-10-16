@@ -14,17 +14,18 @@
 | --- | --- |
 | [hotspots.md](hotspots.md) | 文件、方法、触发条件、调用频率与风险；区分已存在的优化和待测候选 |
 | [upstream-comparison.md](upstream-comparison.md) | 八个指定项目的一手资料、可迁移方法、版本及语义限制 |
-| [spark-runbook.md](spark-runbook.md) | 标准启动、三场景准备、300 秒采样、数据口径、环境证据与复测步骤 |
+| [spark-runbook.md](spark-runbook.md) | 标准启动、三类场景的四个正式窗口、300 秒采样、数据口径、环境证据与复测步骤 |
 
 ## 实测状态
 
 | 场景 | 基线 spark | 基线 MSPT / 实体数 | 基线客户端 FPS | 优化后 |
 | --- | --- | --- | --- | --- |
-| 空载专服，0 玩家 | 未采集 | 未采集 | 不适用 | 未实施 |
-| 城市 / 雨寂，固定维度和玩家 | 未采集 | 未采集 | 未采集 | 未实施 |
-| 大量召唤物，固定复现方式 | 未采集 | 未采集 | 未采集 | 未实施 |
+| A：空载专服，0 玩家，300 秒 | 未采集 | 未采集 | 不适用 | 未实施 |
+| B1：雨寂，固定维度和玩家，300 秒 | 未采集 | 未采集 | 未采集 | 未实施 |
+| B2：永夜城市，固定维度和玩家，300 秒 | 未采集 | 未采集 | 未采集 | 未实施 |
+| C：大量召唤物，固定复现方式，300 秒 | 未采集 | 未采集 | 未采集 | 未实施 |
 
-没有可验证的性能改善百分比，也没有三个实际 spark 链接。上表只能用完整采样窗口的真实结果替换。原生/软件渲染 E2E 截图不能代替玩家客户端 FPS，历史其他提交的通过日志不能代替当前 PR 的 GameTest。
+原任务的三类场景是空载、城市/雨寂、大量召唤物；城市与雨寂必须分开采集，所以共有四个正式 300 秒窗口，B2 不是可选扩展。没有可验证的性能改善百分比，也没有任何实际 spark 链接。上表只能用完整采样窗口的真实结果替换。原生/软件渲染 E2E 截图不能代替玩家客户端 FPS，历史其他提交的通过日志不能代替当前 PR 的 GameTest。
 
 ## 已核实与未核实
 
@@ -42,7 +43,7 @@ MIXIN_TARGETS checked=14 failures=0
 exit_code=0
 ```
 
-这是 **基线** 结果，不能冒充 PR HEAD 的验证。本轮另外在新建隔离沙箱对 PR 首提交 `509d3e5` 验证 Mixin `14/0` 和差异空白检查；完整构建卡在 Gradle 下载，Java 与 curl 均复现连接重置，Forge/GeckoLib 依赖探针也失败，专服与 GameTest 尚未启动。详见 [原始证据](evidence/2026-10-16-isolated-validation.log)。
+这是 **基线** 结果，不能冒充 PR HEAD 的验证。本轮另外在新建隔离沙箱对 PR 提交 `509d3e5`、`fef5dd4` 分别验证 Mixin `14/0` 和差异空白检查。Java 17 及官方 JDK 归档 SHA-256 已核验；`official 1.20.1` 是已核对的 mappings 配置，不是已下载并校验 mappings 文件的结论。完整构建卡在 Gradle 下载，Java 与 curl 均复现连接重置；2026-10-16 16:39 UTC 的 curl 复测中 Gradle、Forge、Cloudsmith 三端点仍失败，本地专服与 GameTest 尚未启动。详见 [原始证据](evidence/2026-10-16-isolated-validation.log)。
 
 当前 PR 的全量 GameTest、构建及 CI 结果应以 [PR #43](https://github.com/ZeroPointSix/sound-isolating-eraser/pull/43) 当前 HEAD 检查和 [采样手册的验证记录](spark-runbook.md#验证记录) 为准。未运行、失败或排队必须单独写明；已有 CI 绿色结果不能追认尚未采集的 spark 数据。
 

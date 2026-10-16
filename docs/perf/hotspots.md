@@ -17,7 +17,7 @@
 ## 路径、光照和方块搜索
 
 - [`shadow/FleeLightGoal.java:16`](https://github.com/ZeroPointSix/sound-isolating-eraser/blob/e1703317583858b73fb1cd29c3db3f0a177c068b/src/main/java/com/zeropointsix/eraser/shadow/FleeLightGoal.java#L16)：已有预计算偏移、游标续扫、目标缓存，以及每批最多 1024 位置、64 寻路候选。缓存目标检查和搜索结束后的间隔也已存在。应测多实体汇总成本，而非重做已存在的分片。
-- [`neon/SeekLightGoal.java:20`](https://github.com/ZeroPointSix/sound-isolating-eraser/blob/e1703317583858b73fb1cd29c3db3f0a177c068b/src/main/java/com/zeropointsix/eraser/neon/SeekLightGoal.java#L20)：`nextCheck=now+200`；单次搜索遍历 17x5x17 外框、再按距离和已加载区块过滤，并可能多次 `createPath`。候选风险是大量实体同步批次峰值，不是无间隔每 tick 全扫描。
+- [`neon/SeekLightGoal.java:20`](https://github.com/ZeroPointSix/sound-isolating-eraser/blob/e1703317583858b73fb1cd29c3db3f0a177c068b/src/main/java/com/zeropointsix/eraser/neon/SeekLightGoal.java#L20)：`nextCheck=now+200`；单次用 `BlockPos.betweenClosed` 遍历 17x5x17 候选长方体，共 `17*5*17=1445` 个位置，再按半径和已加载区块过滤，并可能多次 `createPath`。候选风险是大量实体同步批次峰值，不是无间隔每 tick 全扫描。
 - [`YujiMonster.java:183`](https://github.com/ZeroPointSix/sound-isolating-eraser/blob/e1703317583858b73fb1cd29c3db3f0a177c068b/src/main/java/com/zeropointsix/eraser/yuji/YujiMonster.java#L183)：追逐/逃离 `moveTo` 已按 `tickCount % 10` 限频。嗔怒破坏邻域也有 10 tick 门控；不能把所有寻路与方块检查归类为每 tick 重算。
 - `monster/LightTier`、`brickrot/` 的接触/伤害查询、其他 Neon/Shadow 战斗调用仍须结合各场景 flamegraph 排序。小范围战斗碰撞查询不能为了统一间隔而延迟伤害；本页不声称已穷尽所有渲染器或所有调用路径。
 

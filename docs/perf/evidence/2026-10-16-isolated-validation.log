@@ -64,3 +64,31 @@ No output; exit code: 0
 No dedicated server or Minecraft client was started in this sandbox.
 No spark profile, MSPT/entity measurement or FPS measurement was collected.
 No TLS verification was disabled; no project repository/download configuration was changed.
+
+Evidence commit validation (performed after the commit, not a baseline result):
+HEAD: fef5dd4e724ef039010c0e7ebfa2837922de7ded
+python3 tools/verify_mixin_targets.py
+MIXIN_TARGETS checked=14 failures=0
+Exit code: 0
+git diff --check e1703317583858b73fb1cd29c3db3f0a177c068b HEAD
+No output; exit code: 0
+git status --porcelain
+No output; exit code: 0
+All six PR file SHA-256 values matched their local source files.
+
+Review-requested network recheck, UTC: 2026-10-16T16:39:27.106945+00:00
+For each URL: curl -fLsS --connect-timeout 10 --max-time 20 -o /dev/null -w %{http_code} URL
+URL: https://services.gradle.org/distributions/gradle-8.1.1-bin.zip
+Exit code: 35; HTTP status: 000
+curl: (35) Recv failure: Connection reset by peer
+URL: https://maven.minecraftforge.net/net/minecraftforge/gradle/ForgeGradle/maven-metadata.xml
+Exit code: 35; HTTP status: 000
+curl: (35) Recv failure: Connection reset by peer
+URL: https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/software/bernie/geckolib/geckolib-forge-1.20.1/4.4.9/geckolib-forge-1.20.1-4.4.9.pom
+Exit code: 35; HTTP status: 000
+curl: (35) Recv failure: Connection reset by peer
+
+The Java error above is the Gradle wrapper download; Forge/Cloudsmith checks here use curl.
+Configured mappings: official / 1.20.1 (gradle.properties); mappings artifact checksum NOT verified.
+The verified SHA-256 near the top of this log is for the official JDK archive, not mappings.
+No server, build, GameTest or spark sampling became available after this recheck.

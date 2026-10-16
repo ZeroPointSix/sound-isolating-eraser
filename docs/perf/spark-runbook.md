@@ -1,4 +1,4 @@
-# spark 三场景采集手册
+# spark 三类场景、四个正式窗口采集手册
 
 本手册针对 `e1703317583858b73fb1cd29c3db3f0a177c068b`。命令及场景定义可供下一轮复现；没有实际运行日志的步骤不标作已执行。本文只提供隔离测试步骤，不连接或更改生产专服。
 
@@ -13,7 +13,7 @@
 | [`RainCityEvents.java:35`](https://github.com/ZeroPointSix/sound-isolating-eraser/blob/e1703317583858b73fb1cd29c3db3f0a177c068b/src/main/java/com/zeropointsix/eraser/yuji/city/RainCityEvents.java#L35) | 玩家命令 `/yuji enter`、`/yuji leave`、`/yuji status`；enter/leave 需权限 2 | 雨寂必须通过正常入口登记玩家状态，不只用 `/execute in ... tp` 绕过入口 |
 | [`RainCityContent.java:29`](https://github.com/ZeroPointSix/sound-isolating-eraser/blob/e1703317583858b73fb1cd29c3db3f0a177c068b/src/main/java/com/zeropointsix/eraser/yuji/city/RainCityContent.java#L29) 与 [`EternalNightContent.java:27`](https://github.com/ZeroPointSix/sound-isolating-eraser/blob/e1703317583858b73fb1cd29c3db3f0a177c068b/src/main/java/com/zeropointsix/eraser/eternalnight/EternalNightContent.java#L27) | 雨寂 `qihai:yuji_fodu`，永夜 `sound_isolating_eraser:eternal_night` | 两个不同维度，不能在同一 300 秒窗口中混采后归因 |
 
-对 README、build.gradle、gradle.properties、tools、CI、src/main 和主要验收文档的固定版本文本检索未发现 spark 配置或依赖。现有目录列表未提供已登记的三场景性能存档/专服控制台。本次选择新建隔离实例；历史 `docs/evidence`/`docs/validation` 日志不当作当前活跃环境或性能数据。
+对 README、build.gradle、gradle.properties、tools、CI、src/main 和主要验收文档的固定版本文本检索未发现 spark 配置或依赖。现有目录列表未提供已登记的目标场景性能存档/专服控制台。本次选择新建隔离实例；历史 `docs/evidence`/`docs/validation` 日志不当作当前活跃环境或性能数据。
 
 ## 建立独立实例
 
@@ -54,7 +54,7 @@ enable-rcon=false
 
 ## 三类场景
 
-这是合成、可重复的测试定义，不代表已取得用户生产存档。各场景先准备并正常 `save-all flush`、`stop`，复制关闭后的整个世界和配置为只读基准副本。每次基线/候选运行从副本新建工作目录，保留原副本；不能在同一世界连续升级后直接比较。
+原任务的三类场景是空载、城市/雨寂、大量召唤物。城市/雨寂按两个独立区域处理：A、B1、B2、C 都必须正式采样 300 秒，合计四个窗口；B2 不是后续可选项。这是合成、可重复的测试定义，不代表已取得用户生产存档。各场景先准备并正常 `save-all flush`、`stop`，复制关闭后的整个世界和配置为只读基准副本。每次基线/候选运行从副本新建工作目录，保留原副本；不能在同一世界连续升级后直接比较。
 
 ### A：空载专服
 
@@ -63,13 +63,22 @@ enable-rcon=false
 3. 预热至少 120 秒，记录实际时刻、游戏时间和是否仍有明显首次加载；再采样 300 秒。
 4. FPS 填“不适用”。如果需要玩家驻足空载对照，另开 A1（1 玩家），不能把 A 和 A1 混为同一基线。
 
-### B：雨寂区域
+### B1：雨寂区域，正式 300 秒
 
 1. 使用相同用户名/UUID 的真实 Forge 客户端进入隔离专服，权限 2，执行 `/yuji enter`，等待正常入口和区块加载完成。
 2. 执行 `/yuji status` 并记录输出；固定位置、相机方向、玩家模式、装备与防护、难度、白天/夜晚、进入后的日数和波次状态。不要用创造/旁观者代表生存玩家，刷怪代码会过滤它们。
 3. 首轮完成准备后保存世界副本。每次从同一副本启动、同样的登录/预热流程，窗口内固定维度 `qihai:yuji_fodu`，不传送、不重设时间、不更换装备。
 4. 采样 300 秒。记录是否有死亡、断线、波次切换、卡加载等事件；偏离定义的运行作废，不挑选其中较好的片段。
-5. 永夜城市作为 B2 另采：走正常进入流程，固定该维度和区域。B2 不与 B 的指标平均。当前三类场景的区域代表选择 B，B2 是后续扩展。
+
+### B2：永夜城市，正式 300 秒
+
+永夜与雨寂是不同维度。正常入口是主世界深睡后按配置概率进入，不存在本文可用的 `/night enter` 命令；不能只传送坐标绕过 Visiting 状态和入城队列。入口控制流见 [`NightEvents.java:52`](https://github.com/ZeroPointSix/sound-isolating-eraser/blob/e1703317583858b73fb1cd29c3db3f0a177c068b/src/main/java/com/zeropointsix/eraser/eternalnight/NightEvents.java#L52)，概率配置见 [`NightConfig.java:17`](https://github.com/ZeroPointSix/sound-isolating-eraser/blob/e1703317583858b73fb1cd29c3db3f0a177c068b/src/main/java/com/zeropointsix/eraser/eternalnight/NightConfig.java#L17)。以下为待执行的隔离存档准备流程，不是已运行证据：
+
+1. 使用独立世界副本，正常停服后备份 `run/world/serverconfig/eternal-night-server.toml`。仅为准备入口，在 `[eternalNight]` 下临时设置 `entryBase=1.0`、`entryCap=1.0`；这两个值在现有配置合法范围内，不改运行时代码或刷怪配置。
+2. 启动后让固定身份的真实生存玩家在主世界夜间安全床位正常深睡，等待概率判定、入城队列、到达睡眠及唤醒完成。确认玩家确实位于 `sound_isolating_eraser:eternal_night`，记录区域、坐标、装备、防护和模式。
+3. 正常 `save-all flush`、`stop`，恢复备份中的原始概率配置，不能把临时 100% 入口概率带进正式窗口。默认值为 `entryBase=0.02`、`entryCap=0.50`；若原值不同，恢复原值而不是覆盖成默认值。
+4. 将入城后的整个世界和恢复后的配置保存为 B2 只读基准副本。每次从副本启动，以同一用户名/UUID 登录，固定城市区域、相机和装备；记录配置与副本标识。不要在采样窗口内再次入城、传送或生成新区块。
+5. 完成至少 120 秒稳定预热后采样 300 秒，记录死亡、退出、重生、区块生成等异常；偏离场景定义的运行作废。B2 的 spark、MSPT、实体数和客户端 FPS 独立列项，不与 B1 平均。
 
 ### C：大量真实召唤物
 
@@ -110,7 +119,7 @@ enable-rcon=false
 
 ## 300 秒采样与产物
 
-每个场景单独执行：
+A、B1、B2、C 四个正式窗口分别执行，不能用一个维度的结果代替另一个：
 
 ```text
 /spark profiler info
@@ -140,13 +149,30 @@ enable-rcon=false
 
 ## 验证记录
 
-- 基线：2026-10-16，独立源码快照，`python3 tools/verify_mixin_targets.py` 输出 `MIXIN_TARGETS checked=14 failures=0`，退出码 0。
-- 本轮隔离环境：已建立任务专用沙箱，2 CPU / 4 GiB / 8 GiB。初始缺 Java，已从 Adoptium 官方 GitHub Release 安装 Temurin 17.0.20.1+1，并验证发布 SHA-256。宿主机 `free`/`cpu_count` 不代表容器配额。
-- PR 首提交 `509d3e5b0f1f00a4f3741a100b42e9a6746f60f7`：独立沙箱 Mixin 检查 `14/0`、退出码 0；`git diff --check` 无输出、退出码 0。后续文档补证据提交的验证记录保留在 [PR #43](https://github.com/ZeroPointSix/sound-isolating-eraser/pull/43) 的当前 HEAD 检查中，避免循环修改文档自引用 commit。
+- 基线 `e1703317583858b73fb1cd29c3db3f0a177c068b`：2026-10-16，独立源码快照，`python3 tools/verify_mixin_targets.py` 输出 `MIXIN_TARGETS checked=14 failures=0`，退出码 0；本轮隔离沙箱也复现该基线结果。这是原有代码校验，不是优化收益。
+- 本轮隔离环境：任务专用沙箱，2 CPU / 4 GiB / 8 GiB。Temurin 17.0.20.1+1 已安装并执行 `java -version`，官方 JDK 归档 SHA-256 已验证；摘要见 [证据日志](evidence/2026-10-16-isolated-validation.log)。`gradle.properties` 的 mappings 配置已核对为 `official` / `1.20.1`；这不等于 mappings 文件已经下载或其摘要已核验。宿主机 `free`/`cpu_count` 不代表容器配额。
+- PR 提交 `509d3e5b0f1f00a4f3741a100b42e9a6746f60f7` 与 `fef5dd4e724ef039010c0e7ebfa2837922de7ded`：在独立沙箱分别执行 Mixin 检查 `14/0`、退出码 0；各自 `git diff --check` 无输出、退出码 0。文档修正后的新提交须再跑相同检查，结果写入 [PR #43](https://github.com/ZeroPointSix/sound-isolating-eraser/pull/43) 描述并绑定完整 SHA，不将这两个历史提交的结果当作新 HEAD 验证。
 - 基线完整命令 `build runGameTestServer` 实际失败在 Gradle 8.1.1 分发下载阶段，Java 报 `java.net.SocketException: Connection reset`、退出码 1。**编译和 GameTest 都未开始，不是用例失败，更不是通过。**
-- 对同一 Gradle URL 改用 curl，仍报退出码 35、`Connection reset by peer`；ForgeGradle 元数据与 GeckoLib POM 端点也同样失败，HTTP 状态为 `000`。GitHub 仓库与官方 JDK Release 下载成功，因此只能确认这些端点的连接问题，尚不能认定具体防火墙、代理或服务端根因。
-- [脱敏终端证据](evidence/2026-10-16-isolated-validation.log) 保存命令、退出码、错误栈、端点和首提交 Mixin 结果。没有关闭 TLS 校验，没有改项目下载源，没有借用高负载共享机生成基线。
-- 专服/客户端尚未启动，三场景均未采样，spark 链接、MSPT、实体数和 FPS 仍缺失。PR 已触发原有 CI，结论以该 PR **当前 HEAD** 的检查结果为准，不能沿用前一提交的绿色状态。
+- 对同一 Gradle URL 改用 curl，仍报退出码 35、`Connection reset by peer`；ForgeGradle 元数据与 GeckoLib POM 端点也同样失败，HTTP 状态为 `000`。2026-10-16 16:39:27 UTC 对下列三个 URL 的 curl 复测仍全部为退出码 35 / HTTP `000`。Gradle 有 Java 与 curl 两种客户端证据，Forge/Cloudsmith 此处记录的是 curl 探针，不把它们冒充成已执行的 Java 构建解析。GitHub 仓库与官方 JDK Release 下载成功，因此只能确认这些端点的连接问题，尚不能认定具体防火墙、代理或服务端根因。
+- [脱敏终端证据](evidence/2026-10-16-isolated-validation.log) 保存命令、退出码、错误栈、域名、复测时间和两个 PR 提交的 Mixin 结果。没有关闭 TLS 校验，没有改项目下载源，没有借用高负载共享机生成基线。
+- 本地专服/客户端尚未启动，A、B1、B2、C 均未采样，spark 链接、MSPT、实体数和 FPS 仍缺失。CI 在独立的 GitHub runner 上运行，结果不能反推本地构建或性能采样已完成。
+
+### GitHub Actions 按提交记录
+
+2026-10-16 16:42 UTC 回源查询的工作流级快照如下。首提交 `509d3e5` 为 **2 项成功、6 项 cancelled**；补证据提交 `fef5dd4` 当时为 **5 项成功、3 项运行中**。这是两个固定 SHA 的记录，不是后续新 HEAD 的结论。取消和运行中均不等于通过，不能汇总为 CI 全绿或全量 GameTest 已验收；单个 job 的绿色也不能替代所属工作流整体状态。
+
+| 工作流 | `509d3e5` 结果 | `fef5dd4` 在 16:42 UTC 的状态 |
+| --- | --- | --- |
+| Brickrot Validation | [success](https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38931734661) | [success](https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38932666107) |
+| Yuji City validation | [success](https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38931734792) | [success](https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38932666139) |
+| Enhancement Pill Validation | [cancelled](https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38931734775) | [success](https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38932666443) |
+| Yuji Fodu validation | [cancelled](https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38931734791) | [in_progress](https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38932666068) |
+| Neon Tumor validation | [cancelled](https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38931734748) | [success](https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38932666149) |
+| Shadow Tangler Validation | [cancelled](https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38931734818) | [success](https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38932666147) |
+| Gravity Jade Validation | [cancelled](https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38931734711) | [in_progress](https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38932666078) |
+| Shaxiadao Validation | [cancelled](https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38931734698) | [in_progress](https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38932666110) |
+
+修正提交后的工作流链接和逐项状态保留在 PR 描述中，并标明查询时间与新 HEAD；不要为了更新 CI 状态反复制造文档提交，从而取消仍在运行的检查。
 
 ## 阻塞后的下一动作
 
@@ -158,7 +184,7 @@ curl -fL --connect-timeout 10 --max-time 30 -o /dev/null https://maven.minecraft
 curl -fL --connect-timeout 10 --max-time 30 -o /dev/null https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/software/bernie/geckolib/geckolib-forge-1.20.1/4.4.9/geckolib-forge-1.20.1-4.4.9.pom
 ```
 
-不要以关闭证书校验、修改 CI、公开离线专服、购买资源或重试同一失败请求来绕过边界。只有真实完成三组窗口后才能填实测表并开始 PR2 的运行时优化。任务专用临时沙箱用后清理，不删除其他任务资源；持久证据保留在 PR。
+不要以关闭证书校验、修改 CI、公开离线专服、购买资源或无变化地反复重试同一失败请求来绕过边界。只有真实完成 A、B1、B2、C 四个正式窗口后才能填实测表并开始 PR2 的运行时优化。任务专用临时沙箱用后清理，不删除其他任务资源；持久证据保留在 PR。
 
 无选择性子集的功能验证命令：
 
