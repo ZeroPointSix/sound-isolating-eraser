@@ -8,10 +8,14 @@ import com.zeropointsix.eraser.registry.ModEntities;
 import com.zeropointsix.eraser.registry.ModItems;
 import java.lang.reflect.Field;
 import java.util.IdentityHashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.BiConsumer;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.model.geom.EntityModelSet;
+import net.minecraft.client.model.geom.ModelLayers;
 import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
@@ -21,12 +25,14 @@ import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.packs.resources.ResourceManagerReloadListener;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.EntityRenderersEvent;
+import net.minecraftforge.client.event.RegisterClientReloadListenersEvent;
 import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.EntityJoinLevelEvent;
@@ -76,6 +82,51 @@ public final class RedNailsClient {
                 && ("water_ghost".equals(key.getPath()) || "water_ghost_summon".equals(key.getPath()));
     }
     @SuppressWarnings("unchecked")
+    static Set<EntityType<? extends Mob>> ghostTypes() {
+        var types = new LinkedHashSet<EntityType<? extends Mob>>();
+        types.add(ModEntities.WATER_GHOST.get());
+        types.add(ModEntities.WATER_GHOST_SUMMON.get());
+        for (String path : new String[]{"water_ghost", "water_ghost_summon"}) {
+            BuiltInRegistries.ENTITY_TYPE.getOptional(new ResourceLocation(ModMain.MOD_ID, path))
+                    .ifPresent(type -> types.add((EntityType<? extends Mob>) type));
+        }
+        return types;
+    }
+    static boolean overlaysBaked(EntityModelSet models) {
+        if (models == null) return false;
+        try {
+            models.bakeLayer(ModelLayers.EVOKER);
+            models.bakeLayer(WaterGhostModel.LAYER);
+            return true;
+        } catch (IllegalArgumentException ignored) {
+            return false;
+        }
+    }
+    static void attachGhostRenderers(EntityRendererProvider.Context context) {
+        bindGhostRenderers(EntityRenderers::register);
+        var dispatcher = Minecraft.getInstance().getEntityRenderDispatcher();
+        if (dispatcher == null) return;
+        Map<EntityType<?>, EntityRenderer<?>> map = rendererMap(dispatcher);
+        if (map == null) return;
+        EntityRenderer<?> baked = null;
+        for (EntityRenderer<?> renderer : map.values()) {
+            if (renderer instanceof WaterGhostRenderer) { baked = renderer; break; }
+        }
+        if (baked == null && context != null && overlaysBaked(context.getModelSet())) {
+            baked = new WaterGhostRenderer<>(context);
+        }
+        if (baked == null) return;
+        Map<EntityType<?>, EntityRenderer<?>> copy = new IdentityHashMap<>(map);
+        boolean changed = false;
+        for (EntityType<? extends Mob> type : ghostTypes()) {
+            if (!copy.containsKey(type)) {
+                copy.put(type, baked);
+                changed = true;
+            }
+        }
+        if (changed) setRendererMap(dispatcher, copy);
+    }
+    @SuppressWarnings("unchecked")
     static void aliasLiveGhostType(EntityType<?> type) {
         if (!isGhostType(type)) return;
         EntityRenderers.register((EntityType<Mob>) type, WaterGhostRenderer::new);
@@ -114,14 +165,8 @@ public final class RedNailsClient {
             } catch (ReflectiveOperationException ignored) { }
         }
     }
-    @SuppressWarnings("unchecked")
     static void bindGhostRenderers(BiConsumer<EntityType<? extends Mob>, EntityRendererProvider<Mob>> register) {
-        register.accept(ModEntities.WATER_GHOST.get(), WaterGhostRenderer::new);
-        register.accept(ModEntities.WATER_GHOST_SUMMON.get(), WaterGhostRenderer::new);
-        for (String path : new String[]{"water_ghost", "water_ghost_summon"}) {
-            BuiltInRegistries.ENTITY_TYPE.getOptional(new ResourceLocation(ModMain.MOD_ID, path))
-                    .ifPresent(type -> register.accept((EntityType<? extends Mob>) type, WaterGhostRenderer::new));
-        }
+        for (EntityType<? extends Mob> type : ghostTypes()) register.accept(type, WaterGhostRenderer::new);
     }
     @Mod.EventBusSubscriber(modid = ModMain.MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
     public static final class Registration {
@@ -131,6 +176,14 @@ public final class RedNailsClient {
         }
         @SubscribeEvent public static void renderers(EntityRenderersEvent.RegisterRenderers event) {
             bindGhostRenderers((type, provider) -> event.registerEntityRenderer(type, provider));
+        }
+        @SubscribeEvent public static void reload(RegisterClientReloadListenersEvent event) {
+            event.registerReloadListener((ResourceManagerReloadListener) manager ->
+                    bindGhostRenderers(EntityRenderers::register));
+        }
+        @SubscribeEvent public static void addLayers(EntityRenderersEvent.AddLayers event) {
+            if (!overlaysBaked(event.getEntityModels())) return;
+            attachGhostRenderers(event.getContext());
         }
         @SubscribeEvent public static void setup(FMLClientSetupEvent event) {
             event.enqueueWork(() -> {
