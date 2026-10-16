@@ -527,18 +527,21 @@ public final class RedNailsGameTests {
         int[] swimTicks = { 0 };
         int[] extraDrainTicks = { 0 };
         int[] prevAir = { -1 };
+        boolean[] sampleAir = { false };
         h.onEachTick(() -> {
             if (g.ghostBody().grab.held() == victim && g.ghostBody().swimming()) {
                 minY[0] = Math.min(minY[0], g.getY());
                 if (g.verticalCollisionBelow || !f.level.noCollision(g, g.getBoundingBox().move(0, -0.08, 0))) {
                     hitFloor[0] = true;
                 }
-                int air = victim.getAirSupply();
-                if (waterEntryAt[0] >= 0 && prevAir[0] >= 0 && swimTicks[0] < 10) {
-                    if (prevAir[0] - air >= 3) extraDrainTicks[0]++;
-                    swimTicks[0]++;
+                if (sampleAir[0]) {
+                    int air = victim.getAirSupply();
+                    if (prevAir[0] >= 0 && swimTicks[0] < 10) {
+                        if (prevAir[0] - air >= 3) extraDrainTicks[0]++;
+                        swimTicks[0]++;
+                    }
+                    prevAir[0] = air;
                 }
-                prevAir[0] = air;
             }
             if (g.tickCount % 10 == 0) System.out.println("RED_NAILS_SHORE_TRACE t=" + f.level.getGameTime()
                     + " held=" + (g.ghostBody().grab.held() == victim)
@@ -580,14 +583,19 @@ public final class RedNailsGameTests {
             check(h, victim.isEyeInFluid(net.minecraft.tags.FluidTags.WATER)
                     && victim.getY() < waterEntryY[0], "Carried victim is submerged and dragged downward");
             check(h, victim.getAirSupply() < airAtWaterEntry[0], "Carried victim loses oxygen underwater");
+        }).thenExecute(() -> {
+            sampleAir[0] = true;
+            prevAir[0] = victim.getAirSupply();
+            swimTicks[0] = 0;
+            extraDrainTicks[0] = 0;
         }).thenWaitUntil(() -> {
             check(h, g.ghostBody().grab.held() == victim, "Hold survives the extra-oxygen sample window");
-            check(h, swimTicks[0] >= 10, "Observed ten water-stage oxygen ticks");
+            check(h, swimTicks[0] >= 10, "Observed ten submerged water-stage oxygen ticks");
         }).thenExecute(() -> {
             System.out.println("RED_NAILS_SHORE_AIR t=" + f.level.getGameTime()
                     + " extraDrainTicks=" + extraDrainTicks[0] + " air=" + victim.getAirSupply());
             check(h, extraDrainTicks[0] >= 8,
-                    "Extra -3 air applied on most water-stage ticks: " + extraDrainTicks[0]);
+                    "Extra -3 air applied on most submerged water-stage ticks: " + extraDrainTicks[0]);
         }).thenWaitUntil(() -> check(h, g.ghostBody().grab.held() == null,
                 "Shore-to-water grab releases without extending production duration"))
         .thenExecute(() -> {
