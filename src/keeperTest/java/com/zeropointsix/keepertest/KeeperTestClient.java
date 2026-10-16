@@ -12,6 +12,10 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import javax.imageio.ImageIO;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.ConnectScreen;
+import net.minecraft.client.gui.screens.DisconnectedScreen;
+import net.minecraft.client.multiplayer.ServerData;
+import net.minecraft.client.multiplayer.resolver.ServerAddress;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.ClientChatReceivedEvent;
 import net.minecraftforge.event.TickEvent;
@@ -37,6 +41,7 @@ public final class KeeperTestClient {
     private static int positiveFrames;
     private static double firstPositive = -1, lastPositive = -1, firstClear = -1;
     private static int photoSeconds;
+    private static int connectionRetries;
 
     private static void provenance() throws Exception {
         StringBuilder output = new StringBuilder();
@@ -244,8 +249,29 @@ public final class KeeperTestClient {
 
     @SubscribeEvent
     public static void tick(TickEvent.ClientTickEvent event) {
-        if (event.phase != TickEvent.Phase.END || failed || phase.isEmpty()) return;
+        if (event.phase != TickEvent.Phase.END || failed) return;
         Minecraft mc = Minecraft.getInstance();
+        if (phase.isEmpty()) {
+            if (mc.screen instanceof DisconnectedScreen) {
+                try {
+                    require(connectionRetries < 2, "isolated server connection failed after two retries");
+                    connectionRetries++;
+                    grab("connection-failed-" + connectionRetries + ".png");
+                    String address = "127.0.0.1:" + System.getenv().getOrDefault("KEEPER_QA_PORT", "25578");
+                    Files.writeString(RESULTS.resolve("connection-retries.txt"),
+                            "attempt=" + connectionRetries + " monotonic_ns=" + System.nanoTime()
+                                    + " target=" + address + "\n",
+                            StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+                    // Use Minecraft's actual connection flow; never bypass its handshake or packets.
+                    ConnectScreen.startConnecting(mc.screen, mc, ServerAddress.parseString(address),
+                            new ServerData("Keeper isolated QA", address, false), false);
+                } catch (Throwable error) {
+                    try { Files.writeString(RESULTS.resolve("client.failed"), error.toString()); } catch (Exception ignored) { }
+                    failed = true;
+                }
+            }
+            return;
+        }
         if (mc.player == null || mc.level == null) return;
         try {
             ticks++;

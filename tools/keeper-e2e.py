@@ -109,8 +109,9 @@ def wait_evidence(required, running):
     deadline = time.monotonic() + int(os.environ.get("KEEPER_QA_TIMEOUT_SECONDS", "1200"))
     while not all((RESULTS / (name + ".pass")).exists() for name in required):
         failures = list(RESULTS.glob("*.failed"))
-        if failures:
-            raise AssertionError("; ".join(path.read_text() for path in failures))
+        messages = [path.name + ": " + path.read_text() for path in failures if path.stat().st_size > 0]
+        if messages:
+            raise AssertionError("; ".join(messages))
         if any(p.poll() is not None for p in running):
             raise RuntimeError("Minecraft exited before keeper evidence completed")
         if time.monotonic() >= deadline:

@@ -23,7 +23,8 @@ public final class KeeperX11Sampler {
             Rectangle roi = new Rectangle(480, 270, 320, 180);
             robot.createScreenCapture(roi);
             Files.writeString(results.resolve("sampler.ready"), "real X11 Robot; headless=false\n");
-            long timeout = System.nanoTime() + 900_000_000_000L;
+            long startupSeconds = Long.parseLong(System.getenv().getOrDefault("KEEPER_QA_TIMEOUT_SECONDS", "1200"));
+            long timeout = System.nanoTime() + startupSeconds * 1_000_000_000L;
             while (readLong(results.resolve("clock-request.txt")) == 0) {
                 if (System.nanoTime() > timeout) throw new AssertionError("No client clock request");
                 Thread.sleep(1);
