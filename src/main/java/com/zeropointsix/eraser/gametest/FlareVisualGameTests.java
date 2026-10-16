@@ -54,6 +54,8 @@ public final class FlareVisualGameTests {
     @AfterBatch(batch = "flare_visual_protection") public static void afterProtection(ServerLevel l) { restore(l); }
     @AfterBatch(batch = "flare_visual_landing") public static void afterLanding(ServerLevel l) { restore(l); }
     @AfterBatch(batch = "flare_visual_budget") public static void afterBudget(ServerLevel l) { restore(l); }
+    @AfterBatch(batch = "flare_visual_low") public static void afterLow(ServerLevel l) { restore(l); }
+    @AfterBatch(batch = "flare_visual_impact") public static void afterImpact(ServerLevel l) { restore(l); }
     private static long deadline(FlareLights data, BlockPos pos) {
         for (Tag tag : data.save(new CompoundTag()).getList("Lights", Tag.TAG_COMPOUND)) {
             CompoundTag record = (CompoundTag) tag;
@@ -211,5 +213,47 @@ public final class FlareVisualGameTests {
                 });
             });
         });
+    }
+
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "flare_visual_low", timeoutTicks = 100)
+    public static void lowHorizontalRedFlightLightsTerrainWithoutBlockingLanding(GameTestHelper h) {
+        var level = h.getLevel(); BlockPos pos = center(h); Player player = h.makeMockSurvivalPlayer();
+        for (int x = -1; x <= 8; x++) for (int z = -1; z <= 1; z++) {
+            block(level, pos.offset(x, -1, z), Blocks.STONE.defaultBlockState());
+            for (int y = 0; y <= 3; y++) block(level, pos.offset(x, y, z), Blocks.AIR.defaultBlockState());
+        }
+        var flare = new FlareProjectile(FlareContent.FLARE.get(), level);
+        flare.setOwner(player); flare.setColor(0); flare.setPos(Vec3.atBottomCenterOf(pos).add(0, 1.2, 0));
+        flare.setDeltaMovement(.5, 0, 0); entities.add(flare);
+        // Drive actual projectile physics; no light is directly inserted by this test.
+        for (int i = 0; i < 4; i++) flare.tick();
+        BlockPos near = flare.blockPosition(), source = new BlockPos(near.getX(), pos.getY() + 2, near.getZ());
+        h.assertTrue(!flare.isRemoved() && level.getBlockState(source).is(Blocks.LIGHT), "horizontal low red shot has a nearby real light");
+        h.assertTrue(level.isEmptyBlock(source.below()) && level.isEmptyBlock(source.below(2)), "two landing clearance cells remain free");
+        flare.discard();
+        h.startSequence().thenWaitUntil(() -> h.assertTrue(level.getBrightness(LightLayer.BLOCK, source.below()) >= 12,
+                "low source propagates actual block light without relaxing brightness threshold"))
+                .thenExecute(() -> System.out.println("T5_FLIGHT_LOW_PASSED horizontalRed=true clearance=2 propagatedLight>=12"))
+                .thenSucceed();
+    }
+
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "flare_visual_impact", timeoutTicks = 40)
+    public static void greenEarlyCollisionPersistsBurstWithoutPrematureActivation(GameTestHelper h) {
+        var level = h.getLevel(); BlockPos pos = center(h);
+        block(level, pos.below(), Blocks.STONE.defaultBlockState());
+        block(level, pos, Blocks.AIR.defaultBlockState());
+        var flare = new FlareProjectile(FlareContent.FLARE.get(), level);
+        flare.setOwner(h.makeMockSurvivalPlayer()); flare.setColor(2);
+        flare.setPos(Vec3.atBottomCenterOf(pos).add(0, .2, 0)); flare.setDeltaMovement(0, -.5, 0); entities.add(flare);
+        flare.tick();
+        CompoundTag tag = flare.saveWithoutId(new CompoundTag());
+        h.assertTrue(tag.getBoolean("FlareImpactBurst") && !flare.isRemoved() && tag.getInt("FlareAge") < 80,
+                "actual early collision emits feedback without activating the delayed airdrop");
+        var restored = new FlareProjectile(FlareContent.FLARE.get(), level); restored.load(tag); entities.add(restored);
+        restored.tick();
+        h.assertTrue(restored.saveWithoutId(new CompoundTag()).getBoolean("FlareImpactBurst") && !restored.isRemoved(),
+                "persisted impact latch prevents repeated collision bursts after reload");
+        System.out.println("T5_FLIGHT_IMPACT_PASSED earlyCollision=true burstLatched=true reload=true delayedActivation=true");
+        h.succeed();
     }
 }

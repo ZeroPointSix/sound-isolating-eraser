@@ -23,6 +23,7 @@ public final class FlareProjectile extends ThrowableProjectile implements ItemSu
     private static final EntityDataAccessor<Integer> COLOR = SynchedEntityData.defineId(FlareProjectile.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Boolean> LIT = SynchedEntityData.defineId(FlareProjectile.class, EntityDataSerializers.BOOLEAN);
     private int age;
+    private boolean impactBurst;
     private long extinguishAt = -1;
     private java.util.UUID shooter;
     private FlarePlacement.LandingSearch greenLandingSearch;
@@ -49,7 +50,7 @@ public final class FlareProjectile extends ThrowableProjectile implements ItemSu
                 && (color() != 2 || age < FlareConfig.GREEN_DELAY.get()) && level() instanceof ServerLevel server) {
             var player = getOwner() instanceof net.minecraft.world.entity.player.Player owner
                     ? owner : FlarePlacement.owner(server, shooter);
-            FlareLights.get(server).flight(server, blockPosition(), player);
+            FlareLights.get(server).flightNearby(server, blockPosition(), player);
         }
         if (color() == 0 && age >= FlareConfig.RED_DELAY.get()
                 || color() == 1 && (age >= FlareConfig.YELLOW_DELAY.get() || age > 1 && getDeltaMovement().y <= 0)
@@ -59,7 +60,13 @@ public final class FlareProjectile extends ThrowableProjectile implements ItemSu
         if (lit()) { setDeltaMovement(Vec3.ZERO); return; }
         if (level().isClientSide) return;
         setPos(hit.getLocation());
-        if (color() == 2) setDeltaMovement(Vec3.ZERO);
+        if (color() == 2) {
+            setDeltaMovement(Vec3.ZERO);
+            if (!impactBurst) {
+                level().broadcastEntityEvent(this, BURST_EVENT);
+                impactBurst = true;
+            }
+        }
         else activate(hit);
     }
     public void activate() { activate(null); }
@@ -101,12 +108,14 @@ public final class FlareProjectile extends ThrowableProjectile implements ItemSu
     @Override public void addAdditionalSaveData(CompoundTag tag) {
         super.addAdditionalSaveData(tag); tag.putInt("FlareColor", color()); tag.putInt("FlareAge", age);
         tag.putBoolean("FlareLit", lit()); tag.putLong("ExtinguishAt", extinguishAt);
+        tag.putBoolean("FlareImpactBurst", impactBurst);
         if (shooter != null) tag.putUUID("Shooter", shooter);
         if (greenLandingSearch != null) tag.put("GreenLandingSearch", greenLandingSearch.save());
     }
     @Override public void readAdditionalSaveData(CompoundTag tag) {
         super.readAdditionalSaveData(tag); setColor(tag.getInt("FlareColor")); age = Math.max(0, tag.getInt("FlareAge"));
         entityData.set(LIT, tag.getBoolean("FlareLit")); extinguishAt = tag.getLong("ExtinguishAt");
+        impactBurst = tag.getBoolean("FlareImpactBurst");
         shooter = tag.hasUUID("Shooter") ? tag.getUUID("Shooter") : null;
         greenLandingSearch = tag.contains("GreenLandingSearch", net.minecraft.nbt.Tag.TAG_COMPOUND)
                 ? FlarePlacement.LandingSearch.load(tag.getCompound("GreenLandingSearch"), position()) : null;

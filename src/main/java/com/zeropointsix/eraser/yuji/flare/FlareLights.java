@@ -29,6 +29,15 @@ public final class FlareLights extends SavedData {
     }
     public int size() { return lights.size(); }
 
+    public boolean flightNearby(ServerLevel level, BlockPos pos, Player player) {
+        if (!FlarePlacement.allowed(level, pos, player)) return false;
+        int surface = level.getHeight(Heightmap.Types.MOTION_BLOCKING, pos.getX(), pos.getZ());
+        // Low shots still illuminate the terrain without occupying crate clearance.
+        BlockPos source = pos.getY() == surface || pos.getY() == surface + 1
+                ? new BlockPos(pos.getX(), surface + 2, pos.getZ()) : pos;
+        return flight(level, source, player);
+    }
+
     public boolean flight(ServerLevel level, BlockPos pos, Player player) {
         if (!FlarePlacement.allowed(level, pos, player)) return false;
         int surface = level.getHeight(Heightmap.Types.MOTION_BLOCKING, pos.getX(), pos.getZ());
