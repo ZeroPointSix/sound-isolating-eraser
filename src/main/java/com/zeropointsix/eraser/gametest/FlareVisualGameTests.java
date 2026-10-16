@@ -140,6 +140,10 @@ public final class FlareVisualGameTests {
         h.assertTrue(data.flight(level, denied, player) && data.flight(level, recreated, player), "second flight sources created");
         long rejectedExpiry = deadline(data, denied);
         level.setBlock(recreated, Blocks.AIR.defaultBlockState(), 18);
+        // Make the stale record the only eligible cell, rather than assuming a coverage choice.
+        for (Direction face : Direction.values()) block(level, recreated.relative(face), Blocks.STONE.defaultBlockState());
+        h.assertTrue(level.getBlockState(recreated).isAir() && quiet(data, recreated),
+                "removed flight source retains a stale short record before replacement");
         guard = event -> { if (event.getPos().equals(denied)) event.setCanceled(true); };
         MinecraftForge.EVENT_BUS.addListener(EventPriority.HIGHEST, false, BlockEvent.EntityPlaceEvent.class, guard);
         try (var config = GameTestConfigs.sandbox(YujiConfig.SPEC)) {
@@ -147,7 +151,8 @@ public final class FlareVisualGameTests {
             data.illuminate(level, denied, player); data.illuminate(level, recreated, player);
         } finally { MinecraftForge.EVENT_BUS.unregister(guard); guard = null; }
         h.assertTrue(deadline(data, denied) == rejectedExpiry, "rejected short source was not extended");
-        h.assertTrue(!quiet(data, recreated) && deadline(data, recreated) >= level.getGameTime() + 40,
+        h.assertTrue(level.getBlockState(recreated).is(Blocks.LIGHT) && !quiet(data, recreated)
+                        && deadline(data, recreated) >= level.getGameTime() + 40,
                 "replacing a stale short record with yellow clears its quiet marker");
         h.runAfterDelay(12, () -> {
             data.cleanup(level);
