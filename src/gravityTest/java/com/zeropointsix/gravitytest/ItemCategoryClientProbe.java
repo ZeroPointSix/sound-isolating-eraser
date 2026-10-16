@@ -247,8 +247,25 @@ public final class ItemCategoryClientProbe {
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void rendered(RenderTooltipEvent.Color event) {
-        if (expectedItem != null && modifiersReady && screen == Minecraft.getInstance().screen
-                && event.getItemStack().is(expectedItem) && observedText != null) renderedTooltips++;
+        if (expectedItem == null || !modifiersReady || screen != Minecraft.getInstance().screen
+                || !event.getItemStack().is(expectedItem) || observedText == null) return;
+        try {
+            var window = Minecraft.getInstance().getWindow();
+            int width = event.getComponents().stream().mapToInt(component -> component.getWidth(event.getFont()))
+                    .max().orElse(0);
+            int height = event.getComponents().stream().mapToInt(component -> component.getHeight()).sum()
+                    + (event.getComponents().size() == 1 ? -2 : 0);
+            // Color fires after vanilla wrapping and positioning, including legacy status lines.
+            require(event.getX() >= 0 && event.getY() >= 0
+                            && event.getX() + width <= window.getGuiScaledWidth()
+                            && event.getY() + height <= window.getGuiScaledHeight(),
+                    "native tooltip stays within viewport: item=" + ForgeRegistries.ITEMS.getKey(expectedItem)
+                            + " mode=" + MODES[mode] + " bounds=" + event.getX() + "," + event.getY()
+                            + "," + width + "," + height);
+            renderedTooltips++;
+        } catch (Throwable failure) {
+            renderFailure = failure;
+        }
     }
 
     private static boolean changeLanguage(Minecraft mc, String language) {
