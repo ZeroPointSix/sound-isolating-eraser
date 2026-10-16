@@ -56,6 +56,7 @@ public final class SuxiaTestClient {
                 && renderedFrames.getOrDefault(mob.getId(), -1) == renderFrame;
     }
     @SubscribeEvent public static void message(ClientChatReceivedEvent event) {
+        if (SuxiaCooldownClient.ENABLED) { SuxiaCooldownClient.message(event); return; }
         String text = event.getMessage().getString();
         if (text.startsWith("SUXIA_QA:")) {
             phase = text.substring(9); ticks = 0; captured = false;
@@ -65,6 +66,7 @@ public final class SuxiaTestClient {
         }
     }
     @SubscribeEvent public static void tick(TickEvent.ClientTickEvent event) {
+        if (SuxiaCooldownClient.ENABLED) { SuxiaCooldownClient.tick(event); return; }
         if (event.phase != TickEvent.Phase.END || failed || phase.isEmpty()) return;
         var mc = Minecraft.getInstance();
         if (mc.level == null || mc.player == null) return;
@@ -171,6 +173,7 @@ public final class SuxiaTestClient {
     }
 
     @SubscribeEvent public static void model(RenderLivingEvent.Post<?, ?> event) {
+        if (SuxiaCooldownClient.ENABLED) return;
         if (IDLE_ONLY) {
             if (!failed && event.getEntity() instanceof SuxiaSummonEntity summon
                     && event.getRenderer().getModel() instanceof SuxiaModel<?> model) {
@@ -197,6 +200,7 @@ public final class SuxiaTestClient {
         } catch (Throwable error) { fail(error); }
     }
     @SubscribeEvent public static void render(TickEvent.RenderTickEvent event) {
+        if (SuxiaCooldownClient.ENABLED) { SuxiaCooldownClient.render(event); return; }
         if (event.phase == TickEvent.Phase.START) { renderFrame++; return; }
         if (IDLE_ONLY && !failed && phase.isEmpty()) {
             var mc = Minecraft.getInstance();
