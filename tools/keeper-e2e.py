@@ -94,14 +94,15 @@ def launch(role):
 
 
 def wait_ready(server):
-    deadline = time.monotonic() + 900
+    startup_seconds = int(os.environ.get("KEEPER_QA_STARTUP_SECONDS", "900"))
+    deadline = time.monotonic() + startup_seconds
     log = RESULTS / "server.log"
     while time.monotonic() < deadline and server.poll() is None:
         text = log.read_text(errors="replace") if log.exists() else ""
         if "For help, type" in text:
             return
         time.sleep(1)
-    raise RuntimeError("Keeper dedicated server did not become ready")
+    raise RuntimeError(f"Keeper dedicated server did not become ready within {startup_seconds}s")
 
 
 def wait_evidence(required, running):
@@ -215,5 +216,7 @@ finally:
         + "passed=" + str(passed) + "\n"
     )
     for path in sorted(RESULTS.glob("*.log")):
+        if path.name == "harness.log":
+            continue
         print("--- " + path.name + " ---")
         print("\n".join(path.read_text(errors="replace").splitlines()[-40:]))
