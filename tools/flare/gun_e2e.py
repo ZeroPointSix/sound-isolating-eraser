@@ -1,0 +1,143 @@
+"""Real dedicated server + software-rendered client, screenshots, pose trace and video.
+
+Prepare with: ./gradlew -PflareGunE2E writeFlareGunTestClasspath
+The probe is an opt-in source set and is never included in the player jar.
+"""
+import json
+import os
+from pathlib import Path
+import shlex
+import socket
+import subprocess
+import time
+
+ROOT = Path(__file__).resolve().parents[2]
+RESULTS = ROOT / "build" / ("flare-gun-e2e-" + str(time.time_ns()))
+RESULTS.mkdir(parents=True)
+CONFIGS = {c["name"]: c for c in json.loads((ROOT / ".vscode/launch.json").read_text())["configurations"]}
+CLASSPATH = (ROOT / "build/flare-gun-test-classpath.txt").read_text().strip()
+PORT = int(os.environ.get("FLARE_GUN_QA_PORT", "25594"))
+processes, logs = [], []
+
+
+def expand(value):
+    return value.replace("${workspaceFolder}", str(ROOT))
+
+
+def launch(role, display):
+    server = role == "server"
+    config = CONFIGS["runServer" if server else "runClient"]
+    directory = RESULTS / role
+    directory.mkdir()
+    if server:
+        (directory / "eula.txt").write_text("eula=true\n")
+        (directory / "server.properties").write_text(
+            f"online-mode=false\nserver-ip=127.0.0.1\nserver-port={PORT}\n"
+            "enforce-secure-profile=false\nspawn-protection=0\nview-distance=3\n"
+            "simulation-distance=3\nlevel-type=minecraft:flat\nmax-tick-time=0\n"
+            "generate-structures=false\nspawn-monsters=false\ngamemode=survival\n")
+    else:
+        (directory / "config").mkdir()
+        (directory / "config/fml.toml").write_text("earlyWindowControl = false\n")
+        (directory / "options.txt").write_text(
+            "lang:en_us\nrenderDistance:3\nsimulationDistance:3\nguiScale:2\nmaxFps:30\n"
+            "enableVsync:false\npauseOnLostFocus:false\nonboardAccessibility:false\n"
+            "showAutosaveIndicator:false\nrenderClouds:false\nnarrator:0\ntutorialStep:none\n"
+            "gamma:1.0\nfov:0.0\nmusic:0.0\n")
+    env = os.environ.copy()
+    env.update({key: expand(value) for key, value in config["env"].items()})
+    env.update(LIBGL_ALWAYS_SOFTWARE="1", ALSOFT_DRIVERS="null", DISPLAY=display)
+    if not server:
+        audio_config = directory / "alsoft.conf"
+        audio_config.write_text(f"[general]\nchannels=stereo\nsample-type=int16\n[wave]\nfile={RESULTS / 'client-mix.wav'}\n")
+        env.update(ALSOFT_DRIVERS="wave", ALSOFT_CONF=str(audio_config))
+    args = shlex.split(expand(config["args"]))
+    if not server:
+        for option in ("--username", "--width", "--height", "--quickPlayMultiplayer"):
+            while option in args:
+                index = args.index(option)
+                del args[index:index + 2]
+        args += ["--username", "FlareTester", "--width", "960", "--height", "540",
+                 "--quickPlayMultiplayer", f"127.0.0.1:{PORT}"]
+    command = ["java", "-Xmx1024M" if server else "-Xmx2048M", f"-Dflare.gun.qa.results={RESULTS}"]
+    command += shlex.split(expand(config["vmArgs"]))
+    if not server:
+        natives = directory / "lwjgl-natives"
+        natives.mkdir()
+        command += [f"-Dorg.lwjgl.system.SharedLibraryExtractPath={natives}"]
+    command += ["-cp", CLASSPATH, config["mainClass"], *args]
+    log = (RESULTS / f"{role}.log").open("w")
+    logs.append(log)
+    process = subprocess.Popen(command, cwd=directory, env=env, stdin=subprocess.PIPE,
+                               stdout=log, stderr=subprocess.STDOUT, text=True)
+    processes.append(process)
+    return process
+
+
+def stop(process):
+    if process.poll() is None:
+        process.terminate()
+        try:
+            process.wait(timeout=20)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait()
+
+
+def wait_for(predicate, running, message, seconds=600):
+    deadline = time.monotonic() + seconds
+    while not predicate():
+        failures = list(RESULTS.glob("*.failed"))
+        if failures:
+            raise AssertionError("; ".join(path.read_text() for path in failures))
+        if any(p.poll() is not None for p in running):
+            raise RuntimeError("Minecraft exited before " + message)
+        if time.monotonic() >= deadline:
+            raise TimeoutError(message)
+        time.sleep(1)
+
+
+def ready():
+    try:
+        with socket.create_connection(("127.0.0.1", PORT), timeout=1):
+            return True
+    except OSError:
+        return False
+
+
+try:
+    print(f"FLARE_GUN_QA_RESULTS={RESULTS}", flush=True)
+    with socket.socket() as probe:
+        probe.bind(("127.0.0.1", PORT))
+    xvfb = subprocess.Popen(["Xvfb", "-displayfd", "1", "-screen", "0", "960x540x24", "-nolisten", "tcp"],
+                            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+    processes.append(xvfb)
+    display = ":" + xvfb.stdout.readline().strip()
+    server = launch("server", display)
+    wait_for(ready, [server], "dedicated server startup")
+    client = launch("client", display)
+    wait_for(lambda: (RESULTS / "client.ready").exists(), [server, client], "real client joined")
+    video_log = (RESULTS / "video.log").open("w")
+    logs.append(video_log)
+    video = subprocess.Popen(["ffmpeg", "-y", "-f", "x11grab", "-framerate", "20", "-video_size", "960x540",
+                              "-i", display, "-c:v", "libx264", "-threads", "1", "-preset", "ultrafast", "-crf", "24",
+                              "-pix_fmt", "yuv420p", str(RESULTS / "first-third-person.mp4")],
+                             stdin=subprocess.PIPE, stdout=video_log, stderr=subprocess.STDOUT, text=True)
+    processes.append(video)
+    wait_for(lambda: all((RESULTS / (name + ".pass")).exists() for name in ("server", "client")),
+             [server, client, video], "actual shots, rejected attempts and rendered recoil/loading", 300)
+    video.stdin.write("q\n")
+    video.stdin.flush()
+    if video.wait(timeout=30) != 0:
+        raise AssertionError("Video encoder failed")
+    stop(client)
+    server.stdin.write("stop\n")
+    server.stdin.flush()
+    if server.wait(timeout=180) != 0:
+        raise AssertionError("Dedicated server shutdown failed")
+    print("FLARE_GUN_QA_PASS dedicated server, consumption, rejected attempts, rendered motion, vanilla reports, screenshots/video", flush=True)
+finally:
+    for process in reversed(processes):
+        stop(process)
+    for log in logs:
+        log.close()

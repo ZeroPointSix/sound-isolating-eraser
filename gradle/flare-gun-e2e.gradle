@@ -1,0 +1,16 @@
+// Opt-in acceptance mod; its classes and resources are not in the player jar.
+sourceSets {
+    flareGunTest {
+        compileClasspath += sourceSets.main.compileClasspath + sourceSets.main.output
+        runtimeClasspath += sourceSets.main.runtimeClasspath + sourceSets.main.output
+    }
+}
+minecraft.runs.matching { it.name == 'client' || it.name == 'server' }.configureEach {
+    mods { flare_gun_qa { source sourceSets.flareGunTest } }
+}
+tasks.register('writeFlareGunTestClasspath') {
+    dependsOn 'classes', 'flareGunTestClasses', 'genVSCodeRuns'
+    def target = layout.buildDirectory.file('flare-gun-test-classpath.txt')
+    outputs.file(target)
+    doLast { target.get().asFile.text = sourceSets.flareGunTest.runtimeClasspath.asPath }
+}

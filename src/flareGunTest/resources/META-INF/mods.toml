@@ -1,0 +1,7 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="All Rights Reserved"
+[[mods]]
+modId="flare_gun_qa"
+version="1.0"
+displayName="Flare Gun Acceptance Probe"
