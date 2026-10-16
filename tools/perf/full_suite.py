@@ -170,7 +170,8 @@ def dimension(expected, timeout=180):
     raise TimeoutError("Player did not reach " + expected)
 
 
-def count(score, selector, dimension_id):
+def count(score, filters, dimension_id):
+    selector = "@e[distance=0.." + ("," + filters if filters else "") + "]"
     server.send(f"execute in {dimension_id} store result score {score} t2_perf if entity {selector}")
     mark = server.send(f"scoreboard players get {score} t2_perf")
     return int(server.wait(rf"{score} has (\d+) \[t2_perf\]", mark, 5).group(1))
@@ -213,11 +214,11 @@ def sample(label, expected_dimension=None):
                     raise RuntimeError("Player died inside sampling window")
             row = {"utc": p.utc(), "elapsedSeconds": round(elapsed, 3), "load1": os.getloadavg()[0]}
             for score, location in DIMENSIONS.items():
-                row[score] = count(score, "@e", location)
+                row[score] = count(score, "", location)
             if label == "C":
-                row["parents"] = count("parents", '@e[type=qihai:qiyu,tag=t2_parent]', "minecraft:overworld")
+                row["parents"] = count("parents", 'type=qihai:qiyu,tag=t2_parent', "minecraft:overworld")
                 server.send("scoreboard players set summons t2_perf 0")
-                server.send("execute in minecraft:overworld as @e[type=!minecraft:player] if data entity @s YujiSummoner run scoreboard players add summons t2_perf 1")
+                server.send("execute in minecraft:overworld as @e[distance=0..,type=!minecraft:player] if data entity @s YujiSummoner run scoreboard players add summons t2_perf 1")
                 mark = server.send("scoreboard players get summons t2_perf")
                 row["summons"] = int(server.wait(r"summons has (\d+) \[t2_perf\]", mark, 5).group(1))
             writer.writerow(row)
@@ -254,11 +255,22 @@ def main():
         affinity = sorted(os.sched_getaffinity(0))
         if len(affinity) < 4:
             raise RuntimeError("Four isolated runner CPUs required for server/client CPU separation")
-        os.environ["T2_SERVER_CPUS"] = ",".join(map(str, affinity[:2]))
-        os.environ["T2_CLIENT_CPUS"] = ",".join(map(str, affinity[2:]))
+        topology = subprocess.check_output(["lscpu", "-p=CPU,CORE,SOCKET"], text=True)
+        cores = {}
+        for line in topology.splitlines():
+            if not line.startswith("#"):
+                cpu, core, socket = map(int, line.split(","))
+                if cpu in affinity:
+                    cores.setdefault((socket, core), []).append(cpu)
+        groups = list(cores.values())
+        if len(groups) < 2:
+            raise RuntimeError("At least two physical CPU cores are required")
+        server_cpus, client_cpus = groups[0], [cpu for group in groups[1:] for cpu in group]
+        os.environ["T2_SERVER_CPUS"] = ",".join(map(str, server_cpus))
+        os.environ["T2_CLIENT_CPUS"] = ",".join(map(str, client_cpus))
         environment = p.prepare()
         environment.update(scope="A/B1/B2/C synthetic CI server baseline; no optimization or hardware-GPU FPS claim",
-                           serverCpus=affinity[:2], clientCpus=affinity[2:],
+                           serverCpus=server_cpus, clientCpus=client_cpus, cpuTopology=topology,
                            clientRendering="llvmpipe, capped 20 FPS, 1280x720; not a GPU benchmark")
         p.save_json(p.OUT / "environment.json", environment)
         FIXTURES.mkdir(exist_ok=True)

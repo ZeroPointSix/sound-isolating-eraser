@@ -7,6 +7,7 @@ import unittest
 from unittest.mock import Mock, patch
 
 import production_probe as probe
+import full_suite as suite
 
 
 class GuardTests(unittest.TestCase):
@@ -50,6 +51,20 @@ class GuardTests(unittest.TestCase):
         server.lines = ["https://spark.lucko.me/old", "no current result"]
         with self.assertRaises(TimeoutError):
             server.wait("https://spark", 1, 0.01)
+
+    def test_entity_count_is_dimension_limited(self):
+        server = Mock()
+        server.wait.return_value.group.return_value = "7"
+        with patch.object(suite, "server", server):
+            self.assertEqual(suite.count("rain", "", "qihai:yuji_fodu"), 7)
+        self.assertIn("@e[distance=0..]", server.send.call_args_list[0].args[0])
+
+    def test_parent_count_preserves_filters_and_dimension_limit(self):
+        server = Mock()
+        server.wait.return_value.group.return_value = "16"
+        with patch.object(suite, "server", server):
+            suite.count("parents", "type=qihai:qiyu,tag=t2_parent", "minecraft:overworld")
+        self.assertIn("@e[distance=0..,type=qihai:qiyu,tag=t2_parent]", server.send.call_args_list[0].args[0])
 
 
 if __name__ == "__main__":
