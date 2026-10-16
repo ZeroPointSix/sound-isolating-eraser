@@ -115,10 +115,23 @@ public final class SpawnCapGameTests {
         h.succeed();
     }
 
-    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "spawn_caps")
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "spawn_caps", timeoutTicks = 200)
     public static void capRealInsertionCommitMovementAndRemoval(GameTestHelper h) {
         var level = h.getLevel(); var pos = position(h); var other = pos.offset(16, 0, 0);
-        level.getChunk(other);
+        var chunk = new net.minecraft.world.level.ChunkPos(other);
+        boolean wasForced = level.getForcedChunks().contains(chunk.toLong());
+        level.setChunkForced(chunk.x, chunk.z, true);
+        Runnable restoreTicket = () -> { if (!wasForced) level.setChunkForced(chunk.x, chunk.z, false); };
+        h.runAfterDelay(190, restoreTicket);
+        // A block-loaded neighbor need not track entities yet; moving there legitimately leaves the index.
+        h.startSequence().thenWaitUntil(() -> h.assertTrue(level.isPositionEntityTicking(other),
+                "movement destination is entity-ticking")).thenExecute(() -> {
+            try { verifyTrackedMovement(h, pos, other); } finally { restoreTicket.run(); }
+        }).thenSucceed();
+    }
+
+    private static void verifyTrackedMovement(GameTestHelper h, BlockPos pos, BlockPos other) {
+        var level = h.getLevel();
         YujiMonster mob = candidate(level, pos, YujiKind.YUCHI);
         try (var config = GameTestConfigs.sandbox(SpawnCapConfig.SPEC)) {
             var before = SpawnCaps.snapshot(level, pos); var otherBefore = SpawnCaps.snapshot(level, other);
@@ -135,13 +148,14 @@ public final class SpawnCapGameTests {
                 h.assertTrue(SpawnCaps.tryReserve(level, type(), other) == null, "committed last slot is unavailable");
             }
             mob.moveTo(other.getX() + .5, other.getY(), other.getZ() + .5);
+            h.assertTrue(level.getEntity(mob.getUUID()) == mob, "moved fixture remains in the tracked entity lookup");
             h.assertTrue(SpawnCaps.snapshot(level, pos).chunkEntities() == before.chunkEntities(), "moving releases the old chunk");
-            h.assertTrue(SpawnCaps.snapshot(level, other).chunkEntities() == otherBefore.chunkEntities() + 1, "moving charges the new chunk");
+            var moved = SpawnCaps.snapshot(level, other);
+            h.assertTrue(moved.chunkEntities() == otherBefore.chunkEntities() + 1, "moving charges the new chunk: before=" + otherBefore + ", after=" + moved);
             mob.discard();
             h.assertTrue(SpawnCaps.snapshot(level, pos).entities() == before.entities(), "discard releases dimension capacity");
             zeroPending(h, pos);
         } finally { mob.discard(); }
-        h.succeed();
     }
 
     @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "spawn_caps")
