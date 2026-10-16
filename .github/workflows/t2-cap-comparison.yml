@@ -1,0 +1,83 @@
+name: T2 paired spawn-cap comparison
+
+on:
+  push:
+    branches: [verify/t2-pr2-caps-20261016]
+    paths:
+      - .github/workflows/t2-cap-comparison.yml
+      - tools/perf/cap_comparison.py
+      - tools/perf/test_cap_comparison.py
+
+permissions:
+  contents: read
+
+concurrency:
+  group: t2-cap-comparison-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  paired-production-servers:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 70
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: harness
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: bb325dc9ccf3d99565d8a1eedb7efee372fdcd45
+          path: source
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 8c49ff6a1dd98eb97c45e4222b7918f8b0191d69
+          path: candidate
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: true
+      - name: Build both exact source revisions before timing
+        run: |
+          set -o pipefail
+          mkdir -p source/build/t2-perf
+          (cd source && bash ./gradlew --no-daemon --max-workers=2 build) 2>&1 | tee source/build/t2-perf/base-build.log
+          (cd candidate && bash ./gradlew --no-daemon --max-workers=2 build) 2>&1 | tee source/build/t2-perf/candidate-build.log
+          (cd source && bash ./gradlew --no-daemon --max-workers=2 -I ../harness/tools/perf/launch.init.gradle writeT2ClientClasspath) 2>&1 | tee source/build/t2-perf/client-prepare.log
+          (cd candidate && python3 tools/verify_mixin_targets.py) | tee source/build/t2-perf/candidate-mixin.log
+          python3 harness/tools/perf/test_probe.py
+          python3 harness/tools/perf/test_cap_comparison.py
+      - name: Prepare the real software-rendered observer
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y xdotool xvfb
+      - name: Sample baseline, pressure policy, default policy, repeated baseline
+        env:
+          T2_SOURCE_DIR: ${{ github.workspace }}/source
+          T2_CANDIDATE_DIR: ${{ github.workspace }}/candidate
+          T2_HARNESS_SHA: ${{ github.sha }}
+        run: python3 harness/tools/perf/cap_comparison.py
+      - name: Preserve original evidence including failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: t2-cap-comparison-${{ github.run_id }}
+          path: |
+            source/build/t2-perf/*.json
+            source/build/t2-perf/*.jsonl
+            source/build/t2-perf/*.csv
+            source/build/t2-perf/*.log
+            source/build/t2-perf/*.txt
+            source/build/t2-perf/*.sparkprofile
+            source/build/t2-perf/fixtures/*.tar.gz
+            source/build/t2-perf/client/screenshots/
+            source/build/t2-perf/server/logs/
+            source/build/t2-perf/server/config/spark/
+            source/build/t2-perf/server/server.properties
+            source/build/t2-perf/server/world/serverconfig/
+          if-no-files-found: error
+          retention-days: 30
