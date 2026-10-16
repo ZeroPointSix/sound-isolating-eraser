@@ -102,7 +102,7 @@ def sample_processes():
 
 try:
     for display in (":91", ":92"):
-        processes.append(subprocess.Popen(["Xvfb", display, "-screen", "0", "1280x720x24", "-nolisten", "tcp"],
+        processes.append(subprocess.Popen(["Xvfb", display, "-screen", "0", "1920x1080x24", "-nolisten", "tcp"],
                                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL))
     server = launch("runServer", "server")
     deadline = time.monotonic() + int(os.environ.get("GRAVITY_QA_STARTUP_SECONDS", "180"))
@@ -116,7 +116,8 @@ try:
             time.sleep(1)
     wearer = launch("runClient", "wearer", ":91")
     observer = launch("runClient", "observer", ":92")
-    deadline = time.monotonic() + int(os.environ.get("GRAVITY_QA_TEST_SECONDS", "600"))
+    # Full 53-item hovers plus seven native viewport cases retain all previous gameplay gates.
+    deadline = time.monotonic() + int(os.environ.get("GRAVITY_QA_TEST_SECONDS", "1500"))
     required = ("wearer", "observer", "server-effects", "wearer-stress",
                 "wearer-cast", "wearer-remap", "wearer-active-pixels", "observer-active-pixels",
                 "server-pressure", "server-eraser", "wearer-eraser", "observer-eraser",

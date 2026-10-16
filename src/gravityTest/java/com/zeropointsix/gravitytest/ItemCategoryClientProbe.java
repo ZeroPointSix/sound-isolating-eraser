@@ -39,6 +39,10 @@ public final class ItemCategoryClientProbe {
     private static final ItemStack STICK = Items.STICK.getDefaultInstance();
     private static int phase;
     private static int sample;
+    private static int round;
+    private static int configuredRound = -1;
+    private static long resizeReadyFrame;
+    private static String observedBounds;
     private static String originalLanguage;
     private static CompletableFuture<Void> languageReload;
     private static InventoryScreen screen;
@@ -72,24 +76,55 @@ public final class ItemCategoryClientProbe {
             if (!Files.exists(results.resolve("server-category.pass"))) return false;
             if (changeLanguage(mc, originalLanguage)) return false;
             Files.writeString(results.resolve(role + "-category.pass"),
-                    (ItemCategoryServerProbe.GUIDE_ITEMS.size() * 8 + 6)
-                            + " native hovers; default/Shift/Ctrl/both; en_us/zh_cn; synced tags; original language restored\n");
+                    (ItemGuideProbeCases.cases().stream().mapToInt(c -> c.items().size()).sum() * 8 + 6)
+                            + " native hovers; all 53 catalog items; default/Shift/Ctrl/both; en_us/zh_cn; "
+                            + "7 extra viewport/scale cases for 4 long guides; synced tags; original language restored\n");
             finished = true;
             return true;
         }
         if (!Files.exists(results.resolve("server-category-" + PHASES[phase] + ".pass"))) return false;
         if (mc.gameMode.hasInfiniteItems()) return false;
+        var viewport = phase == 0 ? ItemGuideProbeCases.cases().get(round)
+                : new ItemGuideProbeCases.Case("reload", 960, 540, 2, List.of());
+        String roundName = phase == 0 ? viewport.name() : PHASES[phase];
+        if (!Files.exists(results.resolve("server-category-" + roundName + ".pass"))) return false;
+        int desiredRound = phase == 0 ? round : -2;
+        if (configuredRound != desiredRound) {
+            mc.setScreen(null);
+            screen = null;
+            setModifiers(mc, 0);
+            GLFW.glfwSetWindowSize(mc.getWindow().getWindow(), viewport.width(), viewport.height());
+            mc.options.guiScale().set(viewport.scale());
+            mc.resizeDisplay();
+            configuredRound = desiredRound;
+            resizeReadyFrame = frames + 10;
+            return false;
+        }
+        if (frames < resizeReadyFrame) return false;
+        require(mc.getWindow().getScreenWidth() == viewport.width()
+                        && mc.getWindow().getScreenHeight() == viewport.height()
+                        && mc.getWindow().getGuiScale() == viewport.scale(),
+                "native window and GUI scale match case " + roundName);
         if (phase > 0) {
             // Retain the same stack across all reloads to catch stale membership caches.
             if (STICK.is(ModItemTags.QIWU) != (phase == 2)
                     || STICK.is(ModItemTags.DAOJU) != (phase == 1 || phase == 2)) return false;
         }
-        Item[] items = phase == 0 ? ItemCategoryServerProbe.GUIDE_ITEMS.stream()
+        Item[] items = phase == 0 ? viewport.items().stream()
                 .map(ForgeRegistries.ITEMS::getValue).toArray(Item[]::new) : new Item[]{Items.STICK};
         int modes = phase == 0 ? MODES.length : 1;
         if (sample == items.length * 2 * modes) {
             expectedItem = null;
             mc.setScreen(null);
+            if (phase == 0) {
+                Files.writeString(results.resolve(role + "-category-" + roundName + ".pass"),
+                        "real window=" + viewport.width() + "x" + viewport.height() + " scale=" + viewport.scale()
+                                + " items=" + items.length + " locales=2 modes=4 complete outer border\n");
+                if (++round < ItemGuideProbeCases.cases().size()) {
+                    sample = 0;
+                    return false;
+                }
+            }
             Files.writeString(results.resolve(role + "-category-" + PHASES[phase] + ".pass"),
                     "native hover and both locales passed: " + PHASES[phase] + "\n");
             phase++;
@@ -161,11 +196,11 @@ public final class ItemCategoryClientProbe {
         }
         if (frames < readyFrame || renderedTooltips < 3) return false;
         String id = ForgeRegistries.ITEMS.getKey(expectedItem).getPath();
-        String name = role + "-category-" + PHASES[phase] + "-" + language + "-" + id + "-" + MODES[mode];
+        String name = role + "-category-" + roundName + "-" + language + "-" + id + "-" + MODES[mode];
         try (var image = Screenshot.takeScreenshot(mc.getMainRenderTarget())) {
             image.writeToFile(results.resolve(name + ".png"));
         }
-        Files.writeString(results.resolve(name + ".pass"), observedText + "\n");
+        Files.writeString(results.resolve(name + ".pass"), observedBounds + "\n" + observedText + "\n");
         System.out.println("ITEM_CATEGORY_NATIVE_HOVER " + name + " " + observedText);
         expectedItem = null;
         if (originalGravityKey != null) {
@@ -256,12 +291,18 @@ public final class ItemCategoryClientProbe {
             int height = event.getComponents().stream().mapToInt(component -> component.getHeight()).sum()
                     + (event.getComponents().size() == 1 ? -2 : 0);
             // Color fires after vanilla wrapping and positioning, including legacy status lines.
-            require(event.getX() >= 0 && event.getY() >= 0
-                            && event.getX() + width <= window.getGuiScaledWidth()
-                            && event.getY() + height <= window.getGuiScaledHeight(),
-                    "native tooltip stays within viewport: item=" + ForgeRegistries.ITEMS.getKey(expectedItem)
+            require(event.getX() >= 4 && event.getY() >= 4
+                            && event.getX() + width + 4 <= window.getGuiScaledWidth()
+                            && event.getY() + height + 4 <= window.getGuiScaledHeight(),
+                    "native tooltip including 4 GUI units of outer border stays within viewport: item=" + ForgeRegistries.ITEMS.getKey(expectedItem)
                             + " mode=" + MODES[mode] + " bounds=" + event.getX() + "," + event.getY()
-                            + "," + width + "," + height);
+                            + "," + width + "," + height + " viewport=" + window.getGuiScaledWidth()
+                            + "x" + window.getGuiScaledHeight() + " scale=" + window.getGuiScale());
+            observedBounds = "outer=[" + (event.getX() - 4) + "," + (event.getY() - 4) + ","
+                    + (event.getX() + width + 4) + "," + (event.getY() + height + 4)
+                    + "] gui=" + window.getGuiScaledWidth() + "x" + window.getGuiScaledHeight()
+                    + " pixels=" + window.getScreenWidth() + "x" + window.getScreenHeight()
+                    + " scale=" + window.getGuiScale() + " components=" + event.getComponents().size();
             renderedTooltips++;
         } catch (Throwable failure) {
             renderFailure = failure;

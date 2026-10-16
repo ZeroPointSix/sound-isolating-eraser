@@ -46,7 +46,7 @@ public final class GravityTestServer {
     public static final String STILL_NAME = "gravityqa_still";
     public static final String PHASE_PREFIX = "GRAVITY_QA_PHASE:";
     private static final Logger LOGGER = LogUtils.getLogger();
-    private static final int MAX_RUN_TICKS = 12000;
+    private static final int MAX_RUN_TICKS = Boolean.getBoolean("qiwu.qa") ? 30000 : 12000;
     private static MinecraftServer activeServer;
     private static Cow movingCow;
     private static Cow stillCow;

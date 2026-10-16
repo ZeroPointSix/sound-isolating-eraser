@@ -3,6 +3,7 @@ package com.zeropointsix.eraser.gametest;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonObject;
 import com.zeropointsix.eraser.item.ItemGuideCatalog;
+import com.zeropointsix.eraser.item.ItemGuideLayout;
 import com.zeropointsix.eraser.item.ItemGuideTooltips;
 import com.zeropointsix.eraser.registry.ModItemTags;
 import java.io.InputStreamReader;
@@ -29,6 +30,31 @@ import net.minecraftforge.registries.ForgeRegistries;
 @GameTestHolder("qijie_tests")
 @PrefixGameTestTemplate(false)
 public final class ItemCategoryGameTests {
+    @GameTest(template = "empty")
+    public static void tooltipOuterBorderFitsResolutionAndScaleMatrix(GameTestHelper helper) {
+        int[][] displays = {{640, 480, 1}, {640, 480, 2}, {800, 600, 2},
+                {960, 540, 2}, {1920, 1080, 2}, {1920, 1080, 4}, {1920, 480, 2}, {640, 1080, 2}};
+        for (int[] display : displays) {
+            int w = display[0] / display[2];
+            int h = display[1] / display[2];
+            for (int width : new int[]{1, w / 2, w - 8}) {
+                for (int height : new int[]{8, h / 2, h - 8}) {
+                    helper.assertTrue(ItemGuideLayout.fits(width, height, w, h), "fitting content accepted");
+                    for (int anchor : new int[]{-100, 0, 4, w / 2, w, 10000}) {
+                        int x = ItemGuideLayout.clamp(anchor, width, w);
+                        int y = ItemGuideLayout.clamp(anchor, height, h);
+                        helper.assertTrue(x >= 4 && y >= 4 && x + width + 4 <= w && y + height + 4 <= h,
+                                "entire native border fits at " + display[0] + "x" + display[1] + " scale " + display[2]);
+                    }
+                }
+            }
+            helper.assertTrue(!ItemGuideLayout.fits(w - 7, 8, w, h)
+                            && !ItemGuideLayout.fits(8, h - 7, w, h),
+                    "content-only fits must trigger reflow, not clamp an oversized rectangle");
+        }
+        helper.succeed();
+    }
+
     private static final Set<ResourceLocation> EXPECTED_QIWU = Set.of(
             id("super_fertilizer_bag"), id("gravity_jade_pendant"),
             id("shaxiadao"), id("sound_isolating_eraser"));
