@@ -49,7 +49,7 @@ def launch(role, display):
     env.update(LIBGL_ALWAYS_SOFTWARE="1", ALSOFT_DRIVERS="null", DISPLAY=display)
     if not server:
         audio_config = directory / "alsoft.conf"
-        audio_config.write_text(f"[general]\nchannels=stereo\nsample-type=int16\n[wave]\nfile={RESULTS / 'client-mix.wav'}\n")
+        audio_config.write_text(f"[general]\nchannels=stereo\nsample-type=int16\n[wave]\nfile={RESULTS / (role + '-mix.wav')}\n")
         env.update(ALSOFT_DRIVERS="wave", ALSOFT_CONF=str(audio_config))
     args = shlex.split(expand(config["args"]))
     if not server:
@@ -57,9 +57,10 @@ def launch(role, display):
             while option in args:
                 index = args.index(option)
                 del args[index:index + 2]
-        args += ["--username", "FlareTester", "--width", "960", "--height", "540",
+        args += ["--username", "FlareObserver" if role == "observer" else "FlareTester", "--width", "960", "--height", "540",
                  "--quickPlayMultiplayer", f"127.0.0.1:{PORT}"]
-    command = ["java", "-Xmx1024M" if server else "-Xmx2048M", f"-Dflare.gun.qa.results={RESULTS}"]
+    command = ["java", "-Xmx1024M" if server else "-Xmx1536M", f"-Dflare.gun.qa.results={RESULTS}",
+               f"-Dflare.gun.qa.role={role}"]
     command += shlex.split(expand(config["vmArgs"]))
     if not server:
         natives = directory / "lwjgl-natives"
@@ -109,33 +110,44 @@ try:
     print(f"FLARE_GUN_QA_RESULTS={RESULTS}", flush=True)
     with socket.socket() as probe:
         probe.bind(("127.0.0.1", PORT))
-    xvfb = subprocess.Popen(["Xvfb", "-displayfd", "1", "-screen", "0", "960x540x24", "-nolisten", "tcp"],
-                            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
-    processes.append(xvfb)
-    display = ":" + xvfb.stdout.readline().strip()
+    displays = []
+    for _ in range(2):
+        xvfb = subprocess.Popen(["Xvfb", "-displayfd", "1", "-screen", "0", "960x540x24", "-nolisten", "tcp"],
+                                stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+        processes.append(xvfb)
+        displays.append(":" + xvfb.stdout.readline().strip())
+    display = displays[0]
     server = launch("server", display)
     wait_for(ready, [server], "dedicated server startup")
     client = launch("client", display)
     wait_for(lambda: (RESULTS / "client.ready").exists(), [server, client], "real client joined")
-    video_log = (RESULTS / "video.log").open("w")
-    logs.append(video_log)
-    video = subprocess.Popen(["ffmpeg", "-y", "-f", "x11grab", "-framerate", "20", "-video_size", "960x540",
-                              "-i", display, "-c:v", "libx264", "-threads", "1", "-preset", "ultrafast", "-crf", "24",
-                              "-pix_fmt", "yuv420p", str(RESULTS / "first-third-person.mp4")],
-                             stdin=subprocess.PIPE, stdout=video_log, stderr=subprocess.STDOUT, text=True)
-    processes.append(video)
-    wait_for(lambda: all((RESULTS / (name + ".pass")).exists() for name in ("server", "client")),
-             [server, client, video], "actual shots, rejected attempts and rendered recoil/loading", 300)
-    video.stdin.write("q\n")
-    video.stdin.flush()
-    if video.wait(timeout=30) != 0:
-        raise AssertionError("Video encoder failed")
+    observer = launch("observer", displays[1])
+    wait_for(lambda: (RESULTS / "observer.ready").exists(), [server, client, observer], "observer joined")
+    videos = []
+    for name, screen in zip(("first-third-person", "observer"), displays):
+        video_log = (RESULTS / (name + "-video.log")).open("w")
+        logs.append(video_log)
+        video = subprocess.Popen(["ffmpeg", "-y", "-f", "x11grab", "-framerate", "20", "-video_size", "960x540",
+                                  "-i", screen, "-c:v", "libx264", "-threads", "1", "-preset", "ultrafast", "-crf", "24",
+                                  "-pix_fmt", "yuv420p", str(RESULTS / (name + ".mp4"))],
+                                 stdin=subprocess.PIPE, stdout=video_log, stderr=subprocess.STDOUT, text=True)
+        processes.append(video)
+        videos.append(video)
+    (RESULTS / "recording.ready").touch()
+    wait_for(lambda: all((RESULTS / (name + ".pass")).exists() for name in ("server", "client", "observer")),
+             [server, client, observer, *videos], "dual-client shots, rejected attempts and rendered recoil/loading", 300)
+    for video in videos:
+        video.stdin.write("q\n")
+        video.stdin.flush()
+        if video.wait(timeout=30) != 0:
+            raise AssertionError("Video encoder failed")
+    stop(observer)
     stop(client)
     server.stdin.write("stop\n")
     server.stdin.flush()
     if server.wait(timeout=180) != 0:
         raise AssertionError("Dedicated server shutdown failed")
-    print("FLARE_GUN_QA_PASS dedicated server, consumption, rejected attempts, rendered motion, vanilla reports, screenshots/video", flush=True)
+    print("FLARE_GUN_QA_PASS dedicated server, dual-client rendered motion, handed muzzle packets, rejected shots, both vanilla sounds, screenshots/video", flush=True)
 finally:
     for process in reversed(processes):
         stop(process)
