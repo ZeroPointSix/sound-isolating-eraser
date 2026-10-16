@@ -458,7 +458,8 @@ public final class RedNailsGameTests {
             releaseAt[0] = f.level.getGameTime();
             long lived = releaseAt[0] - grabAt[0];
             System.out.println("RED_NAILS_AI_GRAB t0=" + grabAt[0] + " release=" + releaseAt[0] + " dt=" + lived);
-            check(h, lived <= 110, "Observed water grab lifetime stays near 100 ticks: " + lived);
+            check(h, lived >= 99 && lived <= 101,
+                    "Observed water grab lifetime is 100 ticks within one observation tick: " + lived);
             check(h, WaterGhostGrab.grabbable(victim), "Natural release clears victim lease");
             long remaining = g.ghostBody().grab.cooldownUntil() - f.level.getGameTime();
             check(h, remaining >= 150 && remaining <= 160,
@@ -481,6 +482,8 @@ public final class RedNailsGameTests {
         p.setLastHurtMob(victim);
         g.setTarget(victim);
         double startX = g.getX();
+        double[] waterEntryY = { Double.NaN };
+        int[] airAtWaterEntry = { -1 };
         h.startSequence().thenWaitUntil(() -> {
             check(h, g.ghostBody().grab.held() == victim, "Summon goal selector grabs on shore without start()");
             check(h, !g.ghostBody().swimming(), "First grab is still on land");
@@ -491,7 +494,20 @@ public final class RedNailsGameTests {
         }).thenWaitUntil(() -> {
             check(h, g.ghostBody().grab.held() == victim, "Hold survives the AI shore-to-water carry");
             check(h, g.ghostBody().swimming() && g.isInWater(), "Summon entered water under its own AI");
-            check(h, victim.isInWater() || victim.getX() > startX + 0.8, "Victim was carried into or toward the water");
-        }).thenSucceed();
+            check(h, victim.isInWater(), "Victim actually entered water under the summon AI");
+        }).thenExecute(() -> {
+            waterEntryY[0] = g.getY();
+            airAtWaterEntry[0] = victim.getAirSupply();
+        }).thenWaitUntil(() -> {
+            check(h, g.ghostBody().grab.held() == victim, "Shore-to-water grab remains active during descent");
+            check(h, g.getY() < waterEntryY[0] - 0.5, "Summon sinks after entering water");
+            check(h, victim.isEyeInFluid(net.minecraft.tags.FluidTags.WATER)
+                    && victim.getY() < waterEntryY[0], "Carried victim is submerged and dragged downward");
+            check(h, victim.getAirSupply() < airAtWaterEntry[0], "Carried victim loses oxygen underwater");
+        }).thenExecute(() -> System.out.println("RED_NAILS_SHORE_AI victimInWater=" + victim.isInWater()
+                + " submerged=" + victim.isEyeInFluid(net.minecraft.tags.FluidTags.WATER)
+                + " descent=" + (waterEntryY[0] - g.getY())
+                + " airBefore=" + airAtWaterEntry[0] + " airAfter=" + victim.getAirSupply()))
+        .thenSucceed();
     }
 }
