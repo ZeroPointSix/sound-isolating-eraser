@@ -1,6 +1,8 @@
 package com.zeropointsix.gravitytest;
 
 import com.mojang.blaze3d.platform.InputConstants;
+import com.zeropointsix.eraser.client.EraserClient;
+import com.zeropointsix.eraser.client.GravityClient;
 import com.zeropointsix.eraser.item.ItemGuideCatalog;
 import com.zeropointsix.eraser.registry.ModItemTags;
 import java.nio.file.Files;
@@ -8,6 +10,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Screenshot;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.network.chat.Component;
@@ -51,6 +54,7 @@ public final class ItemCategoryClientProbe {
     private static final String[] MODES = {"default", "shift", "ctrl", "both"};
     private static int mode;
     private static boolean modifiersReady;
+    private static InputConstants.Key originalGravityKey;
 
     static boolean tick(Minecraft mc, long frames, Path results, String role) throws Exception {
         if (!Boolean.getBoolean("qiwu.qa") || finished) return true;
@@ -95,6 +99,11 @@ public final class ItemCategoryClientProbe {
         if (screen == null) {
             expectedItem = items[sample % items.length];
             if (mc.player.getInventory().items.stream().noneMatch(stack -> stack.is(expectedItem))) return false;
+            if (expectedItem == item("gravity_jade_pendant")) {
+                originalGravityKey = GravityClient.ACTIVATE.getKey();
+                GravityClient.ACTIVATE.setKey(InputConstants.Type.KEYSYM.getOrCreate(GLFW.GLFW_KEY_B));
+                KeyMapping.resetMapping();
+            }
             expectedRarity = expectedItem.getDefaultInstance().getRarity();
             boolean qiwu = phase == 0 || phase == 2;
             expectedLabel = phase == 3 ? "" : (qiwu
@@ -142,6 +151,11 @@ public final class ItemCategoryClientProbe {
         Files.writeString(results.resolve(name + ".pass"), observedText + "\n");
         System.out.println("ITEM_CATEGORY_NATIVE_HOVER " + name + " " + observedText);
         expectedItem = null;
+        if (originalGravityKey != null) {
+            GravityClient.ACTIVATE.setKey(originalGravityKey);
+            KeyMapping.resetMapping();
+            originalGravityKey = null;
+        }
         setModifiers(mc, 0);
         mc.setScreen(null);
         screen = null;
@@ -189,8 +203,13 @@ public final class ItemCategoryClientProbe {
                                     && text.getKey().equals(guide.key("controls")))
                             .findFirst().orElseThrow().getString();
                     for (String binding : guide.controls()) {
-                        var key = java.util.Arrays.stream(Minecraft.getInstance().options.keyMappings)
-                                .filter(candidate -> candidate.getName().equals(binding)).findFirst().orElseThrow();
+                        var key = switch (binding) {
+                            case "key.sound_isolating_eraser.gravity_target" -> GravityClient.ACTIVATE;
+                            case "key.sound_isolating_eraser.eraser_mode" -> EraserClient.CYCLE;
+                            default -> java.util.Arrays.stream(Minecraft.getInstance().options.keyMappings)
+                                    .filter(candidate -> candidate.getName().equals(binding)).findFirst()
+                                    .orElseThrow(() -> new AssertionError("Missing native key binding: " + binding));
+                        };
                         require(controls.contains(key.getTranslatedKeyMessage().getString()), "native current binding: " + binding);
                     }
                 }

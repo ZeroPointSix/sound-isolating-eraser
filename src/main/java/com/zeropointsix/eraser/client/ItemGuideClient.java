@@ -23,12 +23,7 @@ public final class ItemGuideClient {
             return new ItemGuideTooltips.Modifiers(Screen.hasShiftDown(),
                     InputConstants.isKeyDown(window, GLFW.GLFW_KEY_LEFT_CONTROL)
                             || InputConstants.isKeyDown(window, GLFW.GLFW_KEY_RIGHT_CONTROL));
-        }, name -> {
-            for (var key : Minecraft.getInstance().options.keyMappings) {
-                if (key.getName().equals(name)) return key.getTranslatedKeyMessage();
-            }
-            return Component.translatable(name);
-        }));
+        }, Component::keybind));
     }
     private ItemGuideClient() { }
 }
