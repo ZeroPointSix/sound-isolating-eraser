@@ -484,7 +484,11 @@ public final class RedNailsGameTests {
         var f = new Fixture(h);
         var p = f.player(0, 0);
         var stack = f.wear(p);
-        // Shore stays dry: water fills the pit under the bank so it cannot flow onto spawn.
+        // Seal under the bank so pit water cannot run beneath the stone floor, then
+        // fill a pit whose surface is below the shore so spawn stays dry.
+        for (int x = -4; x <= 1; x++) for (int z = -4; z <= 4; z++) {
+            for (int y = -5; y <= -1; y++) f.set(f.center.offset(x, y, z), Blocks.STONE.defaultBlockState());
+        }
         for (int x = 2; x <= 7; x++) for (int z = -3; z <= 3; z++) {
             f.set(f.center.offset(x, -5, z), Blocks.STONE.defaultBlockState());
             for (int y = -4; y <= -1; y++) f.set(f.center.offset(x, y, z), Blocks.WATER.defaultBlockState());
