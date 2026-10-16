@@ -3,6 +3,7 @@ package com.zeropointsix.eraser.yuji.city;
 import com.zeropointsix.eraser.yuji.YujiContent;
 import com.zeropointsix.eraser.yuji.YujiKind;
 import com.zeropointsix.eraser.yuji.YujiMonster;
+import com.zeropointsix.eraser.spawn.SpawnCaps;
 import java.util.List;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
@@ -78,7 +79,7 @@ public final class RainCitySpawns {
             if (queue == null) continue;
             if (!queue.equals("Ambient")) {
                 YujiKind kind = queue.equals("WaveChennu") ? YujiKind.CHENNU : queue.equals("WaveGreed") ? YujiKind.TANYU : waveKind(city, day);
-                if (attempt(city, p, kind, day, true, state, true)) state.putInt(queue, state.getInt(queue) - 1);
+                if (attempt(city, p, kind, day, true, state, true) == SpawnResult.SPAWNED) state.putInt(queue, state.getInt(queue) - 1);
                 data.setDirty(); continue;
             }
             int cap = RainCityRules.cap(day, RainCityRules.night(elapsed), RainCityConfig.CAP.get());
@@ -93,8 +94,9 @@ public final class RainCitySpawns {
                 state.putInt("AmbientKind", kind.ordinal()); state.putInt("AmbientGroup", group);
             }
             YujiKind kind = YujiKind.values()[Math.floorMod(state.getInt("AmbientKind"), YujiKind.values().length)];
-            attempt(city, p, kind, day, false, state, false);
-            state.putInt("AmbientGroup", state.getInt("AmbientGroup") - 1); data.setDirty();
+            SpawnResult result = attempt(city, p, kind, day, false, state, false);
+            if (result != SpawnResult.DEFERRED_CAP) state.putInt("AmbientGroup", state.getInt("AmbientGroup") - 1);
+            data.setDirty();
         }
     }
     private static int regionalChennu(ServerLevel city, ServerPlayer p) {
@@ -143,40 +145,48 @@ public final class RainCitySpawns {
         for (YujiKind kind : YujiKind.values()) { r -= weights[kind.ordinal()]; if (r < 0) return kind; }
         return YujiKind.YUCHI;
     }
-    private static boolean attempt(ServerLevel city, ServerPlayer target, YujiKind kind, int day, boolean horde, CompoundTag state, boolean wave) {
+    private enum SpawnResult { SPAWNED, FAILED, DEFERRED_CAP }
+
+    private static SpawnResult attempt(ServerLevel city, ServerPlayer target, YujiKind kind, int day, boolean horde, CompoundTag state, boolean wave) {
+        if (!SpawnCaps.hasDimensionRoom(city, YujiContent.MOBS.get(kind).get())) return SpawnResult.DEFERRED_CAP;
         int maximum = RainCityConfig.DISTANCE.get();
         double minimum = wave ? Math.min(64, maximum) : 24;
         double angle = city.random.nextDouble() * Math.PI * 2, radius = minimum + city.random.nextDouble() * Math.max(0, maximum - minimum);
         int x = (int) Math.floor(target.getX() + Math.cos(angle) * radius), z = (int) Math.floor(target.getZ() + Math.sin(angle) * radius);
         BlockPos probe = new BlockPos(x, RainCityGenerator.SURFACE, z);
-        if (!city.hasChunkAt(probe)) return false;
+        if (!city.hasChunkAt(probe)) return SpawnResult.FAILED;
         int y = city.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
         if (kind == YujiKind.TANYU) y = 90;
         else if (kind == YujiKind.LIANGSHE || kind == YujiKind.XIEYIN) y = RainCityGenerator.SURFACE + 1 + 6 * city.random.nextInt(3);
         BlockPos pos = new BlockPos(x, y, z);
-        if (RainCityTemplates.shaft(pos)) return false;
-        if (city.getGameTime() - state.getLong("Entered") < 3600 && pos.distSqr(BlockPos.of(state.getLong("Arrival"))) <= 256) return false;
+        if (RainCityTemplates.shaft(pos)) return SpawnResult.FAILED;
+        if (city.getGameTime() - state.getLong("Entered") < 3600 && pos.distSqr(BlockPos.of(state.getLong("Arrival"))) <= 256) return SpawnResult.FAILED;
         final int spawnY = y;
-        if (city.players().stream().anyMatch(p -> p.distanceToSqr(x + .5, spawnY, z + .5) < 24 * 24)) return false;
-        if (!city.getBlockState(pos.below()).isFaceSturdy(city, pos.below(), Direction.UP) || !city.getFluidState(pos).isEmpty()) return false;
-        if (kind == YujiKind.QIYU && y < RainCityGenerator.SURFACE + 40) return false;
-        if ((kind == YujiKind.LIANGSHE || kind == YujiKind.XIEYIN) && city.canSeeSky(pos)) return false;
+        if (city.players().stream().anyMatch(p -> p.distanceToSqr(x + .5, spawnY, z + .5) < 24 * 24)) return SpawnResult.FAILED;
+        if (!city.getBlockState(pos.below()).isFaceSturdy(city, pos.below(), Direction.UP) || !city.getFluidState(pos).isEmpty()) return SpawnResult.FAILED;
+        if (kind == YujiKind.QIYU && y < RainCityGenerator.SURFACE + 40) return SpawnResult.FAILED;
+        if ((kind == YujiKind.LIANGSHE || kind == YujiKind.XIEYIN) && city.canSeeSky(pos)) return SpawnResult.FAILED;
         if (kind == YujiKind.XIEYIN) {
             int walls = 0;
             for (Direction d : Direction.Plane.HORIZONTAL) if (!city.getBlockState(pos.relative(d, 3)).isAir()) walls++;
-            if (walls < 2) return false;
+            if (walls < 2) return SpawnResult.FAILED;
         }
-        YujiMonster mob = YujiContent.MOBS.get(kind).get().create(city);
-        if (mob == null) return false;
-        mob.moveTo(x + .5, y, z + .5, city.random.nextFloat() * 360, 0);
-        if (!city.noCollision(mob)) return false;
-        mob.finalizeSpawn(city, city.getCurrentDifficultyAt(pos), MobSpawnType.EVENT, null, null);
-        if (kind == YujiKind.TANYU) mob.setLayers(RainCityRules.layers(day), false);
-        if (!city.noCollision(mob)) return false;
-        grow(mob, day); mob.setHealth(mob.getMaxHealth());
-        mob.getPersistentData().putBoolean("YujiHorde", horde);
-        if (horde) { mob.setTarget(target); mob.getAttribute(Attributes.FOLLOW_RANGE).setBaseValue(128); }
-        return city.addFreshEntity(mob);
+        try (var reservation = SpawnCaps.tryReserve(city, YujiContent.MOBS.get(kind).get(), pos)) {
+            if (reservation == null) return SpawnResult.DEFERRED_CAP;
+            YujiMonster mob = YujiContent.MOBS.get(kind).get().create(city);
+            if (mob == null) return SpawnResult.FAILED;
+            mob.moveTo(x + .5, y, z + .5, city.random.nextFloat() * 360, 0);
+            if (!city.noCollision(mob)) return SpawnResult.FAILED;
+            mob.finalizeSpawn(city, city.getCurrentDifficultyAt(pos), MobSpawnType.EVENT, null, null);
+            if (kind == YujiKind.TANYU) mob.setLayers(RainCityRules.layers(day), false);
+            if (!city.noCollision(mob)) return SpawnResult.FAILED;
+            grow(mob, day); mob.setHealth(mob.getMaxHealth());
+            mob.getPersistentData().putBoolean("YujiHorde", horde);
+            if (horde) { mob.setTarget(target); mob.getAttribute(Attributes.FOLLOW_RANGE).setBaseValue(128); }
+            if (city.addFreshEntity(mob) && reservation.commit(mob)) return SpawnResult.SPAWNED;
+            mob.discard();
+            return SpawnResult.FAILED;
+        }
     }
     public static void grow(YujiMonster mob, int day) {
         float ratio = mob.getHealth() / mob.getMaxHealth();

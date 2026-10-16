@@ -53,6 +53,8 @@ public final class ModMain {
         PillNetwork.register();
         ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER, CommonConfig.SPEC,
                 MOD_ID + "-eraser-server.toml");
+        ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER,
+                com.zeropointsix.eraser.config.SpawnCapConfig.SPEC, MOD_ID + "-spawn-caps-server.toml");
         ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER, GravityConfig.SPEC);
         ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER, WingsConfig.SERVER_SPEC,
                 MOD_ID + "-wings-server.toml");
