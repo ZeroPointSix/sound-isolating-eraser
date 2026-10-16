@@ -50,7 +50,7 @@ def launch(role, username="YujiTester"):
         (directory / "eula.txt").write_text("eula=true\n")
         (directory / "server.properties").write_text(
             f"online-mode=false\nserver-ip=127.0.0.1\nserver-port={PORT}\n"
-            "enforce-secure-profile=false\nspawn-protection=0\nview-distance=3\n"
+            f"enforce-secure-profile=false\nspawn-protection=0\nview-distance={6 if VISUALS else 3}\n"
             "simulation-distance=3\nlevel-type=minecraft:flat\nmax-tick-time=0\n"
             "generate-structures=false\nspawn-monsters=false\ngamemode=creative\n")
     else:

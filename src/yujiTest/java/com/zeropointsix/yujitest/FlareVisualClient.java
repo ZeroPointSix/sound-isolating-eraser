@@ -35,7 +35,7 @@ public final class FlareVisualClient {
     private static Vec3 target;
     private static Entity subject;
     private static int ticks, frames, movieFrames;
-    private static int ringStableFrames;
+    private static int ringStableFrames, ringDiagnosticTick;
     private static long previousFrame;
     private static boolean failed, complete;
     private static boolean classifierChecked;
@@ -126,7 +126,7 @@ public final class FlareVisualClient {
         try {
             String[] fields = event.getMessage().getString().split(":");
             phase = fields[1]; color = phase.substring(0, phase.indexOf('-')); ticks = 0; frames = 0;
-            ringStableFrames = 0;
+            ringStableFrames = 0; ringDiagnosticTick = 0;
             target = new Vec3(Double.parseDouble(fields[2]), Double.parseDouble(fields[3]), Double.parseDouble(fields[4]));
             event.setCanceled(true);
         } catch (Throwable failure) { fail(failure); }
@@ -209,13 +209,18 @@ public final class FlareVisualClient {
                     double height = camera.y - target.y;
                     boolean framed = subject instanceof FlareDecoy decoy && decoy.tauntRadius() == 24
                             && Math.hypot(camera.x - target.x, camera.z - target.z) < .05
-                            && height > 40 && Math.abs(mc.player.getXRot() - 90) < .05;
+                            && height > 40 && Math.abs(mc.player.getXRot() - 90) < .05
+                            && mc.options.getEffectiveRenderDistance() >= 6;
                     double projected = 24 * shot.getHeight() / (2 * height * Math.tan(Math.toRadians(35)));
                     ring = ringPixels(shot, projected);
                     if (movie) {
                         ringStableFrames = framed && ring.visible() ? ringStableFrames + 1 : 0;
                         Files.writeString(RESULTS.resolve("visual-ring-pixels.log"), "ticks=" + ticks + " framed=" + framed
+                                + " effectiveRenderDistance=" + mc.options.getEffectiveRenderDistance()
                                 + " " + ring.evidence() + "\n", StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+                        if (ticks - ringDiagnosticTick >= 20) {
+                            shot.writeToFile(RESULTS.resolve("visual-red-radius-diagnostic.png")); ringDiagnosticTick = ticks;
+                        }
                     }
                     screenshot &= framed && ring.visible() && ringStableFrames >= 5 && ticks >= 20;
                 }
