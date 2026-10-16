@@ -502,6 +502,15 @@ public final class RedNailsGameTests {
         double startX = g.getX();
         double[] waterEntryY = { Double.NaN };
         int[] airAtWaterEntry = { -1 };
+        h.onEachTick(() -> {
+            if (g.tickCount % 10 == 0) System.out.println("RED_NAILS_SHORE_TRACE t=" + f.level.getGameTime()
+                    + " held=" + (g.ghostBody().grab.held() == victim)
+                    + " ghost=" + g.position() + " victim=" + victim.position()
+                    + " swimming=" + g.ghostBody().swimming() + " victimInWater=" + victim.isInWater()
+                    + " canSink=" + f.level.noCollision(g, g.getBoundingBox().move(0, -0.08, 0))
+                    + " floor=" + g.verticalCollisionBelow + " victimHealth=" + victim.getHealth()
+                    + " air=" + victim.getAirSupply());
+        });
         h.startSequence().thenWaitUntil(() -> {
             check(h, g.ghostBody().grab.held() == victim, "Summon goal selector grabs on shore without start()");
             check(h, !g.ghostBody().swimming(), "First grab is still on land");
@@ -520,6 +529,10 @@ public final class RedNailsGameTests {
         }).thenExecute(() -> {
             waterEntryY[0] = g.getY();
             airAtWaterEntry[0] = victim.getAirSupply();
+            System.out.println("RED_NAILS_SHORE_ENTRY t=" + f.level.getGameTime()
+                    + " holder=" + victim.getPersistentData().getUUID("sound_isolating_eraser_grabbed_by")
+                    + " ghost=" + g.position() + " victim=" + victim.position()
+                    + " victimInWater=" + victim.isInWater());
         }).thenWaitUntil(() -> {
             check(h, g.ghostBody().grab.held() == victim, "Shore-to-water grab remains active during descent");
             check(h, g.getY() < waterEntryY[0] - 0.5, "Summon sinks after entering water");
