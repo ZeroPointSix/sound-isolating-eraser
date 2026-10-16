@@ -84,8 +84,8 @@ def generate():
             "fixed": {"rotation": [0, 90, 0], "translation": [0, 1, 0], "scale": [0.8] * 3},
             "firstperson_righthand": {"rotation": [0, 0, -5], "translation": [0.5, 1.4, 1.4], "scale": [0.85] * 3},
             "firstperson_lefthand": {"rotation": [0, 0, 5], "translation": [0.5, 1.4, 1.4], "scale": [0.85] * 3},
-            "thirdperson_righthand": {"rotation": [0, 0, 0], "translation": [0, 2.5, 1], "scale": [0.8] * 3},
-            "thirdperson_lefthand": {"rotation": [0, 0, 0], "translation": [0, 2.5, 1], "scale": [0.8] * 3},
+            "thirdperson_righthand": {"rotation": [0, 0, 0], "translation": [0, -5.5, 1], "scale": [0.8] * 3},
+            "thirdperson_lefthand": {"rotation": [0, 0, 0], "translation": [0, -5.5, 1], "scale": [0.8] * 3},
         },
         "elements": elements,
     }
