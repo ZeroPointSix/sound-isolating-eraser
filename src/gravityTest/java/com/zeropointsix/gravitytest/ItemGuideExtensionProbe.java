@@ -14,7 +14,8 @@ import net.minecraftforge.fml.common.Mod;
 @Mod.EventBusSubscriber(modid = "gravity_qa", value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
 public final class ItemGuideExtensionProbe {
     static boolean imageRendered;
-    record Image() implements TooltipComponent { }
+    // Intentionally has identity-based Object.toString and is recreated every frame.
+    static final class Image implements TooltipComponent { }
 
     @SubscribeEvent
     public static void register(RegisterClientTooltipComponentFactoriesEvent event) {

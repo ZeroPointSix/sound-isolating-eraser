@@ -38,6 +38,7 @@ public final class ItemGuideTooltipLayout {
     private static int mouseX;
     private static int mouseY;
     private static long lastPagedRender;
+    private static List<String> renderedRows = List.of();
 
     public static void register(RegisterClientTooltipComponentFactoriesEvent event) {
         event.register(Page.class, PageRenderer::new);
@@ -46,6 +47,7 @@ public final class ItemGuideTooltipLayout {
     public static boolean isRenderingPage() { return renderingPage; }
     public static int pageIndex() { return page; }
     public static int pageCount() { return pageCount; }
+    public static List<String> renderedRows() { return renderedRows; }
 
     @SubscribeEvent(priority = EventPriority.LOW)
     public static void gather(RenderTooltipEvent.GatherComponents event) {
@@ -69,6 +71,7 @@ public final class ItemGuideTooltipLayout {
                 + (event.getComponents().size() == 1 ? -2 : 0);
         if (!renderingPage) {
             pageCount = 1;
+            renderedRows = List.of();
             if (!ItemGuideLayout.fits(width, height, event.getScreenWidth(), event.getScreenHeight())
                     && gathered != null && gathered.getItemStack() == event.getItemStack()) {
                 reflow(event);
@@ -92,13 +95,22 @@ public final class ItemGuideTooltipLayout {
         int maxHeight = Math.max(1, event.getScreenHeight() - 2 * ItemGuideLayout.PADDING);
         var elements = List.copyOf(gathered.getTooltipElements());
         List<ClientTooltipComponent> rows = new ArrayList<>();
+        List<String> labels = new ArrayList<>();
         for (var element : elements) {
             if (element.left().isPresent()) {
                 var lines = font.split(element.left().orElseThrow(), maxWidth);
-                if (lines.isEmpty()) rows.add(ClientTooltipComponent.create(Component.empty().getVisualOrderText()));
-                else lines.forEach(line -> rows.add(ClientTooltipComponent.create(line)));
+                if (lines.isEmpty()) {
+                    rows.add(ClientTooltipComponent.create(Component.empty().getVisualOrderText()));
+                    labels.add("");
+                } else for (var line : lines) {
+                    rows.add(ClientTooltipComponent.create(line));
+                    StringBuilder visible = new StringBuilder();
+                    line.accept((index, style, codePoint) -> { visible.appendCodePoint(codePoint); return true; });
+                    labels.add(visible.toString());
+                }
             } else {
                 rows.add(ClientTooltipComponent.create(element.right().orElseThrow()));
+                labels.add("component:" + element.right().orElseThrow().getClass().getName());
             }
         }
         if (rows.isEmpty()) return;
@@ -114,20 +126,27 @@ public final class ItemGuideTooltipLayout {
             var body = rows.subList(1, rows.size());
             var ranges = ItemGuideLayout.pages(body.stream().mapToInt(ClientTooltipComponent::getHeight).toArray(), budget);
             String key = event.getItemStack().getItem() + ":" + event.getScreenWidth() + ":" + event.getScreenHeight()
-                    + ":" + elements.stream().map(e -> e.map(text -> text.getString(), Object::toString)).toList();
+                    + ":" + elements.stream().map(e -> e.map(text -> text.getString(), c -> c.getClass().getName())).toList();
             if (!key.equals(pageKey) || pageScreen != Minecraft.getInstance().screen) { pageKey = key; page = 0; }
             pageCount = Math.max(1, ranges.size());
             page = Math.min(page, pageCount - 1);
             List<ClientTooltipComponent> visible = new ArrayList<>();
+            List<String> visibleLabels = new ArrayList<>();
             visible.add(title);
+            visibleLabels.add(labels.get(0));
             if (!ranges.isEmpty()) {
                 int[] range = ranges.get(page);
                 visible.addAll(body.subList(range[0], range[1]));
+                visibleLabels.addAll(labels.subList(range[0] + 1, range[1] + 1));
             }
-            visible.add(fit(ClientTooltipComponent.create(Component.translatable("guide.sound_isolating_eraser.page",
-                    page + 1, pageCount).withStyle(ChatFormatting.DARK_GRAY).getVisualOrderText()), font, maxWidth, 10));
+            var footer = Component.translatable("guide.sound_isolating_eraser.page", page + 1, pageCount)
+                    .withStyle(ChatFormatting.DARK_GRAY);
+            visible.add(fit(ClientTooltipComponent.create(footer.getVisualOrderText()), font, maxWidth, 10));
+            visibleLabels.add(footer.getString());
             rows.clear();
             rows.addAll(visible);
+            labels.clear();
+            labels.addAll(visibleLabels);
             pageScreen = Minecraft.getInstance().screen;
             mouseX = event.getX();
             mouseY = event.getY();
@@ -140,7 +159,8 @@ public final class ItemGuideTooltipLayout {
         event.setCanceled(true);
         renderingPage = true;
         try {
-            event.getGraphics().renderTooltip(font, List.of(PAGE_ANCHOR), Optional.of(new Page(List.copyOf(rows))),
+            event.getGraphics().renderTooltip(font, List.of(PAGE_ANCHOR),
+                    Optional.of(new Page(List.copyOf(rows), List.copyOf(labels))),
                     event.getItemStack(), event.getX(), event.getY());
         } finally {
             renderingPage = false;
@@ -163,7 +183,7 @@ public final class ItemGuideTooltipLayout {
         return scale < 1 ? new FittedRow(row, scale) : row;
     }
 
-    private record Page(List<ClientTooltipComponent> rows) implements TooltipComponent { }
+    private record Page(List<ClientTooltipComponent> rows, List<String> labels) implements TooltipComponent { }
 
     private record PageRenderer(Page page) implements ClientTooltipComponent {
         public int getWidth(Font font) { return page.rows().stream().mapToInt(c -> c.getWidth(font)).max().orElse(0); }
@@ -175,6 +195,7 @@ public final class ItemGuideTooltipLayout {
                 row.renderText(font, x, y, pose, buffers);
                 y += row.getHeight() + (i == 0 ? 2 : 0);
             }
+            renderedRows = page.labels();
         }
         public void renderImage(Font font, int x, int y, GuiGraphics graphics) {
             for (int i = 0; i < page.rows().size(); i++) {

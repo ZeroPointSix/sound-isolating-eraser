@@ -46,6 +46,7 @@ public final class ItemCategoryClientProbe {
     private static String observedBounds;
     private static int expectedPage;
     private static boolean pagingBack;
+    private static final java.util.Set<String> renderedExtensionRows = new java.util.HashSet<>();
     private static String originalLanguage;
     private static CompletableFuture<Void> languageReload;
     private static InventoryScreen screen;
@@ -171,6 +172,7 @@ public final class ItemCategoryClientProbe {
             expectedPage = 0;
             pagingBack = false;
             ItemGuideExtensionProbe.imageRendered = false;
+            renderedExtensionRows.clear();
             observedText = null;
             mouseMoved = false;
             modifiersReady = false;
@@ -210,11 +212,18 @@ public final class ItemCategoryClientProbe {
         try (var image = Screenshot.takeScreenshot(mc.getMainRenderTarget())) {
             image.writeToFile(results.resolve(name + ".png"));
         }
-        Files.writeString(results.resolve(name + ".pass"), observedBounds + "\n" + observedText + "\n");
+        var drawnRows = ItemGuideTooltipLayout.renderedRows();
+        renderedExtensionRows.addAll(drawnRows);
+        Files.writeString(results.resolve(name + ".pass"), observedBounds + "\ndrawnRows=" + drawnRows
+                + "\nlogicalTooltip=" + observedText + "\n");
         System.out.println("ITEM_CATEGORY_NATIVE_HOVER " + name + " " + observedText);
         boolean stress = roundName.startsWith("overflow-");
         if (stress && expectedPage == pages - 1) {
             require(ItemGuideExtensionProbe.imageRendered, "late custom image component survives pagination");
+            for (int i = 1; i <= 48; i++) require(renderedExtensionRows.contains("Late extension row " + i),
+                    "all late text rows actually drawn across native pages: " + i);
+            require(renderedExtensionRows.contains("component:" + ItemGuideExtensionProbe.Image.class.getName()),
+                    "the newly allocated custom component is included in the drawn page");
             pagingBack = true;
         }
         if ((!pagingBack && expectedPage + 1 < pages) || (pagingBack && expectedPage > 0)) {
