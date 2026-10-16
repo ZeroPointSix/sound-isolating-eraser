@@ -15,6 +15,8 @@
 | [hotspots.md](hotspots.md) | 文件、方法、触发条件、调用频率与风险；区分已存在的优化和待测候选 |
 | [upstream-comparison.md](upstream-comparison.md) | 八个指定项目的一手资料、可迁移方法、版本及语义限制 |
 | [spark-runbook.md](spark-runbook.md) | 标准启动、三类场景的四个正式窗口、300 秒采样、数据口径、环境证据与复测步骤 |
+| [pr2-spawn-cap-plan.md](pr2-spawn-cap-plan.md) | 未开工的 PR2 文件/API/cap 算法/config/生命周期与回归清单；有限默认值待实测 |
+| [缓存与离线启动复核](evidence/2026-10-16-codexweb-cache-check.md) | 复用新提交与已有工具链，实际离线 runServer 的插件缺失证据；未采样、未宣称全绿性能基线 |
 | [网络分层诊断与 Gradle 恢复](evidence/2026-10-16-network-diagnosis.md) | 19:37 后新增的 DNS/TCP/TLS 证据、官方 Gradle 替代入口、插件解析失败与现有环境负载 |
 
 ## 实测状态

@@ -176,6 +176,8 @@ A、B1、B2、C 四个正式窗口分别执行，不能用一个维度的结果�
 
 ## 阻塞后的下一动作
 
+2026-10-16 续办补证：复用 `da45d57` 与已有官方 Gradle/JDK 后，`runServer --offline` 仍在 foojay 插件解析阶段退出 1，未拉起专服。见 [缓存/启动原始摘要](evidence/2026-10-16-codexweb-cache-check.md)；[PR2 具体清单](pr2-spawn-cap-plan.md) 仅供采样完成后实施，当前开工门禁仍关闭。
+
 19:42 UTC 的[后续分层诊断](evidence/2026-10-16-network-diagnosis.md)已从官方 GitHub 分发恢复 Gradle 8.1.1 / Java 17 并核对摘要，项目实际执行到 foojay 插件解析后失败。原 Gradle 服务入口仍重置，官方资产替代仅解决工具链启动，不代表 Forge、GeckoLib 或插件依赖已恢复。
 
 当前缺的是隔离环境到公开依赖服务的正常出站连接，**不是待索取的密钥、生产控制台或已有存档**：`services.gradle.org`、`plugins.gradle.org`、`maven.minecraftforge.net`、`dl.cloudsmith.io`；`spark.lucko.me` 也需单独恢复/验证。DNS/TCP 可达而 TLS 被重置，不能把问题简化为缺 Java、缺 CA 或上游全面宕机。先核实组织级出站限制，或使用已有授权开发机的低负载独占窗口，不扩大网络权限、不用当前高负载窗口凑基线。修复后先运行下列探针，再运行完整构建命令。成功后按本文创建合成世界；默认目录为独立检出的 `run/world`，没有尚待人工提供的生产存档路径。
