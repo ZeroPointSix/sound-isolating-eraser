@@ -32,6 +32,7 @@ def launch(role):
             f"online-mode=false\nserver-ip=127.0.0.1\nserver-port={PORT}\n"
             "allow-flight=true\nenforce-secure-profile=false\nspawn-protection=0\nview-distance=3\n"
             "simulation-distance=3\nlevel-type=minecraft:flat\nmax-tick-time=0\n"
+            "network-compression-threshold=-1\nplayer-idle-timeout=0\n"
             "generate-structures=false\nspawn-monsters=false\ngamemode=survival\n")
     else:
         (directory / "config").mkdir(exist_ok=True)

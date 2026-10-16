@@ -71,16 +71,28 @@ public final class RedNailsTestServer {
             p.setItemSlot(EquipmentSlot.FEET, new ItemStack(Items.DIAMOND_BOOTS));
         }
     }
+    @SubscribeEvent public static void logout(PlayerEvent.PlayerLoggedOutEvent event) {
+        if (event.getEntity() == player) player = null;
+    }
+    private static boolean equipRing() {
+        var inventory = CuriosApi.getCuriosInventory(player).resolve().orElse(null);
+        var ring = inventory == null ? null : inventory.getStacksHandler("ring").orElse(null);
+        if (ring == null) return false;
+        if (RedNailsItem.findWorn(player).isEmpty()) {
+            ring.getStacks().setStackInSlot(0, new ItemStack(ModItems.RED_NAILS.get()));
+        }
+        return !RedNailsItem.findWorn(player).isEmpty();
+    }
     @SubscribeEvent public static void tick(TickEvent.ServerTickEvent event) {
         if (event.phase != TickEvent.Phase.END || player == null || failed) return;
+        if (player.hasDisconnected() || player.isRemoved()) { player = null; return; }
         try {
             if (++ticks > 1800) throw new AssertionError("QA stage timeout: " + stage);
-            if (stage == 0 && ticks == 30) {
-                CuriosApi.getCuriosInventory(player).orElseThrow(() -> new IllegalStateException("Missing Curios inventory")).getStacksHandler("ring").orElseThrow()
-                        .getStacks().setStackInSlot(0, new ItemStack(ModItems.RED_NAILS.get()));
-            }
-            if (stage == 0 && ticks >= 60 && Files.exists(RESULTS.resolve("client-ready.signal"))) {
-                stage = 1; signal("input");
+            if (stage == 0) {
+                if (ticks >= 30 && !equipRing()) return;
+                if (ticks >= 60 && Files.exists(RESULTS.resolve("client-ready.signal"))) {
+                    stage = 1; signal("input");
+                }
             } else if (stage == 1) {
                 var stack = RedNailsItem.findWorn(player);
                 var entry = RedNailsState.get(player.getServer()).read(stack);
@@ -138,6 +150,7 @@ public final class RedNailsTestServer {
             } else if (stage == 7) {
                 ticks = 0;
             } else if (stage == 10 && ticks > 40) {
+                if (!equipRing()) return;
                 var stack = RedNailsItem.findWorn(player);
                 var entry = RedNailsState.get(player.getServer()).read(stack);
                 require(entry != null && itemId.equals(entry.item) && entry.owner.equals(player.getUUID()), "Curios item and owner survive real restart");
