@@ -90,7 +90,10 @@ public final class WaterGhostGrab extends Goal {
         for (var pos : BlockPos.withinManhattan(mob.blockPosition(), 6, 4, 6)) {
             if (!WaterGhostBody.waterAt(mob, pos) || !WaterGhostBody.waterAt(mob, pos.above())) continue;
             Vec3 at = Vec3.atBottomCenterOf(pos);
-            if (!mob.level().noCollision(mob, WaterGhostBody.SWIMMING.makeBoundingBox(at))) continue;
+            // Water below a solid bank is not reachable: the whole descent column must fit.
+            var descent = WaterGhostBody.SWIMMING.makeBoundingBox(new Vec3(at.x, mob.getY(), at.z))
+                    .expandTowards(0, Math.min(0, at.y - mob.getY()) - 0.08, 0);
+            if (!mob.level().noCollision(mob, descent)) continue;
             if (WaterGhostBody.waterAt(mob, pos.below())) return at;
             if (edge == null) edge = at;
         }
