@@ -5,6 +5,7 @@ import com.zeropointsix.eraser.client.EraserClient;
 import com.zeropointsix.eraser.client.GravityClient;
 import com.zeropointsix.eraser.client.RedNailsClient;
 import com.zeropointsix.eraser.client.WingsKeys;
+import com.zeropointsix.eraser.client.ItemGuideTooltipLayout;
 import com.zeropointsix.eraser.item.ItemGuideCatalog;
 import com.zeropointsix.eraser.registry.ModItemTags;
 import java.nio.file.Files;
@@ -43,6 +44,7 @@ public final class ItemCategoryClientProbe {
     private static int configuredRound = -1;
     private static long resizeReadyFrame;
     private static String observedBounds;
+    private static int expectedPage;
     private static String originalLanguage;
     private static CompletableFuture<Void> languageReload;
     private static InventoryScreen screen;
@@ -165,6 +167,7 @@ public final class ItemCategoryClientProbe {
             screen = new InventoryScreen(mc.player);
             mc.setScreen(screen);
             renderedTooltips = 0;
+            expectedPage = 0;
             observedText = null;
             mouseMoved = false;
             modifiersReady = false;
@@ -194,14 +197,26 @@ public final class ItemCategoryClientProbe {
             renderedTooltips = 0;
             readyFrame = frames + 4;
         }
-        if (frames < readyFrame || renderedTooltips < 3) return false;
+        if (frames < readyFrame || renderedTooltips < 3
+                || (ItemGuideTooltipLayout.pageCount() > 1 && ItemGuideTooltipLayout.pageIndex() != expectedPage)) return false;
         String id = ForgeRegistries.ITEMS.getKey(expectedItem).getPath();
         String name = role + "-category-" + roundName + "-" + language + "-" + id + "-" + MODES[mode];
+        int pages = ItemGuideTooltipLayout.pageCount();
+        if (roundName.startsWith("overflow-")) require(pages > 1, "late Gather text reaches paginated renderer");
+        if (pages > 1) name += "-page" + (expectedPage + 1);
         try (var image = Screenshot.takeScreenshot(mc.getMainRenderTarget())) {
             image.writeToFile(results.resolve(name + ".png"));
         }
         Files.writeString(results.resolve(name + ".pass"), observedBounds + "\n" + observedText + "\n");
         System.out.println("ITEM_CATEGORY_NATIVE_HOVER " + name + " " + observedText);
+        if (expectedPage + 1 < pages) {
+            Process input = new ProcessBuilder("xdotool", "click", "5").inheritIO().start();
+            require(input.waitFor() == 0, "native mouse wheel advances tooltip page");
+            expectedPage++;
+            renderedTooltips = 0;
+            readyFrame = frames + 4;
+            return false;
+        }
         expectedItem = null;
         if (originalGravityKey != null) {
             GravityClient.ACTIVATE.setKey(originalGravityKey);
@@ -217,6 +232,8 @@ public final class ItemCategoryClientProbe {
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void tooltip(RenderTooltipEvent.GatherComponents event) {
+        // The outer logical event is checked in full; the inner native page holds those checked rows.
+        if (ItemGuideTooltipLayout.isRenderingPage()) return;
         if (expectedItem == null || !modifiersReady || screen != Minecraft.getInstance().screen
                 || !event.getItemStack().is(expectedItem)) return;
         try {
@@ -274,7 +291,13 @@ public final class ItemCategoryClientProbe {
                     }
                 }
             }
-            observedText = lines.stream().map(FormattedText::getString).toList().toString();
+            if (phase == 0 && ItemGuideProbeCases.cases().get(round).name().startsWith("overflow-")) {
+                // Added after production's LOW Gather listener: prove Pre reads the final event list.
+                for (int i = 1; i <= 48; i++) event.getTooltipElements().add(com.mojang.datafixers.util.Either.left(
+                        Component.literal("Late extension row " + i)));
+            }
+            observedText = event.getTooltipElements().stream().flatMap(element -> element.left().stream())
+                    .map(FormattedText::getString).toList().toString();
         } catch (Throwable failure) {
             renderFailure = failure;
         }
@@ -302,7 +325,8 @@ public final class ItemCategoryClientProbe {
                     + (event.getX() + width + 4) + "," + (event.getY() + height + 4)
                     + "] gui=" + window.getGuiScaledWidth() + "x" + window.getGuiScaledHeight()
                     + " pixels=" + window.getScreenWidth() + "x" + window.getScreenHeight()
-                    + " scale=" + window.getGuiScale() + " components=" + event.getComponents().size();
+                    + " scale=" + window.getGuiScale() + " components=" + event.getComponents().size()
+                    + " page=" + (ItemGuideTooltipLayout.pageIndex() + 1) + "/" + ItemGuideTooltipLayout.pageCount();
             renderedTooltips++;
         } catch (Throwable failure) {
             renderFailure = failure;

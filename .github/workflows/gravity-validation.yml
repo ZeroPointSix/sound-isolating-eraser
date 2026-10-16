@@ -29,7 +29,7 @@ concurrency:
 jobs:
   build-and-game-tests:
     runs-on: ubuntu-latest
-    # The expanded real-client tooltip matrix adds 1,104 native hovers to the existing gates.
+    # The expanded real-client matrix adds full-catalog, viewport and overflow-page hovers.
     timeout-minutes: 50
     steps:
       - uses: actions/checkout@v4

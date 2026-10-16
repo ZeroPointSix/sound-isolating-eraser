@@ -142,6 +142,7 @@
   "guide.sound_isolating_eraser.hold_both": "按住 Shift 查看用法与代价；Ctrl 查看故事",
   "guide.sound_isolating_eraser.hold_shift": "按住 Shift 查看用法与代价",
   "guide.sound_isolating_eraser.hold_control": "按住 Ctrl 查看故事",
+  "guide.sound_isolating_eraser.page": "第 %s/%s 页（滚轮翻页）",
   "guide.sound_isolating_eraser.sound_isolating_eraser.summary": "以耐久换取隔音墙的橡皮。",
   "guide.sound_isolating_eraser.sound_isolating_eraser.usage": "对方块放置当前形状的墙，每列高 %s 格。点、横线、纵线、斜线、环形分别为 1、5、5、5、12 列；隔断仇恨受怪物标签和墙体遮挡限制。",
   "guide.sound_isolating_eraser.sound_isolating_eraser.controls": "按 %s 放置；按 %s 切换形状。不能对下表面使用。",

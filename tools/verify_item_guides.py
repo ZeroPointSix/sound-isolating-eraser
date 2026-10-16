@@ -73,10 +73,11 @@ def verify():
                     (entry["id"].split(":", 1)[1], section), 0)
                 assert len(re.findall(r"%s", value)) == count, f"{locale}: format arguments for {key}"
                 assert "%" not in value.replace("%s", ""), f"{locale}: unsupported format in {key}"
-        hints = {"guide.sound_isolating_eraser." + hint for hint in ("hold_both", "hold_shift", "hold_control")}
+        hints = {"guide.sound_isolating_eraser." + hint for hint in ("hold_both", "hold_shift", "hold_control", "page")}
         actual = {key for key in translations if key.startswith("guide.")}
         assert actual == expected | hints, f"{locale}: missing or stale guide keys {actual ^ (expected | hints)}"
         assert all(translations.get(key) for key in hints)
+        assert translations["guide.sound_isolating_eraser.page"].count("%s") == 2
     pending = sum(entry["text_status"] != "complete" for entry in entries)
     print(f"ITEM_GUIDE_LANG_COVERAGE items={len(entries)} sections=6 locales=2 keys={len(expected) * 2} PR2_pending={pending}")
 

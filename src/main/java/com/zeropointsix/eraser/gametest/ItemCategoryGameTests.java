@@ -31,6 +31,23 @@ import net.minecraftforge.registries.ForgeRegistries;
 @PrefixGameTestTemplate(false)
 public final class ItemCategoryGameTests {
     @GameTest(template = "empty")
+    public static void tooltipPagesPreserveEveryRowExactlyOnce(GameTestHelper helper) {
+        int[] heights = java.util.stream.IntStream.range(0, 80).map(i -> i % 3 == 0 ? 20 : 10).toArray();
+        for (int budget : new int[]{212, 242, 272, 512}) {
+            int next = 0;
+            for (int[] range : ItemGuideLayout.pages(heights, budget)) {
+                helper.assertTrue(range[0] == next && range[1] > range[0], "pages are contiguous and nonempty");
+                int sum = 0;
+                for (int i = range[0]; i < range[1]; i++) sum += heights[i];
+                helper.assertTrue(sum <= budget, "page height retains title, navigation and outer padding");
+                next = range[1];
+            }
+            helper.assertTrue(next == heights.length, "no text/image row was omitted");
+        }
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty")
     public static void tooltipOuterBorderFitsResolutionAndScaleMatrix(GameTestHelper helper) {
         int[][] displays = {{640, 480, 1}, {640, 480, 2}, {800, 600, 2},
                 {960, 540, 2}, {1920, 1080, 2}, {1920, 1080, 4}, {1920, 480, 2}, {640, 1080, 2}};
@@ -233,9 +250,12 @@ public final class ItemCategoryGameTests {
                     helper.assertTrue(placeholders == supplied, "format arguments match: " + language + " / " + key);
                 }
             }
-            for (String hint : List.of("hold_both", "hold_shift", "hold_control")) {
+            for (String hint : List.of("hold_both", "hold_shift", "hold_control", "page")) {
                 helper.assertTrue(translations.has("guide.sound_isolating_eraser." + hint), "modifier hint: " + hint);
             }
+            helper.assertTrue(java.util.regex.Pattern.compile("%s")
+                    .matcher(translations.get("guide.sound_isolating_eraser.page").getAsString()).results().count() == 2,
+                    "page navigation is localized with current and total page numbers");
         }
         helper.succeed();
     }

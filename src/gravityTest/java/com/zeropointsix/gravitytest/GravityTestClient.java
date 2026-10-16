@@ -71,7 +71,7 @@ public final class GravityTestClient {
         if (event.phase != TickEvent.Phase.END || finished) return;
         Minecraft mc = Minecraft.getInstance();
         try {
-            // The category matrix now exercises 654 real hovers per client before gameplay.
+            // The category matrix now exercises 662 real hovers plus overflow pages per client.
             if (++totalTicks > (Boolean.getBoolean("qiwu.qa") ? 30000 : 6000))
                 throw new AssertionError("Timed out in stage " + stage + ", phase " + phase);
             if (mc.player == null || mc.level == null) return;

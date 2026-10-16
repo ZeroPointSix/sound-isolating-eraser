@@ -24,6 +24,7 @@ final class ItemGuideProbeCases {
                 {1920, 1080, 2}, {1920, 1080, 4}, {1920, 480, 2}, {640, 1080, 2}}) {
             result.add(new Case(size[0] + "x" + size[1] + "-s" + size[2], size[0], size[1], size[2], focus));
         }
+        result.add(new Case("overflow-640x480-s2", 640, 480, 2, focus.subList(0, 1)));
         return List.copyOf(result);
     }
 

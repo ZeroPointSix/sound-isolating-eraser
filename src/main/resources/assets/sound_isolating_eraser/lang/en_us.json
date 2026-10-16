@@ -142,6 +142,7 @@
   "guide.sound_isolating_eraser.hold_both": "Hold Shift for use and cost; Ctrl for the story",
   "guide.sound_isolating_eraser.hold_shift": "Hold Shift for use and cost",
   "guide.sound_isolating_eraser.hold_control": "Hold Ctrl for the story",
+  "guide.sound_isolating_eraser.page": "Page %s/%s (mouse wheel)",
   "guide.sound_isolating_eraser.sound_isolating_eraser.summary": "Spend durability to place sound-isolating walls.",
   "guide.sound_isolating_eraser.sound_isolating_eraser.usage": "Place the selected wall shape on a block, %s blocks high per column. Dot, horizontal, vertical, diagonal and ring use 1, 5, 5, 5 and 12 columns. Aggro isolation depends on mob tags and wall occlusion.",
   "guide.sound_isolating_eraser.sound_isolating_eraser.controls": "Press %s to place; %s changes shape. Cannot be used on the underside of a block.",
