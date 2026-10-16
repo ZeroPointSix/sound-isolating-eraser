@@ -50,6 +50,8 @@ enable-rcon=false
 
 如果 Gradle 终端未转发 stdin，用已授权 OP 玩家执行下述带 `/` 命令；不要把“进程启动”当成控制台可用。进入采样前必须确认日志中 Forge、模组、spark 加载成功，客户端确实登录，并能执行 `/spark profiler info`。只创建 GameTest 假玩家不等于复现 `ServerLevel.players()` 驱动的雨寂刷怪。
 
+开发客户端可在另一个终端用 `bash ./gradlew --no-daemon --console=plain runClient` 启动，再连接 `127.0.0.1:25592`。下文 `PerfUser` 为玩家名占位符，须替换为该客户端的实际名字并在前后运行保持同一身份。仅有无 GPU 的软件渲染环境时，可以验证流程，但 FPS 验收仍标“待真实客户端采集”。
+
 ## 三类场景
 
 这是合成、可重复的测试定义，不代表已取得用户生产存档。各场景先准备并正常 `save-all flush`、`stop`，复制关闭后的整个世界和配置为只读基准副本。每次基线/候选运行从副本新建工作目录，保留原副本；不能在同一世界连续升级后直接比较。
@@ -112,12 +114,15 @@ enable-rcon=false
 
 ```text
 /spark profiler info
+/spark health show
 /spark profiler start --timeout 300
 ```
 
 确认前一个 profiler 已结束后再开始。结束时保存 spark 实际返回的 viewer 链接、服务器日志中的开始/结束时刻及完整窗口信息。网络上传失败时按安装版本的帮助使用本地保存，保存原始 profile 文件和失败信息；没有可访问 URL 就明确写“本地数据，未上传”，不要猜造链接。命令语义以 [spark Command Usage](https://spark.lucko.me/docs/Command-Usage) 为准。
 
 基线不能使用 `--only-ticks-over` 过滤长 tick 后又声称代表所有 tick。CPU 采样与 `--alloc` 分配采样分开运行，且前后使用同一采样配置。服务器 profile 和客户端 `/sparkc` profile 分开记录；服务器报告不能生成客户端 FPS。
+
+结束后再保存一次 `/spark health show` 或对应版本支持的 health 上传结果，作为环境与滚动指标快照。它们不自动等于完整 300 秒的均值/分位数；如果当前 spark 版本没有导出对应窗口指标，完整窗口字段仍记“未取得”，补充受控指标采集后再验收，不能用两张快照拼造分布。
 
 建议记录项：
 
@@ -136,8 +141,24 @@ enable-rcon=false
 ## 验证记录
 
 - 基线：2026-10-16，独立源码快照，`python3 tools/verify_mixin_targets.py` 输出 `MIXIN_TARGETS checked=14 failures=0`，退出码 0。
-- 本轮隔离环境：已建立任务专用沙箱；初始缺 Java，正在准备 Java 17。其宿主机 `free`/`cpu_count` 不能代表容器配额，实际配额为 2 CPU / 4 GiB / 8 GiB。未据此声称性能基线可靠。
-- 实际构建、采样和 PR HEAD 校验结果会在提交前更新；此处的未执行项不能视为通过。
+- 本轮隔离环境：已建立任务专用沙箱，2 CPU / 4 GiB / 8 GiB。初始缺 Java，已从 Adoptium 官方 GitHub Release 安装 Temurin 17.0.20.1+1，并验证发布 SHA-256。宿主机 `free`/`cpu_count` 不代表容器配额。
+- PR 首提交 `509d3e5b0f1f00a4f3741a100b42e9a6746f60f7`：独立沙箱 Mixin 检查 `14/0`、退出码 0；`git diff --check` 无输出、退出码 0。后续文档补证据提交的验证记录保留在 [PR #43](https://github.com/ZeroPointSix/sound-isolating-eraser/pull/43) 的当前 HEAD 检查中，避免循环修改文档自引用 commit。
+- 基线完整命令 `build runGameTestServer` 实际失败在 Gradle 8.1.1 分发下载阶段，Java 报 `java.net.SocketException: Connection reset`、退出码 1。**编译和 GameTest 都未开始，不是用例失败，更不是通过。**
+- 对同一 Gradle URL 改用 curl，仍报退出码 35、`Connection reset by peer`；ForgeGradle 元数据与 GeckoLib POM 端点也同样失败，HTTP 状态为 `000`。GitHub 仓库与官方 JDK Release 下载成功，因此只能确认这些端点的连接问题，尚不能认定具体防火墙、代理或服务端根因。
+- [脱敏终端证据](evidence/2026-10-16-isolated-validation.log) 保存命令、退出码、错误栈、端点和首提交 Mixin 结果。没有关闭 TLS 校验，没有改项目下载源，没有借用高负载共享机生成基线。
+- 专服/客户端尚未启动，三场景均未采样，spark 链接、MSPT、实体数和 FPS 仍缺失。PR 已触发原有 CI，结论以该 PR **当前 HEAD** 的检查结果为准，不能沿用前一提交的绿色状态。
+
+## 阻塞后的下一动作
+
+当前缺的是隔离环境到以下公开依赖服务的正常出站连接，**不是待索取的密钥、生产控制台或已有存档**：`services.gradle.org`、`maven.minecraftforge.net`、`dl.cloudsmith.io`。修复连接或换用可访问这些依赖的已授权隔离环境后，先运行下列同 URL 探针，再运行完整构建命令。成功后按本文创建合成世界；默认目录为独立检出的 `run/world`，没有尚待人工提供的生产存档路径。
+
+```bash
+curl -fIL --connect-timeout 10 --max-time 30 https://services.gradle.org/distributions/gradle-8.1.1-bin.zip
+curl -fL --connect-timeout 10 --max-time 30 -o /dev/null https://maven.minecraftforge.net/net/minecraftforge/gradle/ForgeGradle/maven-metadata.xml
+curl -fL --connect-timeout 10 --max-time 30 -o /dev/null https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/software/bernie/geckolib/geckolib-forge-1.20.1/4.4.9/geckolib-forge-1.20.1-4.4.9.pom
+```
+
+不要以关闭证书校验、修改 CI、公开离线专服、购买资源或重试同一失败请求来绕过边界。只有真实完成三组窗口后才能填实测表并开始 PR2 的运行时优化。任务专用临时沙箱用后清理，不删除其他任务资源；持久证据保留在 PR。
 
 无选择性子集的功能验证命令：
 

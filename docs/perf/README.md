@@ -42,7 +42,9 @@ MIXIN_TARGETS checked=14 failures=0
 exit_code=0
 ```
 
-这是 **基线** 结果，不能冒充 PR HEAD 的验证。当前 PR 的 Mixin、全量 GameTest、构建及 CI 结果应以 PR 检查和 [采样手册的验证记录](spark-runbook.md#验证记录) 为准。未运行、失败或排队必须单独写明。
+这是 **基线** 结果，不能冒充 PR HEAD 的验证。本轮另外在新建隔离沙箱对 PR 首提交 `509d3e5` 验证 Mixin `14/0` 和差异空白检查；完整构建卡在 Gradle 下载，Java 与 curl 均复现连接重置，Forge/GeckoLib 依赖探针也失败，专服与 GameTest 尚未启动。详见 [原始证据](evidence/2026-10-16-isolated-validation.log)。
+
+当前 PR 的全量 GameTest、构建及 CI 结果应以 [PR #43](https://github.com/ZeroPointSix/sound-isolating-eraser/pull/43) 当前 HEAD 检查和 [采样手册的验证记录](spark-runbook.md#验证记录) 为准。未运行、失败或排队必须单独写明；已有 CI 绿色结果不能追认尚未采集的 spark 数据。
 
 ## 四个 PR 的边界
 
