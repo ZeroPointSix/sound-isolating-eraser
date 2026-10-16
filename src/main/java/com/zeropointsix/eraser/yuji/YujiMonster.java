@@ -403,13 +403,15 @@ public final class YujiMonster extends Monster implements GeoEntity {
                 y -> y.isAlive() && getUUID().equals(y.summoner)).size();
     }
     public boolean canSummon() {
-        return level().getDifficulty() != net.minecraft.world.Difficulty.PEACEFUL
+        return kind == YujiKind.QIYU && YujiConfig.QIYU_SUMMONING.get()
+                && level().getDifficulty() != net.minecraft.world.Difficulty.PEACEFUL
                 && (getTarget() != null && getTarget().isAlive() || !nearbyPlayers(SUMMON_RANGE).isEmpty())
                 && livingSummons() < SUMMON_CAP;
     }
     /** Calls one or two random Yuji kinds (never Qiyu or the giants) beside itself, up to SUMMON_CAP alive. */
     public int summonAllies() {
-        if (!(level() instanceof ServerLevel server)) return 0;
+        if (kind != YujiKind.QIYU || !YujiConfig.QIYU_SUMMONING.get()
+                || !(level() instanceof ServerLevel server)) return 0;
         int room = SUMMON_CAP - livingSummons(), wanted = Math.min(room, 1 + random.nextInt(2)), made = 0;
         for (int attempt = 0; made < wanted && attempt < 12; attempt++) {
             YujiKind pick = SUMMONABLE[random.nextInt(SUMMONABLE.length)];

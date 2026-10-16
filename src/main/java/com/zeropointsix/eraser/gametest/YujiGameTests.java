@@ -65,6 +65,28 @@ public final class YujiGameTests {
         h.succeed();
     }
     @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
+    public static void yujiTenMonsterCardAttributes(GameTestHelper h) {
+        YujiKind[] kinds = {YujiKind.YUCHI, YujiKind.SHASHENG, YujiKind.TOUDAO, YujiKind.EKOU,
+                YujiKind.WANGYU, YujiKind.LIANGSHE, YujiKind.XIEYIN, YujiKind.QIYU, YujiKind.TANYU, YujiKind.CHENNU};
+        // Literal card values, with the approved ranged chant and Xieyin giant extension.
+        double[][] expected = {{30, 0, .18, 2, .6, 1.95}, {20, 3, .30, 2, .6, 1.95},
+                {12, 1, .42, 0, .5, .7}, {24, 0, .25, 2, .6, 1.95}, {20, 3, .23, 0, .6, 2.1},
+                {16, 2, .23, 0, .6, 1.6}, {60, 0, .20, 4, 1.8, 6.3}, {20, 4, .25, 0, .6, 2.3},
+                {38, 5, .25, 4, .936, 2.808}, {500, 20, .38, 15, 4.5, 6}};
+        for (int i = 0; i < kinds.length; i++) {
+            YujiMonster mob = monster(h, kinds[i]);
+            try {
+                close(h, mob.getMaxHealth(), expected[i][0], "card health " + kinds[i]);
+                close(h, mob.getAttributeValue(Attributes.ATTACK_DAMAGE), expected[i][1], "card attack " + kinds[i]);
+                close(h, mob.getAttributeValue(Attributes.MOVEMENT_SPEED), expected[i][2], "card speed " + kinds[i]);
+                close(h, mob.getAttributeValue(Attributes.ARMOR), expected[i][3], "card armor " + kinds[i]);
+                close(h, mob.getBbWidth(), expected[i][4], "card collision width " + kinds[i]);
+                close(h, mob.getBbHeight(), expected[i][5], "card collision height " + kinds[i]);
+            } finally { mob.discard(); }
+        }
+        h.succeed();
+    }
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
     public static void yujiMilkCannotCureCustomEffects(GameTestHelper h) {
         for (var effect : new net.minecraft.world.effect.MobEffect[]{YujiContent.CURSED.get(), YujiContent.BETRAYED.get(), YujiContent.ENTHRALLED.get()}) {
             h.assertTrue(!new MobEffectInstance(effect, 100).isCurativeItem(new ItemStack(Items.MILK_BUCKET)), "milk must not cure " + effect);
@@ -913,7 +935,9 @@ public final class YujiGameTests {
         // A private floor high above the batch grid: summons land 2-4 blocks out, beyond this tiny template.
         qiyu.moveTo(qiyu.getX(), Math.floor(qiyu.getY()) + 64, qiyu.getZ());
         summonFloor(h, qiyu, Blocks.STONE.defaultBlockState());
+        boolean summoning = YujiConfig.QIYU_SUMMONING.get();
         try {
+            YujiConfig.QIYU_SUMMONING.set(true);
             int total = 0;
             for (int cast = 0; cast < 8; cast++) total += qiyu.summonAllies();
             h.assertTrue(total == YujiMonster.SUMMON_CAP, "summons fill exactly to the cap: " + total);
@@ -930,13 +954,18 @@ public final class YujiGameTests {
             h.assertTrue(qiyu.summonAllies() == 1, "refills only the freed slot");
             for (YujiMonster s : h.getLevel().getEntitiesOfClass(YujiMonster.class, qiyu.getBoundingBox().inflate(32), y -> qiyu.getUUID().equals(y.summoner()))) s.discard();
             h.succeed();
-        } finally { summonFloor(h, qiyu, Blocks.AIR.defaultBlockState()); }
+        } finally {
+            YujiConfig.QIYU_SUMMONING.set(summoning);
+            summonFloor(h, qiyu, Blocks.AIR.defaultBlockState());
+        }
     }
     @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
     public static void yujiQiyuNeedsAudienceAndNotPeaceful(GameTestHelper h) {
         YujiMonster qiyu = monster(h, YujiKind.QIYU);
         var server = h.getLevel().getServer(); var difficulty = h.getLevel().getDifficulty();
+        boolean summoning = YujiConfig.QIYU_SUMMONING.get();
         try {
+            YujiConfig.QIYU_SUMMONING.set(true);
             server.setDifficulty(net.minecraft.world.Difficulty.NORMAL, true);
             h.assertTrue(!qiyu.canSummon(), "no summoning without a target or nearby player");
             var cow = h.spawn(EntityType.COW, new BlockPos(3, 2, 2)); cow.setNoAi(true);
@@ -944,7 +973,10 @@ public final class YujiGameTests {
             server.setDifficulty(net.minecraft.world.Difficulty.PEACEFUL, true);
             h.assertTrue(!qiyu.canSummon(), "never summons on peaceful");
             h.succeed();
-        } finally { server.setDifficulty(difficulty, true); }
+        } finally {
+            YujiConfig.QIYU_SUMMONING.set(summoning);
+            server.setDifficulty(difficulty, true);
+        }
     }
     @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
     public static void yujiQiyuRechecksAudienceWhenCastLands(GameTestHelper h) throws ReflectiveOperationException {
@@ -953,7 +985,9 @@ public final class YujiGameTests {
         summonFloor(h, qiyu, Blocks.STONE.defaultBlockState());
         var server = h.getLevel().getServer();
         var difficulty = h.getLevel().getDifficulty();
+        boolean summoning = YujiConfig.QIYU_SUMMONING.get();
         try {
+            YujiConfig.QIYU_SUMMONING.set(true);
             server.setDifficulty(net.minecraft.world.Difficulty.NORMAL, true);
             var cow = h.spawn(EntityType.COW, new BlockPos(2, 2, 2));
             cow.setNoAi(true); cow.setNoGravity(true);
@@ -971,16 +1005,74 @@ public final class YujiGameTests {
             qiyu.setTarget(next);
             h.assertTrue(qiyu.canSummon(), "positive control still requires a live audience");
             qiyu.begin("summon", 30, next);
-            for (int tick = 0; tick <= 18; tick++) boundaryStep(qiyu);
+            for (int tick = 0; tick < 18; tick++) boundaryStep(qiyu);
+            h.assertTrue(qiyu.livingSummons() == 0, "summoning waits until action tick 18");
+            boundaryStep(qiyu);
             h.assertTrue(qiyu.livingSummons() > 0, "landing with a live audience still summons");
             next.discard();
             for (var ally : h.getLevel().getEntitiesOfClass(YujiMonster.class, qiyu.getBoundingBox().inflate(32),
                     y -> qiyu.getUUID().equals(y.summoner()))) ally.discard();
             h.succeed();
         } finally {
+            YujiConfig.QIYU_SUMMONING.set(summoning);
             server.setDifficulty(difficulty, true);
             summonFloor(h, qiyu, Blocks.AIR.defaultBlockState());
             qiyu.discard();
+        }
+    }
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
+    public static void yujiQiyuSummoningDefaultsOffAndKeepsBuffs(GameTestHelper h) throws ReflectiveOperationException {
+        h.assertTrue(!YujiConfig.QIYU_SUMMONING.getDefault(), "summoning extension defaults off");
+        YujiMonster qiyu = monster(h, YujiKind.QIYU), ally = monster(h, YujiKind.YUCHI);
+        var cow = h.spawn(EntityType.COW, new BlockPos(3, 2, 2));
+        cow.setNoAi(true); qiyu.setTarget(cow);
+        boolean summoning = YujiConfig.QIYU_SUMMONING.get();
+        try {
+            YujiConfig.QIYU_SUMMONING.set(false);
+            h.assertTrue(!qiyu.canSummon(), "disabled summoning rejects a live audience");
+            h.assertTrue(qiyu.summonAllies() == 0, "disabled summoning rejects direct calls");
+            qiyu.begin("summon", 30, cow);
+            for (int tick = 0; tick < 31; tick++) boundaryStep(qiyu);
+            h.assertTrue(qiyu.livingSummons() == 0, "disabled summoning cannot land");
+            qiyu.begin("bless", 30, null);
+            for (int tick = 0; tick <= 15; tick++) boundaryStep(qiyu);
+            h.assertTrue(ally.hasEffect(MobEffects.DAMAGE_BOOST) && ally.hasEffect(MobEffects.MOVEMENT_SPEED)
+                    && ally.hasEffect(MobEffects.DAMAGE_RESISTANCE) && ally.hasEffect(MobEffects.REGENERATION),
+                    "disabled summoning preserves all four ally buffs");
+            h.succeed();
+        } finally {
+            YujiConfig.QIYU_SUMMONING.set(summoning);
+            qiyu.discard(); ally.discard(); cow.discard();
+        }
+    }
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji")
+    public static void yujiQiyuRechecksDisabledConfigWhenCastLands(GameTestHelper h) throws ReflectiveOperationException {
+        YujiMonster qiyu = monster(h, YujiKind.QIYU);
+        qiyu.moveTo(qiyu.getX(), Math.floor(qiyu.getY()) + 64, qiyu.getZ());
+        summonFloor(h, qiyu, Blocks.STONE.defaultBlockState());
+        var cow = h.spawn(EntityType.COW, new BlockPos(3, 2, 2));
+        cow.setNoAi(true); cow.setNoGravity(true); cow.moveTo(qiyu.position().add(0, 0, 4));
+        qiyu.setTarget(cow);
+        boolean summoning = YujiConfig.QIYU_SUMMONING.get();
+        try {
+            YujiConfig.QIYU_SUMMONING.set(true);
+            h.assertTrue(qiyu.canSummon(), "summoning enabled at cast start");
+            qiyu.begin("summon", 30, cow);
+            for (int tick = 0; tick < 18; tick++) boundaryStep(qiyu);
+            YujiConfig.QIYU_SUMMONING.set(false);
+            boundaryStep(qiyu);
+            h.assertTrue(qiyu.livingSummons() == 0, "disabling before tick 18 cancels pending summon");
+            YujiConfig.QIYU_SUMMONING.set(true);
+            qiyu.begin("summon", 30, cow);
+            for (int tick = 0; tick <= 18; tick++) boundaryStep(qiyu);
+            h.assertTrue(qiyu.livingSummons() > 0, "re-enabled summoning still lands with a live audience");
+            h.succeed();
+        } finally {
+            YujiConfig.QIYU_SUMMONING.set(summoning);
+            for (var child : h.getLevel().getEntitiesOfClass(YujiMonster.class, qiyu.getBoundingBox().inflate(32),
+                    y -> qiyu.getUUID().equals(y.summoner()))) child.discard();
+            summonFloor(h, qiyu, Blocks.AIR.defaultBlockState());
+            qiyu.discard(); cow.discard();
         }
     }
     @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "yuji", timeoutTicks = 60)

@@ -183,6 +183,10 @@ public final class YujiTestServer {
         var summons = player.serverLevel().getEntitiesOfClass(YujiMonster.class, current.getBoundingBox().inflate(32),
                 y -> y.isAlive() && current.getUUID().equals(y.summoner()));
         summonsObserved = Math.max(summonsObserved, summons.size());
+        if (!com.zeropointsix.eraser.yuji.YujiConfig.QIYU_SUMMONING.get()) {
+            require(summons.isEmpty(), "default flute support never summons");
+            return;
+        }
         require(summons.size() <= YujiMonster.SUMMON_CAP, "natural summon count stays capped");
         for (YujiMonster child : summons) {
             require(child.kind() != YujiKind.QIYU && !child.kind().giant(), "only other eligible kinds are summoned");
@@ -263,6 +267,9 @@ public final class YujiTestServer {
             item.setNoPickUpDelay(); item.setDeltaMovement(Vec3.ZERO); player.serverLevel().addFreshEntity(item);
         }
         if (current.kind() == YujiKind.QIYU) {
+            require(com.zeropointsix.eraser.yuji.YujiConfig.QIYU_SUMMONING.get()
+                            == Boolean.parseBoolean(System.getProperty("yuji.qa.qiyuSummoning", "false")),
+                    "loaded Qiyu summoning config matches requested acceptance mode");
             supportAlly = YujiContent.MOBS.get(YujiKind.YUCHI).get().create(player.serverLevel());
             supportAlly.setNoAi(true); supportAlly.moveTo(current.position().add(2, 0, 0));
             player.serverLevel().addFreshEntity(supportAlly);
@@ -299,9 +306,13 @@ public final class YujiTestServer {
             case EKOU -> require(effectObserved, "ranged chant damages real player from >= 3 blocks: " + chantRange);
             case WANGYU, LIANGSHE -> require(effectObserved, "AI applies source-specific status");
             case XIEYIN -> require(effectObserved && player.position().distanceTo(initialPlayer) > .3, "actual client moved by enthrallment");
-            case QIYU -> require(moved > .3 && mobHits > 0 && supportBuffed && summonRefilled
-                            && summonsObserved > 0 && summonsObserved <= YujiMonster.SUMMON_CAP,
-                    "flute buffs allies and replenishes natural summons: buffs=" + supportBuffed + ", refill=" + summonRefilled);
+            case QIYU -> {
+                require(moved > .3 && mobHits > 0 && supportBuffed, "flute still moves, attacks and buffs allies");
+                if (com.zeropointsix.eraser.yuji.YujiConfig.QIYU_SUMMONING.get())
+                    require(summonRefilled && summonsObserved > 0 && summonsObserved <= YujiMonster.SUMMON_CAP,
+                            "opt-in flute replenishes capped natural summons: refill=" + summonRefilled);
+                else require(summonsObserved == 0, "default flute has no natural summons for 500 ticks");
+            }
             case TANYU -> require(current.layers() >= 3 && mobHits > 0,
                     "real dropped flesh consumed and real player attacked: layers=" + current.layers()
                             + ", hits=" + mobHits + ", mob=" + current.position() + ", player=" + player.position());
@@ -315,7 +326,8 @@ public final class YujiTestServer {
         pass("ai-" + current.kind().id(), "realPlayer=" + player.getUUID() + ", floorCollision=true, aiTargetObserved=" + acquiredTarget
                 + ", finalAiTarget=" + (current.getTarget() == player) + ", moved=" + moved
                 + ", playerDamageEvents=" + mobHits + ", hitsByPlayer=" + playerHits + ", statusObserved=" + effectObserved + ", chantRange=" + chantRange
-                + ", summons=" + summonsObserved + (current.kind() == YujiKind.QIYU ? ", allyFourBuffs=" + supportBuffed + ", replenished=" + summonRefilled : "")
+                + ", summons=" + summonsObserved + (current.kind() == YujiKind.QIYU ? ", allyFourBuffs=" + supportBuffed
+                + ", summoningEnabled=" + com.zeropointsix.eraser.yuji.YujiConfig.QIYU_SUMMONING.get() + ", replenished=" + summonRefilled : "")
                 + (current.kind() == YujiKind.TANYU ? ", layers=" + current.layers() : ""));
         for (YujiMonster summoned : player.serverLevel().getEntitiesOfClass(YujiMonster.class, current.getBoundingBox().inflate(64),
                 y -> current.getUUID().equals(y.summoner()))) summoned.discard();

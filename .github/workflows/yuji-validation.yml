@@ -205,6 +205,8 @@ jobs:
         run: bash ./gradlew -PyujiE2E writeYujiTestClasspath --no-daemon
       - name: Render each profile and exercise sound pipeline
         run: YUJI_QA_RECORD_AUDIO=1 python tools/yuji/e2e.py
+      - name: Verify opt-in Qiyu summoning still replenishes capped allies
+        run: YUJI_QA_PROFILES=qiyu YUJI_QA_QIYU_SUMMONING=true python tools/yuji/e2e.py
       - name: Repeat slow-render and stalled-bite regressions with a real client
         run: |
           for attempt in 1 2; do

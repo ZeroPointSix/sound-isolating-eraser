@@ -12,6 +12,9 @@ ROOT = Path(__file__).resolve().parents[2]
 BOUNDARIES = os.environ.get("YUJI_QA_BOUNDARIES") == "1"
 ISOLATION = os.environ.get("YUJI_QA_ISOLATION") == "1"
 CAMERA_TURN = os.environ.get("YUJI_QA_CAMERA_TURN", "true")
+QIYU_SUMMONING = os.environ.get("YUJI_QA_QIYU_SUMMONING", "false")
+if QIYU_SUMMONING not in ("true", "false"):
+    raise ValueError("YUJI_QA_QIYU_SUMMONING must be true/false")
 if CAMERA_TURN not in ("true", "false") or (CAMERA_TURN == "false" and not ISOLATION):
     raise ValueError("YUJI_QA_CAMERA_TURN must be true/false; false requires isolation acceptance")
 RECORD_AUDIO = os.environ.get("YUJI_QA_RECORD_AUDIO") == "1"
@@ -43,7 +46,7 @@ def launch(role, username="YujiTester"):
     if server:
         (directory / "defaultconfigs").mkdir()
         (directory / "defaultconfigs/qihai-yuji-server.toml").write_text(
-            f"[enthralled]\ncameraTurn = {CAMERA_TURN}\n")
+            f"[enthralled]\ncameraTurn = {CAMERA_TURN}\n[qiyu]\nsummoning = {QIYU_SUMMONING}\n")
         (directory / "eula.txt").write_text("eula=true\n")
         (directory / "server.properties").write_text(
             f"online-mode=false\nserver-ip=127.0.0.1\nserver-port={PORT}\n"
@@ -77,6 +80,7 @@ def launch(role, username="YujiTester"):
         args += ["--username", username, "--width", "960", "--height", "540",
                  "--quickPlayMultiplayer", f"127.0.0.1:{PORT}"]
     command = ["java", "-Xmx1024M" if server else "-Xmx2048M", f"-Dyuji.qa.results={RESULTS}"]
+    command += ["-Dyuji.qa.qiyuSummoning=" + QIYU_SUMMONING]
     if BOUNDARIES:
         command += ["-Dyuji.qa.boundaries=true"]
     if ISOLATION:
@@ -138,7 +142,8 @@ def ready():
 try:
     print(f"YUJI_QA_RESULTS={RESULTS}", flush=True)
     print(f"YUJI_QA_CONFIG profiles={PROFILES or 'all'}, fps={CLIENT_FPS}, frameDelayMs={FRAME_DELAY_MS}, "
-          f"stallBite={os.environ.get('YUJI_QA_STALL_BITE') == '1'}, recordAudio={RECORD_AUDIO}, cameraTurn={CAMERA_TURN}", flush=True)
+          f"stallBite={os.environ.get('YUJI_QA_STALL_BITE') == '1'}, recordAudio={RECORD_AUDIO}, cameraTurn={CAMERA_TURN}, "
+          f"qiyuSummoning={QIYU_SUMMONING}", flush=True)
     with socket.socket() as probe:
         probe.bind(("127.0.0.1", PORT))
     xvfb = subprocess.Popen(["Xvfb", "-displayfd", "1", "-screen", "0", "1280x720x24", "-nolisten", "tcp"],
