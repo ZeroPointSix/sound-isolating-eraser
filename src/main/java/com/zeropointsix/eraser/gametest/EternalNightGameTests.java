@@ -406,20 +406,28 @@ public final class EternalNightGameTests {
     public static void cityGeneratedStationSupplyUsesCommonLoot(GameTestHelper h) {
         isolate(h.getLevel());
         ServerLevel city = h.getLevel().getServer().getLevel(EternalNightContent.LEVEL);
-        int bx = 0;
-        while (!CityTemplates.hasStation(city.getSeed(), bx, 0) && bx < 100) bx++;
-        h.assertTrue(bx < 100, "deterministic nearby station exists");
-        int originX = bx * 64 + 48, originZ = 48;
-        city.getBlockState(new BlockPos(originX + 8, CityChunkGenerator.SUBWAY_Y + 2, originZ + 7));
-        city.getBlockState(new BlockPos(originX + 8, CityLayout.plateau(bx, 0) + 1, originZ + 8));
         var containers = new java.util.ArrayList<net.minecraft.world.level.block.entity.RandomizableContainerBlockEntity>();
-        var chunk = city.getChunk(originX >> 4, originZ >> 4);
-        for (BlockPos pos : chunk.getBlockEntitiesPos()) {
-            var entity = city.getBlockEntity(pos);
-            if (entity instanceof net.minecraft.world.level.block.entity.RandomizableContainerBlockEntity container) {
-                CompoundTag tag = container.saveWithFullMetadata();
-                if (CityTemplates.STATION_COMMON_LOOT.toString().equals(tag.getString("LootTable")))
-                    containers.add(container);
+        int originX = 0, originZ = 0;
+        // Skip already-generated empty station chunks from a reused GameTest world.
+        search:
+        for (int bz = 0; bz < 6; bz++) {
+            for (int bx = 0; bx < 80; bx++) {
+                if (!CityTemplates.hasStation(city.getSeed(), bx, bz)) continue;
+                originX = bx * 64 + 48;
+                originZ = bz * 64 + 48;
+                city.getBlockState(new BlockPos(originX + 8, CityChunkGenerator.SUBWAY_Y + 2, originZ + 7));
+                city.getBlockState(new BlockPos(originX + 8, CityLayout.plateau(bx, bz) + 1, originZ + 8));
+                containers.clear();
+                var chunk = city.getChunk(originX >> 4, originZ >> 4);
+                for (BlockPos pos : chunk.getBlockEntitiesPos()) {
+                    var entity = city.getBlockEntity(pos);
+                    if (entity instanceof net.minecraft.world.level.block.entity.RandomizableContainerBlockEntity container) {
+                        CompoundTag tag = container.saveWithFullMetadata();
+                        if (CityTemplates.STATION_COMMON_LOOT.toString().equals(tag.getString("LootTable")))
+                            containers.add(container);
+                    }
+                }
+                if (!containers.isEmpty()) break search;
             }
         }
         System.out.println("STATION_SUPPLY_FOUND count=" + containers.size() + " chunk=" + originX + "," + originZ);
