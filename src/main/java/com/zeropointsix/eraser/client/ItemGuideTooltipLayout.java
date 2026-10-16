@@ -1,11 +1,11 @@
 package com.zeropointsix.eraser.client;
 
-import com.mojang.datafixers.util.Either;
 import com.zeropointsix.eraser.ModMain;
 import com.zeropointsix.eraser.item.ItemGuideCatalog;
 import com.zeropointsix.eraser.item.ItemGuideLayout;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -28,6 +28,7 @@ import org.joml.Matrix4f;
 /** Retains native tooltip rendering and preserves every row, paging only when necessary. */
 @Mod.EventBusSubscriber(modid = ModMain.MOD_ID, value = Dist.CLIENT)
 public final class ItemGuideTooltipLayout {
+    private static final Component PAGE_ANCHOR = Component.empty();
     private static RenderTooltipEvent.GatherComponents gathered;
     private static boolean renderingPage;
     private static String pageKey = "";
@@ -49,7 +50,11 @@ public final class ItemGuideTooltipLayout {
     @SubscribeEvent(priority = EventPriority.LOW)
     public static void gather(RenderTooltipEvent.GatherComponents event) {
         // LOWEST listeners may still append text or images. Read the final list in Pre.
-        if (!renderingPage) {
+        if (renderingPage) {
+            // Forge 47.2.0 inserts an optional image after the first text element.
+            // Remove only our sentinel after insertion, leaving the native page as the sole row.
+            event.getTooltipElements().removeIf(element -> element.left().orElse(null) == PAGE_ANCHOR);
+        } else {
             gathered = event;
             if (ItemGuideCatalog.find(event.getItemStack()) == null) { pageCount = 1; page = 0; pageKey = ""; }
         }
@@ -110,7 +115,7 @@ public final class ItemGuideTooltipLayout {
             var ranges = ItemGuideLayout.pages(body.stream().mapToInt(ClientTooltipComponent::getHeight).toArray(), budget);
             String key = event.getItemStack().getItem() + ":" + event.getScreenWidth() + ":" + event.getScreenHeight()
                     + ":" + elements.stream().map(e -> e.map(text -> text.getString(), Object::toString)).toList();
-            if (!key.equals(pageKey)) { pageKey = key; page = 0; }
+            if (!key.equals(pageKey) || pageScreen != Minecraft.getInstance().screen) { pageKey = key; page = 0; }
             pageCount = Math.max(1, ranges.size());
             page = Math.min(page, pageCount - 1);
             List<ClientTooltipComponent> visible = new ArrayList<>();
@@ -135,8 +140,8 @@ public final class ItemGuideTooltipLayout {
         event.setCanceled(true);
         renderingPage = true;
         try {
-            event.getGraphics().renderComponentTooltipFromElements(font,
-                    List.of(Either.right(new Page(List.copyOf(rows)))), event.getX(), event.getY(), event.getItemStack());
+            event.getGraphics().renderTooltip(font, List.of(PAGE_ANCHOR), Optional.of(new Page(List.copyOf(rows))),
+                    event.getItemStack(), event.getX(), event.getY());
         } finally {
             renderingPage = false;
         }

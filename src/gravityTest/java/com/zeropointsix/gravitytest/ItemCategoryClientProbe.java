@@ -45,6 +45,7 @@ public final class ItemCategoryClientProbe {
     private static long resizeReadyFrame;
     private static String observedBounds;
     private static int expectedPage;
+    private static boolean pagingBack;
     private static String originalLanguage;
     private static CompletableFuture<Void> languageReload;
     private static InventoryScreen screen;
@@ -168,6 +169,8 @@ public final class ItemCategoryClientProbe {
             mc.setScreen(screen);
             renderedTooltips = 0;
             expectedPage = 0;
+            pagingBack = false;
+            ItemGuideExtensionProbe.imageRendered = false;
             observedText = null;
             mouseMoved = false;
             modifiersReady = false;
@@ -203,16 +206,21 @@ public final class ItemCategoryClientProbe {
         String name = role + "-category-" + roundName + "-" + language + "-" + id + "-" + MODES[mode];
         int pages = ItemGuideTooltipLayout.pageCount();
         if (roundName.startsWith("overflow-")) require(pages > 1, "late Gather text reaches paginated renderer");
-        if (pages > 1) name += "-page" + (expectedPage + 1);
+        if (pages > 1) name += (pagingBack ? "-back-page" : "-page") + (expectedPage + 1);
         try (var image = Screenshot.takeScreenshot(mc.getMainRenderTarget())) {
             image.writeToFile(results.resolve(name + ".png"));
         }
         Files.writeString(results.resolve(name + ".pass"), observedBounds + "\n" + observedText + "\n");
         System.out.println("ITEM_CATEGORY_NATIVE_HOVER " + name + " " + observedText);
-        if (expectedPage + 1 < pages) {
-            Process input = new ProcessBuilder("xdotool", "click", "5").inheritIO().start();
+        boolean stress = roundName.startsWith("overflow-");
+        if (stress && expectedPage == pages - 1) {
+            require(ItemGuideExtensionProbe.imageRendered, "late custom image component survives pagination");
+            pagingBack = true;
+        }
+        if ((!pagingBack && expectedPage + 1 < pages) || (pagingBack && expectedPage > 0)) {
+            Process input = new ProcessBuilder("xdotool", "click", pagingBack ? "4" : "5").inheritIO().start();
             require(input.waitFor() == 0, "native mouse wheel advances tooltip page");
-            expectedPage++;
+            expectedPage += pagingBack ? -1 : 1;
             renderedTooltips = 0;
             readyFrame = frames + 4;
             return false;
@@ -295,6 +303,7 @@ public final class ItemCategoryClientProbe {
                 // Added after production's LOW Gather listener: prove Pre reads the final event list.
                 for (int i = 1; i <= 48; i++) event.getTooltipElements().add(com.mojang.datafixers.util.Either.left(
                         Component.literal("Late extension row " + i)));
+                event.getTooltipElements().add(com.mojang.datafixers.util.Either.right(new ItemGuideExtensionProbe.Image()));
             }
             observedText = event.getTooltipElements().stream().flatMap(element -> element.left().stream())
                     .map(FormattedText::getString).toList().toString();
