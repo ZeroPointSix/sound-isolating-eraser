@@ -49,6 +49,7 @@ public final class ItemCategoryClientProbe {
     private static int renderedTooltips;
     private static long readyFrame;
     private static long hoverStarted;
+    private static long inventoryWaitStarted;
     private static boolean mouseMoved;
     private static String observedText;
     private static Throwable renderFailure;
@@ -100,7 +101,17 @@ public final class ItemCategoryClientProbe {
         if (changeLanguage(mc, language)) return false;
         if (screen == null) {
             expectedItem = items[sample % items.length];
-            if (mc.player.getInventory().items.stream().noneMatch(stack -> stack.is(expectedItem))) return false;
+            if (mc.player.getInventory().items.stream().noneMatch(stack -> stack.is(expectedItem))) {
+                if (inventoryWaitStarted == 0) inventoryWaitStarted = System.nanoTime();
+                if (System.nanoTime() - inventoryWaitStarted > 45_000_000_000L) {
+                    throw new AssertionError("Server-supplied guide item missing: phase=" + PHASES[phase]
+                            + " sample=" + sample + " item=" + ForgeRegistries.ITEMS.getKey(expectedItem)
+                            + " mode=" + MODES[mode] + " language=" + language
+                            + " menu=" + mc.player.containerMenu.getClass().getSimpleName());
+                }
+                return false;
+            }
+            inventoryWaitStarted = 0;
             if (expectedItem == item("gravity_jade_pendant")) {
                 originalGravityKey = GravityClient.ACTIVATE.getKey();
                 GravityClient.ACTIVATE.setKey(InputConstants.Type.KEYSYM.getOrCreate(GLFW.GLFW_KEY_B));

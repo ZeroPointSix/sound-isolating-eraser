@@ -52,7 +52,7 @@ public final class ItemCategoryServerProbe {
                         player.getInventory().setItem(i, ForgeRegistries.ITEMS.getValue(GUIDE_ITEMS.get(i)).getDefaultInstance());
                     }
                     player.getInventory().setItem(GUIDE_ITEMS.size(), Items.STICK.getDefaultInstance());
-                    player.inventoryMenu.broadcastChanges();
+                    player.inventoryMenu.sendAllDataToRemote();
                 }
                 Files.writeString(results.resolve("server-category-baseline.pass"), "server inventory fixture supplied\n");
                 supplied = true;
