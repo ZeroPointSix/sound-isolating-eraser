@@ -19,6 +19,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.AfterBatch;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.level.TicketType;
@@ -46,17 +47,18 @@ public final class FlareGreenGameTests {
     private static final class Fixture {
         final ServerLevel level;
         final BlockPos center = new BlockPos(9600, 240, 9600);
-        final AABB bounds = new AABB(center).inflate(60);
+        final AABB bounds;
         final Set<Long> chunks = new HashSet<>(), forced = new HashSet<>();
         final Map<BlockPos, BlockState> previous = new LinkedHashMap<>();
         final GameTestConfigs.LiveConfig config = GameTestConfigs.sandbox(YujiConfig.SPEC);
         final ServerPlayer player;
         Consumer<BlockEvent.EntityPlaceEvent> guard;
 
-        Fixture(GameTestHelper h) {
+        Fixture(GameTestHelper h, int radius) {
             level = h.getLevel();
-            for (int x = (center.getX() - 28) >> 4; x <= (center.getX() + 28) >> 4; x++)
-                for (int z = (center.getZ() - 28) >> 4; z <= (center.getZ() + 28) >> 4; z++) {
+            bounds = new AABB(center).inflate(radius + 45);
+            for (int x = (center.getX() - radius - 1) >> 4; x <= (center.getX() + radius + 1) >> 4; x++)
+                for (int z = (center.getZ() - radius - 1) >> 4; z <= (center.getZ() + radius + 1) >> 4; z++) {
                     ChunkPos chunk = new ChunkPos(x, z);
                     long key = chunk.toLong(); chunks.add(key);
                     if (!level.getForcedChunks().contains(key)) {
@@ -65,7 +67,7 @@ public final class FlareGreenGameTests {
                     level.getChunkSource().addRegionTicket(TicketType.PLAYER, chunk, 2, chunk);
                     level.getChunk(x, z);
                 }
-            for (BlockPos p : BlockPos.betweenClosed(center.offset(-27, -1, -27), center.offset(27, -1, 27)))
+            for (BlockPos p : BlockPos.betweenClosed(center.offset(-radius, -1, -radius), center.offset(radius, -1, radius)))
                 set(p, Blocks.STONE.defaultBlockState());
             var profile = new GameProfile(UUID.randomUUID(), "GreenFlareTest");
             player = new ServerPlayer(level.getServer(), level, profile);
@@ -116,7 +118,11 @@ public final class FlareGreenGameTests {
     @AfterBatch(batch = "flare_green_protection") public static void afterProtection(ServerLevel level) { close(); }
 
     private static void ready(GameTestHelper h, Runnable action) {
-        fixture = new Fixture(h);
+        ready(h, 27, action);
+    }
+
+    private static void ready(GameTestHelper h, int radius, Runnable action) {
+        fixture = new Fixture(h, radius);
         h.assertTrue(FlareConfig.GREEN_DELAY.get() == 80 && FlareConfig.DROP_MIN.get() == 8
                 && FlareConfig.DROP_MAX.get() == 24 && FlareConfig.DROP_ATTEMPTS.get() == 48,
                 "green regressions use production flight/search defaults");
@@ -194,8 +200,11 @@ public final class FlareGreenGameTests {
         ready(h, () -> {
             Fixture f = fixture;
             // One exposed solid block among water columns: legal ground exists, but random probes can miss it.
-            for (BlockPos p : BlockPos.betweenClosed(f.center.offset(-27, -1, -27), f.center.offset(27, -1, 27)))
-                f.set(p, Blocks.WATER.defaultBlockState());
+            for (BlockPos p : BlockPos.betweenClosed(f.center.offset(-27, -1, -27), f.center.offset(27, -1, 27))) {
+                f.set(p.below(), Blocks.STONE.defaultBlockState());
+                boolean wall = Math.abs(p.getX() - f.center.getX()) == 27 || Math.abs(p.getZ() - f.center.getZ()) == 27;
+                f.set(p, wall ? Blocks.STONE.defaultBlockState() : Blocks.WATER.defaultBlockState());
+            }
             f.set(f.center.below(), Blocks.STONE.defaultBlockState());
             BlockPos legal = f.center.east(12);
             f.set(legal.below(), Blocks.STONE.defaultBlockState());
@@ -241,7 +250,7 @@ public final class FlareGreenGameTests {
 
     @GameTest(templateNamespace = "flare_green_tests", template = "empty", batch = "flare_green_protection", timeoutTicks = 2100)
     public static void greenSearchNeverBypassesPlacementProtection(GameTestHelper h) {
-        ready(h, () -> {
+        ready(h, 65, () -> {
             Fixture f = fixture;
             FlareConfig.DROP_MAX.set(64.0);
             Set<BlockPos> denied = new HashSet<>();
@@ -253,18 +262,35 @@ public final class FlareGreenGameTests {
                 }
             };
             MinecraftForge.EVENT_BUS.addListener(EventPriority.HIGHEST, false, BlockEvent.EntityPlaceEvent.class, f.guard);
-            FlareProjectile flare = shoot(h);
-            h.runAfterDelay(85, () -> h.assertTrue(!flare.isRemoved(), "search exhaustion keeps the green flare pending"));
-            h.startSequence().thenWaitUntil(() -> h.assertTrue(flare.isRemoved(), "bounded search eventually exhausts the protected annulus"))
+            FlareProjectile[] active = {shoot(h)};
+            CompoundTag[] saved = {null};
+            boolean[] reloaded = {false};
+            h.runAfterDelay(85, () -> h.assertTrue(!active[0].isRemoved(), "search exhaustion keeps the green flare pending"));
+            h.runAfterDelay(120, () -> {
+                saved[0] = active[0].saveWithoutId(new CompoundTag());
+                h.assertTrue(saved[0].getCompound("GreenLandingSearch").getInt("NextX") > f.center.getX() - 64,
+                        "pending search has advanced before unloading");
+                active[0].discard();
+            });
+            h.runAfterDelay(122, () -> {
+                var restored = new FlareProjectile(FlareContent.FLARE.get(), f.level);
+                restored.load(saved[0]);
+                h.assertTrue(saved[0].getCompound("GreenLandingSearch").equals(
+                        restored.saveWithoutId(new CompoundTag()).getCompound("GreenLandingSearch")),
+                        "pending search center, range, budget and cursor survive entity reload");
+                h.assertTrue(f.level.addFreshEntity(restored), "restored pending flare re-enters the real entity tick loop");
+                active[0] = restored; reloaded[0] = true;
+            });
+            h.startSequence().thenWaitUntil(() -> h.assertTrue(reloaded[0] && active[0].isRemoved(), "bounded search eventually exhausts the protected annulus"))
                     .thenExecute(() -> {
                 h.assertTrue(f.level.getEntitiesOfClass(FallingSupplyCrate.class, f.bounds).isEmpty(), "protected search spawns no crate");
-                h.assertTrue(!denied.isEmpty(), "real Forge protection events were consulted");
+                h.assertTrue(denied.size() == 12660, "every safe column in the full 8-64 block annulus was checked: " + denied.size());
                 int maxEvents = eventsPerTick.values().stream().mapToInt(Integer::intValue).max().orElse(0);
                 h.assertTrue(maxEvents <= 48 && eventsPerTick.size() > 1, "maximum-radius fallback preserves the 48-probe per-tick budget");
                 for (BlockPos pos : denied) h.assertTrue(f.level.getBlockState(pos).isAir()
                         && f.level.getBlockEntity(pos) == null, "rejected probes restore air and remove provisional containers");
                 System.out.println("T5_GREEN_PROTECTION_PASSED radius=64 deniedColumns=" + denied.size()
-                        + " maxEventsPerTick=" + maxEvents + " provisionalCrates=0");
+                        + " maxEventsPerTick=" + maxEvents + " reloadPreserved=true provisionalCrates=0");
                 h.succeed();
             });
         });

@@ -94,11 +94,14 @@ public final class FlareProjectile extends ThrowableProjectile implements ItemSu
         super.addAdditionalSaveData(tag); tag.putInt("FlareColor", color()); tag.putInt("FlareAge", age);
         tag.putBoolean("FlareLit", lit()); tag.putLong("ExtinguishAt", extinguishAt);
         if (shooter != null) tag.putUUID("Shooter", shooter);
+        if (greenLandingSearch != null) tag.put("GreenLandingSearch", greenLandingSearch.save());
     }
     @Override public void readAdditionalSaveData(CompoundTag tag) {
         super.readAdditionalSaveData(tag); setColor(tag.getInt("FlareColor")); age = Math.max(0, tag.getInt("FlareAge"));
         entityData.set(LIT, tag.getBoolean("FlareLit")); extinguishAt = tag.getLong("ExtinguishAt");
         shooter = tag.hasUUID("Shooter") ? tag.getUUID("Shooter") : null;
+        greenLandingSearch = tag.contains("GreenLandingSearch", net.minecraft.nbt.Tag.TAG_COMPOUND)
+                ? FlarePlacement.LandingSearch.load(tag.getCompound("GreenLandingSearch"), position()) : null;
     }
     @Override public Packet<ClientGamePacketListener> getAddEntityPacket() { return NetworkHooks.getEntitySpawningPacket(this); }
 }

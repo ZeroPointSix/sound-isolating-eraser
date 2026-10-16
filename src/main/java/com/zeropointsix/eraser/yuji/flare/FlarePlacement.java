@@ -1,12 +1,11 @@
 package com.zeropointsix.eraser.yuji.flare;
 
 import com.mojang.authlib.GameProfile;
-import java.util.HashSet;
-import java.util.Set;
 import java.util.UUID;
 import javax.annotation.Nullable;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
@@ -143,18 +142,22 @@ public final class FlarePlacement {
 
     public static final class LandingSearch {
         private final Vec3 center;
-        private final double min = Math.min(FlareConfig.DROP_MIN.get(), FlareConfig.DROP_MAX.get());
-        private final double max = Math.max(FlareConfig.DROP_MIN.get(), FlareConfig.DROP_MAX.get());
-        private final int budget = FlareConfig.DROP_ATTEMPTS.get();
-        private final Set<Long> checked = new HashSet<>();
+        private final double min, max;
+        private final int budget;
         private final int x1, z0, z1;
-        private int randomRemaining = budget, x, z;
+        private int randomRemaining, x, z;
         private boolean finished;
 
         public LandingSearch(Vec3 center) {
+            this(center, FlareConfig.DROP_MIN.get(), FlareConfig.DROP_MAX.get(), FlareConfig.DROP_ATTEMPTS.get());
+        }
+
+        private LandingSearch(Vec3 center, double min, double max, int budget) {
             this.center = center;
-            x = Mth.ceil(center.x - max - .5); x1 = Mth.floor(center.x + max - .5);
-            z = z0 = Mth.ceil(center.z - max - .5); z1 = Mth.floor(center.z + max - .5);
+            this.min = Math.min(min, max); this.max = Math.max(min, max);
+            this.budget = budget; randomRemaining = budget;
+            x = Mth.ceil(center.x - this.max - .5); x1 = Mth.floor(center.x + this.max - .5);
+            z = z0 = Mth.ceil(center.z - this.max - .5); z1 = Mth.floor(center.z + this.max - .5);
         }
 
         public boolean finished() { return finished; }
@@ -175,7 +178,6 @@ public final class FlarePlacement {
                     column = new BlockPos(x, 0, z);
                     if (++z > z1) { z = z0; x++; }
                 }
-                if (!checked.add(column.asLong())) continue;
                 double dx = column.getX() + .5 - center.x, dz = column.getZ() + .5 - center.z;
                 if (dx * dx + dz * dz < min * min || dx * dx + dz * dz > max * max || !level.hasChunkAt(column)) continue;
                 BlockPos pos = new BlockPos(column.getX(), level.getHeight(Heightmap.Types.MOTION_BLOCKING, column.getX(), column.getZ()), column.getZ());
@@ -187,6 +189,29 @@ public final class FlarePlacement {
             }
             if (randomRemaining == 0 && x > x1) finished = true;
             return null;
+        }
+
+        public CompoundTag save() {
+            CompoundTag tag = new CompoundTag();
+            tag.putDouble("CenterX", center.x); tag.putDouble("CenterZ", center.z);
+            tag.putDouble("Min", min); tag.putDouble("Max", max); tag.putInt("Budget", budget);
+            tag.putInt("RandomRemaining", randomRemaining); tag.putInt("NextX", x); tag.putInt("NextZ", z);
+            tag.putBoolean("Finished", finished);
+            return tag;
+        }
+
+        public static LandingSearch load(CompoundTag tag, Vec3 fallback) {
+            double cx = tag.getDouble("CenterX"), cz = tag.getDouble("CenterZ");
+            double min = tag.getDouble("Min"), max = tag.getDouble("Max");
+            if (!Double.isFinite(cx) || !Double.isFinite(cz) || Math.abs(cx) > 30_000_000 || Math.abs(cz) > 30_000_000
+                    || !Double.isFinite(min) || !Double.isFinite(max)) return new LandingSearch(fallback);
+            LandingSearch search = new LandingSearch(new Vec3(cx, 0, cz), Mth.clamp(min, 1, 64), Mth.clamp(max, 1, 64),
+                    Mth.clamp(tag.getInt("Budget"), 1, 256));
+            search.randomRemaining = Mth.clamp(tag.getInt("RandomRemaining"), 0, search.budget);
+            search.x = Mth.clamp(tag.getInt("NextX"), search.x, search.x1 + 1);
+            search.z = Mth.clamp(tag.getInt("NextZ"), search.z0, search.z1);
+            search.finished = tag.getBoolean("Finished");
+            return search;
         }
     }
     private FlarePlacement() { }
