@@ -10,6 +10,18 @@ minecraft.runs.configureEach {
         keeper_qa { source sourceSets.keeperTest }
     }
 }
+// Test the exact named-mapping input to reobfJar, not loose/stale development classes.
+tasks.named('jar', Jar).configure {
+    def runtimeJar = layout.buildDirectory.file('keeper-runtime/keeper-runtime.jar')
+    outputs.file(runtimeJar)
+    doLast {
+        copy {
+            from archiveFile
+            into runtimeJar.get().asFile.parentFile
+            rename { 'keeper-runtime.jar' }
+        }
+    }
+}
 tasks.register('writeKeeperTestClasspath') {
     dependsOn 'classes', 'keeperTestClasses', 'genVSCodeRuns'
     def target = layout.buildDirectory.file('keeper-test-classpath.txt')

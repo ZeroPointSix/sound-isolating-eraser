@@ -98,19 +98,25 @@ public final class KeeperTestServer {
                 phase("baseline");
                 return;
             }
-            if (phase.equals("baseline") && phaseTicks >= 80) {
+            if (phase.equals("baseline") && phaseTicks >= 200) {
                 phase("shoot");
             } else if (phase.equals("shoot") && hasPhoto(player) && phaseTicks >= 50) {
-                if (!Files.exists(RESULTS.resolve("flash.pass")) && phaseTicks < 600) return;
+                if (!(Files.exists(RESULTS.resolve("flash-observed.txt"))
+                        && Files.exists(RESULTS.resolve("flash-captured.txt")))) return;
                 player.getInventory().selected = 1;
                 player.inventoryMenu.broadcastChanges();
                 phase("enter");
             } else if (phase.equals("enter") && player.hasEffect(ModEffects.IN_PHOTO.get()) && phaseTicks >= 20) {
                 phase("photo");
             } else if (phase.equals("photo") && phaseTicks >= 30) {
-                if (!(Files.exists(RESULTS.resolve("sepia.pass")) && Files.exists(RESULTS.resolve("hud.pass"))) && phaseTicks < 200) return;
+                if (!(Files.exists(RESULTS.resolve("sepia.pass")) && Files.exists(RESULTS.resolve("hud.pass"))
+                        && Files.exists(RESULTS.resolve("countdown.pass")))) return;
                 require(player.hasEffect(ModEffects.IN_PHOTO.get()), "photo session still active for HUD/filter");
-                Files.writeString(RESULTS.resolve("server.pass"), "Dedicated server handed a real camera, captured a photo, and entered the photo session." + System.lineSeparator());
+                phase("exit");
+            } else if (phase.equals("exit") && !player.hasEffect(ModEffects.IN_PHOTO.get())) {
+                phase("clear");
+            } else if (phase.equals("clear") && Files.exists(RESULTS.resolve("exit.pass"))) {
+                Files.writeString(RESULTS.resolve("server.pass"), "Dedicated server: native camera capture, photo enter, countdown and native exit." + System.lineSeparator());
                 finished = true;
             }
         } catch (Throwable failure) {

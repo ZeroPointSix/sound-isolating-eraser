@@ -6,8 +6,6 @@ import com.zeropointsix.eraser.ModMain;
 import com.zeropointsix.eraser.keeper.KeeperData;
 import com.zeropointsix.eraser.registry.ModEffects;
 import com.zeropointsix.eraser.registry.ModItems;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
@@ -32,7 +30,7 @@ import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 public final class KeeperVisuals {
     private static final ResourceLocation FILTER = new ResourceLocation(ModMain.MOD_ID, "shaders/post/keeper_photo.json");
     private static final ResourceLocation FRAME = new ResourceLocation(ModMain.MOD_ID, "textures/gui/photo_world_frame.png");
-    private static final long FLASH_MS = 800L;
+    private static final long FLASH_NANOS = 200_000_000L;
     private static PostChain filter;
     private static boolean failed;
     private static boolean awaitRelease;
@@ -45,12 +43,8 @@ public final class KeeperVisuals {
         return player != null && player.hasEffect(ModEffects.IN_PHOTO.get());
     }
     public static void flash() {
-        flashUntil = System.currentTimeMillis() + FLASH_MS;
-        String dir = System.getProperty("keeper.qa.results");
-        if (dir != null && !dir.isBlank()) {
-            try { Files.writeString(Path.of(dir, "flash-called.txt"), Long.toString(System.currentTimeMillis()) + System.lineSeparator()); }
-            catch (Exception ignored) { }
-        }
+        // Four nominal ticks of real time, independent of tick catch-up and clock changes.
+        flashUntil = System.nanoTime() + FLASH_NANOS;
     }
     public static void visibility(UUID player, boolean hidden) {
         if (hidden) HIDDEN.add(player); else HIDDEN.remove(player);
@@ -114,11 +108,11 @@ public final class KeeperVisuals {
                     gui.drawCenteredString(mc.font, text, w / 2, h * 238 / 256 - mc.font.lineHeight / 2, 0x5A4632);
                     RenderSystem.disableBlend();
                 }
-                long left = flashUntil - System.currentTimeMillis();
+                long left = flashUntil == 0 ? 0 : flashUntil - System.nanoTime();
                 if (left > 0) {
                     RenderSystem.enableBlend();
                     RenderSystem.defaultBlendFunc();
-                    gui.fill(0, 0, w, h, (Math.round(255F * Math.min(1F, left / (float) FLASH_MS)) << 24) | 0xFFFFFF);
+                    gui.fill(0, 0, w, h, (Math.round(255F * Math.min(1F, left / (float) FLASH_NANOS)) << 24) | 0xFFFFFF);
                     RenderSystem.disableBlend();
                 }
             });

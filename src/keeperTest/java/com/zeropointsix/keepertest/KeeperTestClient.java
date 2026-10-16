@@ -2,6 +2,10 @@ package com.zeropointsix.keepertest;
 
 import com.zeropointsix.eraser.registry.ModEffects;
 import com.zeropointsix.eraser.registry.ModItems;
+import com.zeropointsix.eraser.keeper.client.KeeperVisuals;
+import java.lang.reflect.Field;
+import java.security.MessageDigest;
+import java.util.HexFormat;
 import java.awt.image.BufferedImage;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -18,16 +22,77 @@ import org.lwjgl.glfw.GLFW;
 @Mod.EventBusSubscriber(modid = "keeper_qa", value = Dist.CLIENT)
 public final class KeeperTestClient {
     private static final Path RESULTS = Path.of(System.getProperty("keeper.qa.results"));
-    private static String phase = "";
+    private static volatile String phase = "";
     private static int ticks;
-    private static boolean failed;
+    private static volatile boolean failed;
     private static boolean baselineSaved;
     private static int[] baselineRgb = new int[3];
     private static int baselineWhite;
-    private static int bestFlashWhite;
-    private static volatile boolean flashSaved;
     private static boolean photoSaved;
     private static boolean grabberStarted;
+    private static final StringBuilder frameTimes = new StringBuilder("epoch_ms,elapsed_ms,left_ms,phase,in_photo\n");
+    private static Field flashDeadline;
+    private static volatile long observedDeadline;
+    private static boolean timingSaved;
+    private static int positiveFrames;
+    private static double firstPositive = -1, lastPositive = -1, firstClear = -1;
+    private static int photoSeconds;
+
+    private static void provenance() throws Exception {
+        StringBuilder output = new StringBuilder();
+        for (Class<?> type : new Class<?>[] {KeeperVisuals.class, KeeperVisuals.Registration.class}) {
+            String name = "/" + type.getName().replace('.', '/') + ".class";
+            try (var stream = type.getResourceAsStream(name)) {
+                require(stream != null, "loaded class bytes are accessible");
+                output.append(type.getName()).append("\nsource=")
+                        .append(type.getProtectionDomain().getCodeSource().getLocation())
+                        .append("\nresource=").append(type.getResource(name))
+                        .append("\nsha256=").append(HexFormat.of().formatHex(
+                                MessageDigest.getInstance("SHA-256").digest(stream.readAllBytes())))
+                        .append("\n");
+            }
+        }
+        flashDeadline = KeeperVisuals.class.getDeclaredField("flashUntil");
+        flashDeadline.setAccessible(true);
+        var duration = KeeperVisuals.class.getDeclaredField("FLASH_NANOS");
+        duration.setAccessible(true);
+        require(duration.getLong(null) == 200_000_000L, "runtime uses the production 200ms default");
+        output.append("duration_nanos=").append(duration.getLong(null)).append("\n");
+        Files.writeString(RESULTS.resolve("runtime-classes.txt"), output);
+    }
+
+    @SubscribeEvent
+    public static void rendered(TickEvent.RenderTickEvent event) {
+        if (event.phase != TickEvent.Phase.END || failed || timingSaved || flashDeadline == null) return;
+        try {
+            long deadline = flashDeadline.getLong(null);
+            if (deadline == 0) return;
+            require(observedDeadline == 0 || observedDeadline == deadline, "one native shutter action only");
+            observedDeadline = deadline;
+            double left = (deadline - System.nanoTime()) / 1_000_000.0;
+            double elapsed = 200.0 - left;
+            frameTimes.append(System.currentTimeMillis()).append(',').append(elapsed).append(',')
+                    .append(left).append(',').append(phase).append(',').append(inPhotoWorld()).append('\n');
+            if (left > 0) {
+                positiveFrames++;
+                if (firstPositive < 0) firstPositive = elapsed;
+                lastPositive = elapsed;
+            } else if (firstClear < 0) firstClear = elapsed;
+            if (elapsed >= 650) {
+                Files.writeString(RESULTS.resolve("flash-frame-times.csv"), frameTimes);
+                require(positiveFrames >= 2 && firstPositive <= 100 && firstClear <= 250,
+                        "insufficient real rendered frames around the 200ms deadline: first="
+                                + firstPositive + " last=" + lastPositive + " clear=" + firstClear);
+                Files.writeString(RESULTS.resolve("flash-observed.txt"),
+                        "default_ms=200 first_positive_ms=" + firstPositive + " last_positive_ms="
+                                + lastPositive + " first_clear_ms=" + firstClear + " positive_frames=" + positiveFrames + "\n");
+                timingSaved = true;
+            }
+        } catch (Throwable error) {
+            try { Files.writeString(RESULTS.resolve("client.failed"), error.toString()); } catch (Exception ignored) { }
+            failed = true;
+        }
+    }
 
     @SubscribeEvent
     public static void message(ClientChatReceivedEvent event) {
@@ -119,57 +184,57 @@ public final class KeeperTestClient {
         return player != null && player.hasEffect(ModEffects.IN_PHOTO.get());
     }
 
-    private static boolean acceptFlash(BufferedImage screenshot, int index) throws Exception {
-        if (inPhotoWorld()) return false;
-        if (phase.equals("enter") || phase.equals("photo") || phase.equals("done")) return false;
-        int white = countWhite(screenshot, 200);
-        int[] mean = meanCenter(screenshot);
-        boolean grey = Math.abs(mean[0] - mean[1]) <= 24 && Math.abs(mean[1] - mean[2]) <= 24;
-        boolean sepiaLike = mean[0] > mean[2] + 12;
-        if (white >= bestFlashWhite && !sepiaLike) {
-            bestFlashWhite = white;
-            ImageIO.write(screenshot, "png", RESULTS.resolve("flash.png").toFile());
-        }
-        Files.writeString(RESULTS.resolve("flash-grab.txt"),
-                "frame=" + index + " phase=" + phase + " white=" + white
-                        + " mean=" + mean[0] + "," + mean[1] + "," + mean[2]
-                        + " grey=" + grey + " sepiaLike=" + sepiaLike + System.lineSeparator(),
-                StandardOpenOption.CREATE, StandardOpenOption.APPEND);
-        int pixels = Math.max(1, screenshot.getWidth() * screenshot.getHeight());
-        boolean lum = mean[0] >= 150 && mean[1] >= 150 && mean[2] >= 150 && grey;
-        boolean cover = (double) white / pixels >= 0.18 && grey;
-        if (!(lum || cover)) return false;
-        Files.writeString(RESULTS.resolve("flash-stats.txt"),
-                "bestWhite=" + bestFlashWhite + " baselineWhite=" + baselineWhite
-                        + " mean=" + mean[0] + "," + mean[1] + "," + mean[2]
-                        + " frame=" + index + " pixels=" + pixels + " lum=" + lum + " cover=" + cover + System.lineSeparator());
-        Files.writeString(RESULTS.resolve("flash.pass"),
-                "Real camera use produced a white shutter overlay on the X11 window. bestWhite=" + bestFlashWhite
-                        + " mean=" + mean[0] + "," + mean[1] + "," + mean[2] + " frame=" + index + System.lineSeparator());
-        flashSaved = true;
-        return true;
-    }
+    private record Capture(long before, long after, BufferedImage image) { }
 
     private static void startFlashGrabber() {
         if (grabberStarted) return;
         grabberStarted = true;
         Thread thread = new Thread(() -> {
-            for (int i = 0; i < 80 && !flashSaved && !failed; i++) {
-                if (inPhotoWorld() || phase.equals("enter") || phase.equals("photo")) break;
-                try {
-                    BufferedImage screenshot = grab("flash-live-" + i + ".png");
-                    acceptFlash(screenshot, i);
-                    Thread.sleep(40);
-                } catch (Throwable error) {
-                    try {
-                        Files.writeString(RESULTS.resolve("flash-grab.txt"),
-                                "error=" + error + System.lineSeparator(),
-                                StandardOpenOption.CREATE, StandardOpenOption.APPEND);
-                    } catch (Exception ignored) { }
-                    try { Thread.sleep(40); } catch (InterruptedException interrupted) { Thread.currentThread().interrupt(); return; }
+            try {
+                var robot = new java.awt.Robot();
+                var captures = new java.util.ArrayList<Capture>();
+                long timeout = System.nanoTime() + 15_000_000_000L;
+                while (System.nanoTime() < timeout && !failed) {
+                    long before = System.nanoTime();
+                    // Interior of the game window, never the photo-frame border.
+                    BufferedImage image = robot.createScreenCapture(new java.awt.Rectangle(480, 270, 320, 180));
+                    long after = System.nanoTime();
+                    captures.add(new Capture(before, after, image));
+                    if (observedDeadline != 0 && after > observedDeadline + 600_000_000L) break;
+                    Thread.sleep(10);
                 }
+                require(observedDeadline != 0, "camera packet was observed while sampling X11");
+                Path frames = RESULTS.resolve("flash-frames");
+                Files.createDirectories(frames);
+                StringBuilder csv = new StringBuilder("frame,start_ms,end_ms,r,g,b,white80,phase\n");
+                int index = 0, bestWhite = -1;
+                BufferedImage best = null;
+                for (Capture capture : captures) {
+                    double start = (capture.before() - observedDeadline + 200_000_000L) / 1_000_000.0;
+                    double end = (capture.after() - observedDeadline + 200_000_000L) / 1_000_000.0;
+                    if (end < -100 || start > 500) continue;
+                    int[] mean = meanCenter(capture.image());
+                    int white = countWhite(capture.image(), 205);
+                    String filename = String.format("%03d.png", index);
+                    ImageIO.write(capture.image(), "png", frames.resolve(filename).toFile());
+                    csv.append(filename).append(',').append(start).append(',').append(end).append(',')
+                            .append(mean[0]).append(',').append(mean[1]).append(',').append(mean[2])
+                            .append(',').append(white).append(",shoot\n");
+                    if (start >= 0 && start < 200 && white > bestWhite) {
+                        bestWhite = white;
+                        best = capture.image();
+                    }
+                    index++;
+                }
+                Files.writeString(RESULTS.resolve("flash-x11-times.csv"), csv);
+                require(best != null && bestWhite > 100, "interior shutter pixels captured");
+                ImageIO.write(best, "png", RESULTS.resolve("flash.png").toFile());
+                Files.writeString(RESULTS.resolve("flash-captured.txt"), "X11 center=480,270,320,180 best_white80=" + bestWhite + "\n");
+            } catch (Throwable error) {
+                try { Files.writeString(RESULTS.resolve("client.failed"), error.toString()); } catch (Exception ignored) { }
+                failed = true;
             }
-        }, "keeper-qa-flash-grab");
+        }, "keeper-qa-x11-timing");
         thread.setDaemon(true);
         thread.start();
     }
@@ -198,6 +263,7 @@ public final class KeeperTestClient {
         if (mc.player == null || mc.level == null) return;
         try {
             ticks++;
+            if (flashDeadline == null) provenance();
             if (ticks <= 8) prepare(mc);
             if (!baselineSaved && ticks == 12 && (phase.equals("baseline") || phase.equals("shoot"))) {
                 captureBaseline(phase + "@" + ticks);
@@ -245,6 +311,32 @@ public final class KeeperTestClient {
                 Files.writeString(RESULTS.resolve("hud.pass"),
                         "Polaroid frame HUD timer color was present. pixels=" + hud + System.lineSeparator());
                 photoSaved = true;
+                photoSeconds = (mc.player.getEffect(ModEffects.IN_PHOTO.get()).getDuration() + 19) / 20;
+                Files.writeString(RESULTS.resolve("hud-seconds.txt"), "first=" + photoSeconds + "\n");
+            }
+            if (phase.equals("photo") && ticks == 65 && photoSaved) {
+                require(inPhotoWorld(), "photo remains active for countdown regression");
+                int later = (mc.player.getEffect(ModEffects.IN_PHOTO.get()).getDuration() + 19) / 20;
+                BufferedImage screenshot = grab("hud-later.png");
+                require(later < photoSeconds && later > 0, "remaining seconds decrease");
+                require(countNear(screenshot, 0x5A4632, 48, screenshot.getHeight() * 200 / 256,
+                        screenshot.getHeight()) > 20, "later HUD still rendered");
+                Files.writeString(RESULTS.resolve("hud-seconds.txt"), "later=" + later + "\n", StandardOpenOption.APPEND);
+                Files.writeString(RESULTS.resolve("countdown.pass"), "Real client countdown " + photoSeconds + " -> " + later + "\n");
+            }
+            if (phase.equals("exit")) {
+                if (ticks == 4) input("mouseup", "3");
+                if (ticks == 12) input("click", "3");
+            }
+            if (phase.equals("clear") && ticks == 12) {
+                require(!inPhotoWorld(), "server exit clears client session effect");
+                BufferedImage screenshot = grab("exit.png");
+                int[] mean = meanCenter(screenshot);
+                int hud = countNear(screenshot, 0x5A4632, 48, screenshot.getHeight() * 200 / 256, screenshot.getHeight());
+                require(hud < 20, "exit removes countdown HUD");
+                require(mean[2] > mean[0] + 10, "exit removes sepia filter in the blue-sky fixture");
+                Files.writeString(RESULTS.resolve("exit.pass"), "HUD pixels=" + hud + " RGB="
+                        + mean[0] + "," + mean[1] + "," + mean[2] + "\n");
             }
         } catch (Throwable failure) {
             failure.printStackTrace();
