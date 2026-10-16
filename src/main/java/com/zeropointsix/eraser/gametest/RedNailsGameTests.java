@@ -508,15 +508,11 @@ public final class RedNailsGameTests {
         var stack = f.wear(p);
         sealShorePit(f, floorY);
         var g = f.summon(p, stack);
-        g.setNoAi(false);
         g.setPos(Vec3.atBottomCenterOf(f.center));
         g.setYRot(0);
         var victim = f.add(EntityType.PILLAGER.create(f.level), 0, 1);
         check(h, !victim.canBreatheUnderwater(), "Shore oxygen fixture cannot breathe underwater");
         victim.setNoAi(true);
-        victim.setTarget(p);
-        p.setLastHurtMob(victim);
-        g.setTarget(victim);
         double startX = g.getX();
         double[] waterEntryY = { Double.NaN };
         int[] airAtWaterEntry = { -1 };
@@ -553,7 +549,21 @@ public final class RedNailsGameTests {
                     + " eyeInWater=" + victim.isEyeInFluid(net.minecraft.tags.FluidTags.WATER)
                     + " eyeY=" + victim.getEyeY());
         });
+        // activate() may spawn in nearby water. Let the relocated fixture update its
+        // real fluid/pose state on dry land before the goal selector can start a grab.
         h.startSequence().thenWaitUntil(() -> {
+            check(h, g.onGround() && !g.isInWater() && !g.ghostBody().swimming(),
+                    "Shore fixture has settled on dry land before enabling AI");
+            check(h, g.ghostBody().grab.held() == null, "Shore fixture has no pre-existing grab");
+        }).thenExecute(() -> {
+            System.out.println("RED_NAILS_SHORE_READY t=" + f.level.getGameTime()
+                    + " ghost=" + g.position() + " swimming=" + g.ghostBody().swimming()
+                    + " inWater=" + g.isInWater() + " onGround=" + g.onGround());
+            victim.setTarget(p);
+            p.setLastHurtMob(victim);
+            g.setTarget(victim);
+            g.setNoAi(false);
+        }).thenWaitUntil(() -> {
             check(h, g.ghostBody().grab.held() == victim, "Summon goal selector grabs on shore without start()");
             check(h, !g.ghostBody().swimming(), "First grab is still on land");
         }).thenWaitUntil(() -> {
