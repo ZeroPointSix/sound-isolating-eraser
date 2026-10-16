@@ -44,6 +44,36 @@ public final class KeeperTestClient {
     private static double firstPositive = -1, lastPositive = -1, firstClear = -1;
     private static int photoSeconds;
     private static int connectionRetries;
+    private static long warmupBegan, lastWarmupFrame, stableSince;
+    private static int stableFrames;
+    private static final StringBuilder warmupFrames = new StringBuilder(
+            "epoch_ms,monotonic_ns,gap_ms,stable_frames,baseline_saved\n");
+
+    private static void observeWarmupFrame(long now) throws Exception {
+        if (shutterSent || !(phase.equals("baseline") || phase.equals("shoot"))) return;
+        if (warmupBegan == 0) warmupBegan = now;
+        long gap = lastWarmupFrame == 0 ? 0 : now - lastWarmupFrame;
+        if (lastWarmupFrame == 0 || gap > 50_000_000L) {
+            stableSince = now;
+            stableFrames = 0;
+        }
+        stableFrames++;
+        lastWarmupFrame = now;
+        warmupFrames.append(System.currentTimeMillis()).append(',').append(now).append(',')
+                .append(gap / 1_000_000.0).append(',').append(stableFrames).append(',')
+                .append(baselineSaved).append('\n');
+        if (now - warmupBegan > 90_000_000_000L) {
+            Files.writeString(RESULTS.resolve("render-warmup.csv"), warmupFrames);
+            throw new AssertionError("Render readiness unavailable within 90s: need 2s of real frames"
+                    + " with gaps <=50ms before native shutter; stable_frames=" + stableFrames);
+        }
+    }
+
+    private static boolean renderReady() {
+        long now = System.nanoTime();
+        return stableFrames >= 40 && now - stableSince >= 2_000_000_000L
+                && now - lastWarmupFrame <= 50_000_000L;
+    }
 
     private static void provenance() throws Exception {
         StringBuilder output = new StringBuilder();
@@ -70,8 +100,10 @@ public final class KeeperTestClient {
 
     @SubscribeEvent
     public static void rendered(TickEvent.RenderTickEvent event) {
-        if (event.phase != TickEvent.Phase.END || failed || timingSaved || flashDeadline == null) return;
+        if (event.phase != TickEvent.Phase.END || failed || flashDeadline == null) return;
         try {
+            observeWarmupFrame(System.nanoTime());
+            if (timingSaved) return;
             long deadline = flashDeadline.getLong(null);
             if (deadline == 0) return;
             require(observedDeadline == 0 || observedDeadline == deadline, "one native shutter action only");
@@ -298,14 +330,22 @@ public final class KeeperTestClient {
             ticks++;
             if (flashDeadline == null) provenance();
             if (ticks <= 8) prepare(mc);
-            if (!baselineSaved && ticks == 12 && (phase.equals("baseline") || phase.equals("shoot"))) {
+            if (!baselineSaved && ticks >= 12 && renderReady()
+                    && (phase.equals("baseline") || phase.equals("shoot"))) {
                 captureBaseline(phase + "@" + ticks);
+                // A synchronous X11 screenshot can stall rendering; require another stable window.
+                lastWarmupFrame = stableSince = 0;
+                stableFrames = 0;
             }
             if (phase.equals("shoot")) {
-                if (ticks == 4) startFlashGrabber();
                 if (ticks == 8) input("key", "1");
-                if (ticks >= 20 && !shutterSent && samplerReady
+                if (baselineSaved && renderReady()) startFlashGrabber();
+                if (ticks >= 20 && !shutterSent && baselineSaved && renderReady() && samplerReady
                         && Files.exists(RESULTS.resolve("capture.ready"))) {
+                    Files.writeString(RESULTS.resolve("render-warmup.csv"), warmupFrames);
+                    Files.writeString(RESULTS.resolve("render-ready.txt"), "stable_frames=" + stableFrames
+                            + " stable_ms=" + (System.nanoTime() - stableSince) / 1_000_000.0
+                            + " max_gap_ms=50 required_stable_ms=2000\n");
                     shutterSent = true;
                     Files.writeString(RESULTS.resolve("shutter-input.txt"), "native_right_click_ns=" + System.nanoTime() + "\n");
                     input("click", "3");
