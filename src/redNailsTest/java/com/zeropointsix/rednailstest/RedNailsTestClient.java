@@ -75,11 +75,17 @@ public final class RedNailsTestClient {
             }
             if (phase.isEmpty()) {
                 if (mc.getOverlay() != null) return;
-                if (!RedNailsItem.findWorn(mc.player).isEmpty() && mc.level.hasChunkAt(mc.player.blockPosition())) {
-                    GLFW.glfwFocusWindow(mc.getWindow().getWindow());
-                    mc.setScreen(null); mc.mouseHandler.grabMouse();
-                    Files.writeString(RESULTS.resolve("client-ready.signal"), "Actual Curios slot synchronized.\n");
-                }
+                if (RedNailsItem.findWorn(mc.player).isEmpty() || !mc.level.hasChunkAt(mc.player.blockPosition())) return;
+                GLFW.glfwFocusWindow(mc.getWindow().getWindow());
+                mc.setScreen(null);
+                mc.mouseHandler.grabMouse();
+                boolean qa = System.getProperty("rednails.qa.results") != null;
+                if (!mc.isWindowActive() && !qa) return;
+                Files.writeString(RESULTS.resolve("client-ready.signal"),
+                        "overlay=null windowActive=" + mc.isWindowActive() + " qa=" + qa
+                                + " curios synchronized.\n");
+                System.out.println("RED_NAILS_CLIENT_READY overlay=null windowActive="
+                        + mc.isWindowActive() + " qa=" + qa);
                 return;
             }
             ticks++;

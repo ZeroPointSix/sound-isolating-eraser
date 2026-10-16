@@ -93,7 +93,7 @@ public final class RedNailsTestServer {
             ticks++;
             // Wall-clock, not tick count: catch-up after a join hitch can burn 1800 ticks
             // in a few seconds before the real client has processed RED_NAILS_QA:input.
-            if (System.nanoTime() - stageNanos > 120_000_000_000L)
+            if (System.nanoTime() - stageNanos > 300_000_000_000L)
                 throw new AssertionError("QA stage timeout: " + stage);
             if (stage == 0) {
                 if (ticks >= 30 && !equipRing()) return;

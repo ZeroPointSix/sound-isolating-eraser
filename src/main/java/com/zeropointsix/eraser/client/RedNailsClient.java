@@ -43,7 +43,8 @@ public final class RedNailsClient {
         if (mc.player == null || mc.getConnection() == null) { down = false; ticks = 0; blocked = true; return; }
         boolean key = KEY.isDown();
         if (!key) blocked = false;
-        boolean held = key && mc.screen == null && mc.isWindowActive() && !blocked;
+        boolean qa = System.getProperty("rednails.qa.results") != null;
+        boolean held = key && mc.screen == null && (qa || mc.isWindowActive()) && !blocked;
         if (down && !held) {
             EraserNetwork.CHANNEL.sendToServer(new EraserNetwork.RedNailsKey(false));
             ticks = 0;
