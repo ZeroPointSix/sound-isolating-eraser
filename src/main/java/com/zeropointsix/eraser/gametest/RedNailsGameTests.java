@@ -461,9 +461,12 @@ public final class RedNailsGameTests {
     public static void newly_summoned_guardian_uses_nondefault_regeneration_immediately(GameTestHelper h) {
         var f = new Fixture(h); var p = f.player(0, 0); var stack = f.wear(p);
         int previous = SummonCombatConfig.value(SummonCombatConfig.WATER_GHOST_REGENERATION);
-        try {
+        try (var ignored = GameTestConfigs.sandbox(SummonCombatConfig.SPEC)) {
             for (int amplifier : new int[]{0, 2}) {
                 SummonCombatConfig.WATER_GHOST_REGENERATION.set(amplifier);
+                SummonCombatConfig.SPEC.afterReload();
+                check(h, SummonCombatConfig.value(SummonCombatConfig.WATER_GHOST_REGENERATION) == amplifier,
+                        "Configured regeneration survives a cache reload: " + amplifier);
                 var ghost = f.summon(p, stack);
                 check(h, ghost.getEffect(MobEffects.REGENERATION).getAmplifier() == amplifier,
                         "Configured regeneration applies on the very first tick: " + amplifier);
@@ -471,7 +474,9 @@ public final class RedNailsGameTests {
                 check(h, ghost.getEffect(MobEffects.REGENERATION).getAmplifier() == amplifier,
                         "Body refresh preserves configured regeneration");
             }
-        } finally { SummonCombatConfig.WATER_GHOST_REGENERATION.set(previous); }
+        }
+        check(h, SummonCombatConfig.value(SummonCombatConfig.WATER_GHOST_REGENERATION) == previous,
+                "Live regeneration configuration is restored without writing the TOML");
         h.succeed();
     }
 
