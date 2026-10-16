@@ -5,6 +5,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.zeropointsix.eraser.ModMain;
 import com.zeropointsix.eraser.gravity.GravityEquipment;
 import com.zeropointsix.eraser.gravity.GravityNetwork;
+import com.zeropointsix.eraser.rednails.RedNailsItem;
 import com.zeropointsix.eraser.registry.ModEntities;
 import com.zeropointsix.eraser.registry.ModItems;
 import net.minecraft.client.KeyMapping;
@@ -37,6 +38,7 @@ public final class GravityClient {
         GravitySense.tick(mc);
         if (!pressed || mc.level == null || mc.player == null || !mc.player.isAlive()
                 || mc.player.isSpectator() || mc.screen != null || !mc.isWindowActive()
+                || !RedNailsItem.findWorn(mc.player).isEmpty()
                 || !GravityEquipment.isEquipped(mc.player)
                 || mc.player.getCooldowns().isOnCooldown(ModItems.GRAVITY_JADE_PENDANT.get())) return;
         GravityNetwork.CHANNEL.sendToServer(new GravityNetwork.Activate());

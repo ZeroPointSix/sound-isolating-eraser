@@ -23,7 +23,7 @@ assert not any("yourmodid" in key for lang in langs for key in lang), "placehold
 model = json.loads((ASSETS / "models/item/suxia_pocket_watch.json").read_text())
 assert model["overrides"][0]["predicate"] == {"sound_isolating_eraser:open": 1}, "open model predicate"
 tag = json.loads((RESOURCES / "data/sound_isolating_eraser/tags/items/precious_memory.json").read_text())
-assert tag["values"] == ["sound_isolating_eraser:suxia_pocket_watch"], "memory category"
+assert "sound_isolating_eraser:suxia_pocket_watch" in tag["values"], "memory category retains pocket watch"
 java = ROOT / "src/main/java/com/zeropointsix/eraser"
 assert (java / "client/SuxiaModel.java").read_text().count(".addBox(") == 31, "original 31 cuboids"
 for path in (java / "suxia").glob("*.java"):

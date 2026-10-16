@@ -126,7 +126,8 @@ minecraft {
                 workingDirectory project.file(providers.gradleProperty('shadowMeleeRunDir')
                         .getOrElse('run-shadow-melee'))
             }
-            property 'forge.enabledGameTestNamespaces', project.hasProperty('suxiaOnly') ? 'suxia_tests' :
+            property 'forge.enabledGameTestNamespaces', project.hasProperty('redNailsOnly') ? 'red_nails_tests,suxia_tests' :
+                    project.hasProperty('suxiaOnly') ? 'suxia_tests' :
                     project.hasProperty('flareRestartPhase') ? 'flare_restart_tests' :
                     project.hasProperty('flareAcceptanceOnly') ? 'flare_acceptance_tests' :
                     project.hasProperty('flarePermissionsOnly') ? 'flare_permission_tests' :
@@ -137,7 +138,7 @@ minecraft {
                     project.hasProperty('coreOnly') ? "${mod_id},yuji_tests,flare_edge_tests,flare_permission_tests,flare_acceptance_tests,qijie_tests" :
                     project.hasProperty('blinkOnly') ? 'wings_blink_tests' :
                     project.hasProperty('shadowMeleeOnly') ? 'shadow_melee_tests' :
-                    project.hasProperty('nightOnly') ? 'eternal_night_tests' : "${mod_id},eternal_night_tests,shadow_melee_tests,yuji_tests,flare_edge_tests,flare_permission_tests,flare_acceptance_tests,qijie_tests,suxia_tests"
+                    project.hasProperty('nightOnly') ? 'eternal_night_tests' : "${mod_id},eternal_night_tests,shadow_melee_tests,yuji_tests,flare_edge_tests,flare_permission_tests,flare_acceptance_tests,qijie_tests,suxia_tests,red_nails_tests"
         }
 
         data {
@@ -208,6 +209,9 @@ dependencies {
 // When "copyIdeResources" is enabled, this will also run before the game launches in IDE environments.
 // See https://docs.gradle.org/current/dsl/org.gradle.language.jvm.tasks.ProcessResources.html
 tasks.named('processResources', ProcessResources).configure {
+    from('src/main/resources/data/sound_isolating_eraser/structures/empty.nbt') {
+        into 'data/red_nails_tests/structures'
+    }
     from('src/main/resources/data/sound_isolating_eraser/structures') {
         include 'empty.nbt', 'shadow_arena.nbt'
         into 'data/suxia_tests/structures'
@@ -274,6 +278,7 @@ tasks.named('jar', Jar).configure {
     exclude 'data/qijie_performance/**'
     exclude 'data/qijie_tests/**'
     exclude 'data/suxia_tests/**'
+    exclude 'data/red_nails_tests/**'
 
     manifest {
         attributes([
@@ -399,6 +404,9 @@ if (project.hasProperty('neonE2E')) {
 if (project.hasProperty('suxiaE2E')) {
     apply from: 'gradle/suxia-e2e.gradle'
 }
+if (project.hasProperty('redNailsE2E')) {
+    apply from: 'gradle/red-nails-e2e.gradle'
+}
 if (project.hasProperty('yujiE2E')) {
     apply from: 'gradle/yuji-e2e.gradle'
 }
@@ -427,3 +435,8 @@ def verifySuxiaAssets = tasks.register('verifySuxiaAssets', Exec) {
     commandLine 'python3', 'tools/suxia/verify_assets.py'
 }
 tasks.named('check').configure { dependsOn verifySuxiaAssets }
+
+def verifyRedNailsAssets = tasks.register('verifyRedNailsAssets', Exec) {
+    commandLine 'python3', 'tools/red-nails/verify_assets.py'
+}
+tasks.named('check').configure { dependsOn verifyRedNailsAssets }

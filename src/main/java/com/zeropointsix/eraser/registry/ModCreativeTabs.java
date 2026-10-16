@@ -25,7 +25,7 @@ public final class ModCreativeTabs {
                     .displayItems((parameters, output) -> ForgeRegistries.ITEMS.getValues().stream()
                             .filter(item -> owns(ForgeRegistries.ITEMS.getKey(item)))
                             .sorted(Comparator.comparingInt(ModCreativeTabs::group)
-                                    .thenComparing(item -> ForgeRegistries.ITEMS.getKey(item).toString()))
+                                    .thenComparing(ModCreativeTabs::sortKey))
                             // Preserve default NBT, including the knife's built-in enchantments.
                             .forEach(item -> output.accept(item.getDefaultInstance())))
                     .build());
@@ -36,9 +36,15 @@ public final class ModCreativeTabs {
     }
 
     private static int group(Item item) {
-        if (item == ModItems.SUXIA_SPAWN_EGG.get()) return 0;
+        if (item == ModItems.SUXIA_SPAWN_EGG.get() || item == ModItems.WATER_GHOST_SPAWN_EGG.get()) return 0;
         if (item instanceof SpawnEggItem || item instanceof BrickrotSpawnEggItem) return 2;
         return item instanceof BlockItem ? 1 : 0;
+    }
+
+    private static String sortKey(Item item) {
+        if (item == ModItems.RED_NAILS.get()) return ModMain.MOD_ID + ":suxia_pocket_watch~1";
+        if (item == ModItems.WATER_GHOST_SPAWN_EGG.get()) return ModMain.MOD_ID + ":suxia_pocket_watch~2";
+        return ForgeRegistries.ITEMS.getKey(item).toString();
     }
 
     private ModCreativeTabs() { }

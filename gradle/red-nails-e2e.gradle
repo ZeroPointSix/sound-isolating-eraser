@@ -1,0 +1,17 @@
+// Opt-in fixture mod, never packaged with the player-facing mod.
+sourceSets {
+    redNailsTest {
+        compileClasspath += sourceSets.main.compileClasspath + sourceSets.main.output
+        runtimeClasspath += sourceSets.main.runtimeClasspath + sourceSets.main.output
+    }
+}
+minecraft.runs.matching { it.name == 'client' || it.name == 'server' }.configureEach {
+    mods { red_nails_qa { source sourceSets.redNailsTest } }
+}
+tasks.register('writeRedNailsTestClasspath') {
+    dependsOn 'classes', 'redNailsTestClasses', 'genVSCodeRuns'
+    inputs.property('runtimeClasspath', provider { sourceSets.redNailsTest.runtimeClasspath.asPath })
+    def target = layout.buildDirectory.file('red-nails-test-classpath.txt')
+    outputs.file(target)
+    doLast { target.get().asFile.text = sourceSets.redNailsTest.runtimeClasspath.asPath }
+}

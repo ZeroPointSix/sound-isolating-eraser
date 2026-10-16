@@ -1,0 +1,13 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="MIT"
+[[mods]]
+modId="red_nails_qa"
+version="1.0"
+displayName="Red Nails QA"
+[[dependencies.red_nails_qa]]
+modId="sound_isolating_eraser"
+mandatory=true
+versionRange="[0,)"
+ordering="AFTER"
+side="BOTH"

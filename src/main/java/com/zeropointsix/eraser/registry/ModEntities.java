@@ -24,6 +24,13 @@ public final class ModEntities {
 
     private ModEntities() { }
 
+    public static final RegistryObject<EntityType<com.zeropointsix.eraser.rednails.WaterGhostEntity>> WATER_GHOST =
+            ENTITIES.register("water_ghost", () -> EntityType.Builder.of(com.zeropointsix.eraser.rednails.WaterGhostEntity::new, MobCategory.MONSTER)
+                    .sized(1.2F, 2.4F).clientTrackingRange(10).build(ModMain.MOD_ID + ":water_ghost"));
+    public static final RegistryObject<EntityType<com.zeropointsix.eraser.rednails.WaterGhostSummonEntity>> WATER_GHOST_SUMMON =
+            ENTITIES.register("water_ghost_summon", () -> EntityType.Builder.of(com.zeropointsix.eraser.rednails.WaterGhostSummonEntity::new, MobCategory.MISC)
+                    .sized(1.2F, 2.4F).clientTrackingRange(10).build(ModMain.MOD_ID + ":water_ghost_summon"));
+
     public static final RegistryObject<EntityType<SuxiaEntity>> SUXIA =
             ENTITIES.register("suxia", () -> EntityType.Builder.of(SuxiaEntity::new, MobCategory.MONSTER)
                     .sized(0.6F, 2.9F).clientTrackingRange(10).build(ModMain.MOD_ID + ":suxia"));

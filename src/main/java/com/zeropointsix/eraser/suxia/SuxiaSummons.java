@@ -50,8 +50,7 @@ public final class SuxiaSummons extends SavedData {
             entries.put(watch, entry);
             setDirty();
         }
-        tag.putUUID("Owner", entry.owner);
-        if (!tag.contains("OwnerName")) tag.putString("OwnerName", owner.getName().getString());
+        com.zeropointsix.eraser.memory.PreciousMemories.bind(stack, owner, entry.owner);
         return entry;
     }
 
