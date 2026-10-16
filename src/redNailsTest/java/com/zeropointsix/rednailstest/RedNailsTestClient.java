@@ -82,8 +82,8 @@ public final class RedNailsTestClient {
             ticks++;
             mc.options.hideGui = phase.equals("guard") || phase.equals("water");
             if (phase.equals("input")) {
-                if (ticks == 1 || ticks == 25 || ticks == 65 || ticks == 105 || ticks == 145) RedNailsClient.KEY.setDown(true);
-                if (ticks == 10 || ticks == 55 || ticks == 95 || ticks == 135 || ticks == 175) RedNailsClient.KEY.setDown(false);
+                if (ticks == 1 || ticks == 40 || ticks == 100) RedNailsClient.KEY.setDown(true);
+                if (ticks == 10 || ticks == 80 || ticks == 160) RedNailsClient.KEY.setDown(false);
             }
             if (phase.equals("recall")) {
                 if (ticks == 1) {

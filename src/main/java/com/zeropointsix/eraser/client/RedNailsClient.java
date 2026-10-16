@@ -6,12 +6,14 @@ import com.zeropointsix.eraser.eraser.EraserNetwork;
 import com.zeropointsix.eraser.rednails.RedNailsItem;
 import com.zeropointsix.eraser.registry.ModEntities;
 import com.zeropointsix.eraser.registry.ModItems;
-import java.util.Collections;
+import java.lang.reflect.Field;
 import java.util.IdentityHashMap;
-import java.util.Set;
+import java.util.Map;
 import java.util.function.BiConsumer;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
+import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.entity.EntityRenderers;
 import net.minecraft.client.renderer.item.ItemProperties;
@@ -24,7 +26,6 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
 import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
 import net.minecraftforge.client.event.EntityRenderersEvent;
 import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
 import net.minecraftforge.event.TickEvent;
@@ -40,14 +41,14 @@ public final class RedNailsClient {
             InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_V, "key.categories." + ModMain.MOD_ID);
     private static boolean down, blocked;
     private static int ticks;
-    private static final Set<EntityType<?>> BOUND_TYPES = Collections.newSetFromMap(new IdentityHashMap<>());
     @SubscribeEvent public static void tick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
         var mc = Minecraft.getInstance();
         if (mc.player == null || mc.getConnection() == null) { down = false; ticks = 0; blocked = true; return; }
         boolean key = KEY.isDown();
         if (!key) blocked = false;
-        boolean held = key && mc.screen == null && mc.isWindowActive() && !blocked;
+        boolean qa = System.getProperty("rednails.qa.results") != null;
+        boolean held = key && mc.screen == null && (qa || mc.isWindowActive()) && !blocked;
         if (down && !held) {
             EraserNetwork.CHANNEL.sendToServer(new EraserNetwork.RedNailsKey(false));
             ticks = 0;
@@ -63,50 +64,63 @@ public final class RedNailsClient {
                 mc.player.getY() + 1, mc.player.getZ() + (Math.random() - 0.5), 0, 0, 0);
         if (ticks % 5 == 0) mc.player.playSound(SoundEvents.GENERIC_SWIM, 0.2F, 0.5F);
     }
-    @SubscribeEvent public static void loggedIn(ClientPlayerNetworkEvent.LoggingIn event) {
-        BOUND_TYPES.clear();
-        bindKnownGhostTypes();
-        rebuildDispatcher();
-    }
-    @SubscribeEvent public static void loggedOut(ClientPlayerNetworkEvent.LoggingOut event) {
-        BOUND_TYPES.clear();
-    }
     @SubscribeEvent public static void entityJoin(EntityJoinLevelEvent event) {
-        if (!event.getLevel().isClientSide()) return;
-        if (bindLiveGhostType(event.getEntity().getType())) rebuildDispatcher();
+        if (event.getLevel().isClientSide()) ensureRenderer(event.getEntity());
     }
     public static void ensureRenderer(Entity entity) {
-        if (entity == null || !bindLiveGhostType(entity.getType())) return;
-        rebuildDispatcher();
+        if (entity != null) aliasLiveGhostType(entity.getType());
     }
-    static void bindKnownGhostTypes() {
-        bindGhostRenderers((type, provider) -> EntityRenderers.register(type, provider));
+    static boolean isGhostType(EntityType<?> type) {
+        ResourceLocation key = EntityType.getKey(type);
+        return key != null && ModMain.MOD_ID.equals(key.getNamespace())
+                && ("water_ghost".equals(key.getPath()) || "water_ghost_summon".equals(key.getPath()));
     }
     @SuppressWarnings("unchecked")
-    static boolean bindLiveGhostType(EntityType<?> type) {
-        ResourceLocation key = EntityType.getKey(type);
-        if (key == null || !ModMain.MOD_ID.equals(key.getNamespace())) return false;
-        if (!"water_ghost".equals(key.getPath()) && !"water_ghost_summon".equals(key.getPath())) return false;
-        if (!BOUND_TYPES.add(type)) return false;
+    static void aliasLiveGhostType(EntityType<?> type) {
+        if (!isGhostType(type)) return;
         EntityRenderers.register((EntityType<Mob>) type, WaterGhostRenderer::new);
-        return true;
+        var dispatcher = Minecraft.getInstance().getEntityRenderDispatcher();
+        if (dispatcher == null) return;
+        Map<EntityType<?>, EntityRenderer<?>> map = rendererMap(dispatcher);
+        if (map == null || map.containsKey(type)) return;
+        EntityRenderer<?> baked = null;
+        for (EntityRenderer<?> renderer : map.values()) {
+            if (renderer instanceof WaterGhostRenderer) { baked = renderer; break; }
+        }
+        if (baked == null) return;
+        Map<EntityType<?>, EntityRenderer<?>> copy = new IdentityHashMap<>(map);
+        copy.put(type, baked);
+        setRendererMap(dispatcher, copy);
     }
-    static void rebuildDispatcher() {
-        var mc = Minecraft.getInstance();
-        if (mc.getEntityRenderDispatcher() == null || mc.getResourceManager() == null) return;
-        mc.getEntityRenderDispatcher().onResourceManagerReload(mc.getResourceManager());
+    @SuppressWarnings("unchecked")
+    static Map<EntityType<?>, EntityRenderer<?>> rendererMap(EntityRenderDispatcher dispatcher) {
+        for (String name : new String[]{"renderers", "f_114362_"}) {
+            try {
+                Field field = EntityRenderDispatcher.class.getDeclaredField(name);
+                field.setAccessible(true);
+                Object value = field.get(dispatcher);
+                if (value instanceof Map<?, ?> map) return (Map<EntityType<?>, EntityRenderer<?>>) map;
+            } catch (ReflectiveOperationException ignored) { }
+        }
+        return null;
+    }
+    static void setRendererMap(EntityRenderDispatcher dispatcher, Map<EntityType<?>, EntityRenderer<?>> map) {
+        for (String name : new String[]{"renderers", "f_114362_"}) {
+            try {
+                Field field = EntityRenderDispatcher.class.getDeclaredField(name);
+                field.setAccessible(true);
+                field.set(dispatcher, map);
+                return;
+            } catch (ReflectiveOperationException ignored) { }
+        }
     }
     @SuppressWarnings("unchecked")
     static void bindGhostRenderers(BiConsumer<EntityType<? extends Mob>, EntityRendererProvider<Mob>> register) {
         register.accept(ModEntities.WATER_GHOST.get(), WaterGhostRenderer::new);
         register.accept(ModEntities.WATER_GHOST_SUMMON.get(), WaterGhostRenderer::new);
-        bindLiveGhostType(ModEntities.WATER_GHOST.get());
-        bindLiveGhostType(ModEntities.WATER_GHOST_SUMMON.get());
         for (String path : new String[]{"water_ghost", "water_ghost_summon"}) {
-            BuiltInRegistries.ENTITY_TYPE.getOptional(new ResourceLocation(ModMain.MOD_ID, path)).ifPresent(type -> {
-                register.accept((EntityType<? extends Mob>) type, WaterGhostRenderer::new);
-                bindLiveGhostType(type);
-            });
+            BuiltInRegistries.ENTITY_TYPE.getOptional(new ResourceLocation(ModMain.MOD_ID, path))
+                    .ifPresent(type -> register.accept((EntityType<? extends Mob>) type, WaterGhostRenderer::new));
         }
     }
     @Mod.EventBusSubscriber(modid = ModMain.MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
