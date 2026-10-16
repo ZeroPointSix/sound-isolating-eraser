@@ -1,6 +1,7 @@
 package com.zeropointsix.eraser.gametest;
 
 import com.mojang.authlib.GameProfile;
+import com.zeropointsix.eraser.memory.SummonCombatConfig;
 import com.zeropointsix.eraser.rednails.*;
 import com.zeropointsix.eraser.registry.ModEntities;
 import com.zeropointsix.eraser.registry.ModItems;
@@ -378,6 +379,103 @@ public final class RedNailsGameTests {
                     "Real unequip recalls survivors without clearing the dead finger cooldown"); h.succeed();
         });
     }
+    @GameTest(template = "empty", batch = BATCH, timeoutTicks = 240)
+    public static void guardian_ai_attacks_idle_zombie_at_radius_edge_and_protects_friends(GameTestHelper h) {
+        var f = new Fixture(h);
+        h.startSequence().thenWaitUntil(() -> check(h, f.level.isPositionEntityTicking(f.center), "Arena is ticking"))
+                .thenIdle(10).thenExecute(() -> {
+            var p = f.player(0, 0); var stack = f.wear(p);
+            var zombie = f.add(EntityType.ZOMBIE.create(f.level), 14, 0);
+            zombie.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.IRON_HELMET));
+            var villager = f.add(EntityType.VILLAGER.create(f.level), 3, 2);
+            var pet = f.add(EntityType.WOLF.create(f.level), 4, -2);
+            pet.setTame(true); pet.setOwnerUUID(p.getUUID());
+            var golem = f.add(EntityType.IRON_GOLEM.create(f.level), 2, -3);
+            var creative = f.player(-3, 0); creative.setGameMode(GameType.CREATIVE);
+            var friends = List.of(p, villager, pet, golem, creative);
+            var health = friends.stream().map(net.minecraft.world.entity.LivingEntity::getHealth).toList();
+            var ghost = f.summon(p, stack); ghost.setNoAi(false); ghost.setHealth(30);
+            long start = f.level.getGameTime();
+            boolean[] hit = {false};
+            h.onEachTick(() -> {
+                if (zombie.getLastHurtByMob() == ghost && zombie.getHealth() < zombie.getMaxHealth()) hit[0] = true;
+                for (int i = 0; i < friends.size(); i++) {
+                    check(h, ghost.getTarget() != friends.get(i) && ghost.ghostBody().grab.held() != friends.get(i),
+                            "Do not target or grab protected entities");
+                    check(h, Math.abs(friends.get(i).getHealth() - health.get(i)) < .01, "No friendly damage during live combat");
+                }
+                if (f.level.getGameTime() - start >= 100) {
+                    check(h, hit[0], "Real AI must damage an idle zombie 14 blocks from its owner within 100 ticks");
+                    check(h, ghost.getHealth() > 30, "Guardian regenerates while fighting");
+                    h.succeed();
+                }
+            });
+        });
+    }
+
+    @GameTest(template = "empty", batch = BATCH, timeoutTicks = 160)
+    public static void guardian_ai_prioritizes_owner_and_interrupts_ambient_grab(GameTestHelper h) {
+        var f = new Fixture(h);
+        h.startSequence().thenWaitUntil(() -> check(h, f.level.isPositionEntityTicking(f.center), "Arena is ticking"))
+                .thenIdle(10).thenExecute(() -> {
+            var p = f.player(0, 0); var stack = f.wear(p); var ghost = f.summon(p, stack);
+            var ambient = f.add(EntityType.HUSK.create(f.level), 2, 0);
+            var commanded = f.add(EntityType.HUSK.create(f.level), 12, 3);
+            var attacker = f.add(EntityType.HUSK.create(f.level), 12, -3);
+            ghost.setPos(p.position()); ghost.setTarget(ambient); ghost.ghostBody().grab.start();
+            check(h, ghost.ghostBody().grab.held() == ambient, "Ambient grab starts");
+            ghost.setNoAi(false); p.setLastHurtMob(commanded);
+            h.runAfterDelay(10, () -> {
+                check(h, ghost.getTarget() == commanded && ghost.ghostBody().grab.held() != ambient,
+                        "Owner command preempts ambient grab through the registered goal");
+                p.setLastHurtByMob(attacker);
+            });
+            h.runAfterDelay(20, () -> {
+                check(h, ghost.getTarget() == attacker, "Owner defence has highest priority"); h.succeed();
+            });
+        });
+    }
+
+    @GameTest(template = "empty", batch = BATCH)
+    public static void guardian_config_applies_to_stats_grab_and_regeneration(GameTestHelper h) {
+        var f = new Fixture(h); var p = f.player(0, 0); var stack = f.wear(p); var ghost = f.summon(p, stack);
+        check(h, ghost.getAttributeValue(Attributes.ATTACK_DAMAGE) == SummonCombatConfig.value(SummonCombatConfig.WATER_GHOST_DAMAGE),
+                "Summon uses configured damage");
+        check(h, ghost.getAttributeValue(Attributes.MOVEMENT_SPEED) == SummonCombatConfig.value(SummonCombatConfig.WATER_GHOST_SPEED),
+                "Summon uses configured speed");
+        ghost.ghostBody().tick();
+        check(h, ghost.getEffect(MobEffects.REGENERATION).getAmplifier() == SummonCombatConfig.value(SummonCombatConfig.WATER_GHOST_REGENERATION),
+                "Summon uses configured regeneration");
+        var prey = f.add(EntityType.COW.create(f.level), 2, 0); ghost.setPos(p.position()); ghost.setTarget(prey);
+        var grab = ghost.ghostBody().grab; grab.start();
+        float before = prey.getHealth();
+        int interval = SummonCombatConfig.value(SummonCombatConfig.WATER_GHOST_GRAB_TICKS);
+        for (int i = 1; i < interval; i++) grab.tick();
+        check(h, prey.getHealth() == before, "No grab damage before configured interval");
+        grab.tick();
+        check(h, Math.abs(before - prey.getHealth() - SummonCombatConfig.value(SummonCombatConfig.WATER_GHOST_GRAB_DAMAGE)) < .01,
+                "Real grab damage uses configured amount and interval");
+        grab.stop(); h.succeed();
+    }
+
+    @GameTest(template = "empty", batch = BATCH)
+    public static void newly_summoned_guardian_uses_nondefault_regeneration_immediately(GameTestHelper h) {
+        var f = new Fixture(h); var p = f.player(0, 0); var stack = f.wear(p);
+        int previous = SummonCombatConfig.value(SummonCombatConfig.WATER_GHOST_REGENERATION);
+        try {
+            for (int amplifier : new int[]{0, 2}) {
+                SummonCombatConfig.WATER_GHOST_REGENERATION.set(amplifier);
+                var ghost = f.summon(p, stack);
+                check(h, ghost.getEffect(MobEffects.REGENERATION).getAmplifier() == amplifier,
+                        "Configured regeneration applies on the very first tick: " + amplifier);
+                ghost.ghostBody().tick();
+                check(h, ghost.getEffect(MobEffects.REGENERATION).getAmplifier() == amplifier,
+                        "Body refresh preserves configured regeneration");
+            }
+        } finally { SummonCombatConfig.WATER_GHOST_REGENERATION.set(previous); }
+        h.succeed();
+    }
+
     @GameTest(template = "empty", batch = BATCH) public static void grab_rechecks_pvp_and_target_policy(GameTestHelper h) {
         var f = new Fixture(h); var p = f.player(0, 0); var stack = f.wear(p); var g = f.summon(p, stack);
         var other = f.player(0, 1); g.setPos(p.position()); g.setTarget(other);
