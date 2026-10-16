@@ -1,0 +1,692 @@
+{
+  "schemaVersion": 1,
+  "runId": 38980531687,
+  "runUrl": "https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38980531687",
+  "artifactId": 12082326412,
+  "artifactUrl": "https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38980531687/artifacts/12082326412",
+  "archiveBytes": 60002237,
+  "archiveSha256": "3e011239ed3b3ec62203746a40deaff6ee0e68bd9b517b651d6ddcf36c6f6efb",
+  "documents": {
+    "comparison-summary.json": {
+      "windows": [
+        {
+          "label": "baseline-1",
+          "sourceSha": "bb325dc9ccf3d99565d8a1eedb7efee372fdcd45",
+          "modSha256": "15da3d9575e35d32b2c74489a7a83d0fc0e461a32a25b4e6d49d98388493a28d",
+          "dimensionCap": null,
+          "fixtureTreeSha256": "b74aeae075001e28b1e2a4fa00a44cbce3af5c5622b1031555bee2438d2ca45e",
+          "status": "sampled",
+          "fps": null,
+          "fpsReason": "software-rendered observer capped at20; no measured GPU FPS",
+          "durationSeconds": 300.105,
+          "ticks": 5999,
+          "msptLast5m": {
+            "mean": 13.846255212166668,
+            "max": 179.809612,
+            "min": 5.022227,
+            "median": 6.365792,
+            "percentile95": 64.62541
+          },
+          "tpsLast5m": 20.000008058269913,
+          "sparkUrl": "https://spark.lucko.me/rglU9rv97s",
+          "entityRows": 300,
+          "endPosition": [
+            0.5,
+            118,
+            0.5
+          ],
+          "counts": {
+            "overworld": {
+              "min": 165,
+              "max": 216
+            },
+            "parents": {
+              "min": 16,
+              "max": 16
+            },
+            "summons": {
+              "min": 64,
+              "max": 64
+            }
+          }
+        },
+        {
+          "label": "cap32",
+          "sourceSha": "8c49ff6a1dd98eb97c45e4222b7918f8b0191d69",
+          "modSha256": "93ee12af73ccda0a579237404cc809888d9d43a854b1e622005c1a8ed5a8eae1",
+          "dimensionCap": 32,
+          "fixtureTreeSha256": "b74aeae075001e28b1e2a4fa00a44cbce3af5c5622b1031555bee2438d2ca45e",
+          "status": "sampled",
+          "fps": null,
+          "fpsReason": "software-rendered observer capped at20; no measured GPU FPS",
+          "durationSeconds": 300.093,
+          "ticks": 6000,
+          "msptLast5m": {
+            "mean": 8.236955745166666,
+            "max": 81.827534,
+            "min": 3.0292,
+            "median": 4.218467,
+            "percentile95": 25.7196
+          },
+          "tpsLast5m": 20.000004132734187,
+          "sparkUrl": "https://spark.lucko.me/p4Sysfp2WD",
+          "entityRows": 300,
+          "endPosition": [
+            0.5,
+            118,
+            0.5
+          ],
+          "counts": {
+            "overworld": {
+              "min": 117,
+              "max": 166
+            },
+            "parents": {
+              "min": 16,
+              "max": 16
+            },
+            "summons": {
+              "min": 16,
+              "max": 16
+            }
+          }
+        },
+        {
+          "label": "default",
+          "sourceSha": "8c49ff6a1dd98eb97c45e4222b7918f8b0191d69",
+          "modSha256": "93ee12af73ccda0a579237404cc809888d9d43a854b1e622005c1a8ed5a8eae1",
+          "dimensionCap": 512,
+          "fixtureTreeSha256": "b74aeae075001e28b1e2a4fa00a44cbce3af5c5622b1031555bee2438d2ca45e",
+          "status": "sampled",
+          "fps": null,
+          "fpsReason": "software-rendered observer capped at20; no measured GPU FPS",
+          "durationSeconds": 300.087,
+          "ticks": 5999,
+          "msptLast5m": {
+            "mean": 13.208297203666667,
+            "max": 127.587539,
+            "min": 4.959846,
+            "median": 6.295681,
+            "percentile95": 57.194056
+          },
+          "tpsLast5m": 19.999999576600008,
+          "sparkUrl": "https://spark.lucko.me/H0VnE5jfJO",
+          "entityRows": 300,
+          "endPosition": [
+            0.5,
+            118,
+            0.5
+          ],
+          "counts": {
+            "overworld": {
+              "min": 164,
+              "max": 234
+            },
+            "parents": {
+              "min": 16,
+              "max": 16
+            },
+            "summons": {
+              "min": 64,
+              "max": 64
+            }
+          }
+        },
+        {
+          "label": "baseline-2",
+          "sourceSha": "bb325dc9ccf3d99565d8a1eedb7efee372fdcd45",
+          "modSha256": "15da3d9575e35d32b2c74489a7a83d0fc0e461a32a25b4e6d49d98388493a28d",
+          "dimensionCap": null,
+          "fixtureTreeSha256": "b74aeae075001e28b1e2a4fa00a44cbce3af5c5622b1031555bee2438d2ca45e",
+          "status": "sampled",
+          "fps": null,
+          "fpsReason": "software-rendered observer capped at20; no measured GPU FPS",
+          "durationSeconds": 300.112,
+          "ticks": 5999,
+          "msptLast5m": {
+            "mean": 12.420162714,
+            "max": 104.498961,
+            "min": 4.94104,
+            "median": 6.175642,
+            "percentile95": 49.954861
+          },
+          "tpsLast5m": 19.999996089934097,
+          "sparkUrl": "https://spark.lucko.me/fgw03jBDUN",
+          "entityRows": 300,
+          "endPosition": [
+            0.5,
+            118,
+            0.5
+          ],
+          "counts": {
+            "overworld": {
+              "min": 166,
+              "max": 216
+            },
+            "parents": {
+              "min": 16,
+              "max": 16
+            },
+            "summons": {
+              "min": 63,
+              "max": 64
+            }
+          }
+        }
+      ],
+      "allFourSampled": true
+    },
+    "fixture.json": {
+      "treeSha256": "b74aeae075001e28b1e2a4fa00a44cbce3af5c5622b1031555bee2438d2ca45e",
+      "archiveSha256": "c5cd32fc0d3d51d1dc8e1b2f57614fd31a04ea455c07185a5a67bc55de898e73",
+      "playerPosition": [
+        0.5,
+        118,
+        0.5
+      ],
+      "parents": 16,
+      "parentAiDuringPreparation": false,
+      "parentAiDuringWarmupAndSampling": true,
+      "barrierCage": "1x2 inner space at y118; prevents collision displacement"
+    },
+    "environment.json": {
+      "sourceSha": "bb325dc9ccf3d99565d8a1eedb7efee372fdcd45",
+      "harnessSha": "41281d44ece41a70d835ba081c6fcba8139e2b50",
+      "modVersion": "0.14.2",
+      "forge": "1.20.1-47.2.0",
+      "spark": "1.10.53-forge",
+      "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39",
+      "cpuCount": 4,
+      "hardware": {
+        "lscpu": [
+          {
+            "field": "CPU(s):",
+            "data": 4
+          },
+          {
+            "field": "Model name:",
+            "data": "AMD EPYC 7763 64-Core Processor"
+          },
+          {
+            "field": "Thread(s) per core:",
+            "data": 2
+          },
+          {
+            "field": "Core(s) per socket:",
+            "data": 2
+          },
+          {
+            "field": "Socket(s):",
+            "data": 1
+          }
+        ]
+      },
+      "startUtc": "2026-10-16T23:18:31.345117+00:00",
+      "java": "openjdk version \"17.0.20.1\" 2026-08-18\nOpenJDK Runtime Environment Temurin-17.0.20.1+1 (build 17.0.20.1+1)\nOpenJDK 64-Bit Server VM Temurin-17.0.20.1+1 (build 17.0.20.1+1, mixed mode, sharing)\n",
+      "modSha256": "15da3d9575e35d32b2c74489a7a83d0fc0e461a32a25b4e6d49d98388493a28d",
+      "windowSeconds": 300,
+      "warmupSeconds": 120,
+      "fps": null,
+      "fpsReason": "One software-rendered observer, no measured GPU FPS",
+      "scope": "Paired C production-jar policy/overhead comparison, not GPU FPS acceptance",
+      "candidateSha": "8c49ff6a1dd98eb97c45e4222b7918f8b0191d69",
+      "cpuTopology": "# The following is the parsable format, which can be fed to other\n# programs. Each different item in every column has an unique ID\n# starting usually from zero.\n# CPU,Core,Socket\n0,0,0\n1,0,0\n2,1,0\n3,1,0\n",
+      "order": [
+        "baseline-1",
+        "cap32",
+        "default",
+        "baseline-2"
+      ],
+      "serverCpus": "0,1",
+      "clientCpus": "2,3",
+      "clientSourceSha": "bb325dc9ccf3d99565d8a1eedb7efee372fdcd45",
+      "note": "Exact world bytes restored before each window; live entity RNG is not replay-locked"
+    }
+  },
+  "csvChecks": [
+    {
+      "file": "baseline-1-entities.csv",
+      "rows": 300,
+      "startUtc": "2026-10-16T23:23:51.209931+00:00",
+      "endUtc": "2026-10-16T23:28:50.108996+00:00",
+      "positions": [
+        [
+          0.5,
+          118,
+          0.5
+        ]
+      ],
+      "summary": {
+        "elapsedSeconds": {
+          "min": 0,
+          "max": 299,
+          "mean": 149.50002666666666
+        },
+        "load1": {
+          "min": 1.14013671875,
+          "max": 2.55712890625,
+          "mean": 1.6346614583333334
+        },
+        "overworld": {
+          "min": 165,
+          "max": 216,
+          "mean": 191.50333333333333
+        },
+        "parents": {
+          "min": 16,
+          "max": 16,
+          "mean": 16
+        },
+        "summons": {
+          "min": 64,
+          "max": 64,
+          "mean": 64
+        }
+      },
+      "maxParentsPlusSummons": 80
+    },
+    {
+      "file": "baseline-2-entities.csv",
+      "rows": 300,
+      "startUtc": "2026-10-16T23:49:13.622171+00:00",
+      "endUtc": "2026-10-16T23:54:12.521834+00:00",
+      "positions": [
+        [
+          0.5,
+          118,
+          0.5
+        ]
+      ],
+      "summary": {
+        "elapsedSeconds": {
+          "min": 0,
+          "max": 299,
+          "mean": 149.50000333333332
+        },
+        "load1": {
+          "min": 1.28369140625,
+          "max": 2.595703125,
+          "mean": 1.6982763671875
+        },
+        "overworld": {
+          "min": 166,
+          "max": 216,
+          "mean": 193.61
+        },
+        "parents": {
+          "min": 16,
+          "max": 16,
+          "mean": 16
+        },
+        "summons": {
+          "min": 63,
+          "max": 64,
+          "mean": 63.99333333333333
+        }
+      },
+      "maxParentsPlusSummons": 80
+    },
+    {
+      "file": "cap32-entities.csv",
+      "rows": 300,
+      "startUtc": "2026-10-16T23:32:18.098472+00:00",
+      "endUtc": "2026-10-16T23:37:16.997993+00:00",
+      "positions": [
+        [
+          0.5,
+          118,
+          0.5
+        ]
+      ],
+      "summary": {
+        "elapsedSeconds": {
+          "min": 0,
+          "max": 299,
+          "mean": 149.5
+        },
+        "load1": {
+          "min": 1.17626953125,
+          "max": 2.88232421875,
+          "mean": 1.7156575520833333
+        },
+        "overworld": {
+          "min": 117,
+          "max": 166,
+          "mean": 143.98333333333332
+        },
+        "parents": {
+          "min": 16,
+          "max": 16,
+          "mean": 16
+        },
+        "summons": {
+          "min": 16,
+          "max": 16,
+          "mean": 16
+        }
+      },
+      "maxParentsPlusSummons": 32
+    },
+    {
+      "file": "default-entities.csv",
+      "rows": 300,
+      "startUtc": "2026-10-16T23:40:45.922279+00:00",
+      "endUtc": "2026-10-16T23:45:44.821959+00:00",
+      "positions": [
+        [
+          0.5,
+          118,
+          0.5
+        ]
+      ],
+      "summary": {
+        "elapsedSeconds": {
+          "min": 0,
+          "max": 299,
+          "mean": 149.5
+        },
+        "load1": {
+          "min": 1.42333984375,
+          "max": 3.01708984375,
+          "mean": 1.7510286458333333
+        },
+        "overworld": {
+          "min": 164,
+          "max": 234,
+          "mean": 187.63333333333333
+        },
+        "parents": {
+          "min": 16,
+          "max": 16,
+          "mean": 16
+        },
+        "summons": {
+          "min": 64,
+          "max": 64,
+          "mean": 64
+        }
+      },
+      "maxParentsPlusSummons": 80
+    }
+  ],
+  "lifecycles": [
+    {
+      "utc": "2026-10-16T23:19:54.404638+00:00",
+      "pid": 4224,
+      "alive": true,
+      "cpuAffinity": "0,1",
+      "ready": "[23:19:54] [Server thread/INFO] [minecraft/DedicatedServer]: Done (59.374s)! For help, type \"help\""
+    },
+    {
+      "label": "C-fixed-prepare",
+      "utc": "2026-10-16T23:20:33.931724+00:00",
+      "pid": 4224,
+      "exitCode": 0,
+      "graceful": true,
+      "aliveAfterStop": false
+    },
+    {
+      "utc": "2026-10-16T23:21:14.682393+00:00",
+      "pid": 4391,
+      "alive": true,
+      "cpuAffinity": "0,1",
+      "ready": "[23:21:14] [Server thread/INFO] [minecraft/DedicatedServer]: Done (16.373s)! For help, type \"help\""
+    },
+    {
+      "label": "baseline-1",
+      "utc": "2026-10-16T23:29:00.924288+00:00",
+      "pid": 4391,
+      "exitCode": 0,
+      "graceful": true,
+      "aliveAfterStop": false
+    },
+    {
+      "utc": "2026-10-16T23:29:41.580142+00:00",
+      "pid": 4701,
+      "alive": true,
+      "cpuAffinity": "0,1",
+      "ready": "[23:29:41] [Server thread/INFO] [minecraft/DedicatedServer]: Done (15.106s)! For help, type \"help\""
+    },
+    {
+      "label": "cap32",
+      "utc": "2026-10-16T23:37:27.743576+00:00",
+      "pid": 4701,
+      "exitCode": 0,
+      "graceful": true,
+      "aliveAfterStop": false
+    },
+    {
+      "utc": "2026-10-16T23:38:07.898759+00:00",
+      "pid": 4958,
+      "alive": true,
+      "cpuAffinity": "0,1",
+      "ready": "[23:38:07] [Server thread/INFO] [minecraft/DedicatedServer]: Done (15.540s)! For help, type \"help\""
+    },
+    {
+      "label": "default",
+      "utc": "2026-10-16T23:45:56.262591+00:00",
+      "pid": 4958,
+      "exitCode": 0,
+      "graceful": true,
+      "aliveAfterStop": false
+    },
+    {
+      "utc": "2026-10-16T23:46:36.518727+00:00",
+      "pid": 5267,
+      "alive": true,
+      "cpuAffinity": "0,1",
+      "ready": "[23:46:36] [Server thread/INFO] [minecraft/DedicatedServer]: Done (16.186s)! For help, type \"help\""
+    },
+    {
+      "label": "baseline-2",
+      "utc": "2026-10-16T23:54:24.329786+00:00",
+      "pid": 5267,
+      "exitCode": 0,
+      "graceful": true,
+      "aliveAfterStop": false
+    }
+  ],
+  "files": [
+    {
+      "file": "baseline-1-spark-metadata.json",
+      "bytes": 15522,
+      "sha256": "2926328f6e78e7f8262c650757b9b77dba9440ac3457aa655b86f7e7f1dad817"
+    },
+    {
+      "file": "baseline-1.sparkprofile",
+      "bytes": 1878447,
+      "sha256": "da0ef32645abd4617a496ec43993188cc3ff67d5a9315e4499ed1f9ac507a7b6"
+    },
+    {
+      "file": "baseline-2-spark-metadata.json",
+      "bytes": 15800,
+      "sha256": "6ea3f972799d9d3e181d76e24e9173adbabaa42a745aa0de13d842edd294643c"
+    },
+    {
+      "file": "baseline-2.sparkprofile",
+      "bytes": 1759275,
+      "sha256": "e27fe7bbfb0850beb5f6fb473dbd97337162d3d653311c52bcf561551d682453"
+    },
+    {
+      "file": "cap32-spark-metadata.json",
+      "bytes": 15427,
+      "sha256": "a741e86c4bc53ebe3447d4f1fce1fe89f7e4264f2818f72db577bdf7cb747d6c"
+    },
+    {
+      "file": "cap32.sparkprofile",
+      "bytes": 1695262,
+      "sha256": "1946d3052cee43089ea5dc2b35bd03a0ea0dae7383c7043c0e0ed973257cf3aa"
+    },
+    {
+      "file": "client/screenshots/2026-10-16_23.23.47.png",
+      "bytes": 549729,
+      "sha256": "13f729e2b793592db47953e2aacc65e9aaa4664842c48e4ef94d8c4e0088ff62"
+    },
+    {
+      "file": "client/screenshots/2026-10-16_23.32.13.png",
+      "bytes": 549728,
+      "sha256": "be7fbaeb0e85fb203d54192c39d23d6c3403ab29446998dacfa9cd2a342c186b"
+    },
+    {
+      "file": "client/screenshots/2026-10-16_23.40.41.png",
+      "bytes": 549843,
+      "sha256": "14f58ffa7956b50874e4df658fffb457db071a0a3f2f4e2a03b2dbbf7e02af2a"
+    },
+    {
+      "file": "client/screenshots/2026-10-16_23.49.09.png",
+      "bytes": 550713,
+      "sha256": "d45187ff12ab2609da79dc0d03a8d8297242cdd5380d4b9517bc1fcc544cd559"
+    },
+    {
+      "file": "comparison-summary.json",
+      "bytes": 4495,
+      "sha256": "cb76be5085b095ab565fa8fe65fa9dcef4c6f7333d545cb4b1e6870695c21999"
+    },
+    {
+      "file": "default-spark-metadata.json",
+      "bytes": 15544,
+      "sha256": "8a15b535e20a2bec6fbfb0b376a1ae921b696837253f7828744fc4ebcfbad423"
+    },
+    {
+      "file": "default.sparkprofile",
+      "bytes": 1737219,
+      "sha256": "f521841eed31c8c2b79a4aacd1c6dd2d1d31ec13a5cfed17b42849727fadd558"
+    },
+    {
+      "file": "fixture.json",
+      "bytes": 404,
+      "sha256": "3cfb247517d6de49813e64b4329983804f560bc180237df7b2dcf82366dd2275"
+    },
+    {
+      "file": "fixtures/C-fixed-before.tar.gz",
+      "bytes": 5544902,
+      "sha256": "c5cd32fc0d3d51d1dc8e1b2f57614fd31a04ea455c07185a5a67bc55de898e73"
+    },
+    {
+      "file": "fixtures/baseline-1-after.tar.gz",
+      "bytes": 6990431,
+      "sha256": "a798828d052345f39584c776190ab92b639b7f108473cffb817ee6aa1f0a6a01"
+    },
+    {
+      "file": "fixtures/baseline-1-before.tar.gz",
+      "bytes": 5545016,
+      "sha256": "1e594cd7de14b8df6a0fa30dc989d32cab16690c946bd1061f44a7f29ae2eaa5"
+    },
+    {
+      "file": "fixtures/baseline-2-after.tar.gz",
+      "bytes": 6956515,
+      "sha256": "a054dbc491c2e352d06565331c3a2cf918667cffbd68d2cf671f2a64d3018ac8"
+    },
+    {
+      "file": "fixtures/baseline-2-before.tar.gz",
+      "bytes": 5545020,
+      "sha256": "70638a9336be7607b53744ed648de738b74daa8d3aafbb7d3ddfd9005c59a247"
+    },
+    {
+      "file": "fixtures/cap32-after.tar.gz",
+      "bytes": 7070665,
+      "sha256": "69e056683dc12b35b8e471bc0ab18cede696f4f0539bd0e9b339bcd3e5a282ec"
+    },
+    {
+      "file": "fixtures/cap32-before.tar.gz",
+      "bytes": 5545029,
+      "sha256": "89e7ccdc67b77cf7efef0f6aaa6f84c30398930aab6c161face54bb75c6c662c"
+    },
+    {
+      "file": "fixtures/default-after.tar.gz",
+      "bytes": 7010556,
+      "sha256": "b60b63ecd44e2048c92728b932e5e0beb6acaa596d4fd42b174acc1c4041ea5a"
+    },
+    {
+      "file": "fixtures/default-before.tar.gz",
+      "bytes": 5545019,
+      "sha256": "8c0fc6a159dc0b6ea32356620448b2e7b77230d3c2e302195535accc92718ca9"
+    }
+  ],
+  "logSummary": [
+    {
+      "file": "C-fixed-prepare-server-console.log",
+      "lines": [
+        "[23:19:54] [Server thread/INFO] [minecraft/DedicatedServer]: Done (59.374s)! For help, type \"help\"",
+        "[23:20:31] [Server thread/INFO] [minecraft/MinecraftServer]: Stopping server"
+      ]
+    },
+    {
+      "file": "base-build.log",
+      "lines": [
+        "MIXIN_TARGETS checked=14 failures=0",
+        "BUILD SUCCESSFUL in 28s"
+      ]
+    },
+    {
+      "file": "baseline-1-server-console.log",
+      "lines": [
+        "[23:21:14] [Server thread/INFO] [minecraft/DedicatedServer]: Done (16.373s)! For help, type \"help\"",
+        "[23:28:52] [Thread-11/INFO] [minecraft/MinecraftServer]: https://spark.lucko.me/rglU9rv97s",
+        "[23:28:59] [Server thread/INFO] [minecraft/MinecraftServer]: Stopping server"
+      ]
+    },
+    {
+      "file": "baseline-2-server-console.log",
+      "lines": [
+        "[23:46:36] [Server thread/INFO] [minecraft/DedicatedServer]: Done (16.186s)! For help, type \"help\"",
+        "[23:54:15] [Thread-13/INFO] [minecraft/MinecraftServer]: https://spark.lucko.me/fgw03jBDUN",
+        "[23:54:22] [Server thread/INFO] [minecraft/MinecraftServer]: Stopping server"
+      ]
+    },
+    {
+      "file": "candidate-build.log",
+      "lines": [
+        "MIXIN_TARGETS checked=14 failures=0",
+        "BUILD SUCCESSFUL in 27s"
+      ]
+    },
+    {
+      "file": "candidate-mixin.log",
+      "lines": [
+        "MIXIN_TARGETS checked=14 failures=0"
+      ]
+    },
+    {
+      "file": "cap32-server-console.log",
+      "lines": [
+        "[23:29:41] [Server thread/INFO] [minecraft/DedicatedServer]: Done (15.106s)! For help, type \"help\"",
+        "[23:37:20] [Thread-13/INFO] [minecraft/MinecraftServer]: https://spark.lucko.me/p4Sysfp2WD",
+        "[23:37:26] [Server thread/INFO] [minecraft/MinecraftServer]: Stopping server"
+      ]
+    },
+    {
+      "file": "default-server-console.log",
+      "lines": [
+        "[23:38:07] [Server thread/INFO] [minecraft/DedicatedServer]: Done (15.540s)! For help, type \"help\"",
+        "[23:45:47] [Thread-12/INFO] [minecraft/MinecraftServer]: https://spark.lucko.me/H0VnE5jfJO",
+        "[23:45:54] [Server thread/INFO] [minecraft/MinecraftServer]: Stopping server"
+      ]
+    }
+  ],
+  "derived": {
+    "formula": "100 * (1 - cap32 / corresponding_baseline)",
+    "comparisons": [
+      {
+        "baseline": "baseline-1",
+        "meanReductionPercent": 40.511310683275035,
+        "p95ReductionPercent": 60.20203198710847,
+        "defaultMeanChangePercent": -4.607440775318283
+      },
+      {
+        "baseline": "baseline-2",
+        "meanReductionPercent": 33.680774279374184,
+        "p95ReductionPercent": 48.51431975759076,
+        "defaultMeanChangePercent": 6.345605189038972
+      }
+    ]
+  },
+  "limitations": [
+    "One window per policy, two baseline windows; no statistical significance claim.",
+    "Default policy mean lies between baseline repeats; no proven default speedup or zero overhead.",
+    "1200 sampled player positions are fixed; live entity random choices are not replay-locked.",
+    "MSPT is spark last5m rolling metadata, not a raw per-tick percentile recomputation.",
+    "FPS was not measured; software rendering maxFps=20 is not a result.",
+    "A/B1/B2 post-change windows, multiplayer/late-wave balance and GPU frame-time validation are not included."
+  ]
+}

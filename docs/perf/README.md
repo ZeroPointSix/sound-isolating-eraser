@@ -1,6 +1,6 @@
-# T2 PR1：性能排查基线与后续关口
+# T2：性能排查证据与分 PR 关口
 
-> 当前交付包含源码证据、上游对照、采样手册及四个真实 300 秒服务端 spark 窗口，不是性能改善报告。严格站位重复对照、真实客户端 FPS 与优化后数据仍未完成。
+> PR1 保留源码证据、上游对照、采样手册及四个真实 300 秒服务端 spark 窗口。独立 PR2 的实现、测试与限制见[刷怪准入说明](pr2-spawn-caps.md)。PR1 基线与 PR2 结果分开记录，不把基线数字冒充优化收益；真实客户端 FPS 仍未完成。
 
 - 任务：[ZER-1542](https://linear.app/zerodotsix/issue/ZER-1542)。
 - 审计基线：`e1703317583858b73fb1cd29c3db3f0a177c068b`，原 `mod_version=0.14.1`。
@@ -17,11 +17,15 @@
 | [spark-runbook.md](spark-runbook.md) | 标准启动、三类场景的四个正式窗口、300 秒采样、数据口径、环境证据与复测步骤 |
 | [四窗口诊断基线](evidence/2026-10-16-four-window-baseline.md) | A/B1/B2/C viewer、MSPT/实体数、场景与站位限制、固定世界快照、恢复命令及逐项 CI |
 | [首轮生产专服与空载基线](evidence/2026-10-16-production-idle-baseline.md) | 固定 bb325dc 构建、生产 Forge 启动/存活/停服、真实 300 秒 spark、MSPT 与计数纠错 |
-| [pr2-spawn-cap-plan.md](pr2-spawn-cap-plan.md) | 未开工的 PR2 文件/API/cap 算法/config/生命周期与回归清单；有限默认值待实测 |
+| [pr2-spawn-caps.md](pr2-spawn-caps.md) | 独立 PR53 的共享配额、按区块缩放、SERVER config、默认策略、14项新测试及已知边界 |
+| [PR2固定站位对照](evidence/2026-10-16-spawn-cap-comparison.md) | 同机原版/cap32/默认/原版四个300秒窗口；cap32策略收益与默认配置未证实提速分开报告 |
+| [pr2-spawn-cap-plan.md](pr2-spawn-cap-plan.md) | PR1 阶段历史候选方案；不代表 PR2 当前实现状态或默认配置 |
 | [缓存与离线启动复核](evidence/2026-10-16-codexweb-cache-check.md) | 19:52 UTC 离线 runServer 的插件缺失历史证据；该次未启动/采样，不代表后续 CI 替代路线仍失败 |
 | [网络分层诊断与 Gradle 恢复](evidence/2026-10-16-network-diagnosis.md) | 19:37 后新增的 DNS/TCP/TLS 证据、官方 Gradle 替代入口、插件解析失败与现有环境负载 |
 
-## 实测状态
+## PR1 基线状态
+
+本表仅保留PR1当时的四场景记录；下表“优化后未实施”指该次运行，不能据此推断PR2尚未开工。PR2另建严格站位C场景：[实测报告](evidence/2026-10-16-spawn-cap-comparison.md)中cap32平均MSPT为8.237ms，原版重复12.420–13.846ms；默认13.208ms仍落在基线波动范围。两组fixture/机器不同，不直接相减。A/B1/B2优化后对照和FPS仍未补齐。
 
 | 场景 | 基线 spark | 基线 MSPT / 实体数 | 基线客户端 FPS | 优化后 |
 | --- | --- | --- | --- | --- |
@@ -40,7 +44,9 @@
 
 不能据此认定哪个候选占用最多 CPU、造成多少 GC 或能降低多少 MSPT。也不能把以下原有优化记到本轮：城市每 100 tick 刷怪、雨寂预算轮转及每 20 tick 维护、避光搜索分片/缓存、霓虹寻光 200 tick 间隔、绮语局部召唤上限。
 
-## 验证记录
+## PR1 验证记录
+
+PR2 开工前回源核验 `9955ecd3b96bdfa9a58f8586a18851319fdc8c24` 的八项 Actions 均成功；Gravity 原始日志明确记录默认434项必需 GameTest 全通过及 Mixin14/0。以下更早失败仍作为历史保留，不覆盖该准确提交的成功结果，也不自动继承到 PR2。PR2 的失败、修正及准确 HEAD 门禁单独见[实施说明](pr2-spawn-caps.md#验证门禁)和[PR53](https://github.com/ZeroPointSix/sound-isolating-eraser/pull/53)。
 
 21:43 UTC 固定记录：准确源码 `bb325dc` 在独立 GitHub runner 正常构建，四个生产专服 spark 窗口完成、全部正常停服；无需修改 foojay、项目依赖或网络权限。验证脚本仅在独立分支，未修改本 PR 或既有 CI 门禁。`bb7d241` 已核实默认完整 GameTest 434/434、Mixin14/0，但八项 CI 为 7 success / 1 failure：Gravity 真实双客户端入水断言两次均 `water=false`。完整证据和逐项链接见[四窗口记录](evidence/2026-10-16-four-window-baseline.md#pr-提交级验证)。这些结果绑定指定 SHA，不自动继承到下一文档提交；当前 HEAD 状态以原 PR 的逐项检查记录为准。
 
@@ -54,7 +60,7 @@ exit_code=0
 
 这是 **基线** 结果，不能冒充 PR HEAD 的验证。本轮另外在新建隔离沙箱对 PR 提交 `509d3e5`、`fef5dd4` 分别验证 Mixin `14/0` 和差异空白检查。Java 17 及官方 JDK 归档 SHA-256 已核验；`official 1.20.1` 是已核对的 mappings 配置，不是已下载并校验 mappings 文件的结论。完整构建卡在 Gradle 下载，Java 与 curl 均复现连接重置；2026-10-16 16:39 UTC 的 curl 复测中 Gradle、Forge、Cloudsmith 三端点仍失败，本地专服与 GameTest 尚未启动。详见 [原始证据](evidence/2026-10-16-isolated-validation.log)。
 
-当前 PR 的全量 GameTest、构建及 CI 结果应以 [PR #43](https://github.com/ZeroPointSix/sound-isolating-eraser/pull/43) 当前 HEAD 检查和 [采样手册的验证记录](spark-runbook.md#验证记录) 为准。未运行、失败或排队必须单独写明；已有 CI 绿色结果不能追认尚未采集的 spark 数据。
+PR1 的全量 GameTest、构建及 CI 结果应以 [PR #43](https://github.com/ZeroPointSix/sound-isolating-eraser/pull/43) 当前 HEAD 检查和 [采样手册的验证记录](spark-runbook.md#验证记录) 为准。未运行、失败或排队必须单独写明；已有 CI 绿色结果不能追认尚未采集的 spark 数据。PR2结果单独见PR53，不混用提交身份。
 
 19:42 UTC 历史记录：当时已从官方 GitHub 发行资产恢复并校验 Gradle 8.1.1 / Java 17，实际构建推进到 `settings.gradle:12` 的 foojay 插件解析后退出 1；该次本地专服和采样未开始。主力开发机依赖访问恢复，但负载不符合可靠基线条件。详见[当时诊断](evidence/2026-10-16-network-diagnosis.md)，其中明确区分已证实的握手重置与尚未核实的组织级策略假设；不覆盖后续四窗口采样成功的事实。
 
@@ -62,7 +68,7 @@ exit_code=0
 
 | PR | 允许改动 | 开始条件与回归重点 |
 | --- | --- | --- |
-| 1，本文档 | `docs/perf/` 和版本号 | 审计证据、来源、复现命令可核查；数据缺失明确标注；不含运行时优化 |
+| 1，基线 PR43 | `docs/perf/` 和版本号 | 审计证据、来源、复现命令可核查；数据缺失明确标注；不含运行时优化 |
 | 2，刷怪 cap/config | 全局/区块预算与配置 | 先有有效基线；明确全局是跨维度还是单维度、计入哪些自定义实体、已存在实体处理方式；验证重叠玩家、同 tick 连续生成、失败回滚、跨区块/维度和重启 |
 | 3，tick 扫描缓存 | 经采样证实的高频读取 | 使用 PR2 的已验收版本作为对照；验证目标及时失效、移动/传送/卸载、缓存有界、同 tick 计数一致性；保留原有战斗和寻路行为 |
 | 4，客户端渲染 | 远距剔除、分配削减 | 真实客户端 CPU/分配与帧时证据；验证距离边界、巨型实体包围盒、轮廓、发光/粒子/名字、相机内外切换；不以剔除替代服务器 tick |

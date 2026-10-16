@@ -47,13 +47,21 @@ minimumScaledCap = 128
 
 ## 验证门禁
 
-新增 `SpawnCapGameTests`，独立 `spawn_caps` batch，使用既有 `GameTestConfigs.sandbox` 隔离并同步恢复配置，默认完整 GameTest 集包含该类。覆盖公式、cap-1/cap/cap+1、联合预留、失败/异常/重复关闭、实际入世/重复 commit、取消 join、移除与移动、负区块、零值/禁用/再启用、剧情例外/手动生成、维度隔离、真实 NBT 保存重载、多个召唤者共享最后一格、雨寂四队列轮转保余额、同 tick 只建一次快照。NBT 重载测试不冒充真实服务端进程重启测试。
+新增 `SpawnCapGameTests` 的 14 项测试，独立 `spawn_caps` batch，使用既有 `GameTestConfigs.sandbox` 隔离并同步恢复配置，默认完整 GameTest 集包含该类。覆盖公式、cap-1/cap/cap+1、联合预留、失败/异常/重复关闭、实际入世/重复 commit、取消 join、移除与移动、负区块、零值/禁用/再启用、剧情例外/手动生成、维度隔离、真实 NBT 保存重载、多个召唤者共享最后一格、雨寂四队列轮转保余额、同 tick 只建一次快照。另以真实 shadow/neon 入世验证与 Yuji 共用额度，并取消真实绮语子实体入世，验证成功数为零、移除取消监听后恢复。NBT 重载测试不冒充真实服务端进程重启测试。
 
 ```sh
 bash ./gradlew --no-daemon build runGameTestServer
 python3 tools/verify_mixin_targets.py
 ```
 
-提交时状态：新代码尚待远端编译和完整门禁，不继承 PR1 的 434/434 或 14/0。独立 PR 的 Actions、实际 GameTest 数和 Mixin 输出按准确 HEAD 附在 PR 验证记录；分支门禁未自动触发时，对同一 HEAD 手动执行原 workflow，不修改或放宽门禁。
+首个实现提交 `8c49ff6a1dd98eb97c45e4222b7918f8b0191d69` 的 [Neon 原始门禁](https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38980040775)已实际记录 `MIXIN_TARGETS checked=14 failures=0`、默认 `446 GAME TESTS COMPLETE / All 446 required tests passed`；[Brickrot](https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38980113511)独立默认446项也通过。
 
-性能验收尚未完成：必须在同一隔离 runner、固定世界副本、玩家轨迹、配置和采样时长下比较原 jar 与 PR2 jar，区分限额改变实体数量的策略收益和相同实体数下的计数成本。现有 C 基线碰撞推位且无完整轨迹，不能直接与本轮新 runner 数字相减宣称优化。FPS 及 sparkc 继续单列，软件渲染限帧值不当作实测 FPS。
+`0a66b3b99c768c5b71350ab57dfeec4b892a9c83` 增加两项测试后，不是全绿：[Brickrot](https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38981248533) 与 [Pill](https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38981271776) 的448项完整执行各有一个失败，均为移动测试的 `moving charges the new chunk`；[Eternal Night](https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38981236492) 则是既有 `sneaking_and_wool_block_real_vibrations` 的 `wool occludes live step` 失败。两类失败分开保留，不能归因成同一个错误，也不能把取消的 workflow 算通过。
+
+`6e87df47ebaab4181de80e169fe67b36bdd6bbb1` 只修正移动测试：普通 `getChunk` 的方块加载不等于目标区块已经跟踪/tick 实体；现在临时保留目标区块，等待 `isPositionEntityTicking`，再同步进行完整计数断言，并恢复原强制加载状态。没有删去原断言、没有修改羊毛测试或运行时代码。该提交与 `8c49ff6` 的差异仅为 `SpawnCapGameTests.java`。准确 HEAD 的逐项复测状态附在 [PR53](https://github.com/ZeroPointSix/sound-isolating-eraser/pull/53)，不继承旧提交的446项结果。叠加分支未匹配自动触发条件时，对同一 HEAD 手动执行原 workflow，不修改或放宽门禁。
+
+`6e87df4` 的 [Neon原始日志](https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38982341435)已记录23:37:25 UTC Mixin14/0、23:42:43默认448/448必需GameTest通过、23:44:45 `NEON_REAL_CLIENT_AND_DEDICATED_SERVER_E2E_PASSED`。这验证了新测试集合，不隐去旧失败。所有工作流及最终文档HEAD的独立终态以PR53验证评论为准，不能把单条成功称作CI全绿。
+
+[固定世界/站位四窗口对照](evidence/2026-10-16-spawn-cap-comparison.md)已完成：原版两次均值13.846/12.420ms；cap32为8.237ms，父+子约80降至32，本合成场景平均MSPT降低33.68%–40.51%。默认配置13.208ms位于原版波动区间，不能宣称默认配置提速或零开销。每窗300秒、300行站位/实体快照、完整火焰图和5次正常停服可核查。采样生产源码绑定8c49，后续测试提交未改生产路径代码。
+
+整体性能验收仍未完成：PR2后的空载/雨寂/永夜对照、多人晚期玩法及真实FPS尚缺。现有PR1 C基线碰撞推位且无完整轨迹，不能与本轮新runner直接相减。FPS及sparkc继续单列，软件渲染限帧值不当作实测FPS。PR3/4未实施。
