@@ -15,6 +15,7 @@
 | [hotspots.md](hotspots.md) | 文件、方法、触发条件、调用频率与风险；区分已存在的优化和待测候选 |
 | [upstream-comparison.md](upstream-comparison.md) | 八个指定项目的一手资料、可迁移方法、版本及语义限制 |
 | [spark-runbook.md](spark-runbook.md) | 标准启动、三类场景的四个正式窗口、300 秒采样、数据口径、环境证据与复测步骤 |
+| [网络分层诊断与 Gradle 恢复](evidence/2026-10-16-network-diagnosis.md) | 19:37 后新增的 DNS/TCP/TLS 证据、官方 Gradle 替代入口、插件解析失败与现有环境负载 |
 
 ## 实测状态
 
@@ -46,6 +47,8 @@ exit_code=0
 这是 **基线** 结果，不能冒充 PR HEAD 的验证。本轮另外在新建隔离沙箱对 PR 提交 `509d3e5`、`fef5dd4` 分别验证 Mixin `14/0` 和差异空白检查。Java 17 及官方 JDK 归档 SHA-256 已核验；`official 1.20.1` 是已核对的 mappings 配置，不是已下载并校验 mappings 文件的结论。完整构建卡在 Gradle 下载，Java 与 curl 均复现连接重置；2026-10-16 16:39 UTC 的 curl 复测中 Gradle、Forge、Cloudsmith 三端点仍失败，本地专服与 GameTest 尚未启动。详见 [原始证据](evidence/2026-10-16-isolated-validation.log)。
 
 当前 PR 的全量 GameTest、构建及 CI 结果应以 [PR #43](https://github.com/ZeroPointSix/sound-isolating-eraser/pull/43) 当前 HEAD 检查和 [采样手册的验证记录](spark-runbook.md#验证记录) 为准。未运行、失败或排队必须单独写明；已有 CI 绿色结果不能追认尚未采集的 spark 数据。
+
+19:42 UTC 更新：已从官方 GitHub 发行资产恢复并校验 Gradle 8.1.1 / Java 17，实际构建推进到 `settings.gradle:12` 的 foojay 插件解析后退出 1；本地专服和采样仍未开始。主力开发机依赖访问恢复，但负载不符合可靠基线条件。详见[本轮诊断](evidence/2026-10-16-network-diagnosis.md)，其中明确区分已证实的握手重置与尚未核实的组织级策略假设。
 
 ## 四个 PR 的边界
 

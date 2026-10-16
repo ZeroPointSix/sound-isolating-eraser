@@ -176,12 +176,16 @@ A、B1、B2、C 四个正式窗口分别执行，不能用一个维度的结果�
 
 ## 阻塞后的下一动作
 
-当前缺的是隔离环境到以下公开依赖服务的正常出站连接，**不是待索取的密钥、生产控制台或已有存档**：`services.gradle.org`、`maven.minecraftforge.net`、`dl.cloudsmith.io`。修复连接或换用可访问这些依赖的已授权隔离环境后，先运行下列同 URL 探针，再运行完整构建命令。成功后按本文创建合成世界；默认目录为独立检出的 `run/world`，没有尚待人工提供的生产存档路径。
+19:42 UTC 的[后续分层诊断](evidence/2026-10-16-network-diagnosis.md)已从官方 GitHub 分发恢复 Gradle 8.1.1 / Java 17 并核对摘要，项目实际执行到 foojay 插件解析后失败。原 Gradle 服务入口仍重置，官方资产替代仅解决工具链启动，不代表 Forge、GeckoLib 或插件依赖已恢复。
+
+当前缺的是隔离环境到公开依赖服务的正常出站连接，**不是待索取的密钥、生产控制台或已有存档**：`services.gradle.org`、`plugins.gradle.org`、`maven.minecraftforge.net`、`dl.cloudsmith.io`；`spark.lucko.me` 也需单独恢复/验证。DNS/TCP 可达而 TLS 被重置，不能把问题简化为缺 Java、缺 CA 或上游全面宕机。先核实组织级出站限制，或使用已有授权开发机的低负载独占窗口，不扩大网络权限、不用当前高负载窗口凑基线。修复后先运行下列探针，再运行完整构建命令。成功后按本文创建合成世界；默认目录为独立检出的 `run/world`，没有尚待人工提供的生产存档路径。
 
 ```bash
 curl -fIL --connect-timeout 10 --max-time 30 https://services.gradle.org/distributions/gradle-8.1.1-bin.zip
 curl -fL --connect-timeout 10 --max-time 30 -o /dev/null https://maven.minecraftforge.net/net/minecraftforge/gradle/ForgeGradle/maven-metadata.xml
 curl -fL --connect-timeout 10 --max-time 30 -o /dev/null https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/software/bernie/geckolib/geckolib-forge-1.20.1/4.4.9/geckolib-forge-1.20.1-4.4.9.pom
+curl -fL --connect-timeout 10 --max-time 30 -o /dev/null https://plugins.gradle.org/m2/org/gradle/toolchains/foojay-resolver-convention/org.gradle.toolchains.foojay-resolver-convention.gradle.plugin/0.5.0/org.gradle.toolchains.foojay-resolver-convention.gradle.plugin-0.5.0.pom
+curl -fL --connect-timeout 10 --max-time 30 -o /dev/null https://spark.lucko.me/
 ```
 
 不要以关闭证书校验、修改 CI、公开离线专服、购买资源或无变化地反复重试同一失败请求来绕过边界。只有真实完成 A、B1、B2、C 四个正式窗口后才能填实测表并开始 PR2 的运行时优化。任务专用临时沙箱用后清理，不删除其他任务资源；持久证据保留在 PR。
