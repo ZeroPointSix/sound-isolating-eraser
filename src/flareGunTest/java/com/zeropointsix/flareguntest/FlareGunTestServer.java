@@ -44,7 +44,7 @@ public final class FlareGunTestServer {
         for (int x = -12; x <= 12; x++) for (int z = -12; z <= 12; z++)
             level.setBlock(new BlockPos(x, 79, z), Blocks.SMOOTH_STONE.defaultBlockState(), 3);
         player.setGameMode(GameType.SURVIVAL);
-        player.teleportTo(level, .5, 80, watching ? 4 : .5, watching ? 180 : 0, watching ? 5 : -5);
+        player.teleportTo(level, watching ? 2.5 : .5, 80, watching ? 4 : .5, watching ? 150 : 0, watching ? 5 : -5);
         player.getInventory().clearContent();
         player.getInventory().selected = 0;
         if (!watching) player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(FlareContent.GUN.get()));
