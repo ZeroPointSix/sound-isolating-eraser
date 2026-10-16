@@ -1,7 +1,9 @@
 package com.zeropointsix.yujitest;
 
+import com.mojang.blaze3d.platform.NativeImage;
 import com.zeropointsix.eraser.yuji.flare.FallingSupplyCrate;
 import com.zeropointsix.eraser.yuji.flare.FlareContent;
+import com.zeropointsix.eraser.yuji.flare.FlareDecoy;
 import com.zeropointsix.eraser.yuji.flare.FlareProjectile;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -32,8 +34,60 @@ public final class FlareVisualClient {
     private static Vec3 target;
     private static Entity subject;
     private static int ticks, frames, movieFrames;
+    private static int ringStableFrames;
     private static long previousFrame;
     private static boolean failed, complete;
+    private static boolean classifierChecked;
+
+    private record RingPixels(int pixels, int sectors, int outside, double radius) {
+        boolean visible() { return pixels >= 96 && sectors == 32 && outside <= pixels / 4; }
+        String evidence() { return "ringPixels=" + pixels + " ringSectors=" + sectors + " ringOutside=" + outside
+                + " projectedRadius=" + radius + " ringStableFrames=" + ringStableFrames; }
+    }
+
+    // Inspect the actual framebuffer around the projected gameplay boundary, not QA-drawn geometry.
+    private static RingPixels ringPixels(NativeImage shot, double radius) {
+        int[] sectors = new int[32]; int pixels = 0, outside = 0;
+        double tolerance = Math.max(3, radius * .025);
+        for (int y = 0; y < shot.getHeight(); y++) for (int x = 0; x < shot.getWidth(); x++) {
+            double dx = x + .5 - shot.getWidth() / 2., dy = y + .5 - shot.getHeight() / 2.;
+            double distance = Math.hypot(dx, dy);
+            if (distance < radius * .5 || distance > radius * 1.3) continue;
+            int pixel = shot.getPixelRGBA(x, y), red = pixel & 255, green = pixel >>> 8 & 255, blue = pixel >>> 16 & 255;
+            if (red < 100 || red < green * 1.6 || red < blue * 1.5) continue;
+            if (Math.abs(distance - radius) <= tolerance) {
+                pixels++;
+                int sector = Math.min(31, (int) ((Math.atan2(dy, dx) + Math.PI) * 32 / (Math.PI * 2)));
+                sectors[sector]++;
+            } else outside++;
+        }
+        int occupied = 0;
+        for (int count : sectors) if (count >= 3) occupied++;
+        return new RingPixels(pixels, occupied, outside, radius);
+    }
+
+    private static void verifyRingClassifier() {
+        String[] cases = {"complete", "blank", "center", "half", "wrong-radius", "solid-red", "yellow", "green"};
+        for (String sample : cases) try (var image = new NativeImage(256, 256, false)) {
+            for (int y = 0; y < 256; y++) for (int x = 0; x < 256; x++) {
+                double distance = Math.hypot(x + .5 - 128, y + .5 - 128);
+                boolean ring = Math.abs(distance - (sample.equals("wrong-radius") ? 48 : 80)) <= 1.5;
+                boolean lit = switch (sample) {
+                    case "blank" -> false;
+                    case "center" -> distance < 10;
+                    case "half" -> ring && x < 128;
+                    case "solid-red" -> true;
+                    default -> ring;
+                };
+                int color = sample.equals("yellow") ? 0xFF00FFFF : sample.equals("green") ? 0xFF00FF00 : 0xFF0000FF;
+                image.setPixelRGBA(x, y, lit ? color : 0xFF000000);
+            }
+            if (ringPixels(image, 80).visible() != sample.equals("complete"))
+                throw new AssertionError("red-ring pixel classifier failed control: " + sample);
+        }
+        classifierChecked = true;
+        System.out.println("FLARE_RING_PIXEL_CONTROLS_PASSED positive=1 negative=7");
+    }
 
     private static boolean enabled() { return Boolean.getBoolean("flare.qa.visuals"); }
     private static void fail(Throwable failure) {
@@ -45,6 +99,7 @@ public final class FlareVisualClient {
         try {
             String[] fields = event.getMessage().getString().split(":");
             phase = fields[1]; color = phase.substring(0, phase.indexOf('-')); ticks = 0; frames = 0;
+            ringStableFrames = 0;
             target = new Vec3(Double.parseDouble(fields[2]), Double.parseDouble(fields[3]), Double.parseDouble(fields[4]));
             event.setCanceled(true);
         } catch (Throwable failure) { fail(failure); }
@@ -70,6 +125,7 @@ public final class FlareVisualClient {
         if (mc.level == null || mc.player == null || mc.gameMode == null) return;
         try {
             ticks++;
+            if (!classifierChecked) verifyRingClassifier();
             mc.player.setDeltaMovement(Vec3.ZERO);
             if (mc.player.getAbilities().mayfly) mc.player.getAbilities().flying = true;
             if (phase.endsWith("-armed")) {
@@ -85,10 +141,18 @@ public final class FlareVisualClient {
             subject = null;
             for (Entity entity : mc.level.entitiesForRendering()) {
                 if (phase.endsWith("-flight") && entity instanceof FlareProjectile projectile && projectile.color() == colorId()
-                        || phase.equals("green-descent") && entity instanceof FallingSupplyCrate) { subject = entity; break; }
+                        || phase.equals("green-descent") && entity instanceof FallingSupplyCrate
+                        || phase.equals("red-radius") && entity instanceof FlareDecoy
+                        && entity.position().distanceToSqr(target) < 4) { subject = entity; break; }
             }
-            if (subject != null) target = subject.position().add(0, .4, 0);
-            look(target);
+            if (phase.equals("red-radius")) {
+                mc.options.fov().set(70); mc.options.fovEffectScale().set(0.); mc.options.bobView().set(false);
+                mc.player.setYRot(0); mc.player.setXRot(90);
+                if (ticks > 240 && !captured.contains(phase)) throw new AssertionError("complete red ring never became visible");
+            } else {
+                if (subject != null) target = subject.position().add(0, .4, 0);
+                look(target);
+            }
         } catch (Throwable failure) { fail(failure); }
     }
 
@@ -110,6 +174,22 @@ public final class FlareVisualClient {
             boolean screenshot = ready && EXPECTED.contains(phase) && !captured.contains(phase);
             if (!movie && !screenshot) return;
             try (var shot = Screenshot.takeScreenshot(mc.getMainRenderTarget())) {
+                RingPixels ring = null;
+                if (phase.equals("red-radius")) {
+                    Vec3 camera = mc.gameRenderer.getMainCamera().getPosition();
+                    double height = camera.y - target.y;
+                    boolean framed = subject instanceof FlareDecoy decoy && decoy.tauntRadius() == 24
+                            && Math.hypot(camera.x - target.x, camera.z - target.z) < .05
+                            && height > 40 && Math.abs(mc.player.getXRot() - 90) < .05;
+                    double projected = 24 * shot.getHeight() / (2 * height * Math.tan(Math.toRadians(35)));
+                    ring = ringPixels(shot, projected);
+                    if (movie) {
+                        ringStableFrames = framed && ring.visible() ? ringStableFrames + 1 : 0;
+                        Files.writeString(RESULTS.resolve("visual-ring-pixels.log"), "ticks=" + ticks + " framed=" + framed
+                                + " " + ring.evidence() + "\n", StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+                    }
+                    screenshot &= framed && ring.visible() && ringStableFrames >= 5 && ticks >= 20;
+                }
                 if (movie) {
                     Path directory = RESULTS.resolve("visual-frames"); Files.createDirectories(directory);
                     String name = String.format(java.util.Locale.ROOT, "frame-%06d.png", movieFrames++);
@@ -122,9 +202,11 @@ public final class FlareVisualClient {
                     shot.writeToFile(RESULTS.resolve("visual-" + phase + ".png"));
                     Files.writeString(RESULTS.resolve("client-visual-" + phase + ".pass"),
                             "phase=" + phase + " frames=" + frames + " ticks=" + ticks + " blockLight=" + brightness
-                                    + " night=" + mc.level.getDayTime() + " camera=" + mc.player.position() + " target=" + target + "\n");
+                                    + " night=" + mc.level.getDayTime() + " camera=" + mc.player.position() + " target=" + target
+                                    + (ring == null ? "" : " radius=24 " + ring.evidence()) + "\n");
                     captured.add(phase);
-                    System.out.println("FLARE_VISUAL_CAPTURE " + phase + " blockLight=" + brightness);
+                    System.out.println("FLARE_VISUAL_CAPTURE " + phase + " blockLight=" + brightness
+                            + (ring == null ? "" : " radius=24 " + ring.evidence()));
                 }
             }
             if (captured.containsAll(EXPECTED)) {

@@ -44,14 +44,8 @@ public final class FlareEffects {
                     (level.random.nextDouble() - .5) * .25);
     }
 
-    public static void decoy(Level level, Vec3 center, int age, double radius) {
+    public static void decoy(Level level, Vec3 center) {
         trail(level, center.add(0, .9, 0), center.add(0, 1.2, 0), 0);
-        if (age % 6 != 0) return;
-        for (int i = 0; i < 96; i++) {
-            double angle = Math.PI * 2 * i / 96;
-            level.addParticle(spark(0), true, center.x + Math.cos(angle) * radius, center.y + .12,
-                    center.z + Math.sin(angle) * radius, 0, .006, 0);
-        }
     }
 
     private FlareEffects() { }

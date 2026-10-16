@@ -57,7 +57,7 @@ def launch(role, username="YujiTester"):
         (directory / "config").mkdir()
         (directory / "config/fml.toml").write_text("earlyWindowControl = false\n")
         (directory / "options.txt").write_text(
-            "lang:zh_cn\nrenderDistance:3\nsimulationDistance:3\nguiScale:2\n"
+            f"lang:zh_cn\nrenderDistance:{6 if VISUALS else 3}\nsimulationDistance:3\nguiScale:2\n"
             f"maxFps:{CLIENT_FPS}\n"
             "enableVsync:false\npauseOnLostFocus:false\nonboardAccessibility:false\n"
             "showAutosaveIndicator:false\nrenderClouds:false\nnarrator:0\ntutorialStep:none\n"
@@ -153,6 +153,11 @@ def visual_evidence():
         light = re.search(r"blockLight=(\d+)", marker)
         if light is None or int(light.group(1)) < 12:
             raise AssertionError("Missing real client flight block-light evidence for " + color)
+    ring_marker = (RESULTS / "client-visual-red-radius.pass").read_text()
+    ring = {key: int(value) for key, value in re.findall(r"(ringPixels|ringSectors|ringOutside|ringStableFrames|radius)=(\d+)", ring_marker)}
+    if (ring.get("radius") != 24 or ring.get("ringSectors") != 32 or ring.get("ringPixels", 0) < 96
+            or ring.get("ringStableFrames", 0) < 5 or ring.get("ringOutside", 10**9) > ring.get("ringPixels", 0) // 4):
+        raise AssertionError("Missing complete, correctly sized red ring in actual rendered pixels: " + ring_marker)
     rows = [line.split("\t") for line in (RESULTS / "visual-frames.tsv").read_text().splitlines()]
     if len(rows) < 20 or any(len(row) != 3 for row in rows):
         raise AssertionError("Missing actual framebuffer movie samples")
@@ -181,7 +186,7 @@ def visual_evidence():
     if movie.stat().st_size < 10000:
         raise AssertionError("Actual framebuffer movie is unexpectedly empty")
     (RESULTS / "visual-screenshots.json").write_text(json.dumps({"captures": captures,
-        "native_movie_frames": len(rows), "duration_seconds": (timestamps[-1] - timestamps[0]) / 1_000_000_000,
+        "red_ring_pixels": ring, "native_movie_frames": len(rows), "duration_seconds": (timestamps[-1] - timestamps[0]) / 1_000_000_000,
         "movie": movie.name, "source": "native Minecraft framebuffer, measured capture intervals"}, indent=2) + "\n")
     print("FLARE_VISUAL_CLIENT_PASSED actualShots=3 screenshots=10 flightBlockLight>=12 nativeFrames=" + str(len(rows)), flush=True)
 

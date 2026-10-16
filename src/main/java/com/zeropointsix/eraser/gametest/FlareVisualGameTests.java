@@ -56,6 +56,8 @@ public final class FlareVisualGameTests {
     @AfterBatch(batch = "flare_visual_budget") public static void afterBudget(ServerLevel l) { restore(l); }
     @AfterBatch(batch = "flare_visual_low") public static void afterLow(ServerLevel l) { restore(l); }
     @AfterBatch(batch = "flare_visual_impact") public static void afterImpact(ServerLevel l) { restore(l); }
+    @AfterBatch(batch = "flare_visual_ring_geometry") public static void afterRingGeometry(ServerLevel l) { restore(l); }
+    @AfterBatch(batch = "flare_visual_ring_sync") public static void afterRingSync(ServerLevel l) { restore(l); }
     private static long deadline(FlareLights data, BlockPos pos) {
         for (Tag tag : data.save(new CompoundTag()).getList("Lights", Tag.TAG_COMPOUND)) {
             CompoundTag record = (CompoundTag) tag;
@@ -69,6 +71,42 @@ public final class FlareVisualGameTests {
             if (record.getLong("Pos") == pos.asLong()) return record.getBoolean("Quiet");
         }
         return false;
+    }
+
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "flare_visual_ring_geometry", timeoutTicks = 20)
+    public static void decoyRingIsClosedAccurateAndBounded(GameTestHelper h) {
+        h.assertTrue(FlareRangeRing.SEGMENTS == 128, "bounded 128-segment ribbon budget");
+        for (double radius : new double[]{1, 24, 64}) {
+            Vec3 origin = new Vec3(-17.5, 200, 35.25);
+            var bounds = FlareRangeRing.bounds(origin, radius);
+            h.assertTrue(FlareRangeRing.point(radius, 0).equals(FlareRangeRing.point(radius, 128)), "ring closes exactly");
+            for (int i = 0; i < FlareRangeRing.SEGMENTS; i++) {
+                Vec3 point = FlareRangeRing.point(radius, i), next = FlareRangeRing.point(radius, i + 1);
+                h.assertTrue(Math.abs(Math.hypot(point.x, point.z) - radius) < 1e-9, "centerline matches gameplay radius");
+                h.assertTrue(point.y == .12 && point.distanceTo(next) > 0 && point.distanceTo(next) <= Math.PI * 2 * radius / 128,
+                        "all segments stay above the ground with no gaps or duplicate points");
+                h.assertTrue(bounds.inflate(.001).contains(origin.add(FlareRangeRing.point(radius + .24, i))),
+                        "expanded frustum bounds include the whole ribbon, not only the decoy model");
+            }
+        }
+        System.out.println("T5_RED_RING_GEOMETRY_PASSED radii=1,24,64 segments=128 closed=true accurate=true bounded=true");
+        h.succeed();
+    }
+
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "flare_visual_ring_sync", timeoutTicks = 20)
+    public static void decoyRingFollowsConfiguredTauntRadius(GameTestHelper h) {
+        var decoy = new FlareDecoy(FlareContent.DECOY.get(), h.getLevel()); entities.add(decoy);
+        decoy.setPos(Vec3.atBottomCenterOf(center(h)));
+        try (var config = GameTestConfigs.sandbox(YujiConfig.SPEC)) {
+            FlareConfig.TAUNT_RADIUS.set(12.5); decoy.ignite();
+            h.assertTrue(decoy.tauntRadius() == 12.5, "initial entity data carries the server radius instead of hardcoded 24");
+            FlareConfig.TAUNT_RADIUS.set(1.); decoy.taunt();
+            h.assertTrue(decoy.tauntRadius() == 1, "existing decoy boundary shrinks when the gameplay radius shrinks");
+            FlareConfig.TAUNT_RADIUS.set(64.); decoy.taunt();
+            h.assertTrue(decoy.tauntRadius() == 64, "existing decoy boundary expands with gameplay radius");
+        }
+        System.out.println("T5_RED_RING_SYNC_PASSED initial=12.5 shrink=1 expand=64 configRestored=true");
+        h.succeed();
     }
 
     @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "flare_visual_lease", timeoutTicks = 80)

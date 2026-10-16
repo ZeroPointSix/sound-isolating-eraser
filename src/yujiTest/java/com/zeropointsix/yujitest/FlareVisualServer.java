@@ -148,8 +148,9 @@ public final class FlareVisualServer {
             if (phase.equals("activation") && captured(COLORS[color] + "-activation") && phaseTicks >= 30) {
                 if (color == 0) {
                     if (!decoy.onGround()) return;
-                    Vec3 target = decoy.position().add(0, .3, 0);
-                    player.teleportTo(level, target.x, target.y + 38, target.z + 38, 180, 45);
+                    require(decoy.tauntRadius() == 24, "range marker uses the synchronized gameplay radius");
+                    Vec3 target = decoy.position().add(0, .12, 0);
+                    player.teleportTo(level, target.x, target.y + 50, target.z, 0, 90);
                     signal(player, "radius", target);
                 } else if (color == 1) {
                     require(level.getBrightness(LightLayer.BLOCK, flare.blockPosition()) >= 12, "yellow activation illuminates actual world blocks at night");
@@ -160,7 +161,7 @@ public final class FlareVisualServer {
                     signal(player, "descent", falling.position());
                 }
             }
-            if (phase.equals("radius") && captured("red-radius") && phaseTicks >= 30) {
+            if (phase.equals("radius") && captured("red-radius") && phaseTicks >= 100) {
                 require(!redFlightLights.isEmpty() && redFlightLights.stream().noneMatch(pos -> level.getBlockState(pos).is(Blocks.LIGHT)),
                         "temporary red flight sources expire after activation");
                 evidence.append("red radius=").append(FlareConfig.TAUNT_RADIUS.get()).append(" temporaryFlightLightsRemoved=true\n");

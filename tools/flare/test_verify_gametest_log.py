@@ -52,7 +52,7 @@ class GameTestLogGateTests(unittest.TestCase):
             verify_log(self.batches + "\n" + self.success + "\n" + self.success)
 
     def test_missing_visual_batch(self):
-        for name in ("lease", "protection", "landing", "budget", "low", "impact"):
+        for name in ("lease", "protection", "landing", "budget", "low", "impact", "ring_geometry", "ring_sync"):
             with self.subTest(name=name):
                 log = self.batches.replace(f"Running test batch 'flare_visual_{name}:1' (1 tests)", "")
                 with self.assertRaises(SystemExit):
@@ -68,7 +68,7 @@ class GameTestLogGateTests(unittest.TestCase):
 
     def test_too_few_completed(self):
         with self.assertRaises(SystemExit):
-            verify_log(self.batches + "\nAll 55 required tests passed :)")
+            verify_log(self.batches + "\nAll 57 required tests passed :)")
 
     def test_failure_after_success(self):
         with self.assertRaises(SystemExit):
