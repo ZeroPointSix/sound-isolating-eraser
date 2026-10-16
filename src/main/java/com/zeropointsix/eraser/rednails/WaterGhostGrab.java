@@ -90,10 +90,14 @@ public final class WaterGhostGrab extends Goal {
         for (var pos : BlockPos.withinManhattan(mob.blockPosition(), 6, 4, 6)) {
             if (!WaterGhostBody.waterAt(mob, pos) || !WaterGhostBody.waterAt(mob, pos.above())) continue;
             Vec3 at = Vec3.atBottomCenterOf(pos);
-            // Water below a solid bank is not reachable: the whole descent column must fit.
-            var descent = WaterGhostBody.SWIMMING.makeBoundingBox(new Vec3(at.x, mob.getY(), at.z))
-                    .expandTowards(0, Math.min(0, at.y - mob.getY()) - 0.08, 0);
-            if (!mob.level().noCollision(mob, descent)) continue;
+            if (!mob.level().noCollision(mob, WaterGhostBody.SWIMMING.makeBoundingBox(at))) continue;
+            // Reject water buried under the bank. Same-level shore water must still
+            // be walkable; do not require sinking through the floor we are standing on.
+            if (at.y + 0.5 < mob.getY()) {
+                var descent = WaterGhostBody.SWIMMING.makeBoundingBox(new Vec3(at.x, mob.getY(), at.z))
+                        .expandTowards(0, at.y - mob.getY(), 0);
+                if (!mob.level().noCollision(mob, descent)) continue;
+            }
             if (WaterGhostBody.waterAt(mob, pos.below())) return at;
             if (edge == null) edge = at;
         }
@@ -160,7 +164,8 @@ public final class WaterGhostGrab extends Goal {
                 swim = shoreStep;
             }
             mob.setDeltaMovement(swim);
-            if (target.isEyeInFluid(FluidTags.WATER) && !target.canBreatheUnderwater()
+            if ((target.isEyeInFluid(FluidTags.WATER) || target.isInWater())
+                    && !target.canBreatheUnderwater()
                     && !target.hasEffect(MobEffects.WATER_BREATHING) && !target.hasEffect(MobEffects.CONDUIT_POWER)) {
                 int air = target.getAirSupply() - 3;
                 // Vanilla checks exactly -20; skipping past it would accidentally prevent drowning.

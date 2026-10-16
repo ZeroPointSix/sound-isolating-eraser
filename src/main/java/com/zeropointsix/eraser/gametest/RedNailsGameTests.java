@@ -512,7 +512,9 @@ public final class RedNailsGameTests {
                     + " swimming=" + g.ghostBody().swimming() + " victimInWater=" + victim.isInWater()
                     + " canSink=" + f.level.noCollision(g, g.getBoundingBox().move(0, -0.08, 0))
                     + " floor=" + g.verticalCollisionBelow + " victimHealth=" + victim.getHealth()
-                    + " air=" + victim.getAirSupply());
+                    + " air=" + victim.getAirSupply()
+                    + " eyeInWater=" + victim.isEyeInFluid(net.minecraft.tags.FluidTags.WATER)
+                    + " eyeY=" + victim.getEyeY());
         });
         h.startSequence().thenWaitUntil(() -> {
             check(h, g.ghostBody().grab.held() == victim, "Summon goal selector grabs on shore without start()");
