@@ -3,6 +3,8 @@ package com.zeropointsix.gravitytest;
 import com.mojang.blaze3d.platform.InputConstants;
 import com.zeropointsix.eraser.client.EraserClient;
 import com.zeropointsix.eraser.client.GravityClient;
+import com.zeropointsix.eraser.client.RedNailsClient;
+import com.zeropointsix.eraser.client.WingsKeys;
 import com.zeropointsix.eraser.item.ItemGuideCatalog;
 import com.zeropointsix.eraser.registry.ModItemTags;
 import java.nio.file.Files;
@@ -214,6 +216,10 @@ public final class ItemCategoryClientProbe {
                         var key = switch (binding) {
                             case "key.sound_isolating_eraser.gravity_target" -> GravityClient.ACTIVATE;
                             case "key.sound_isolating_eraser.eraser_mode" -> EraserClient.CYCLE;
+                            case "key.sound_isolating_eraser.red_nails" -> RedNailsClient.KEY;
+                            case "key.sound_isolating_eraser.cycle_tier" -> WingsKeys.CYCLE_TIER;
+                            case "key.sound_isolating_eraser.hover" -> WingsKeys.HOVER_TOGGLE;
+                            case "key.sound_isolating_eraser.blink" -> WingsKeys.BLINK;
                             default -> java.util.Arrays.stream(Minecraft.getInstance().options.keyMappings)
                                     .filter(candidate -> candidate.getName().equals(binding)).findFirst()
                                     .orElseThrow(() -> new AssertionError("Missing native key binding: " + binding));
