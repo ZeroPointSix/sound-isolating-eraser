@@ -57,10 +57,12 @@ public final class FlareLights extends SavedData {
         ordered.sort(BlockPos::compareTo);
         for (BlockPos pos : ordered) {
             if (level.getBlockState(pos).equals(LIGHT)) {
+                boolean durable = !quietLights.contains(pos.asLong()) || lights.get(pos.asLong()) >= expiry;
                 if (lights.containsKey(pos.asLong()) && FlarePlacement.canRenew(level, pos, LIGHT, player)) {
                     lights.merge(pos.asLong(), expiry, Math::max); quietLights.remove(pos.asLong()); setDirty();
+                    durable = true;
                 }
-                cover(pos, air, covered);
+                if (durable) cover(pos, air, covered);
             } else if (Math.floorMod(pos.getX(), 3) == 0 && Math.floorMod(pos.getY(), 3) == 0 && Math.floorMod(pos.getZ(), 3) == 0
                     && add(level, pos, player, expiry)) cover(pos, air, covered);
         }
@@ -72,7 +74,7 @@ public final class FlareLights extends SavedData {
 
     private boolean add(ServerLevel level, BlockPos pos, Player player, long expiry) {
         if (!FlarePlacement.place(level, pos, LIGHT, player)) return false;
-        lights.put(pos.asLong(), expiry); setDirty(); return true;
+        lights.put(pos.asLong(), expiry); quietLights.remove(pos.asLong()); setDirty(); return true;
     }
 
     private static void cover(BlockPos source, Set<BlockPos> air, Set<BlockPos> covered) {

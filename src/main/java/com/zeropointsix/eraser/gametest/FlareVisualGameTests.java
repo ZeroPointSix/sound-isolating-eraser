@@ -61,6 +61,13 @@ public final class FlareVisualGameTests {
         }
         return -1;
     }
+    private static boolean quiet(FlareLights data, BlockPos pos) {
+        for (Tag tag : data.save(new CompoundTag()).getList("Lights", Tag.TAG_COMPOUND)) {
+            CompoundTag record = (CompoundTag) tag;
+            if (record.getLong("Pos") == pos.asLong()) return record.getBoolean("Quiet");
+        }
+        return false;
+    }
 
     @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "flare_visual_lease", timeoutTicks = 80)
     public static void flightLightIsRealDurableAndDoesNotPulseObserver(GameTestHelper h) {
@@ -120,8 +127,32 @@ public final class FlareVisualGameTests {
         }
         long persistent = deadline(data, pos);
         h.assertTrue(persistent >= level.getGameTime() + 40 && persistent > original, "yellow upgrades the short lease");
+        h.assertTrue(!quiet(data, pos), "yellow promotion removes the cosmetic-only marker");
         h.assertTrue(data.flight(level, pos, player) && deadline(data, pos) == persistent, "flight does not shorten persistent yellow light");
-        h.runAfterDelay(12, () -> { data.cleanup(level); h.assertTrue(level.getBlockState(pos).is(Blocks.LIGHT), "promoted source outlives short lease"); });
+
+        BlockPos denied = new BlockPos(Math.floorDiv(pos.getX(), 3) * 3 + 10, 200, Math.floorDiv(pos.getZ(), 3) * 3 + 10);
+        BlockPos recreated = pos.west(6);
+        for (BlockPos c : new BlockPos[]{denied, recreated})
+            for (BlockPos p : BlockPos.betweenClosed(c.offset(-1, -1, -1), c.offset(1, 1, 1)))
+                block(level, p, Blocks.AIR.defaultBlockState());
+        h.assertTrue(data.flight(level, denied, player) && data.flight(level, recreated, player), "second flight sources created");
+        long rejectedExpiry = deadline(data, denied);
+        level.setBlock(recreated, Blocks.AIR.defaultBlockState(), 18);
+        guard = event -> { if (event.getPos().equals(denied)) event.setCanceled(true); };
+        MinecraftForge.EVENT_BUS.addListener(EventPriority.HIGHEST, false, BlockEvent.EntityPlaceEvent.class, guard);
+        try (var config = GameTestConfigs.sandbox(YujiConfig.SPEC)) {
+            FlareConfig.LIGHT_RADIUS.set(1); FlareConfig.YELLOW_LIFETIME.set(40);
+            data.illuminate(level, denied, player); data.illuminate(level, recreated, player);
+        } finally { MinecraftForge.EVENT_BUS.unregister(guard); guard = null; }
+        h.assertTrue(deadline(data, denied) == rejectedExpiry, "rejected short source was not extended");
+        h.assertTrue(!quiet(data, recreated) && deadline(data, recreated) >= level.getGameTime() + 40,
+                "replacing a stale short record with yellow clears its quiet marker");
+        h.runAfterDelay(12, () -> {
+            data.cleanup(level);
+            h.assertTrue(level.getBlockState(pos).is(Blocks.LIGHT), "promoted source outlives short lease");
+            h.assertTrue(level.getBlockState(denied).isAir() && level.getBrightness(LightLayer.BLOCK, denied.east()) >= 12,
+                    "allowed neighbouring yellow sources fill coverage after rejected short source expires");
+        });
         h.runAfterDelay(44, () -> {
             data.cleanup(level);
             h.assertTrue(data.size() == 0 && level.getBlockState(pos).isAir(), "persistent owned sources eventually expire");
