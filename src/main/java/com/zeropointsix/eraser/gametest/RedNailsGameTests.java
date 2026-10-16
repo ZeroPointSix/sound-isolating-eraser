@@ -353,8 +353,14 @@ public final class RedNailsGameTests {
     }
     @GameTest(template = "empty", batch = BATCH) public static void summon_prefers_shore_water_when_grabbing(GameTestHelper h) {
         var f = new Fixture(h); var p = f.player(0, 0); var stack = f.wear(p); var g = f.summon(p, stack);
-        for (int x = 2; x <= 4; x++) for (int z = -2; z <= 2; z++) for (int y = 0; y < 4; y++)
-            f.set(f.center.offset(x, y, z), Blocks.WATER.defaultBlockState());
+        // A shore destination must have a reachable descent, not water on a stone slab.
+        for (int x = -4; x <= 1; x++) for (int z = -4; z <= 4; z++) {
+            for (int y = -5; y <= -1; y++) f.set(f.center.offset(x, y, z), Blocks.STONE.defaultBlockState());
+        }
+        for (int x = 2; x <= 7; x++) for (int z = -3; z <= 3; z++) {
+            f.set(f.center.offset(x, -5, z), Blocks.STONE.defaultBlockState());
+            for (int y = -4; y <= -1; y++) f.set(f.center.offset(x, y, z), Blocks.WATER.defaultBlockState());
+        }
         g.setPos(Vec3.atBottomCenterOf(f.center)); g.setYRot(0);
         var victim = f.add(EntityType.ZOMBIE.create(f.level), 0, 1);
         g.setTarget(victim); g.ghostBody().grab.start(); g.ghostBody().grab.tick();
@@ -497,7 +503,8 @@ public final class RedNailsGameTests {
         g.setNoAi(false);
         g.setPos(Vec3.atBottomCenterOf(f.center));
         g.setYRot(0);
-        var victim = f.add(EntityType.ZOMBIE.create(f.level), 0, 1);
+        var victim = f.add(EntityType.PILLAGER.create(f.level), 0, 1);
+        check(h, !victim.canBreatheUnderwater(), "Shore oxygen fixture cannot breathe underwater");
         victim.setNoAi(true);
         victim.setTarget(p);
         p.setLastHurtMob(victim);
