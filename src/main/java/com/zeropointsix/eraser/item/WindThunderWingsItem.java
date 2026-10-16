@@ -59,16 +59,6 @@ public class WindThunderWingsItem extends Item implements Equipable {
         return SoundEvents.ARMOR_EQUIP_ELYTRA;
     }
 
-    @Override
-    public void appendHoverText(ItemStack stack, Level level,
-                                List<Component> lines, TooltipFlag flag) {
-        lines.add(Component.translatable("item.sound_isolating_eraser.wind_thunder_wings.desc1")
-                .withStyle(ChatFormatting.GRAY));
-        lines.add(Component.translatable("item.sound_isolating_eraser.wind_thunder_wings.desc2")
-                .withStyle(ChatFormatting.GOLD));
-        lines.add(Component.translatable("item.sound_isolating_eraser.wind_thunder_wings.hint")
-                .withStyle(ChatFormatting.DARK_GRAY));
-    }
 
     /** Wings are worn when in the chest slot. */
     public static boolean worn(Entity entity) {

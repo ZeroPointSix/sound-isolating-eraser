@@ -1,5 +1,7 @@
 package com.zeropointsix.gravitytest;
 
+import com.mojang.blaze3d.platform.InputConstants;
+import com.zeropointsix.eraser.item.ItemGuideCatalog;
 import com.zeropointsix.eraser.registry.ModItemTags;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -10,6 +12,7 @@ import net.minecraft.client.Screenshot;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.FormattedText;
+import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -45,6 +48,9 @@ public final class ItemCategoryClientProbe {
     private static String observedText;
     private static Throwable renderFailure;
     private static boolean finished;
+    private static final String[] MODES = {"default", "shift", "ctrl", "both"};
+    private static int mode;
+    private static boolean modifiersReady;
 
     static boolean tick(Minecraft mc, long frames, Path results, String role) throws Exception {
         if (!Boolean.getBoolean("qiwu.qa") || finished) return true;
@@ -59,7 +65,7 @@ public final class ItemCategoryClientProbe {
             if (!Files.exists(results.resolve("server-category.pass"))) return false;
             if (changeLanguage(mc, originalLanguage)) return false;
             Files.writeString(results.resolve(role + "-category.pass"),
-                    "14 native hovers; en_us/zh_cn; synced daoju/both/restored tags; original language restored\n");
+                    "38 native hovers; default/Shift/Ctrl/both; en_us/zh_cn; synced tags; original language restored\n");
             finished = true;
             return true;
         }
@@ -73,7 +79,8 @@ public final class ItemCategoryClientProbe {
         Item[] items = phase == 0 ? new Item[]{item("super_fertilizer_bag"),
                 item("gravity_jade_pendant"), item("shaxiadao"),
                 item("sound_isolating_eraser")} : new Item[]{Items.STICK};
-        if (sample == items.length * 2) {
+        int modes = phase == 0 ? MODES.length : 1;
+        if (sample == items.length * 2 * modes) {
             expectedItem = null;
             mc.setScreen(null);
             Files.writeString(results.resolve(role + "-category-" + PHASES[phase] + ".pass"),
@@ -82,7 +89,8 @@ public final class ItemCategoryClientProbe {
             sample = 0;
             return false;
         }
-        String language = sample < items.length ? "en_us" : "zh_cn";
+        String language = sample < items.length * modes ? "en_us" : "zh_cn";
+        mode = phase == 0 ? (sample / items.length) % MODES.length : 0;
         if (changeLanguage(mc, language)) return false;
         if (screen == null) {
             expectedItem = items[sample % items.length];
@@ -98,6 +106,7 @@ public final class ItemCategoryClientProbe {
             renderedTooltips = 0;
             observedText = null;
             mouseMoved = false;
+            modifiersReady = false;
             hoverStarted = System.nanoTime();
             readyFrame = frames + 2;
             return false;
@@ -109,20 +118,31 @@ public final class ItemCategoryClientProbe {
                     + " hovered=" + (screen.getSlotUnderMouse() == null ? "none" : screen.getSlotUnderMouse().getItem()));
         }
         if (!mouseMoved && frames >= readyFrame) {
+            setModifiers(mc, mode);
             moveMouse(mc);
             mouseMoved = true;
             readyFrame = frames + 4;
             return false;
         }
+        if (mouseMoved && !modifiersReady) {
+            long window = mc.getWindow().getWindow();
+            boolean shift = InputConstants.isKeyDown(window, GLFW.GLFW_KEY_LEFT_SHIFT);
+            boolean control = InputConstants.isKeyDown(window, GLFW.GLFW_KEY_LEFT_CONTROL);
+            if (shift != ((mode & 1) != 0) || control != ((mode & 2) != 0)) return false;
+            modifiersReady = true;
+            renderedTooltips = 0;
+            readyFrame = frames + 4;
+        }
         if (frames < readyFrame || renderedTooltips < 3) return false;
         String id = ForgeRegistries.ITEMS.getKey(expectedItem).getPath();
-        String name = role + "-category-" + PHASES[phase] + "-" + language + "-" + id;
+        String name = role + "-category-" + PHASES[phase] + "-" + language + "-" + id + "-" + MODES[mode];
         try (var image = Screenshot.takeScreenshot(mc.getMainRenderTarget())) {
             image.writeToFile(results.resolve(name + ".png"));
         }
         Files.writeString(results.resolve(name + ".pass"), observedText + "\n");
         System.out.println("ITEM_CATEGORY_NATIVE_HOVER " + name + " " + observedText);
         expectedItem = null;
+        setModifiers(mc, 0);
         mc.setScreen(null);
         screen = null;
         sample++;
@@ -131,7 +151,7 @@ public final class ItemCategoryClientProbe {
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void tooltip(RenderTooltipEvent.GatherComponents event) {
-        if (expectedItem == null || screen != Minecraft.getInstance().screen
+        if (expectedItem == null || !modifiersReady || screen != Minecraft.getInstance().screen
                 || !event.getItemStack().is(expectedItem)) return;
         try {
             List<FormattedText> lines = event.getTooltipElements().stream()
@@ -152,6 +172,29 @@ public final class ItemCategoryClientProbe {
                 var color = ((Component) lines.get(1)).getStyle().getColor();
                 require(color != null && color.getValue() == expectedColor, "category color matches specification");
             }
+            var guide = ItemGuideCatalog.find(event.getItemStack());
+            if (guide != null) {
+                var keys = lines.stream().filter(Component.class::isInstance).map(Component.class::cast)
+                        .map(Component::getContents).filter(TranslatableContents.class::isInstance)
+                        .map(TranslatableContents.class::cast).map(TranslatableContents::getKey).toList();
+                require(keys.stream().filter(guide.key("summary")::equals).count() == 1, "one native summary");
+                for (String section : List.of("usage", "controls", "cooldown", "cost")) {
+                    require(keys.contains(guide.key(section)) == ((mode & 1) != 0), "native Shift gate: " + section);
+                }
+                require(keys.contains(guide.key("lore")) == ((mode & 2) != 0), "native Ctrl gate");
+                require(lines.stream().noneMatch(line -> line.getString().contains("guide.")), "no raw guide translation keys");
+                if ((mode & 1) != 0) {
+                    String controls = lines.stream().filter(Component.class::isInstance).map(Component.class::cast)
+                            .filter(line -> line.getContents() instanceof TranslatableContents text
+                                    && text.getKey().equals(guide.key("controls")))
+                            .findFirst().orElseThrow().getString();
+                    for (String binding : guide.controls()) {
+                        var key = java.util.Arrays.stream(Minecraft.getInstance().options.keyMappings)
+                                .filter(candidate -> candidate.getName().equals(binding)).findFirst().orElseThrow();
+                        require(controls.contains(key.getTranslatedKeyMessage().getString()), "native current binding: " + binding);
+                    }
+                }
+            }
             observedText = lines.stream().map(FormattedText::getString).toList().toString();
         } catch (Throwable failure) {
             renderFailure = failure;
@@ -160,7 +203,7 @@ public final class ItemCategoryClientProbe {
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void rendered(RenderTooltipEvent.Color event) {
-        if (expectedItem != null && screen == Minecraft.getInstance().screen
+        if (expectedItem != null && modifiersReady && screen == Minecraft.getInstance().screen
                 && event.getItemStack().is(expectedItem) && observedText != null) renderedTooltips++;
     }
 
@@ -184,6 +227,15 @@ public final class ItemCategoryClientProbe {
                 Long.toString(GLFWNativeX11.glfwGetX11Window(window.getWindow())),
                 Integer.toString(x), Integer.toString(y)).inheritIO().start();
         require(input.waitFor() == 0, "native mouse motion succeeds");
+    }
+
+    private static void setModifiers(Minecraft mc, int mode) throws Exception {
+        GLFW.glfwFocusWindow(mc.getWindow().getWindow());
+        for (int i = 0; i < 2; i++) {
+            Process input = new ProcessBuilder("xdotool", (mode & (1 << i)) != 0 ? "keydown" : "keyup",
+                    i == 0 ? "Shift_L" : "Control_L").inheritIO().start();
+            require(input.waitFor() == 0, "native modifier input succeeds");
+        }
     }
 
     private static void require(boolean condition, String message) {

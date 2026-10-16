@@ -1,6 +1,9 @@
 package com.zeropointsix.eraser.gametest;
 
 import com.google.gson.JsonParser;
+import com.google.gson.JsonObject;
+import com.zeropointsix.eraser.item.ItemGuideCatalog;
+import com.zeropointsix.eraser.item.ItemGuideTooltips;
 import com.zeropointsix.eraser.registry.ModItemTags;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
@@ -61,8 +64,8 @@ public final class ItemCategoryGameTests {
             Component detail = Component.literal("Existing detail").withStyle(ChatFormatting.ITALIC);
             List<Component> lines = new ArrayList<>(List.of(name, description, detail));
             post(stack, lines);
-            helper.assertTrue(lines.size() == 4 && lines.get(0) == name
-                            && lines.get(2) == description && lines.get(3) == detail,
+            helper.assertTrue(lines.size() == 6 && lines.get(0) == name
+                            && lines.get(4) == description && lines.get(5) == detail,
                     "name and existing lines retain identity, style and order: " + id);
             assertLabel(helper, lines.get(1), "qiwu", 0xFFAA00);
             helper.assertTrue(stack.getRarity() == rarity
@@ -146,6 +149,106 @@ public final class ItemCategoryGameTests {
                                 .equals(language.equals("en_us") ? "Tool" : "\u9053\u5177"), "daoju translation: " + language);
             }
         }
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty")
+    public static void guideInventoryMatchesEveryOwnedRegisteredItem(GameTestHelper helper) {
+        Set<ResourceLocation> registered = new HashSet<>();
+        ForgeRegistries.ITEMS.forEach(item -> {
+            ResourceLocation id = ForgeRegistries.ITEMS.getKey(item);
+            if (!Set.of("sound_isolating_eraser", "qihai").contains(id.getNamespace())) return;
+            registered.add(id);
+            var entry = ItemGuideCatalog.entries().get(id);
+            helper.assertTrue(entry != null, "registered item has a guide: " + id);
+            ItemStack stack = item.getDefaultInstance();
+            String category = stack.is(ModItemTags.PRECIOUS_MEMORY) ? "precious_memory"
+                    : stack.is(ModItemTags.QIWU) || stack.is(ModItemTags.ODDITIES) ? "qiwu"
+                    : stack.is(ModItemTags.DAOJU) || stack.is(ModItemTags.PROPS) ? "daoju"
+                    : item instanceof net.minecraft.world.item.SpawnEggItem ? "spawn_egg"
+                    : item instanceof net.minecraft.world.item.BlockItem ? "block" : "material";
+            helper.assertTrue(entry.category().equals(category), "tag/registry category matches: " + id);
+            helper.assertTrue(!entry.module().isBlank()
+                            && Set.of("partial", "placeholder", "complete").contains(entry.textStatus()),
+                    "module and documentation status are explicit: " + id);
+        });
+        helper.assertTrue(!registered.isEmpty() && registered.equals(ItemGuideCatalog.entries().keySet()),
+                "guide inventory equals the complete owned registry; no omissions or stale IDs");
+        System.out.println("ITEM_GUIDE_REGISTRY_COVERAGE " + registered.size());
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty")
+    public static void everyGuideSectionExistsInBothLanguages(GameTestHelper helper) throws Exception {
+        for (String language : List.of("en_us", "zh_cn")) {
+            JsonObject translations = new JsonObject();
+            for (String namespace : List.of("sound_isolating_eraser", "qihai")) {
+                String path = "/assets/" + namespace + "/lang/" + language + ".json";
+                try (var stream = ItemCategoryGameTests.class.getResourceAsStream(path)) {
+                    helper.assertTrue(stream != null, "language resource exists: " + path);
+                    var json = JsonParser.parseReader(new InputStreamReader(stream, StandardCharsets.UTF_8)).getAsJsonObject();
+                    json.entrySet().forEach(entry -> translations.add(entry.getKey(), entry.getValue()));
+                }
+            }
+            for (var entry : ItemGuideCatalog.entries().values()) {
+                for (String section : ItemGuideCatalog.SECTIONS) {
+                    String key = entry.key(section);
+                    helper.assertTrue(translations.has(key) && translations.get(key).isJsonPrimitive()
+                                    && translations.get(key).getAsJsonPrimitive().isString()
+                                    && !translations.get(key).getAsString().isBlank(),
+                            "nonempty guide translation: " + language + " / " + key);
+                    ItemStack stack = ForgeRegistries.ITEMS.getValue(entry.id()).getDefaultInstance();
+                    int supplied = section.equals("controls") ? entry.controls().size()
+                            : ItemGuideTooltips.arguments(entry, section, stack).length;
+                    String value = translations.get(key).getAsString();
+                    long placeholders = java.util.regex.Pattern.compile("%s").matcher(value).results().count();
+                    helper.assertTrue(placeholders == supplied, "format arguments match: " + language + " / " + key);
+                }
+            }
+            for (String hint : List.of("hold_both", "hold_shift", "hold_control")) {
+                helper.assertTrue(translations.has("guide.sound_isolating_eraser." + hint), "modifier hint: " + hint);
+            }
+        }
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty")
+    public static void modifierMatrixIsCompleteAndDoesNotMutateStacks(GameTestHelper helper) {
+        for (var entry : ItemGuideCatalog.entries().values()) {
+            ItemStack stack = ForgeRegistries.ITEMS.getValue(entry.id()).getDefaultInstance();
+            stack.getOrCreateTag().putString("GuideSentinel", "unchanged");
+            ItemStack original = stack.copy();
+            for (int mode = 0; mode < 4; mode++) {
+                boolean shift = (mode & 1) != 0;
+                boolean control = (mode & 2) != 0;
+                List<Component> lines = ItemGuideTooltips.describe(stack, shift, control,
+                        name -> Component.literal("remapped:" + name));
+                Set<String> keys = new HashSet<>();
+                for (Component line : lines) {
+                    helper.assertTrue(line.getContents() instanceof TranslatableContents, "all sections are translatable");
+                    var text = (TranslatableContents) line.getContents();
+                    helper.assertTrue(keys.add(text.getKey()), "no duplicate guide section: " + entry.id());
+                    if (text.getKey().equals(entry.key("controls"))) {
+                        helper.assertTrue(text.getArgs().length == entry.controls().size(), "all key bindings supplied");
+                        for (int i = 0; i < text.getArgs().length; i++) {
+                            helper.assertTrue(text.getArgs()[i] instanceof Component key
+                                            && key.getString().equals("remapped:" + entry.controls().get(i)),
+                                    "binding comes from resolver, not a hard-coded key");
+                        }
+                    }
+                }
+                helper.assertTrue(keys.contains(entry.key("summary")), "summary always visible");
+                for (String section : List.of("usage", "controls", "cooldown", "cost")) {
+                    helper.assertTrue(keys.contains(entry.key(section)) == shift, "Shift gate: " + section);
+                }
+                helper.assertTrue(keys.contains(entry.key("lore")) == control, "Ctrl gate");
+                helper.assertTrue(lines.size() == 1 + (shift ? 4 : 0) + (control ? 1 : 0)
+                                + (shift && control ? 0 : 1), "exact layer count");
+            }
+            helper.assertTrue(ItemStack.isSameItemSameTags(stack, original), "rendering never changes item NBT");
+        }
+        helper.assertTrue(ItemGuideTooltips.describe(new ItemStack(Items.STONE), true, true,
+                Component::translatable).isEmpty(), "foreign items have no guide");
         helper.succeed();
     }
 

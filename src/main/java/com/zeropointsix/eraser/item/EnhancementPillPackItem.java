@@ -67,8 +67,8 @@ public final class EnhancementPillPackItem extends Item {
 
     @Override
     public void appendHoverText(ItemStack stack, Level level, List<Component> lines, TooltipFlag flag) {
+        if (!ItemGuideTooltips.showDetails()) return;
         lines.add(Component.translatable("tooltip.sound_isolating_eraser.pill_count",
                 Math.max(0, stack.getMaxDamage() - stack.getDamageValue()), stack.getMaxDamage()).withStyle(ChatFormatting.AQUA));
-        lines.add(Component.translatable("tooltip.sound_isolating_eraser.pill_warning").withStyle(ChatFormatting.GRAY));
     }
 }
