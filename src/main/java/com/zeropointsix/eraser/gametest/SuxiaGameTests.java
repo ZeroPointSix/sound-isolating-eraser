@@ -154,16 +154,49 @@ public final class SuxiaGameTests {
     private static void idleBehind(GameTestHelper h, SuxiaSummonEntity summon, ServerPlayer owner) {
         Vec3 behind = owner.position().subtract(Vec3.directionFromRotation(0, owner.getYRot()).scale(2));
         double error = summon.position().subtract(behind).horizontalDistanceSqr();
+        h.assertTrue(summon.isAlive() && !summon.isRemoved(), "idle guardian is still present: " + idleDiagnostics(summon));
         h.assertTrue(summon.getTarget() == null && !summon.isAggressive(), "idle summon is not fighting");
         h.assertTrue(error <= 0.75 * 0.75 && Math.abs(summon.getY() - owner.getY()) < 0.5,
                 "idle summon stands within 0.75 blocks of owner's two-block rear position: " + Math.sqrt(error)
                         + " summon=" + summon.position() + " owner=" + owner.position()
-                        + " yaw=" + owner.getYRot() + " navigationDone=" + summon.getNavigation().isDone());
+                        + " yaw=" + owner.getYRot() + " navigationDone=" + summon.getNavigation().isDone()
+                        + " diagnostics=" + idleDiagnostics(summon));
         h.assertTrue(summon.getNavigation().isDone(), "idle summon stops navigation after arrival");
         h.assertTrue(Math.abs(Mth.wrapDegrees(summon.getYHeadRot() - owner.getYRot())) < 5,
                 "idle head follows only owner's view yaw: " + summon.getYHeadRot() + " vs " + owner.getYRot());
         h.assertTrue(Math.abs(summon.getXRot() - owner.getXRot()) < 5,
                 "idle head follows owner's view pitch: " + summon.getXRot() + " vs " + owner.getXRot());
+    }
+
+    private static String idleDiagnostics(SuxiaSummonEntity summon) {
+        var nearbyBlocks = new ArrayList<String>();
+        BlockPos at = summon.blockPosition();
+        for (BlockPos pos : BlockPos.betweenClosed(at.offset(-1, -1, -1), at.offset(1, 3, 1))) {
+            var state = summon.level().getBlockState(pos);
+            if (!state.isAir()) nearbyBlocks.add(pos.toShortString() + "=" + state);
+        }
+        var neighbors = summon.level().getEntities(summon, summon.getBoundingBox().inflate(3)).stream()
+                .map(entity -> EntityType.getKey(entity.getType()) + "@" + entity.position()).toList();
+        return "alive=" + summon.isAlive() + ",removed=" + summon.isRemoved() + ",reason=" + summon.getRemovalReason()
+                + ",health=" + summon.getHealth() + ",crawl=" + summon.isCrawling() + ",onGround=" + summon.onGround()
+                + ",noGravity=" + summon.isNoGravity() + ",tick=" + summon.tickCount + ",box=" + summon.getBoundingBox()
+                + ",horizontalCollision=" + summon.horizontalCollision + ",verticalCollision=" + summon.verticalCollision
+                + ",canStand=" + SuxiaMotion.canStand(summon) + ",blocks=" + nearbyBlocks + ",neighbors=" + neighbors;
+    }
+
+    private static void traceIdlePose(GameTestHelper h, SuxiaSummonEntity summon, String label) {
+        boolean[] crawling = {summon.isCrawling()};
+        Vec3[] previous = {summon.position()};
+        int[] changes = {0};
+        System.out.println("SUXIA_IDLE_SPAWN " + label + " position=" + summon.position() + " " + idleDiagnostics(summon));
+        h.onEachTick(() -> {
+            if (crawling[0] != summon.isCrawling() && changes[0]++ < 8) {
+                System.out.println("SUXIA_IDLE_POSE " + label + " from=" + previous[0] + " to=" + summon.position()
+                        + " " + idleDiagnostics(summon));
+            }
+            crawling[0] = summon.isCrawling();
+            previous[0] = summon.position();
+        });
     }
 
     private static void look(ServerPlayer player, float yaw, float pitch) {
@@ -403,6 +436,8 @@ public final class SuxiaGameTests {
             var firstSummon = f.summon(first);
             var second = f.player(4, 0); look(second, -90, -35); f.watch(second);
             var secondSummon = f.summon(second);
+            traceIdlePose(h, firstSummon, "first");
+            traceIdlePose(h, secondSummon, "second");
             var bystander = f.player(0, 4); look(bystander, 180, 70);
             Runnable bothIdle = () -> {
                 idleBehind(h, firstSummon, first);
