@@ -76,16 +76,18 @@ public final class WaterGhostGrab extends Goal {
         mob.playSound(SoundEvents.GENERIC_SPLASH, 1, 0.7F);
     }
     private Vec3 findShoreWater() {
-        if (!(mob instanceof WaterGhostSummonEntity summon) || body.swimming()) return null;
+        if (!(mob instanceof WaterGhostSummonEntity summon)) return null;
         var owner = summon.getOwner();
         if (owner == null) return null;
         boolean ownerNearWater = owner.isInWater();
-        for (var pos : BlockPos.withinManhattan(owner.blockPosition(), 2, 1, 2)) {
+        for (var pos : BlockPos.withinManhattan(owner.blockPosition(), 2, 2, 2)) {
             if (WaterGhostBody.waterAt(mob, pos)) { ownerNearWater = true; break; }
         }
         if (!ownerNearWater) return null;
         Vec3 edge = null;
-        for (var pos : BlockPos.withinManhattan(mob.blockPosition(), 4, 1, 4)) {
+        // Look down from the bank into a pit; keep searching while already swimming so
+        // flowing shallows over stone still walk into a column with water below.
+        for (var pos : BlockPos.withinManhattan(mob.blockPosition(), 6, 4, 6)) {
             if (!WaterGhostBody.waterAt(mob, pos) || !WaterGhostBody.waterAt(mob, pos.above())) continue;
             Vec3 at = Vec3.atBottomCenterOf(pos);
             if (!mob.level().noCollision(mob, WaterGhostBody.SWIMMING.makeBoundingBox(at))) continue;
@@ -107,6 +109,10 @@ public final class WaterGhostGrab extends Goal {
         if (target == null) return;
         if (!canContinueToUse()) { stop(); return; }
         lock();
+        if (shoreWater == null || !mob.level().noCollision(mob, mob.getBoundingBox().move(0, -0.08, 0))) {
+            Vec3 found = findShoreWater();
+            if (found != null) shoreWater = found;
+        }
         Vec3 shoreStep = Vec3.ZERO;
         if (shoreWater != null) {
             Vec3 toward = shoreWater.subtract(mob.position()).multiply(1, 0, 1);

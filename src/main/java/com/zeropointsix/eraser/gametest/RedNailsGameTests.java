@@ -484,10 +484,10 @@ public final class RedNailsGameTests {
         var f = new Fixture(h);
         var p = f.player(0, 0);
         var stack = f.wear(p);
-        // Shore at y=0, pool with depth below and water above so the carry can sink.
+        // Shore stays dry: water fills the pit under the bank so it cannot flow onto spawn.
         for (int x = 2; x <= 7; x++) for (int z = -3; z <= 3; z++) {
             f.set(f.center.offset(x, -5, z), Blocks.STONE.defaultBlockState());
-            for (int y = -4; y <= 3; y++) f.set(f.center.offset(x, y, z), Blocks.WATER.defaultBlockState());
+            for (int y = -4; y <= -1; y++) f.set(f.center.offset(x, y, z), Blocks.WATER.defaultBlockState());
         }
         var g = f.summon(p, stack);
         g.setNoAi(false);
