@@ -18,6 +18,7 @@ import net.minecraftforge.client.event.RenderLivingEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+import org.lwjgl.glfw.GLFW;
 
 @Mod.EventBusSubscriber(modid = "red_nails_qa", value = Dist.CLIENT)
 public final class SummonGuardTestClient {
@@ -46,7 +47,20 @@ public final class SummonGuardTestClient {
         if (mc.level == null || mc.player == null) return;
         try {
             ticks++; mc.options.hideGui = true;
-            if (ticks == 1) { mc.setScreen(null); mc.mouseHandler.grabMouse(); }
+            if (ticks == 1) {
+                GLFW.glfwFocusWindow(mc.getWindow().getWindow());
+                mc.setScreen(null); mc.mouseHandler.grabMouse();
+            }
+            if (mc.getOverlay() != null || !mc.isWindowActive()) {
+                ticks = 0;
+                RedNailsClient.KEY.setDown(false);
+                return;
+            }
+            for (var entity : mc.level.entitiesForRendering()) {
+                if (mc.getEntityRenderDispatcher().getRenderer(entity) == null) {
+                    throw new AssertionError("Missing renderer: " + net.minecraft.world.entity.EntityType.getKey(entity.getType()));
+                }
+            }
             if (phase.equals("suxia-fight") && ticks == 2) mc.gameMode.useItem(mc.player, InteractionHand.MAIN_HAND);
             if (phase.equals("water-fight")) {
                 if (ticks == 2 || ticks == 42 || ticks == 82 || ticks == 122) RedNailsClient.KEY.setDown(true);

@@ -77,4 +77,5 @@ jobs:
             build/red-nails-e2e-*/*.pass
             build/red-nails-e2e-*/*.failed
             build/red-nails-e2e-*/*.log
+            build/red-nails-e2e-*/client/crash-reports/*.txt
           if-no-files-found: warn
