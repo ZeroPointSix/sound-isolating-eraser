@@ -252,6 +252,72 @@ public final class ItemCategoryGameTests {
         helper.succeed();
     }
 
+    @GameTest(template = "empty")
+    public static void migratedDynamicDetailsSurviveRealTooltipAssembly(GameTestHelper helper) {
+        ItemStack pills = ForgeRegistries.ITEMS.getValue(id("enhancement_pill_pack")).getDefaultInstance();
+        pills.setDamageValue(2);
+        ItemStack watch = ForgeRegistries.ITEMS.getValue(id("suxia_pocket_watch")).getDefaultInstance();
+        watch.getOrCreateTag().putUUID("Owner", java.util.UUID.randomUUID());
+        watch.getOrCreateTag().putString("OwnerName", "GuideTest");
+        watch.getOrCreateTag().putBoolean("Open", true);
+        watch.getOrCreateTag().putInt("Remaining", 400);
+        ItemStack coolingWatch = watch.copy();
+        coolingWatch.getOrCreateTag().putBoolean("Open", false);
+        coolingWatch.getOrCreateTag().putInt("CooldownRemaining", 1200);
+        ItemStack nails = ForgeRegistries.ITEMS.getValue(id("red_nails")).getDefaultInstance();
+        nails.getOrCreateTag().putUUID("Owner", java.util.UUID.randomUUID());
+        nails.getOrCreateTag().putString("OwnerName", "GuideTest");
+        nails.getOrCreateTag().putIntArray("NailLeft", new int[]{1200, 0, 0, 0});
+        var summoned = new net.minecraft.nbt.ListTag();
+        summoned.add(new net.minecraft.nbt.CompoundTag());
+        var activeNail = new net.minecraft.nbt.CompoundTag();
+        activeNail.putUUID("Ghost", java.util.UUID.randomUUID());
+        summoned.add(activeNail);
+        nails.getOrCreateTag().put("NailOut", summoned);
+        String prefix = "tooltip.sound_isolating_eraser.";
+        List<ItemStack> stacks = List.of(pills, watch, coolingWatch, nails);
+        List<Set<String>> expected = List.of(Set.of(prefix + "pill_count"),
+                Set.of(prefix + "suxia_pocket_watch.bound", prefix + "suxia_pocket_watch.active"),
+                Set.of(prefix + "suxia_pocket_watch.bound", prefix + "suxia_pocket_watch.cooling"),
+                Set.of(prefix + "red_nails.bound", prefix + "red_nails.nails", prefix + "red_nails.nail_cooling",
+                        prefix + "red_nails.nail_out", prefix + "red_nails.nail_ready"));
+        for (int mode = 0; mode < 4; mode++) {
+            boolean shift = (mode & 1) != 0;
+            boolean control = (mode & 2) != 0;
+            Runnable restore = ItemGuideTooltips.configureClient(
+                    () -> new ItemGuideTooltips.Modifiers(shift, control), Component::translatable);
+            try {
+                for (int i = 0; i < stacks.size(); i++) {
+                    ItemStack stack = stacks.get(i);
+                    ItemStack original = stack.copy();
+                    List<Component> lines = stack.getTooltipLines(null, TooltipFlag.Default.NORMAL);
+                    for (String key : expected.get(i)) {
+                        helper.assertTrue(lines.stream().anyMatch(line -> line.getContents() instanceof TranslatableContents text
+                                        && text.getKey().equals(key)) == shift, "live details use Shift: " + key);
+                    }
+                    if (shift) {
+                        for (Component line : lines) {
+                            if (!(line.getContents() instanceof TranslatableContents text)) continue;
+                            if (text.getKey().equals(prefix + "pill_count")) {
+                                helper.assertTrue(text.getArgs()[0].equals(pills.getMaxDamage() - 2), "current pill count");
+                            } else if (text.getKey().equals(prefix + "suxia_pocket_watch.active")) {
+                                helper.assertTrue(text.getArgs()[0].equals(20), "current summon seconds");
+                            } else if (text.getKey().equals(prefix + "suxia_pocket_watch.cooling")) {
+                                helper.assertTrue(text.getArgs()[0].equals("1:00"), "current watch cooldown");
+                            } else if (text.getKey().equals(prefix + "red_nails.nail_cooling")) {
+                                helper.assertTrue(text.getArgs()[1].equals("1:00"), "current individual nail cooldown");
+                            }
+                        }
+                    }
+                    helper.assertTrue(ItemStack.isSameItemSameTags(stack, original), "live details never change item data");
+                }
+            } finally {
+                restore.run();
+            }
+        }
+        helper.succeed();
+    }
+
     private static void post(ItemStack stack, List<Component> lines) {
         MinecraftForge.EVENT_BUS.post(new ItemTooltipEvent(stack, null, lines, TooltipFlag.Default.NORMAL));
     }

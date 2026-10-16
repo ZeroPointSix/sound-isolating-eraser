@@ -16,9 +16,16 @@ public final class ItemGuideTooltips {
     private static Supplier<Modifiers> input = () -> new Modifiers(false, false);
     private static Function<String, Component> binding = Component::translatable;
 
-    public static void configureClient(Supplier<Modifiers> modifiers, Function<String, Component> keyName) {
+    /** Returns a restoration action for scoped previews and regression tests. */
+    public static Runnable configureClient(Supplier<Modifiers> modifiers, Function<String, Component> keyName) {
+        var previousInput = input;
+        var previousBinding = binding;
         input = modifiers;
         binding = keyName;
+        return () -> {
+            input = previousInput;
+            binding = previousBinding;
+        };
     }
 
     public static boolean showDetails() { return input.get().shift(); }
