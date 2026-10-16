@@ -3,6 +3,7 @@ package com.zeropointsix.rednailstest;
 import com.zeropointsix.eraser.client.RedNailsClient;
 import com.zeropointsix.eraser.client.WaterGhostModel;
 import com.zeropointsix.eraser.rednails.*;
+import com.zeropointsix.eraser.registry.ModEntities;
 import com.zeropointsix.eraser.ModMain;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -59,6 +60,18 @@ public final class RedNailsTestClient {
         var mc = Minecraft.getInstance();
         if (mc.level == null || mc.player == null) return;
         try {
+            var dispatcher = mc.getEntityRenderDispatcher();
+            for (var entity : mc.level.entitiesForRendering()) {
+                RedNailsClient.ensureRenderer(entity);
+                if (dispatcher.getRenderer(entity) == null) {
+                    throw new AssertionError("Missing renderer type="
+                            + net.minecraft.world.entity.EntityType.getKey(entity.getType())
+                            + " class=" + entity.getClass().getName()
+                            + " typeHash=" + System.identityHashCode(entity.getType())
+                            + " summonIdentity=" + (entity.getType() == ModEntities.WATER_GHOST_SUMMON.get())
+                            + " ghostIdentity=" + (entity.getType() == ModEntities.WATER_GHOST.get()));
+                }
+            }
             if (phase.isEmpty()) {
                 if (!RedNailsItem.findWorn(mc.player).isEmpty() && mc.level.hasChunkAt(mc.player.blockPosition())) {
                     mc.setScreen(null); mc.mouseHandler.grabMouse();
@@ -69,8 +82,8 @@ public final class RedNailsTestClient {
             ticks++;
             mc.options.hideGui = phase.equals("guard") || phase.equals("water");
             if (phase.equals("input")) {
-                if (ticks == 1 || ticks == 25 || ticks == 65 || ticks == 105 || ticks == 145) RedNailsClient.KEY.setDown(true);
-                if (ticks == 10 || ticks == 55 || ticks == 95 || ticks == 135 || ticks == 175) RedNailsClient.KEY.setDown(false);
+                if (ticks == 1 || ticks == 40 || ticks == 100) RedNailsClient.KEY.setDown(true);
+                if (ticks == 10 || ticks == 80 || ticks == 160) RedNailsClient.KEY.setDown(false);
             }
             if (phase.equals("recall")) {
                 if (ticks == 1) {
