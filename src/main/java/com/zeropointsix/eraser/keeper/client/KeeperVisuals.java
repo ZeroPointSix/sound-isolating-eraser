@@ -36,6 +36,7 @@ public final class KeeperVisuals {
     private static boolean awaitRelease;
     private static int width, height;
     private static long flashUntil;
+    private static boolean flashPending;
     private static final Set<UUID> HIDDEN = new HashSet<>();
 
     private static boolean active() {
@@ -43,8 +44,8 @@ public final class KeeperVisuals {
         return player != null && player.hasEffect(ModEffects.IN_PHOTO.get());
     }
     public static void flash() {
-        // Four nominal ticks of real time, independent of tick catch-up and clock changes.
-        flashUntil = System.nanoTime() + FLASH_NANOS;
+        // Start the 200ms display interval on the first overlay frame, not during tick catch-up.
+        flashPending = true;
     }
     public static void visibility(UUID player, boolean hidden) {
         if (hidden) HIDDEN.add(player); else HIDDEN.remove(player);
@@ -66,7 +67,7 @@ public final class KeeperVisuals {
                 && mc.player.getUseItem().is(ModItems.KEEPER_PHOTO.get())
                 && mc.player.getUseItemRemainingTicks() <= 1) awaitRelease = true;
         if (!active()) close();
-        if (Minecraft.getInstance().player == null) { flashUntil = 0; failed = false; awaitRelease = false; HIDDEN.clear(); }
+        if (Minecraft.getInstance().player == null) { flashUntil = 0; flashPending = false; failed = false; awaitRelease = false; HIDDEN.clear(); }
     }
     @SubscribeEvent public static void hidePlayer(RenderPlayerEvent.Pre event) {
         if (HIDDEN.contains(event.getEntity().getUUID())
@@ -107,6 +108,10 @@ public final class KeeperVisuals {
                     var text = Component.translatable("hud." + ModMain.MOD_ID + ".keeper_photo.remaining", Math.max(0, (remaining + 19) / 20));
                     gui.drawCenteredString(mc.font, text, w / 2, h * 238 / 256 - mc.font.lineHeight / 2, 0x5A4632);
                     RenderSystem.disableBlend();
+                }
+                if (flashPending) {
+                    flashUntil = System.nanoTime() + FLASH_NANOS;
+                    flashPending = false;
                 }
                 long left = flashUntil == 0 ? 0 : flashUntil - System.nanoTime();
                 if (left > 0) {
