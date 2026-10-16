@@ -460,6 +460,36 @@ public final class SuxiaGameTests {
     }
 
     @GameTest(template = "empty", batch = BATCH, timeoutTicks = 160)
+    public static void summon_runtime_crawl_transition_returns_to_idle(GameTestHelper h) {
+        ready(h, f -> {
+            var first = f.player(-4, 0); look(first, 90, 25); f.watch(first);
+            var firstSummon = f.summon(first);
+            var second = f.player(4, 0); look(second, -90, -35); f.watch(second);
+            var secondSummon = f.summon(second);
+            traceIdlePose(h, firstSummon, "runtime-crawl");
+            traceIdlePose(h, secondSummon, "standing-control");
+            h.startSequence().thenWaitUntil(() -> h.assertTrue(firstSummon.tickCount > 0,
+                            "pose probe starts after a real entity tick"))
+                    .thenExecute(() -> {
+                        Vec3 before = firstSummon.position();
+                        firstSummon.setCrawling(true);
+                        h.assertTrue(firstSummon.isCrawling(), "runtime pose change was applied");
+                        System.out.println("SUXIA_IDLE_RUNTIME_CRAWL from=" + before + " to=" + firstSummon.position()
+                                + " noCollision=" + f.level.noCollision(firstSummon, firstSummon.getBoundingBox())
+                                + " " + idleDiagnostics(firstSummon));
+                    });
+            // Leave AI, gravity and the next pose decision untouched; the second summon is the control.
+            h.runAfterDelay(100, () -> {
+                idleBehind(h, firstSummon, first);
+                idleBehind(h, secondSummon, second);
+                h.assertTrue(!firstSummon.isCrawling(), "guardian naturally returns to standing in open space");
+                System.out.println("SUXIA_IDLE_RUNTIME_CRAWL_RECOVERY_PASSED");
+                h.succeed();
+            });
+        });
+    }
+
+    @GameTest(template = "empty", batch = BATCH, timeoutTicks = 160)
     public static void summon_acquires_mob_targeting_owner(GameTestHelper h) {
         ready(h, f -> {
             var p = f.player(0, 0); f.watch(p); var summon = f.summon(p);
