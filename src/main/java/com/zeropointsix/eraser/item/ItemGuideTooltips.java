@@ -1,7 +1,10 @@
 package com.zeropointsix.eraser.item;
 
 import com.zeropointsix.eraser.config.CommonConfig;
+import com.zeropointsix.eraser.fertilizer.FertilizerConfig;
 import com.zeropointsix.eraser.gravity.GravityConfig;
+import com.zeropointsix.eraser.yuji.YujiConfig;
+import com.zeropointsix.eraser.yuji.flare.FlareConfig;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
@@ -9,6 +12,7 @@ import java.util.function.Supplier;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
+import net.minecraftforge.common.ForgeConfigSpec;
 
 /** Common-side assembly has no client class references, including on a dedicated server. */
 public final class ItemGuideTooltips {
@@ -59,6 +63,43 @@ public final class ItemGuideTooltips {
 
     public static Object[] arguments(ItemGuideCatalog.Entry entry, String section, ItemStack stack) {
         String id = entry.id().toString();
+        if (id.equals("sound_isolating_eraser:enhancement_pill_pack")) {
+            if (section.equals("usage")) return new Object[]{seconds(CommonConfig.value(CommonConfig.PILL_DURATION, 48000))};
+            if (section.equals("cooldown")) return new Object[]{seconds(CommonConfig.value(CommonConfig.USE_DURATION, 32))};
+            if (section.equals("cost")) return new Object[]{seconds(CommonConfig.value(CommonConfig.WITHDRAWAL_DURATION, 12000))};
+        }
+        if (id.startsWith("qihai:flare_") && section.equals("cooldown")) {
+            return new Object[]{seconds(value(YujiConfig.SPEC, FlareConfig.COOLDOWN))};
+        }
+        if (id.equals("qihai:flare_red") && section.equals("usage")) {
+            return new Object[]{value(YujiConfig.SPEC, FlareConfig.TAUNT_RADIUS),
+                    seconds(value(YujiConfig.SPEC, FlareConfig.RED_LIFETIME))};
+        }
+        if (id.equals("qihai:flare_yellow") && section.equals("usage")) {
+            return new Object[]{value(YujiConfig.SPEC, FlareConfig.LIGHT_RADIUS),
+                    seconds(value(YujiConfig.SPEC, FlareConfig.YELLOW_LIFETIME))};
+        }
+        if (id.equals("qihai:flare_green") && section.equals("usage")) {
+            return new Object[]{seconds(value(YujiConfig.SPEC, FlareConfig.GREEN_DELAY))};
+        }
+        if (id.equals("qihai:supply_crate") && section.equals("cooldown")) {
+            return new Object[]{seconds(value(YujiConfig.SPEC, FlareConfig.EMPTY_LIFETIME))};
+        }
+        if (id.equals("sound_isolating_eraser:super_fertilizer_bag")) {
+            if (section.equals("usage")) return new Object[]{FertilizerConfig.value(FertilizerConfig.THRESHOLD),
+                    FertilizerConfig.value(FertilizerConfig.TREE_COUNT)};
+            if (section.equals("cost")) return new Object[]{Math.max(0, stack.getMaxDamage() - stack.getDamageValue()),
+                    stack.getMaxDamage()};
+        }
+        if (id.equals("sound_isolating_eraser:fertile_fruit") && section.equals("usage")) {
+            return new Object[]{FertilizerConfig.value(FertilizerConfig.NUTRITION),
+                    FertilizerConfig.value(FertilizerConfig.HEAL),
+                    seconds(FertilizerConfig.value(FertilizerConfig.REGEN_TICKS))};
+        }
+        if (List.of("sound_isolating_eraser:fertile_log", "sound_isolating_eraser:fertile_leaves",
+                "sound_isolating_eraser:fertile_planks").contains(id) && section.equals("usage")) {
+            return new Object[]{FertilizerConfig.value(FertilizerConfig.AURA_THRESHOLD)};
+        }
         if (id.equals("sound_isolating_eraser:sound_isolating_eraser")) {
             if (section.equals("usage")) return new Object[]{CommonConfig.barrierHeight()};
             if (section.equals("cost")) return new Object[]{Math.max(0, stack.getMaxDamage() - stack.getDamageValue())};
@@ -74,6 +115,9 @@ public final class ItemGuideTooltips {
     public static String seconds(int ticks) {
         return java.math.BigDecimal.valueOf(ticks).divide(java.math.BigDecimal.valueOf(20))
                 .stripTrailingZeros().toPlainString();
+    }
+    private static <T> T value(ForgeConfigSpec spec, ForgeConfigSpec.ConfigValue<T> option) {
+        return spec.isLoaded() ? option.get() : option.getDefault();
     }
     private ItemGuideTooltips() { }
 }

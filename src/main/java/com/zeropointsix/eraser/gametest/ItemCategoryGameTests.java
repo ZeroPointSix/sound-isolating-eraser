@@ -168,9 +168,8 @@ public final class ItemCategoryGameTests {
                     : item instanceof net.minecraft.world.item.SpawnEggItem ? "spawn_egg"
                     : item instanceof net.minecraft.world.item.BlockItem ? "block" : "material";
             helper.assertTrue(entry.category().equals(category), "tag/registry category matches: " + id);
-            helper.assertTrue(!entry.module().isBlank()
-                            && Set.of("partial", "placeholder", "complete").contains(entry.textStatus()),
-                    "module and documentation status are explicit: " + id);
+            helper.assertTrue(!entry.module().isBlank() && entry.textStatus().equals("complete"),
+                    "module is explicit and documentation is complete: " + id);
         });
         helper.assertTrue(!registered.isEmpty() && registered.equals(ItemGuideCatalog.entries().keySet()),
                 "guide inventory equals the complete owned registry; no omissions or stale IDs");
@@ -201,6 +200,9 @@ public final class ItemCategoryGameTests {
                     int supplied = section.equals("controls") ? entry.controls().size()
                             : ItemGuideTooltips.arguments(entry, section, stack).length;
                     String value = translations.get(key).getAsString();
+                    helper.assertTrue(!java.util.regex.Pattern.compile("\\b(?:PR2|pending|placeholder)\\b|\u5f85\u8865|\u5360\u4f4d",
+                                    java.util.regex.Pattern.CASE_INSENSITIVE).matcher(value).find(),
+                            "completed guides contain no pending text: " + language + " / " + key);
                     long placeholders = java.util.regex.Pattern.compile("%s").matcher(value).results().count();
                     helper.assertTrue(placeholders == supplied, "format arguments match: " + language + " / " + key);
                 }
@@ -217,6 +219,10 @@ public final class ItemCategoryGameTests {
         for (var entry : ItemGuideCatalog.entries().values()) {
             ItemStack stack = ForgeRegistries.ITEMS.getValue(entry.id()).getDefaultInstance();
             stack.getOrCreateTag().putString("GuideSentinel", "unchanged");
+            if (entry.id().getPath().equals("super_fertilizer_bag")) {
+                stack.getOrCreateTag().putInt("FertilizerCapacity", 17);
+                stack.setDamageValue(5);
+            }
             ItemStack original = stack.copy();
             for (int mode = 0; mode < 4; mode++) {
                 boolean shift = (mode & 1) != 0;
@@ -228,6 +234,10 @@ public final class ItemCategoryGameTests {
                     helper.assertTrue(line.getContents() instanceof TranslatableContents, "all sections are translatable");
                     var text = (TranslatableContents) line.getContents();
                     helper.assertTrue(keys.add(text.getKey()), "no duplicate guide section: " + entry.id());
+                    if (entry.id().getPath().equals("super_fertilizer_bag") && text.getKey().equals(entry.key("cost"))) {
+                        helper.assertTrue(java.util.Arrays.equals(text.getArgs(), new Object[]{12, 17}),
+                                "fertilizer guide reads this stack's saved capacity and remaining uses");
+                    }
                     if (text.getKey().equals(entry.key("controls"))) {
                         helper.assertTrue(text.getArgs().length == entry.controls().size(), "all key bindings supplied");
                         for (int i = 0; i < text.getArgs().length; i++) {
@@ -244,11 +254,26 @@ public final class ItemCategoryGameTests {
                 helper.assertTrue(keys.contains(entry.key("lore")) == control, "Ctrl gate");
                 helper.assertTrue(lines.size() == 1 + (shift ? 4 : 0) + (control ? 1 : 0)
                                 + (shift && control ? 0 : 1), "exact layer count");
+                Runnable restore = ItemGuideTooltips.configureClient(
+                        () -> new ItemGuideTooltips.Modifiers(shift, control),
+                        name -> Component.literal("remapped:" + name));
+                try {
+                    List<String> renderedKeys = stack.getTooltipLines(null, TooltipFlag.Default.NORMAL).stream()
+                            .map(Component::getContents).filter(TranslatableContents.class::isInstance)
+                            .map(TranslatableContents.class::cast).map(TranslatableContents::getKey)
+                            .filter(key -> key.startsWith("guide.")).toList();
+                    helper.assertTrue(renderedKeys.size() == keys.size()
+                                    && new HashSet<>(renderedKeys).equals(keys),
+                            "real tooltip entry point mounts each guide exactly once: " + entry.id() + " mode=" + mode);
+                } finally {
+                    restore.run();
+                }
             }
             helper.assertTrue(ItemStack.isSameItemSameTags(stack, original), "rendering never changes item NBT");
         }
         helper.assertTrue(ItemGuideTooltips.describe(new ItemStack(Items.STONE), true, true,
                 Component::translatable).isEmpty(), "foreign items have no guide");
+        System.out.println("ITEM_GUIDE_TOOLTIP_ENTRYPOINT_COVERAGE items=" + ItemGuideCatalog.entries().size() + " modes=4");
         helper.succeed();
     }
 

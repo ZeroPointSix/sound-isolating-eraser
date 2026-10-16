@@ -9,7 +9,7 @@
       "controls": [
         "key.use"
       ],
-      "text_status": "placeholder"
+      "text_status": "complete"
     },
     {
       "id": "qihai:ekou_spawn_egg",
@@ -18,7 +18,7 @@
       "controls": [
         "key.use"
       ],
-      "text_status": "placeholder"
+      "text_status": "complete"
     },
     {
       "id": "qihai:emergency_light",
@@ -27,7 +27,7 @@
       "controls": [
         "key.use"
       ],
-      "text_status": "placeholder"
+      "text_status": "complete"
     },
     {
       "id": "qihai:flare_green",
@@ -36,7 +36,7 @@
       "controls": [
         "key.use"
       ],
-      "text_status": "placeholder"
+      "text_status": "complete"
     },
     {
       "id": "qihai:flare_gun",
@@ -45,7 +45,7 @@
       "controls": [
         "key.use"
       ],
-      "text_status": "partial"
+      "text_status": "complete"
     },
     {
       "id": "qihai:flare_red",
@@ -54,7 +54,7 @@
       "controls": [
         "key.use"
       ],
-      "text_status": "placeholder"
+      "text_status": "complete"
     },
     {
       "id": "qihai:flare_yellow",
@@ -63,7 +63,7 @@
       "controls": [
         "key.use"
       ],
-      "text_status": "placeholder"
+      "text_status": "complete"
     },
     {
       "id": "qihai:holy_light_source",
@@ -72,7 +72,7 @@
       "controls": [
         "key.use"
       ],
-      "text_status": "placeholder"
+      "text_status": "complete"
     },
     {
       "id": "qihai:incense_burner",
@@ -81,77 +81,97 @@
       "controls": [
         "key.use"
       ],
-      "text_status": "placeholder"
+      "text_status": "complete"
     },
     {
       "id": "qihai:karma_mark_chennu",
       "module": "yuji",
       "category": "material",
-      "controls": [],
-      "text_status": "placeholder"
+      "controls": [
+        "key.use"
+      ],
+      "text_status": "complete"
     },
     {
       "id": "qihai:karma_mark_ekou",
       "module": "yuji",
       "category": "material",
-      "controls": [],
-      "text_status": "placeholder"
+      "controls": [
+        "key.use"
+      ],
+      "text_status": "complete"
     },
     {
       "id": "qihai:karma_mark_liangshe",
       "module": "yuji",
       "category": "material",
-      "controls": [],
-      "text_status": "placeholder"
+      "controls": [
+        "key.use"
+      ],
+      "text_status": "complete"
     },
     {
       "id": "qihai:karma_mark_qiyu",
       "module": "yuji",
       "category": "material",
-      "controls": [],
-      "text_status": "placeholder"
+      "controls": [
+        "key.use"
+      ],
+      "text_status": "complete"
     },
     {
       "id": "qihai:karma_mark_shasheng",
       "module": "yuji",
       "category": "material",
-      "controls": [],
-      "text_status": "placeholder"
+      "controls": [
+        "key.use"
+      ],
+      "text_status": "complete"
     },
     {
       "id": "qihai:karma_mark_tanyu",
       "module": "yuji",
       "category": "material",
-      "controls": [],
-      "text_status": "placeholder"
+      "controls": [
+        "key.use"
+      ],
+      "text_status": "complete"
     },
     {
       "id": "qihai:karma_mark_toudao",
       "module": "yuji",
       "category": "material",
-      "controls": [],
-      "text_status": "placeholder"
+      "controls": [
+        "key.use"
+      ],
+      "text_status": "complete"
     },
     {
       "id": "qihai:karma_mark_wangyu",
       "module": "yuji",
       "category": "material",
-      "controls": [],
-      "text_status": "placeholder"
+      "controls": [
+        "key.use"
+      ],
+      "text_status": "complete"
     },
     {
       "id": "qihai:karma_mark_xieyin",
       "module": "yuji",
       "category": "material",
-      "controls": [],
-      "text_status": "placeholder"
+      "controls": [
+        "key.use"
+      ],
+      "text_status": "complete"
     },
     {
       "id": "qihai:karma_mark_yuchi",
       "module": "yuji",
       "category": "material",
-      "controls": [],
-      "text_status": "placeholder"
+      "controls": [
+        "key.use"
+      ],
+      "text_status": "complete"
     },
     {
       "id": "qihai:liangshe_spawn_egg",
@@ -160,7 +180,7 @@
       "controls": [
         "key.use"
       ],
-      "text_status": "placeholder"
+      "text_status": "complete"
     },
     {
       "id": "qihai:mural",
@@ -169,7 +189,7 @@
       "controls": [
         "key.use"
       ],
-      "text_status": "placeholder"
+      "text_status": "complete"
     },
     {
       "id": "qihai:neon_sign_pink",
@@ -178,7 +198,7 @@
       "controls": [
         "key.use"
       ],
-      "text_status": "placeholder"
+      "text_status": "complete"
     },
     {
       "id": "qihai:qiyu_spawn_egg",
@@ -187,7 +207,7 @@
       "controls": [
         "key.use"
       ],
-      "text_status": "placeholder"
+      "text_status": "complete"
     },
     {
       "id": "qihai:shasheng_spawn_egg",
@@ -196,7 +216,7 @@
       "controls": [
         "key.use"
       ],
-      "text_status": "placeholder"
+      "text_status": "complete"
     },
     {
       "id": "qihai:shifotou_spawn_egg",
@@ -205,7 +225,7 @@
       "controls": [
         "key.use"
       ],
-      "text_status": "placeholder"
+      "text_status": "complete"
     },
     {
       "id": "qihai:supply_crate",
@@ -214,7 +234,7 @@
       "controls": [
         "key.use"
       ],
-      "text_status": "placeholder"
+      "text_status": "complete"
     },
     {
       "id": "qihai:tanyu_spawn_egg",
@@ -223,7 +243,7 @@
       "controls": [
         "key.use"
       ],
-      "text_status": "placeholder"
+      "text_status": "complete"
     },
     {
       "id": "qihai:toudao_spawn_egg",
@@ -232,7 +252,7 @@
       "controls": [
         "key.use"
       ],
-      "text_status": "placeholder"
+      "text_status": "complete"
     },
     {
       "id": "qihai:wall_corpse",
@@ -241,7 +261,7 @@
       "controls": [
         "key.use"
       ],
-      "text_status": "placeholder"
+      "text_status": "complete"
     },
     {
       "id": "qihai:wangyu_spawn_egg",
@@ -250,7 +270,7 @@
       "controls": [
         "key.use"
       ],
-      "text_status": "placeholder"
+      "text_status": "complete"
     },
     {
       "id": "qihai:xieyin_spawn_egg",
@@ -259,7 +279,7 @@
       "controls": [
         "key.use"
       ],
-      "text_status": "placeholder"
+      "text_status": "complete"
     },
     {
       "id": "qihai:yuchi_spawn_egg",
@@ -268,7 +288,7 @@
       "controls": [
         "key.use"
       ],
-      "text_status": "placeholder"
+      "text_status": "complete"
     },
     {
       "id": "sound_isolating_eraser:brickrot_spawn_egg",
@@ -277,21 +297,21 @@
       "controls": [
         "key.use"
       ],
-      "text_status": "placeholder"
+      "text_status": "complete"
     },
     {
       "id": "sound_isolating_eraser:empty_fertilizer_bag",
       "module": "fertilizer",
       "category": "material",
       "controls": [],
-      "text_status": "placeholder"
+      "text_status": "complete"
     },
     {
       "id": "sound_isolating_eraser:empty_pill_pack",
       "module": "equipment",
       "category": "material",
       "controls": [],
-      "text_status": "placeholder"
+      "text_status": "complete"
     },
     {
       "id": "sound_isolating_eraser:enhancement_pill_pack",
@@ -300,7 +320,7 @@
       "controls": [
         "key.use"
       ],
-      "text_status": "partial"
+      "text_status": "complete"
     },
     {
       "id": "sound_isolating_eraser:fertile_fruit",
@@ -309,7 +329,7 @@
       "controls": [
         "key.use"
       ],
-      "text_status": "placeholder"
+      "text_status": "complete"
     },
     {
       "id": "sound_isolating_eraser:fertile_leaves",
@@ -318,7 +338,7 @@
       "controls": [
         "key.use"
       ],
-      "text_status": "placeholder"
+      "text_status": "complete"
     },
     {
       "id": "sound_isolating_eraser:fertile_log",
@@ -327,7 +347,7 @@
       "controls": [
         "key.use"
       ],
-      "text_status": "placeholder"
+      "text_status": "complete"
     },
     {
       "id": "sound_isolating_eraser:fertile_planks",
@@ -336,7 +356,7 @@
       "controls": [
         "key.use"
       ],
-      "text_status": "placeholder"
+      "text_status": "complete"
     },
     {
       "id": "sound_isolating_eraser:fertile_sapling",
@@ -345,7 +365,7 @@
       "controls": [
         "key.use"
       ],
-      "text_status": "placeholder"
+      "text_status": "complete"
     },
     {
       "id": "sound_isolating_eraser:gravity_jade_pendant",
@@ -354,7 +374,7 @@
       "controls": [
         "key.sound_isolating_eraser.gravity_target"
       ],
-      "text_status": "partial"
+      "text_status": "complete"
     },
     {
       "id": "sound_isolating_eraser:neon_tumor_spawn_egg",
@@ -363,7 +383,7 @@
       "controls": [
         "key.use"
       ],
-      "text_status": "placeholder"
+      "text_status": "complete"
     },
     {
       "id": "sound_isolating_eraser:red_nails",
@@ -373,7 +393,7 @@
         "key.sound_isolating_eraser.red_nails",
         "key.sneak"
       ],
-      "text_status": "partial"
+      "text_status": "complete"
     },
     {
       "id": "sound_isolating_eraser:shadow_tangler_spawn_egg",
@@ -382,7 +402,7 @@
       "controls": [
         "key.use"
       ],
-      "text_status": "placeholder"
+      "text_status": "complete"
     },
     {
       "id": "sound_isolating_eraser:shaxiadao",
@@ -391,7 +411,7 @@
       "controls": [
         "key.attack"
       ],
-      "text_status": "partial"
+      "text_status": "complete"
     },
     {
       "id": "sound_isolating_eraser:sound_isolating_eraser",
@@ -401,7 +421,7 @@
         "key.use",
         "key.sound_isolating_eraser.eraser_mode"
       ],
-      "text_status": "partial"
+      "text_status": "complete"
     },
     {
       "id": "sound_isolating_eraser:super_fertilizer_bag",
@@ -410,7 +430,7 @@
       "controls": [
         "key.use"
       ],
-      "text_status": "placeholder"
+      "text_status": "complete"
     },
     {
       "id": "sound_isolating_eraser:suxia_pocket_watch",
@@ -419,7 +439,7 @@
       "controls": [
         "key.use"
       ],
-      "text_status": "partial"
+      "text_status": "complete"
     },
     {
       "id": "sound_isolating_eraser:suxia_spawn_egg",
@@ -428,14 +448,14 @@
       "controls": [
         "key.use"
       ],
-      "text_status": "placeholder"
+      "text_status": "complete"
     },
     {
       "id": "sound_isolating_eraser:thunder_feather",
       "module": "equipment",
       "category": "material",
       "controls": [],
-      "text_status": "partial"
+      "text_status": "complete"
     },
     {
       "id": "sound_isolating_eraser:water_ghost_spawn_egg",
@@ -444,7 +464,7 @@
       "controls": [
         "key.use"
       ],
-      "text_status": "placeholder"
+      "text_status": "complete"
     },
     {
       "id": "sound_isolating_eraser:wind_thunder_wings",
@@ -456,7 +476,7 @@
         "key.sound_isolating_eraser.hover",
         "key.sound_isolating_eraser.blink"
       ],
-      "text_status": "partial"
+      "text_status": "complete"
     }
   ]
 }

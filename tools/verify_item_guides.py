@@ -8,6 +8,29 @@ ROOT = Path(__file__).resolve().parents[1]
 ASSETS = ROOT / "src/main/resources/assets"
 SECTIONS = ("summary", "usage", "controls", "cooldown", "cost", "lore")
 NAMESPACES = ("sound_isolating_eraser", "qihai")
+ARGUMENTS = {
+    ("enhancement_pill_pack", "usage"): 1,
+    ("enhancement_pill_pack", "cooldown"): 1,
+    ("enhancement_pill_pack", "cost"): 1,
+    ("flare_gun", "cooldown"): 1,
+    ("flare_red", "cooldown"): 1,
+    ("flare_yellow", "cooldown"): 1,
+    ("flare_green", "cooldown"): 1,
+    ("flare_red", "usage"): 2,
+    ("flare_yellow", "usage"): 2,
+    ("flare_green", "usage"): 1,
+    ("supply_crate", "cooldown"): 1,
+    ("super_fertilizer_bag", "usage"): 2,
+    ("super_fertilizer_bag", "cost"): 2,
+    ("fertile_fruit", "usage"): 3,
+    ("fertile_log", "usage"): 1,
+    ("fertile_leaves", "usage"): 1,
+    ("fertile_planks", "usage"): 1,
+    ("sound_isolating_eraser", "usage"): 1,
+    ("sound_isolating_eraser", "cost"): 1,
+    ("gravity_jade_pendant", "cooldown"): 2,
+}
+PENDING = re.compile(r"\b(?:PR2|pending|placeholder)\b|\u5f85\u8865|\u5360\u4f4d", re.IGNORECASE)
 
 
 def unique_object(pairs):
@@ -33,7 +56,7 @@ def verify():
     for entry in entries:
         assert re.fullmatch(r"(sound_isolating_eraser|qihai):[a-z0-9_/]+", entry["id"])
         assert entry["module"] and entry["category"]
-        assert entry["text_status"] in {"placeholder", "partial", "complete"}
+        assert entry["text_status"] == "complete", f"unfinished guide: {entry['id']}"
         assert isinstance(entry["controls"], list) and all(isinstance(key, str) for key in entry["controls"])
         expected.update("guide." + entry["id"].replace(":", ".") + "." + section for section in SECTIONS)
     for locale in ("en_us", "zh_cn"):
@@ -45,11 +68,9 @@ def verify():
                 key = "guide." + entry["id"].replace(":", ".") + "." + section
                 value = translations.get(key)
                 assert isinstance(value, str) and value.strip(), f"{locale}: missing {key}"
-                count = len(entry["controls"]) if section == "controls" else 0
-                if entry["id"] == "sound_isolating_eraser:sound_isolating_eraser" and section in {"usage", "cost"}:
-                    count = 1
-                if entry["id"] == "sound_isolating_eraser:gravity_jade_pendant" and section == "cooldown":
-                    count = 2
+                assert not PENDING.search(value), f"{locale}: unfinished text in {key}"
+                count = len(entry["controls"]) if section == "controls" else ARGUMENTS.get(
+                    (entry["id"].split(":", 1)[1], section), 0)
                 assert len(re.findall(r"%s", value)) == count, f"{locale}: format arguments for {key}"
                 assert "%" not in value.replace("%s", ""), f"{locale}: unsupported format in {key}"
         hints = {"guide.sound_isolating_eraser." + hint for hint in ("hold_both", "hold_shift", "hold_control")}
