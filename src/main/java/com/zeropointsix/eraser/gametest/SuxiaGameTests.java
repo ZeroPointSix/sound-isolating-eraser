@@ -596,5 +596,93 @@ public final class SuxiaGameTests {
         });
     }
 
+    @GameTest(template = "empty", batch = BATCH)
+    public static void shared_guard_uses_owner_radius_and_ignores_passive_mobs(GameTestHelper h) {
+        ready(h, f -> {
+            var p = f.player(10, 0); f.watch(p); var summon = f.summon(p);
+            summon.setNoAi(true);
+            summon.setPos(Vec3.atBottomCenterOf(f.center.offset(-2, 0, 0)));
+            var outside = f.add(EntityType.ZOMBIE.create(f.level), -12, 0); outside.setNoAi(true);
+            var inside = f.add(EntityType.ZOMBIE.create(f.level), 14, 0); inside.setNoAi(true);
+            var cow = f.add(EntityType.COW.create(f.level), 11, 0); cow.setNoAi(true);
+            var wolf = f.add(EntityType.WOLF.create(f.level), 12, 0);
+            wolf.setTame(true); wolf.setOwnerUUID(p.getUUID()); wolf.setNoAi(true);
+            var goal = new com.zeropointsix.eraser.memory.SummonGuardGoal(summon);
+            goal.chooseTarget();
+            h.assertTrue(summon.getTarget() == inside && inside.getTarget() == null,
+                    "Acquire an idle hostile around the owner, not around the summon");
+            inside.discard(); goal.chooseTarget();
+            h.assertTrue(summon.getTarget() == null, "Do not acquire out-of-radius hostiles, cows or own pets");
+            h.succeed();
+        });
+    }
+
+    @GameTest(template = "empty", batch = BATCH)
+    public static void shared_guard_owner_combat_preempts_ambient_target(GameTestHelper h) {
+        ready(h, f -> {
+            var p = f.player(0, 0); f.watch(p); var summon = f.summon(p); summon.setNoAi(true);
+            var ambient = f.add(EntityType.ZOMBIE.create(f.level), 4, 0); ambient.setNoAi(true);
+            var commanded = f.add(EntityType.HUSK.create(f.level), 8, 0); commanded.setNoAi(true);
+            var attacker = f.add(EntityType.SKELETON.create(f.level), 10, 0); attacker.setNoAi(true);
+            var goal = new com.zeropointsix.eraser.memory.SummonGuardGoal(summon);
+            summon.setTarget(ambient);
+            p.setLastHurtMob(commanded); goal.chooseTarget();
+            h.assertTrue(summon.getTarget() == commanded, "Owner attack preempts an existing ambient target");
+            p.setLastHurtByMob(attacker); goal.chooseTarget();
+            h.assertTrue(summon.getTarget() == attacker, "Owner defence has highest priority");
+            var villager = f.add(EntityType.VILLAGER.create(f.level), 2, 0);
+            p.setLastHurtByMob(villager); p.setLastHurtMob(villager); goal.chooseTarget();
+            h.assertTrue(summon.getTarget() != villager && !summon.doHurtTarget(villager),
+                    "Owner combat never bypasses the protected-entity policy");
+            h.succeed();
+        });
+    }
+
+    @GameTest(template = "empty", batch = BATCH)
+    public static void shared_guard_respects_target_capacity(GameTestHelper h) {
+        ready(h, f -> {
+            var p = f.player(0, 0); f.watch(p); var summon = f.summon(p); summon.setNoAi(true);
+            var crowded = f.add(EntityType.ZOMBIE.create(f.level), 4, 0); crowded.setNoAi(true);
+            var free = f.add(EntityType.HUSK.create(f.level), 7, 0); free.setNoAi(true);
+            p.setLastHurtByMob(crowded);
+            new com.zeropointsix.eraser.memory.SummonGuardGoal(summon, target -> target == crowded ? 2 : 0, 2)
+                    .chooseTarget();
+            h.assertTrue(summon.getTarget() == free, "A full target does not stop other guardians finding work");
+            h.succeed();
+        });
+    }
+
+    @GameTest(template = "empty", batch = BATCH, timeoutTicks = 160)
+    public static void shared_melee_uses_real_configured_attack_ticks(GameTestHelper h) {
+        ready(h, f -> {
+            var p = f.player(0, 0); f.watch(p); var summon = f.summon(p); summon.setNoAi(true);
+            var prey = f.add(EntityType.HUSK.create(f.level), 2, 0); prey.setNoAi(true);
+            prey.getAttribute(Attributes.MAX_HEALTH).setBaseValue(200); prey.setHealth(200);
+            prey.setNoGravity(true);
+            var ticks = new java.util.concurrent.atomic.AtomicInteger(12);
+            class Attack extends com.zeropointsix.eraser.memory.SummonMeleeAttackGoal {
+                Attack() { super(summon, 1, ticks::get); }
+                void attempt() { checkAndPerformAttack(prey, 0); }
+            }
+            var attack = new Attack();
+            var hits = new java.util.ArrayList<Long>();
+            final long start = f.now();
+            h.onEachTick(() -> {
+                prey.setDeltaMovement(Vec3.ZERO);
+                float before = prey.getHealth();
+                attack.attempt();
+                if (prey.getHealth() < before) {
+                    hits.add(f.now() - start);
+                    if (hits.size() == 1) ticks.set(18);
+                }
+                if (hits.size() == 3) {
+                    h.assertTrue(hits.get(1) - hits.get(0) == 12, "Second damage occurs after 12 server ticks");
+                    h.assertTrue(hits.get(2) - hits.get(1) == 18, "Next cooldown uses the reloaded 18 tick value");
+                    h.succeed();
+                }
+            });
+        });
+    }
+
     private SuxiaGameTests() { }
 }
