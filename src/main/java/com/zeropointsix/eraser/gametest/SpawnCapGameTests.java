@@ -3,6 +3,7 @@ package com.zeropointsix.eraser.gametest;
 import com.mojang.authlib.GameProfile;
 import com.zeropointsix.eraser.brickrot.BrickrotContent;
 import com.zeropointsix.eraser.config.SpawnCapConfig;
+import com.zeropointsix.eraser.registry.ModEntities;
 import com.zeropointsix.eraser.spawn.SpawnCaps;
 import com.zeropointsix.eraser.yuji.YujiContent;
 import com.zeropointsix.eraser.yuji.YujiKind;
@@ -52,6 +53,18 @@ public final class SpawnCapGameTests {
     private static void zeroPending(GameTestHelper h, BlockPos pos) {
         var state = SpawnCaps.snapshot(h.getLevel(), pos);
         h.assertTrue(state.pending() == 0 && state.chunkPending() == 0, "no leaked reservation: " + state);
+    }
+    private static java.util.Map<BlockPos, net.minecraft.world.level.block.state.BlockState> summonFloor(ServerLevel level, BlockPos pos) {
+        var saved = new java.util.LinkedHashMap<BlockPos, net.minecraft.world.level.block.state.BlockState>();
+        for (BlockPos cursor : BlockPos.betweenClosed(pos.offset(-6, -1, -6), pos.offset(8, 6, 6))) {
+            saved.put(cursor.immutable(), level.getBlockState(cursor));
+            level.setBlockAndUpdate(cursor, cursor.getY() == pos.getY() - 1 ? Blocks.STONE.defaultBlockState() : Blocks.AIR.defaultBlockState());
+        }
+        return saved;
+    }
+    private static void removeSummons(ServerLevel level, YujiMonster... parents) {
+        for (Entity entity : RainCitySpawns.snapshot(level)) if (entity instanceof YujiMonster mob)
+            for (YujiMonster parent : parents) if (parent.getUUID().equals(mob.summoner())) mob.discard();
     }
 
     @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "spawn_caps")
@@ -259,11 +272,7 @@ public final class SpawnCapGameTests {
     public static void capMultipleSummonersShareLastSlot(GameTestHelper h) {
         var level = h.getLevel(); var pos = position(h).above(64);
         YujiMonster first = candidate(level, pos, YujiKind.QIYU), second = candidate(level, pos.offset(2, 0, 0), YujiKind.QIYU);
-        var saved = new java.util.LinkedHashMap<BlockPos, net.minecraft.world.level.block.state.BlockState>();
-        for (BlockPos cursor : BlockPos.betweenClosed(pos.offset(-6, -1, -6), pos.offset(8, 6, 6))) {
-            saved.put(cursor.immutable(), level.getBlockState(cursor));
-            level.setBlockAndUpdate(cursor, cursor.getY() == pos.getY() - 1 ? Blocks.STONE.defaultBlockState() : Blocks.AIR.defaultBlockState());
-        }
+        var saved = summonFloor(level, pos);
         try (var config = GameTestConfigs.sandbox(SpawnCapConfig.SPEC)) {
             h.assertTrue(level.addFreshEntity(first) && level.addFreshEntity(second), "both summoners inserted");
             int before = SpawnCaps.snapshot(level, pos).entities(); limits(before + 1, -1);
@@ -273,8 +282,7 @@ public final class SpawnCapGameTests {
             h.assertTrue(SpawnCaps.snapshot(level, pos).entities() == before + 1, "actual population consumes the last slot");
             zeroPending(h, pos);
         } finally {
-            for (Entity entity : RainCitySpawns.snapshot(level)) if (entity instanceof YujiMonster mob
-                    && (first.getUUID().equals(mob.summoner()) || second.getUUID().equals(mob.summoner()))) mob.discard();
+            removeSummons(level, first, second);
             first.discard(); second.discard(); saved.forEach(level::setBlockAndUpdate);
         }
         h.succeed();
@@ -323,6 +331,60 @@ public final class SpawnCapGameTests {
             }
             h.assertTrue(SpawnCaps.snapshot(level, pos).scans() == scans, "same-tick attempts do not each scan all entities");
             zeroPending(h, pos);
+        }
+        h.succeed();
+    }
+
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "spawn_caps")
+    public static void capShadowNeonAndYujiShareOneBudget(GameTestHelper h) {
+        var level = h.getLevel(); var pos = position(h);
+        var shadow = ModEntities.SHADOW_TANGLER.get().create(level);
+        var neon = ModEntities.NEON_TUMOR.get().create(level);
+        h.assertTrue(shadow != null && neon != null, "both city types create candidates");
+        shadow.moveTo(pos.getX() + .5, pos.getY(), pos.getZ() + .5);
+        neon.moveTo(pos.getX() + .5, pos.getY(), pos.getZ() + .5);
+        shadow.setNoAi(true); shadow.setNoGravity(true); neon.setNoAi(true); neon.setNoGravity(true);
+        try (var config = GameTestConfigs.sandbox(SpawnCapConfig.SPEC)) {
+            var before = SpawnCaps.snapshot(level, pos);
+            limits(before.entities() + 1, before.chunkEntities() + 1);
+            try (var reservation = SpawnCaps.tryReserve(level, shadow.getType(), pos)) {
+                h.assertTrue(reservation != null && level.addFreshEntity(shadow) && reservation.commit(shadow), "shadow takes the last slot");
+            }
+            try (var yuji = SpawnCaps.tryReserve(level, type(), pos);
+                 var blockedNeon = SpawnCaps.tryReserve(level, neon.getType(), pos)) {
+                h.assertTrue(yuji == null && blockedNeon == null, "Yuji and neon cannot bypass the shared city budget");
+            }
+            shadow.discard();
+            try (var reservation = SpawnCaps.tryReserve(level, neon.getType(), pos)) {
+                h.assertTrue(reservation != null && level.addFreshEntity(neon) && reservation.commit(neon), "neon can consume the released shadow slot");
+            }
+            h.assertTrue(SpawnCaps.snapshot(level, pos).entities() == before.entities() + 1, "mixed types counted once each");
+            zeroPending(h, pos);
+        } finally { shadow.discard(); neon.discard(); }
+        h.succeed();
+    }
+
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "spawn_caps")
+    public static void capCancelledRealSummonsReportZeroAndRecover(GameTestHelper h) {
+        var level = h.getLevel(); var pos = position(h).above(64);
+        YujiMonster parent = candidate(level, pos, YujiKind.QIYU);
+        var saved = summonFloor(level, pos);
+        Consumer<EntityJoinLevelEvent> cancel = event -> {
+            if (event.getEntity() instanceof YujiMonster mob && parent.getUUID().equals(mob.summoner())) event.setCanceled(true);
+        };
+        MinecraftForge.EVENT_BUS.addListener(EventPriority.LOWEST, false, EntityJoinLevelEvent.class, cancel);
+        try (var config = GameTestConfigs.sandbox(SpawnCapConfig.SPEC)) {
+            h.assertTrue(level.addFreshEntity(parent), "parent inserted");
+            int before = SpawnCaps.snapshot(level, pos).entities(); limits(before + 4, -1);
+            h.assertTrue(parent.summonAllies() == 0 && parent.livingSummons() == 0, "void insertion with cancelled joins reports no successful summons");
+            h.assertTrue(SpawnCaps.snapshot(level, pos).entities() == before, "failed group adds no phantom population");
+            zeroPending(h, pos);
+            MinecraftForge.EVENT_BUS.unregister(cancel);
+            h.assertTrue(parent.summonAllies() > 0, "capacity is usable after cancelling listener is removed");
+            zeroPending(h, pos);
+        } finally {
+            MinecraftForge.EVENT_BUS.unregister(cancel); removeSummons(level, parent);
+            parent.discard(); saved.forEach(level::setBlockAndUpdate);
         }
         h.succeed();
     }
