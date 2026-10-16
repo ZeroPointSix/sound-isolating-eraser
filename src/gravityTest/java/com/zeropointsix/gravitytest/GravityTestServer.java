@@ -89,6 +89,7 @@ public final class GravityTestServer {
     @SubscribeEvent
     public static void tick(TickEvent.ServerTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
+        if (System.getProperty("wings.qa.role") != null) return;
         MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
         if (server == null || !server.isDedicatedServer()) return;
         if (server != activeServer) {
@@ -166,6 +167,8 @@ public final class GravityTestServer {
 
         ServerLevel level = server.overworld();
         level.setDayTime(18000);
+        // The tooltip matrix can outlast a Minecraft night before sensing begins.
+        level.getGameRules().getRule(GameRules.RULE_DAYLIGHT).set(false, server);
         level.getGameRules().getRule(GameRules.RULE_NATURAL_REGENERATION).set(false, server);
         for (int x = -22; x <= 22; x++) {
             for (int z = -20; z <= 20; z++) {
@@ -305,6 +308,8 @@ public final class GravityTestServer {
         // ItemEntity starts with random launch velocity; clear it before the spawn packet.
         entity.setDeltaMovement(Vec3.ZERO);
         entity.setNoGravity(true);
+        // These are motion/sensing fixtures, not the separate damage-test targets.
+        entity.setInvulnerable(true);
         entity.noPhysics = true;
         entity.setSilent(true);
         entity.setCustomName(Component.literal("gravityqa_" + kind));

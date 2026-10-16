@@ -37,6 +37,7 @@ public final class WingsQaClient {
     private static int stage;
     private static int ticks;
     private static int totalTicks;
+    private static int equipmentWaitTicks;
     private static int wearerDoneAt = -1;
     private static int itemDropAt = -1;
     private static boolean wearerVisualOk;
@@ -83,6 +84,18 @@ public final class WingsQaClient {
             if (stage == 0) {
                 if (!phase.equals("ready")) return;
                 if (SHOWCASE && !Files.exists(RESULTS.resolve("recording.ready"))) return;
+                if (ROLE.equals("wingswearer")) {
+                    boolean equipped = mc.player.getItemBySlot(EquipmentSlot.CHEST)
+                            .is(com.zeropointsix.eraser.registry.ModItems.WIND_THUNDER_WINGS.get());
+                    boolean airborne = !mc.player.onGround() && mc.player.getY() > 90;
+                    if (!equipped || !airborne || !mc.player.isAlive()) {
+                        require(++equipmentWaitTicks <= 200, "initial equipment/teleport sync within 200 client ticks: chest="
+                                + mc.player.getItemBySlot(EquipmentSlot.CHEST) + " y=" + mc.player.getY()
+                                + " onGround=" + mc.player.onGround() + " alive=" + mc.player.isAlive());
+                        return;
+                    }
+                    System.out.println("WINGS_QA_CLIENT_EQUIPMENT_READY waitedTicks=" + equipmentWaitTicks);
+                }
                 mc.setScreen(null);
                 GLFW.glfwFocusWindow(mc.getWindow().getWindow());
                 mc.mouseHandler.grabMouse();
