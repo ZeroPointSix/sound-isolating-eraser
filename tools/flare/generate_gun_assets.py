@@ -95,5 +95,48 @@ def generate():
     png(ASSETS / "textures/item/flare_gun.png")
 
 
+def animate():
+    model_path = ASSETS / "models/item/flare_gun.json"
+    model = json.loads(model_path.read_text(encoding="utf-8"))
+    model.pop("elements")
+    model["parent"] = "builtin/entity"
+    model_path.write_text(json.dumps(model, indent=2) + "\n", encoding="utf-8")
+    body, barrel = [], []
+    for name, lower, upper, material in PARTS:
+        u, v = tile(material)
+        cube = {"origin": [lower[0] - 8, lower[1], lower[2] - 8],
+                "size": [upper[i] - lower[i] for i in range(3)],
+                "uv": {face: {"uv": [u, v], "uv_size": [16, 16]}
+                       for face in ("north", "south", "east", "west", "up", "down")}}
+        moving = name.startswith(("barrel", "muzzle", "bore", "sight", "id_plate"))
+        (barrel if moving else body).append(cube)
+    geometry = {"format_version": "1.12.0", "minecraft:geometry": [{
+        "description": {"identifier": "geometry.flare_gun", "texture_width": 64, "texture_height": 64,
+                        "visible_bounds_width": 3, "visible_bounds_height": 3, "visible_bounds_offset": [0, 0.5, 0]},
+        "bones": [{"name": "root", "pivot": [0, 4, 2]},
+                  {"name": "frame", "parent": "root", "pivot": [0, 0, 0], "cubes": body},
+                  {"name": "barrel", "parent": "root", "pivot": [0, 8, -1], "cubes": barrel}]}]}
+    animations = {"format_version": "1.8.0", "animations": {
+        "animation.flare_gun.idle": {"loop": True, "animation_length": 1,
+            "bones": {"root": {"rotation": [0, 0, 0], "position": [0, 0, 0]},
+                      "barrel": {"rotation": [0, 0, 0]}}},
+        "animation.flare_gun.fire": {"loop": False, "animation_length": 0.30,
+            "bones": {"root": {
+                "rotation": {"0.0": [0, 0, 0], "0.045": [-15, 0, 1.2], "0.12": [-7, 0, 0], "0.30": [0, 0, 0]},
+                "position": {"0.0": [0, 0, 0], "0.045": [0, 0.2, 1.6], "0.12": [0, 0.1, 0.65], "0.30": [0, 0, 0]}}}},
+        "animation.flare_gun.load": {"loop": False, "animation_length": 0.65,
+            "bones": {"root": {"rotation": {"0.0": [0, 0, 0], "0.12": [10, 0, -9],
+                                             "0.48": [10, 0, -9], "0.65": [0, 0, 0]}},
+                      "barrel": {"rotation": {"0.0": [0, 0, 0], "0.18": [38, 0, 0],
+                                               "0.40": [38, 0, 0], "0.56": [0, 0, 0]}}}}
+    }}
+    for relative, value in [("geo/flare_gun.geo.json", geometry),
+                            ("animations/flare_gun.animation.json", animations)]:
+        target = ASSETS / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
+
+
 if __name__ == "__main__":
     generate()
+    animate()
