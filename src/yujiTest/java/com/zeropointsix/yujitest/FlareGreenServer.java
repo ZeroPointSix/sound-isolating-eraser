@@ -1,7 +1,7 @@
 package com.zeropointsix.yujitest;
 
-import com.zeropointsix.eraser.yuji.YujiContent;
 import com.zeropointsix.eraser.yuji.flare.FallingSupplyCrate;
+import com.zeropointsix.eraser.yuji.flare.FlareAirdropLoot;
 import com.zeropointsix.eraser.yuji.flare.FlareConfig;
 import com.zeropointsix.eraser.yuji.flare.FlareContent;
 import com.zeropointsix.eraser.yuji.flare.FlareProjectile;
@@ -35,6 +35,7 @@ public final class FlareGreenServer {
     private static FlareProjectile flare;
     private static FallingSupplyCrate falling;
     private static BlockPos landing;
+    private static String selectedLoot;
     private static boolean survived79;
 
     private static boolean enabled() { return Boolean.getBoolean("flare.qa.green"); }
@@ -104,8 +105,9 @@ public final class FlareGreenServer {
             if (phase.equals("descent") && level.getBlockEntity(landing) instanceof SupplyCrateBlockEntity crate) {
                 require(falling.isRemoved(), "natural descent replaced the falling entity with a block");
                 require(Files.exists(RESULTS.resolve("client-green-descent.pass")), "client rendered the falling crate");
-                require(crate.saveWithoutMetadata().getString("LootTable").equals(YujiContent.id("chests/yuji_airdrop").toString()),
-                        "original deferred loot retained before first opening");
+                selectedLoot = crate.saveWithoutMetadata().getString("LootTable");
+                require(FlareAirdropLoot.DEFAULT_TABLES.contains(selectedLoot),
+                        "selected vanilla loot remains deferred before first opening");
                 landedAt = level.getGameTime();
                 player.teleportTo(level, landing.getX() + 2.8, 65, landing.getZ() + 2.8, 135, 25);
                 signal(player, "landed");
@@ -116,7 +118,7 @@ public final class FlareGreenServer {
                 require(crate != null && !crate.isEmpty(), "opened supply crate contains generated loot");
                 String proof = "shot=1 spawned=1 landed=1 opened=1 survived79=" + survived79
                         + " firedAt=" + firedAt + " spawnedAt=" + spawnedAt + " landedAt=" + landedAt
-                        + " landing=" + landing + " originalLoot=" + YujiContent.id("chests/yuji_airdrop");
+                        + " landing=" + landing + " selectedLoot=" + selectedLoot;
                 Files.writeString(RESULTS.resolve("server-green.pass"), proof + "\n");
                 System.out.println("FLARE_GREEN_SERVER_PASSED " + proof);
                 phase = "done";

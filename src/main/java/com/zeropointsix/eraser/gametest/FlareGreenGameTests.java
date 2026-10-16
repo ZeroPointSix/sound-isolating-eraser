@@ -1,9 +1,9 @@
 package com.zeropointsix.eraser.gametest;
 
 import com.mojang.authlib.GameProfile;
-import com.zeropointsix.eraser.yuji.YujiContent;
 import com.zeropointsix.eraser.yuji.YujiConfig;
 import com.zeropointsix.eraser.yuji.flare.FallingSupplyCrate;
+import com.zeropointsix.eraser.yuji.flare.FlareAirdropLoot;
 import com.zeropointsix.eraser.yuji.flare.FlareConfig;
 import com.zeropointsix.eraser.yuji.flare.FlareContent;
 import com.zeropointsix.eraser.yuji.flare.FlarePlacement;
@@ -11,6 +11,7 @@ import com.zeropointsix.eraser.yuji.flare.FlareProjectile;
 import com.zeropointsix.eraser.yuji.flare.SupplyCrateBlockEntity;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -49,6 +50,7 @@ public final class FlareGreenGameTests {
         final BlockPos center = new BlockPos(9600, 240, 9600);
         final AABB bounds;
         final Set<Long> chunks = new HashSet<>(), forced = new HashSet<>();
+        final Set<String> lootTables = new HashSet<>();
         final Map<BlockPos, BlockState> previous = new LinkedHashMap<>();
         final GameTestConfigs.LiveConfig config = GameTestConfigs.sandbox(YujiConfig.SPEC);
         final ServerPlayer player;
@@ -116,6 +118,7 @@ public final class FlareGreenGameTests {
     @AfterBatch(batch = "flare_green_sparse") public static void afterSparse(ServerLevel level) { close(); }
     @AfterBatch(batch = "flare_green_collision") public static void afterCollision(ServerLevel level) { close(); }
     @AfterBatch(batch = "flare_green_protection") public static void afterProtection(ServerLevel level) { close(); }
+    @AfterBatch(batch = "flare_green_loot") public static void afterLoot(ServerLevel level) { close(); }
 
     private static void ready(GameTestHelper h, Runnable action) {
         ready(h, 27, action);
@@ -171,7 +174,9 @@ public final class FlareGreenGameTests {
             }).thenExecute(() -> {
                 var crate = (SupplyCrateBlockEntity) f.level.getBlockEntity(touchdown);
                 h.assertTrue(falling.isRemoved(), "falling entity becomes a single container");
-                h.assertTrue(crate.saveWithoutMetadata().getString("LootTable").equals(YujiContent.id("chests/yuji_airdrop").toString()), "PR1 retains the original deferred loot table");
+                String selected = crate.saveWithoutMetadata().getString("LootTable");
+                h.assertTrue(FlareAirdropLoot.DEFAULT_TABLES.contains(selected), "each landing selects a configured vanilla chest table");
+                f.lootTables.add(selected);
                 crate.createMenu(1, f.player.getInventory(), f.player);
                 h.assertTrue(!crate.isEmpty(), "actual first opening yields loot");
                 crate.clearContent(); f.level.setBlock(touchdown, Blocks.AIR.defaultBlockState(), 16);
@@ -189,7 +194,9 @@ public final class FlareGreenGameTests {
 
     private static void repeat(GameTestHelper h, int completed) {
         if (completed == 30) {
+            h.assertTrue(fixture.lootTables.size() >= 3, "30 opened crates must use at least three distinct vanilla tables: " + fixture.lootTables);
             System.out.println("T5_GREEN_OPEN_TERRAIN_PASSED shots=30 spawned=30 landed=30 opened=30");
+            System.out.println("T5_GREEN_VANILLA_LOOT_PASSED opened=30 distinct=" + fixture.lootTables.size() + " tables=" + fixture.lootTables);
             h.succeed(); return;
         }
         awaitDrop(h, shoot(h), () -> repeat(h, completed + 1));
@@ -293,6 +300,44 @@ public final class FlareGreenGameTests {
                         + " maxEventsPerTick=" + maxEvents + " reloadPreserved=true provisionalCrates=0");
                 h.succeed();
             });
+        });
+    }
+
+    @GameTest(templateNamespace = "flare_green_tests", template = "empty", batch = "flare_green_loot", timeoutTicks = 1500)
+    public static void greenLootPoolConfigurationAndPersistence(GameTestHelper h) {
+        ready(h, () -> {
+            Fixture f = fixture;
+            for (String table : FlareAirdropLoot.DEFAULT_TABLES)
+                h.assertTrue(f.level.getServer().getLootData().getLootTable(new net.minecraft.resources.ResourceLocation(table))
+                        != net.minecraft.world.level.storage.loot.LootTable.EMPTY, "default vanilla table exists: " + table);
+            h.assertTrue(!FlareAirdropLoot.isChestTable("qihai:chests/yuji_airdrop")
+                    && !FlareAirdropLoot.isChestTable("minecraft:entities/zombie")
+                    && !FlareAirdropLoot.isChestTable("bad table"), "pool rejects non-vanilla, non-chest and malformed IDs");
+            String selected = "minecraft:chests/buried_treasure";
+            FlareConfig.LOOT_TABLES.set(List.of(selected, selected));
+            BlockPos destination = f.center.east(12);
+            f.previous.putIfAbsent(destination, f.level.getBlockState(destination));
+            FallingSupplyCrate falling = new FallingSupplyCrate(FlareContent.FALLING_CRATE.get(), f.level);
+            falling.prepare(destination, f.player.getUUID());
+            falling.setPos(Vec3.atBottomCenterOf(destination));
+            h.assertTrue(falling.land(), "configured table uses the real protected landing path");
+            var crate = (SupplyCrateBlockEntity) f.level.getBlockEntity(destination);
+            CompoundTag unopened = crate.saveWithoutMetadata();
+            h.assertTrue(unopened.getString("LootTable").equals(selected), "singleton pool determines the persisted table");
+            FlareConfig.LOOT_TABLES.set(List.of("minecraft:chests/ancient_city"));
+            crate.load(unopened);
+            h.assertTrue(crate.saveWithoutMetadata().getString("LootTable").equals(selected), "reload and config change cannot reroll a landed crate");
+            crate.createMenu(1, f.player.getInventory(), f.player);
+            h.assertTrue(!crate.isEmpty() && !crate.saveWithoutMetadata().contains("LootTable"), "first opening resolves vanilla loot once");
+            CompoundTag opened = crate.saveWithoutMetadata();
+            crate.createMenu(2, f.player.getInventory(), f.player);
+            h.assertTrue(opened.equals(crate.saveWithoutMetadata()), "second opening cannot generate extra loot");
+            FlareConfig.LOOT_TABLES.set(List.of("minecraft:chests/t5_missing_table"));
+            h.assertTrue(FlareAirdropLoot.DEFAULT_TABLES.contains(FlareAirdropLoot.choose(f.level, f.level.random).toString()),
+                    "unavailable configured table falls back to the default vanilla pool");
+            System.out.println("T5_GREEN_LOOT_CONFIG_PASSED defaults=" + FlareAirdropLoot.DEFAULT_TABLES.size()
+                    + " configured=true reloadPreserved=true rerolls=0 missingFallback=true");
+            h.succeed();
         });
     }
 
