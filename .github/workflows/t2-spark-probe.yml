@@ -17,7 +17,7 @@ concurrency:
 jobs:
   dedicated-server:
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@v4
         with:
@@ -42,11 +42,18 @@ jobs:
           git rev-parse HEAD | tee build/t2-perf/source-sha.txt
           python3 tools/verify_mixin_targets.py | tee build/t2-perf/mixin.log
           bash ./gradlew --no-daemon --max-workers=2 build 2>&1 | tee build/t2-perf/build.log
-      - name: Start production Forge and record idle baseline
+          bash ./gradlew --no-daemon --max-workers=2 -I ../harness/tools/perf/launch.init.gradle writeT2ClientClasspath 2>&1 | tee build/t2-perf/client-prepare.log
+          python3 ../harness/tools/verify_mixin_targets.py | tee build/t2-perf/harness-mixin.log
+          python3 ../harness/tools/perf/test_probe.py
+      - name: Prepare real software-rendered client
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y xdotool xvfb
+      - name: Record all four isolated server windows
         env:
           T2_SOURCE_DIR: ${{ github.workspace }}/source
           T2_HARNESS_SHA: ${{ github.sha }}
-        run: python3 harness/tools/perf/production_probe.py
+        run: python3 harness/tools/perf/full_suite.py
       - name: Preserve evidence, including failures
         if: always()
         uses: actions/upload-artifact@v4
@@ -59,6 +66,9 @@ jobs:
             source/build/t2-perf/*.log
             source/build/t2-perf/*.txt
             source/build/t2-perf/*.tar.gz
+            source/build/t2-perf/*.sparkprofile
+            source/build/t2-perf/fixtures/*.tar.gz
+            source/build/t2-perf/client/screenshots/
             source/build/t2-perf/server/logs/
             source/build/t2-perf/server/config/spark/
             source/build/t2-perf/server/server.properties

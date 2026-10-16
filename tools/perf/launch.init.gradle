@@ -1,0 +1,11 @@
+gradle.projectsEvaluated {
+    def p = gradle.rootProject
+    p.tasks.register('writeT2ClientClasspath') {
+        dependsOn p.tasks.named('classes'), p.tasks.named('genVSCodeRuns')
+        doLast {
+            def target = p.layout.buildDirectory.file('t2-perf/client-classpath.txt').get().asFile
+            target.parentFile.mkdirs()
+            target.text = p.sourceSets.main.runtimeClasspath.asPath
+        }
+    }
+}

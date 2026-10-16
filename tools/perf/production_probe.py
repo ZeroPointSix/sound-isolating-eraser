@@ -133,8 +133,11 @@ class Server:
         self.log = (OUT / "server-console.log").open("w", encoding="utf-8")
         self.commands = (OUT / "commands.jsonl").open("w", encoding="utf-8")
         arguments = "libraries/net/minecraftforge/forge/1.20.1-47.2.0/unix_args.txt"
+        command = ["java", "-Xms512M", "-Xmx2G", "-XX:ActiveProcessorCount=2", "@" + arguments, "nogui"]
+        if os.environ.get("T2_SERVER_CPUS"):
+            command = ["taskset", "--cpu-list", os.environ["T2_SERVER_CPUS"], *command]
         self.process = subprocess.Popen(
-            ["java", "-Xms512M", "-Xmx2G", "-XX:ActiveProcessorCount=2", "@" + arguments, "nogui"],
+            command,
             cwd=SERVER, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT, text=True, start_new_session=True, bufsize=1)
         self.thread = threading.Thread(target=self.read, daemon=True)
@@ -214,7 +217,7 @@ def main() -> None:
         server.send("spark profiler info")
         server.delay(WARMUP)
         server.send("list")
-        server.send("spark health show")
+        server.send("spark health")
         index = server.send(f"spark profiler start --timeout {WINDOW}")
         server.wait(r"profiler is now running|profiling.*started", index, 20)
         start = time.monotonic()
@@ -242,7 +245,7 @@ def main() -> None:
                        processAlive=server.process.poll() is None, entityRows=WINDOW,
                        msptSource="spark profiler report; console health intervals kept separately",
                        fps=None, fpsReason="No client in idle dedicated-server scenario")
-        server.send("spark health show")
+        server.send("spark health")
         server.send("spark tps")
         server.send("list")
         server.delay(3)
