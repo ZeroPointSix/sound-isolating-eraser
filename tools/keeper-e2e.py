@@ -174,8 +174,21 @@ try:
     displays.append(":" + xvfb.stdout.readline().strip())
     server = launch("server")
     wait_ready(server)
+    sampler_classes = ROOT / "build/keeper-sampler"
+    sampler_classes.mkdir(parents=True, exist_ok=True)
+    subprocess.run(["javac", "-d", str(sampler_classes), str(ROOT / "tools/KeeperX11Sampler.java")], check=True)
+    sampler_log = (RESULTS / "sampler.log").open("w")
+    logs.append(sampler_log)
+    sampler = subprocess.Popen(["java", "-Xmx128m", "-XX:ActiveProcessorCount=1",
+                                "-Djava.awt.headless=false", "-cp", str(sampler_classes),
+                                "KeeperX11Sampler", str(RESULTS)],
+                               env={**os.environ, "DISPLAY": displays[0]},
+                               stdout=sampler_log, stderr=subprocess.STDOUT)
+    processes.append(sampler)
     client = launch("client")
     wait_evidence(["sepia", "hud", "countdown", "exit", "server"], [server, client])
+    assert sampler.wait(timeout=20) == 0, "X11 sampler failed"
+    assert (RESULTS / "flash-observed.txt").exists(), "Missing rendered-frame timing evidence"
     verify_flash_timing()
     x11_grab("xvfb-final.png")
     print("KEEPER_REAL_CLIENT_FLASH_SEPIA_HUD_E2E_PASSED", flush=True)

@@ -68,9 +68,13 @@ public final class KeeperTestClient {
             long deadline = flashDeadline.getLong(null);
             if (deadline == 0) return;
             require(observedDeadline == 0 || observedDeadline == deadline, "one native shutter action only");
-            observedDeadline = deadline;
             double left = (deadline - System.nanoTime()) / 1_000_000.0;
             double elapsed = 200.0 - left;
+            if (observedDeadline == 0) {
+                require(phase.equals("shoot") && !inPhotoWorld(), "flash precedes the photo frame");
+                Files.writeString(RESULTS.resolve("flash-deadline.txt"), Long.toString(deadline));
+            }
+            observedDeadline = deadline;
             frameTimes.append(System.currentTimeMillis()).append(',').append(elapsed).append(',')
                     .append(left).append(',').append(phase).append(',').append(inPhotoWorld()).append('\n');
             if (left > 0) {
@@ -184,57 +188,39 @@ public final class KeeperTestClient {
         return player != null && player.hasEffect(ModEffects.IN_PHOTO.get());
     }
 
-    private record Capture(long before, long after, BufferedImage image) { }
+    private static volatile boolean samplerReady;
 
     private static void startFlashGrabber() {
         if (grabberStarted) return;
         grabberStarted = true;
         Thread thread = new Thread(() -> {
             try {
-                var robot = new java.awt.Robot();
-                var captures = new java.util.ArrayList<Capture>();
-                long timeout = System.nanoTime() + 15_000_000_000L;
-                while (System.nanoTime() < timeout && !failed) {
-                    long before = System.nanoTime();
-                    // Interior of the game window, never the photo-frame border.
-                    BufferedImage image = robot.createScreenCapture(new java.awt.Rectangle(480, 270, 320, 180));
-                    long after = System.nanoTime();
-                    captures.add(new Capture(before, after, image));
-                    if (observedDeadline != 0 && after > observedDeadline + 600_000_000L) break;
-                    Thread.sleep(10);
+                long timeout = System.nanoTime() + 10_000_000_000L;
+                while (!Files.exists(RESULTS.resolve("sampler.ready")) && System.nanoTime() < timeout)
+                    Thread.sleep(1);
+                require(Files.exists(RESULTS.resolve("sampler.ready")), "external X11 sampler ready");
+                long before = System.nanoTime();
+                Files.writeString(RESULTS.resolve("clock-request.txt"), Long.toString(before));
+                String reply = "";
+                while (System.nanoTime() < timeout) {
+                    if (Files.exists(RESULTS.resolve("clock-response.txt")))
+                        reply = Files.readString(RESULTS.resolve("clock-response.txt")).trim();
+                    if (!reply.isEmpty()) break;
+                    Thread.sleep(1);
                 }
-                require(observedDeadline != 0, "camera packet was observed while sampling X11");
-                Path frames = RESULTS.resolve("flash-frames");
-                Files.createDirectories(frames);
-                StringBuilder csv = new StringBuilder("frame,start_ms,end_ms,r,g,b,white80,phase\n");
-                int index = 0, bestWhite = -1;
-                BufferedImage best = null;
-                for (Capture capture : captures) {
-                    double start = (capture.before() - observedDeadline + 200_000_000L) / 1_000_000.0;
-                    double end = (capture.after() - observedDeadline + 200_000_000L) / 1_000_000.0;
-                    if (end < -100 || start > 500) continue;
-                    int[] mean = meanCenter(capture.image());
-                    int white = countWhite(capture.image(), 205);
-                    String filename = String.format("%03d.png", index);
-                    ImageIO.write(capture.image(), "png", frames.resolve(filename).toFile());
-                    csv.append(filename).append(',').append(start).append(',').append(end).append(',')
-                            .append(mean[0]).append(',').append(mean[1]).append(',').append(mean[2])
-                            .append(',').append(white).append(",shoot\n");
-                    if (start >= 0 && start < 200 && white > bestWhite) {
-                        bestWhite = white;
-                        best = capture.image();
-                    }
-                    index++;
-                }
-                Files.writeString(RESULTS.resolve("flash-x11-times.csv"), csv);
-                require(best != null && bestWhite > 100, "interior shutter pixels captured");
-                ImageIO.write(best, "png", RESULTS.resolve("flash.png").toFile());
-                Files.writeString(RESULTS.resolve("flash-captured.txt"), "X11 center=480,270,320,180 best_white80=" + bestWhite + "\n");
+                long after = System.nanoTime();
+                long remote = Long.parseLong(reply);
+                require(remote >= before && remote <= after && after - before < 50_000_000L,
+                        "sampler and client share the monotonic clock, round trip under 50ms");
+                Files.writeString(RESULTS.resolve("sampler-clock-check.txt"),
+                        "client_before_ns=" + before + " sampler_ns=" + remote
+                        + " client_after_ns=" + after + " bound_ms=" + (after - before) / 1_000_000.0 + "\n");
+                samplerReady = true;
             } catch (Throwable error) {
                 try { Files.writeString(RESULTS.resolve("client.failed"), error.toString()); } catch (Exception ignored) { }
                 failed = true;
             }
-        }, "keeper-qa-x11-timing");
+        }, "keeper-qa-clock-check");
         thread.setDaemon(true);
         thread.start();
     }
@@ -271,7 +257,10 @@ public final class KeeperTestClient {
             if (phase.equals("shoot")) {
                 if (ticks == 4) startFlashGrabber();
                 if (ticks == 8) input("key", "1");
-                if (ticks == 20) input("click", "3");
+                if (ticks == 20) {
+                    require(samplerReady, "X11 capture and monotonic clock verified before shutter");
+                    input("click", "3");
+                }
             }
             if (phase.equals("enter")) {
                 if (ticks == 8) input("key", "2");
@@ -330,6 +319,7 @@ public final class KeeperTestClient {
             }
             if (phase.equals("clear") && ticks == 12) {
                 require(!inPhotoWorld(), "server exit clears client session effect");
+                require(flashDeadline.getLong(null) <= System.nanoTime(), "exit has no active shutter");
                 BufferedImage screenshot = grab("exit.png");
                 int[] mean = meanCenter(screenshot);
                 int hud = countNear(screenshot, 0x5A4632, 48, screenshot.getHeight() * 200 / 256, screenshot.getHeight());
