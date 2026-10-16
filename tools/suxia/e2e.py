@@ -6,6 +6,7 @@ import shlex
 import shutil
 import socket
 import subprocess
+import sys
 import time
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -21,6 +22,7 @@ CONFIGS = {c["name"]: c for c in json.loads((ROOT / ".vscode/launch.json").read_
 CLASSPATH = (ROOT / "build/suxia-test-classpath.txt").read_text().strip()
 PORT = int(os.environ.get("SUXIA_QA_PORT", "25589"))
 TIMEOUT = int(os.environ.get("SUXIA_QA_TIMEOUT_SECONDS", "600"))
+IDLE_ONLY = os.environ.get("SUXIA_QA_IDLE_ONLY") == "1"
 processes, logs = [], []
 
 
@@ -69,6 +71,8 @@ def launch(role):
         args += ["--username", "SuxiaTester", "--width", "960", "--height", "540",
                  "--quickPlayMultiplayer", f"127.0.0.1:{PORT}"]
     command = ["java", "-Xmx1024M" if server else "-Xmx1536M", f"-Dsuxia.qa.results={RESULTS}"]
+    if IDLE_ONLY:
+        command += ["-Dsuxia.qa.idleOnly=true"]
     command += shlex.split(expand(config["vmArgs"]))
     if not server:
         natives = directory / "lwjgl-natives"
@@ -127,6 +131,16 @@ try:
         except OSError:
             time.sleep(1)
     client = launch("client")
+    if IDLE_ONLY:
+        wait_for(["server-idle-stationary", "client-idle-stationary",
+                  "server-idle-turned", "client-idle-turned", "server-idle-complete"], [server, client])
+        stop(client)
+        server.stdin.write("stop\n")
+        server.stdin.flush()
+        if server.wait(timeout=180) != 0:
+            raise RuntimeError("Idle QA server failed to shut down cleanly")
+        print("SUXIA_IDLE_REAL_CLIENT_PASSED", flush=True)
+        sys.exit(0)
     wait_for(["client-gallery", "client-summoned", "client-recalled", "client-second-summoned",
               "client-second-recalled", "client-cooldown-rejected", "client-logout",
               "server-lifecycle", "server-multi-watch", "server-cooldown-rejected"], [server, client])

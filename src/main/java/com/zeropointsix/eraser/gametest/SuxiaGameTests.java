@@ -30,6 +30,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.level.TicketType;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
+import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
@@ -147,6 +148,27 @@ public final class SuxiaGameTests {
     }
     private static CompoundTag state(SuxiaEntity entity) {
         var tag = new CompoundTag(); entity.addAdditionalSaveData(tag); return tag;
+    }
+
+    private static void idleBehind(GameTestHelper h, SuxiaSummonEntity summon, ServerPlayer owner) {
+        Vec3 behind = owner.position().subtract(Vec3.directionFromRotation(0, owner.getYRot()).scale(2));
+        double error = summon.position().subtract(behind).horizontalDistanceSqr();
+        h.assertTrue(summon.getTarget() == null && !summon.isAggressive(), "idle summon is not fighting");
+        h.assertTrue(error <= 0.75 * 0.75 && Math.abs(summon.getY() - owner.getY()) < 0.5,
+                "idle summon stands within 0.75 blocks of owner's two-block rear position: " + Math.sqrt(error)
+                        + " summon=" + summon.position() + " owner=" + owner.position()
+                        + " yaw=" + owner.getYRot() + " navigationDone=" + summon.getNavigation().isDone());
+        h.assertTrue(summon.getNavigation().isDone(), "idle summon stops navigation after arrival");
+        h.assertTrue(Math.abs(Mth.wrapDegrees(summon.getYHeadRot() - owner.getYRot())) < 5,
+                "idle head follows only owner's view yaw: " + summon.getYHeadRot() + " vs " + owner.getYRot());
+        h.assertTrue(Math.abs(summon.getXRot() - owner.getXRot()) < 5,
+                "idle head follows owner's view pitch: " + summon.getXRot() + " vs " + owner.getXRot());
+    }
+
+    private static void look(ServerPlayer player, float yaw, float pitch) {
+        player.setYRot(yaw);
+        player.setYHeadRot(yaw);
+        player.setXRot(pitch);
     }
 
     private static void ready(GameTestHelper h, Consumer<Fixture> action) {
@@ -322,6 +344,69 @@ public final class SuxiaGameTests {
             var other = f.player(12, 0); other.setGameMode(GameType.CREATIVE);
             h.assertTrue(!summon.wantsToAttack(other, p), "creative player protected");
             h.succeed();
+        });
+    }
+
+    @GameTest(template = "empty", batch = BATCH, timeoutTicks = 300)
+    public static void summon_idle_returns_behind_stationary_owner(GameTestHelper h) {
+        ready(h, f -> {
+            var owner = f.player(0, 0); look(owner, 0, -20); f.watch(owner);
+            var summon = f.summon(owner);
+            h.assertTrue(summon.getZ() > owner.getZ(), "real watch initially summons in front");
+            Vec3[] settled = new Vec3[1];
+            h.startSequence().thenWaitUntil(() -> idleBehind(h, summon, owner))
+                    .thenIdle(5).thenExecute(() -> settled[0] = summon.position())
+                    .thenIdle(20).thenExecute(() -> {
+                        idleBehind(h, summon, owner);
+                        h.assertTrue(summon.position().subtract(settled[0]).horizontalDistanceSqr() < 0.01,
+                                "stationary owner leaves summon standing without orbiting or jitter");
+                        System.out.println("SUXIA_IDLE_STATIONARY_PASSED");
+                    }).thenSucceed();
+        });
+    }
+
+    @GameTest(template = "empty", batch = BATCH, timeoutTicks = 400)
+    public static void summon_idle_tracks_owner_turn_and_movement(GameTestHelper h) {
+        ready(h, f -> {
+            var owner = f.player(0, 0); look(owner, 0, 10); f.watch(owner);
+            var summon = f.summon(owner);
+            h.startSequence().thenWaitUntil(() -> idleBehind(h, summon, owner))
+                    .thenExecute(() -> look(owner, 90, 40))
+                    .thenWaitUntil(() -> idleBehind(h, summon, owner))
+                    .thenExecute(() -> look(owner, -150, -90))
+                    .thenWaitUntil(() -> idleBehind(h, summon, owner))
+                    .thenExecute(() -> owner.setPos(Vec3.atBottomCenterOf(f.center.offset(8, 0, 6))))
+                    .thenWaitUntil(() -> idleBehind(h, summon, owner))
+                    .thenExecute(() -> System.out.println("SUXIA_IDLE_TURN_FOLLOW_PASSED"))
+                    .thenSucceed();
+        });
+    }
+
+    @GameTest(template = "empty", batch = BATCH, timeoutTicks = 400)
+    public static void summon_idle_ignores_other_players_view(GameTestHelper h) {
+        ready(h, f -> {
+            var first = f.player(-4, 0); look(first, 90, 25); f.watch(first);
+            var firstSummon = f.summon(first);
+            var second = f.player(4, 0); look(second, -90, -35); f.watch(second);
+            var secondSummon = f.summon(second);
+            var bystander = f.player(0, 4); look(bystander, 180, 70);
+            Runnable bothIdle = () -> {
+                idleBehind(h, firstSummon, first);
+                idleBehind(h, secondSummon, second);
+                h.assertTrue(firstSummon.getOwner() == first && secondSummon.getOwner() == second,
+                        "nearby players cannot change summon ownership");
+            };
+            h.startSequence().thenWaitUntil(bothIdle)
+                    .thenExecute(() -> {
+                        bystander.setPos(Vec3.atBottomCenterOf(f.center.offset(-1, 0, -2)));
+                        look(bystander, 50, -50);
+                    }).thenIdle(20).thenExecute(bothIdle)
+                    .thenExecute(() -> {
+                        look(first, -45, -30);
+                        look(second, 135, 35);
+                    }).thenWaitUntil(bothIdle)
+                    .thenExecute(() -> System.out.println("SUXIA_IDLE_MULTIPLAYER_PASSED"))
+                    .thenSucceed();
         });
     }
 

@@ -1,0 +1,1 @@
+java.lang.AssertionError: client receives owner-mirrored head yaw and pitch: phase=idle-turned owner=(-0.15734657218651504, 65.0, -12.132479615061298) yaw=90.0 pitch=35.0 summon=(1.793212890625, 65.0, -12.202880859375) headYaw=388.59375 pitch=33.75 bodyYaw=388.59375 entityYaw=313.59375 modelHeadPitch=-0.22907472 renderFrame=516

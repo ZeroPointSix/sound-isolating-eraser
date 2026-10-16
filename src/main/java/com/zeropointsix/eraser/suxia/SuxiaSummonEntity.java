@@ -1,5 +1,6 @@
 package com.zeropointsix.eraser.suxia;
 
+import java.util.EnumSet;
 import java.util.UUID;
 import javax.annotation.Nullable;
 import net.minecraft.core.BlockPos;
@@ -28,7 +29,7 @@ import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.FloatGoal;
 import net.minecraft.world.entity.ai.goal.FollowOwnerGoal;
-import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal;
+import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.ai.goal.MeleeAttackGoal;
 import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
 import net.minecraft.world.entity.ai.goal.target.OwnerHurtByTargetGoal;
@@ -69,12 +70,76 @@ public class SuxiaSummonEntity extends TamableAnimal implements SuxiaPoseSource 
         goalSelector.addGoal(1, new FloatGoal(this));
         goalSelector.addGoal(2, new MeleeAttackGoal(this, 1.2, true));
         goalSelector.addGoal(3, new FollowOwnerGoal(this, 1.1, 10, 2, false));
-        goalSelector.addGoal(8, new LookAtPlayerGoal(this, Player.class, 8));
+        goalSelector.addGoal(4, new IdleBehindOwnerGoal());
         targetSelector.addGoal(1, new OwnerHurtByTargetGoal(this));
         targetSelector.addGoal(2, new OwnerHurtTargetGoal(this));
         targetSelector.addGoal(3, new NearestAttackableTargetGoal<>(this, Mob.class, 5, false, false,
                 e -> e instanceof Mob mob && getOwner() != null && mob.getTarget() == getOwner()
                         && mob.distanceToSqr(getOwner()) <= 256 && wantsToAttack(mob, getOwner())));
+    }
+
+    @Nullable private Vec3 idlePosition;
+
+    private final class IdleBehindOwnerGoal extends Goal {
+        private int repathTicks;
+
+        IdleBehindOwnerGoal() { setFlags(EnumSet.of(Flag.MOVE, Flag.LOOK)); }
+
+        @Override public boolean canUse() {
+            var owner = getOwner();
+            return owner != null && owner.isAlive() && !owner.isSpectator()
+                    && !isOrderedToSit() && getTarget() == null;
+        }
+
+        @Override public boolean requiresUpdateEveryTick() { return true; }
+        @Override public void start() { repathTicks = 0; }
+        @Override public void stop() { idlePosition = null; getNavigation().stop(); }
+
+        @Override public void tick() {
+            var owner = getOwner();
+            if (owner == null) return;
+            // Use yaw alone: looking straight up must not collapse the rear offset.
+            Vec3 behind = owner.position().subtract(Vec3.directionFromRotation(0, owner.getYRot()).scale(2));
+            idlePosition = behind;
+            if (position().subtract(behind).horizontalDistanceSqr() <= 0.5 * 0.5
+                    && Math.abs(getY() - behind.y) < 1) {
+                getNavigation().stop();
+                repathTicks = 0;
+            } else if (--repathTicks <= 0) {
+                repathTicks = 10;
+                getNavigation().moveTo(behind.x, behind.y, behind.z, 1.1);
+            }
+            // Mirror the owner's view direction, not the owner's position or a nearby player.
+            Vec3 gaze = getEyePosition().add(owner.getLookAngle().scale(8));
+            // A vertical view ray has no horizontal heading for LookControl to recover.
+            setYHeadRot(owner.getYRot());
+            getLookControl().setLookAt(gaze.x, gaze.y, gaze.z, 360, 360);
+        }
+    }
+
+    @Override protected float tickHeadTurn(float yaw, float walkAnimation) {
+        float receivedHeadYaw = getYHeadRot();
+        float amount = super.tickHeadTurn(yaw, walkAnimation);
+        if (level().isClientSide && getOwnerUUID() != null && !isAggressive()) {
+            // Delayed position interpolation can clamp the final head packet to an
+            // old travel heading. Keep the server's idle look, not that local clamp.
+            setYHeadRot(receivedHeadYaw);
+        }
+        return amount;
+    }
+
+    @Override protected void customServerAiStep() {
+        super.customServerAiStep();
+        if (idlePosition == null || getTarget() != null || !getNavigation().isDone()) return;
+        double error = position().subtract(idlePosition).horizontalDistanceSqr();
+        if (error > 4 || Math.abs(getY() - idlePosition.y) >= 0.5) return;
+        // Wall-climber paths finish at block granularity. Finish the short, level
+        // approach after navigation, without teleporting or changing combat paths.
+        if (error > 0.5 * 0.5) {
+            getMoveControl().setWantedPosition(idlePosition.x, idlePosition.y, idlePosition.z, 1.1);
+        } else {
+            getMoveControl().setWantedPosition(getX(), getY(), getZ(), 0);
+        }
     }
 
     public void bind(Player owner, UUID watchId) {

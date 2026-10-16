@@ -1,0 +1,59 @@
+SUXIA_QA_RESULTS=/data2/suxia-20261015/build/suxia-e2e-1792109515556228897
+--- client.log ---
+	at TRANSFORMER/suxia_qa@1.0/com.zeropointsix.suxiatest.SuxiaTestClient.render(SuxiaTestClient.java:202)
+	at TRANSFORMER/suxia_qa@1.0/com.zeropointsix.suxiatest.__SuxiaTestClient_render_RenderTickEvent.invoke(.dynamic)
+	at MC-BOOTSTRAP/net.minecraftforge.eventbus/net.minecraftforge.eventbus.ASMEventHandler.invoke(ASMEventHandler.java:73)
+	at MC-BOOTSTRAP/net.minecraftforge.eventbus/net.minecraftforge.eventbus.EventBus.post(EventBus.java:315)
+	at MC-BOOTSTRAP/net.minecraftforge.eventbus/net.minecraftforge.eventbus.EventBus.post(EventBus.java:296)
+	at TRANSFORMER/forge@47.2.0/net.minecraftforge.event.ForgeEventFactory.onRenderTickEnd(ForgeEventFactory.java:910)
+	at TRANSFORMER/minecraft@1.20.1/net.minecraft.client.Minecraft.runTick(Minecraft.java:1148)
+	at TRANSFORMER/minecraft@1.20.1/net.minecraft.client.Minecraft.run(Minecraft.java:718)
+	at TRANSFORMER/minecraft@1.20.1/net.minecraft.client.main.Main.main(Main.java:218)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:569)
+	at MC-BOOTSTRAP/fmlloader@1.20.1-47.2.0/net.minecraftforge.fml.loading.targets.CommonLaunchHandler.runTarget(CommonLaunchHandler.java:111)
+	at MC-BOOTSTRAP/fmlloader@1.20.1-47.2.0/net.minecraftforge.fml.loading.targets.CommonLaunchHandler.clientService(CommonLaunchHandler.java:99)
+	at MC-BOOTSTRAP/fmlloader@1.20.1-47.2.0/net.minecraftforge.fml.loading.targets.ForgeClientUserdevLaunchHandler.devService(ForgeClientUserdevLaunchHandler.java:19)
+	at MC-BOOTSTRAP/fmlloader@1.20.1-47.2.0/net.minecraftforge.fml.loading.targets.CommonDevLaunchHandler.lambda$makeService$7(CommonDevLaunchHandler.java:135)
+	at MC-BOOTSTRAP/cpw.mods.modlauncher@10.0.9/cpw.mods.modlauncher.LaunchServiceHandlerDecorator.launch(LaunchServiceHandlerDecorator.java:30)
+	at MC-BOOTSTRAP/cpw.mods.modlauncher@10.0.9/cpw.mods.modlauncher.LaunchServiceHandler.launch(LaunchServiceHandler.java:53)
+	at MC-BOOTSTRAP/cpw.mods.modlauncher@10.0.9/cpw.mods.modlauncher.LaunchServiceHandler.launch(LaunchServiceHandler.java:71)
+	at MC-BOOTSTRAP/cpw.mods.modlauncher@10.0.9/cpw.mods.modlauncher.Launcher.run(Launcher.java:108)
+	at MC-BOOTSTRAP/cpw.mods.modlauncher@10.0.9/cpw.mods.modlauncher.Launcher.main(Launcher.java:78)
+	at MC-BOOTSTRAP/cpw.mods.modlauncher@10.0.9/cpw.mods.modlauncher.BootstrapLaunchConsumer.accept(BootstrapLaunchConsumer.java:26)
+	at MC-BOOTSTRAP/cpw.mods.modlauncher@10.0.9/cpw.mods.modlauncher.BootstrapLaunchConsumer.accept(BootstrapLaunchConsumer.java:23)
+	at cpw.mods.bootstraplauncher@1.1.2/cpw.mods.bootstraplauncher.BootstrapLauncher.main(BootstrapLauncher.java:141)
+--- server.log ---
+[00:17:42] [Netty Epoll Server IO #2/DEBUG] [ne.mi.ne.HandshakeHandler/FMLHANDSHAKE]: Received acknowledgement from client
+[00:17:42] [Netty Epoll Server IO #2/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Recieved login wrapper packet event for channel fml:handshake with index 28
+[00:17:42] [Netty Epoll Server IO #2/DEBUG] [ne.mi.ne.HandshakeHandler/FMLHANDSHAKE]: Received client indexed reply 28 of type net.minecraftforge.network.HandshakeMessages$C2SAcknowledge
+[00:17:42] [Netty Epoll Server IO #2/DEBUG] [ne.mi.ne.HandshakeHandler/FMLHANDSHAKE]: Received acknowledgement from client
+[00:17:42] [Netty Epoll Server IO #2/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Recieved login wrapper packet event for channel fml:handshake with index 29
+[00:17:42] [Netty Epoll Server IO #2/DEBUG] [ne.mi.ne.HandshakeHandler/FMLHANDSHAKE]: Received client indexed reply 29 of type net.minecraftforge.network.HandshakeMessages$C2SAcknowledge
+[00:17:42] [Netty Epoll Server IO #2/DEBUG] [ne.mi.ne.HandshakeHandler/FMLHANDSHAKE]: Received acknowledgement from client
+[00:17:42] [Netty Epoll Server IO #2/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Recieved login wrapper packet event for channel fml:handshake with index 30
+[00:17:42] [Netty Epoll Server IO #2/DEBUG] [ne.mi.ne.HandshakeHandler/FMLHANDSHAKE]: Received client indexed reply 30 of type net.minecraftforge.network.HandshakeMessages$C2SAcknowledge
+[00:17:42] [Netty Epoll Server IO #2/DEBUG] [ne.mi.ne.HandshakeHandler/FMLHANDSHAKE]: Received acknowledgement from client
+[00:17:42] [Server thread/DEBUG] [ne.mi.ne.HandshakeHandler/FMLHANDSHAKE]: Handshake complete!
+[00:17:47] [Server thread/INFO] [minecraft/PlayerList]: SuxiaTester[/127.0.0.1:45214] logged in with entity id 2 at (14.404399731759055, 67.7554953174728, -3.9341546223204586)
+[00:17:47] [Server thread/DEBUG] [ne.mi.ne.fi.NetworkFilters/]: Injected net.minecraftforge.network.filters.ForgeConnectionNetworkFilter@3440cdb6 into net.minecraft.network.Connection@5f21e3e
+[00:17:49] [Server thread/INFO] [minecraft/MinecraftServer]: SuxiaTester joined the game
+[00:17:51] [Server thread/WARN] [minecraft/MinecraftServer]: Can't keep up! Is the server overloaded? Running 9113ms or 182 ticks behind
+SUXIA_QA_PHASE=idle-ready
+SUXIA_QA_PASS=idle-stationary Actual item-use/look packets; owner=(0.0, 65.0, -12.0) yaw=0.0 pitch=-20.0 summon=(0.12583128184648554, 65.0, -13.808618695237417) headYaw=-7.6293945E-6 pitch=-19.995543; rear error <=0.75, view error <5 degrees, navigation stopped for 20 ticks.
+SUXIA_QA_PHASE=idle-stationary
+[00:18:09] [Server thread/WARN] [minecraft/MinecraftServer]: Can't keep up! Is the server overloaded? Running 3192ms or 63 ticks behind
+[00:18:22] [Server thread/INFO] [minecraft/MinecraftServer]: Stopping server
+[00:18:22] [Server thread/INFO] [minecraft/MinecraftServer]: Saving players
+[00:18:22] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: SuxiaTester lost connection: Disconnected
+[00:18:22] [Server thread/INFO] [minecraft/MinecraftServer]: SuxiaTester left the game
+[00:18:22] [Server thread/INFO] [minecraft/MinecraftServer]: Saving worlds
+[00:18:28] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[world]'/minecraft:overworld
+Traceback (most recent call last):
+  File "/data2/suxia-20261015/tools/suxia/e2e.py", line 135, in <module>
+    wait_for(["server-idle-stationary", "client-idle-stationary",
+  File "/data2/suxia-20261015/tools/suxia/e2e.py", line 96, in wait_for
+    raise AssertionError("; ".join(p.read_text() for p in failures))
+AssertionError: java.lang.AssertionError: client receives owner-mirrored head yaw and pitch

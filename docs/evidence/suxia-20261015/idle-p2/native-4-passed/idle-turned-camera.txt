@@ -1,0 +1,1 @@
+phase=idle-turned owner=(-0.151172935750532, 65.0, -12.15085051215911) yaw=90.0 pitch=35.0 summon=(1.793212890625, 65.0, -12.202880859375) headYaw=-271.40625 pitch=33.75 bodyYaw=-271.40625 entityYaw=315.0 modelHeadPitch=-0.22907472 renderFrame=329

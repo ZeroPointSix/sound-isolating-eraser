@@ -6,6 +6,7 @@ import com.zeropointsix.eraser.suxia.SuxiaEntity;
 import com.zeropointsix.eraser.suxia.SuxiaMotion;
 import com.zeropointsix.eraser.suxia.SuxiaPocketWatchItem;
 import com.zeropointsix.eraser.suxia.SuxiaSummons;
+import com.zeropointsix.eraser.suxia.SuxiaSummonEntity;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.UUID;
@@ -31,6 +32,8 @@ import net.minecraftforge.fml.common.Mod;
 
 @Mod.EventBusSubscriber(modid = "suxia_qa")
 public final class SuxiaTestServer {
+    private static final boolean IDLE_ONLY = Boolean.getBoolean("suxia.qa.idleOnly");
+    private static int idleStableTicks;
     private static final Path RESULTS = Path.of(System.getProperty("suxia.qa.results"));
     private static ServerPlayer player;
     private static int stage, ticks;
@@ -109,6 +112,7 @@ public final class SuxiaTestServer {
             p.getInventory().setItem(0, new ItemStack(ModItems.SUXIA_POCKET_WATCH.get()));
             p.getInventory().setItem(1, new ItemStack(ModItems.SUXIA_POCKET_WATCH.get()));
             p.getInventory().setItem(2, new ItemStack(ModItems.SUXIA_SPAWN_EGG.get()));
+            if (IDLE_ONLY) return;
             display(p.serverLevel(), -3).setAggressive(true);
             display(p.serverLevel(), 0).setCrawling(true);
             display(p.serverLevel(), 3).setPlayingDead(true);
@@ -128,10 +132,50 @@ public final class SuxiaTestServer {
         if (stage == 5 && event.getEntity() == player && !event.getLevel().isClientSide) coolingAttempt = true;
     }
 
+    private static void idleTick() throws Exception {
+        if (stage == 0 && ticks == 60) { signal("idle-ready"); stage = 1; }
+        if (stage == 1 || stage == 3) {
+            var active = SuxiaSummons.get(player.getServer()).active(player.getUUID());
+            var entity = active == null ? null : player.serverLevel().getEntity(active.summon);
+            boolean ready = false;
+            if (entity instanceof SuxiaSummonEntity summon) {
+                var behind = player.position().subtract(net.minecraft.world.phys.Vec3.directionFromRotation(0, player.getYRot()).scale(2));
+                float yaw = stage == 1 ? 0 : 90, pitch = stage == 1 ? -20 : 35;
+                ready = summon.getOwner() == player && summon.getTarget() == null && !summon.isAggressive()
+                        && summon.position().subtract(behind).horizontalDistanceSqr() <= 0.75 * 0.75
+                        && Math.abs(summon.getY() - player.getY()) < 0.5 && summon.getNavigation().isDone()
+                        && Math.abs(net.minecraft.util.Mth.wrapDegrees(player.getYRot() - yaw)) < 1
+                        && Math.abs(player.getXRot() - pitch) < 1
+                        && Math.abs(net.minecraft.util.Mth.wrapDegrees(summon.getYHeadRot() - yaw)) < 5
+                        && Math.abs(summon.getXRot() - pitch) < 5;
+                if (ready && ++idleStableTicks >= 20) {
+                    String name = stage == 1 ? "idle-stationary" : "idle-turned";
+                    pass(name, "Actual item-use/look packets; owner=" + player.position() + " yaw=" + player.getYRot()
+                            + " pitch=" + player.getXRot() + " summon=" + summon.position()
+                            + " headYaw=" + summon.getYHeadRot() + " pitch=" + summon.getXRot()
+                            + "; rear error <=0.75, view error <5 degrees, navigation stopped for 20 ticks.");
+                    signal(name); stage++;
+                }
+            }
+            if (!ready) idleStableTicks = 0;
+        } else if (stage == 2 && Files.exists(RESULTS.resolve("client-idle-stationary.pass"))) {
+            idleStableTicks = 0;
+            signal("idle-turning"); stage = 3;
+        } else if (stage == 4 && Files.exists(RESULTS.resolve("client-idle-turned.pass"))) {
+            pass("idle-complete", "Real client summon, stationary rear positioning and owner look-packet turn verified.");
+            stage = 5;
+        }
+        if (ticks > 300 && stage != 5) throw new AssertionError("Idle QA stage stalled: " + stage);
+    }
+
     @SubscribeEvent public static void tick(TickEvent.ServerTickEvent event) {
         if (event.phase != TickEvent.Phase.END || failed || player == null) return;
         try {
+            // The existing runner deadline bounds loading; behavior ticks start
+            // only after the actual client renders the world and receives its watch.
+            if (IDLE_ONLY && stage == 0 && !Files.exists(RESULTS.resolve("client-idle-ready.signal"))) return;
             ticks++;
+            if (IDLE_ONLY) { idleTick(); return; }
             var ledger = SuxiaSummons.get(player.getServer());
             var active = ledger.active(player.getUUID());
             if (stage == 0 && ticks == 60) { signal("gallery"); stage = 1; }

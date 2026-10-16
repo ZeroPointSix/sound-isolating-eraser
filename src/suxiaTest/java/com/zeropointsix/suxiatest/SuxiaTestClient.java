@@ -26,6 +26,8 @@ import net.minecraftforge.fml.common.Mod;
 
 @Mod.EventBusSubscriber(modid = "suxia_qa", value = Dist.CLIENT)
 public final class SuxiaTestClient {
+    private static final boolean IDLE_ONLY = Boolean.getBoolean("suxia.qa.idleOnly");
+    private static net.minecraft.world.entity.decoration.ArmorStand idleCamera;
     private static final Path RESULTS = Path.of(System.getProperty("suxia.qa.results"));
     private static String phase = "";
     private static int ticks;
@@ -69,6 +71,10 @@ public final class SuxiaTestClient {
         try {
             ticks++;
             if (ticks == 1) { mc.setScreen(null); mc.mouseHandler.grabMouse(); }
+            if (IDLE_ONLY) {
+                idleTick(mc);
+                return;
+            }
             // F1 only for creature evidence; watch/cooldown captures retain their HUD.
             mc.options.hideGui = phase.startsWith("hostile-") || phase.startsWith("restored");
             if (phase.startsWith("hostile-") || phase.startsWith("restored")) {
@@ -106,7 +112,75 @@ public final class SuxiaTestClient {
             }
         } catch (Throwable error) { fail(error); }
     }
+    private static void idleTick(Minecraft mc) {
+        mc.options.hideGui = true;
+        if (phase.equals("idle-ready") && ticks == 1) {
+            mc.player.setYRot(0); mc.player.setYHeadRot(0); mc.player.setXRot(-20);
+            mc.player.connection.send(new net.minecraft.network.protocol.game.ServerboundMovePlayerPacket.Rot(0, -20, mc.player.onGround()));
+            mc.gameMode.useItem(mc.player, InteractionHand.MAIN_HAND);
+        } else if (phase.equals("idle-turning")) {
+            mc.player.setYRot(90); mc.player.setYHeadRot(90); mc.player.setXRot(35);
+            // A detached QA camera suppresses LocalPlayer's automatic view packets.
+            if (ticks == 1) mc.player.connection.send(new net.minecraft.network.protocol.game.ServerboundMovePlayerPacket.Rot(90, 35, mc.player.onGround()));
+        }
+        // The QA camera is independent of the owner's real networked view direction.
+        var center = mc.player.position().add(0, 1.5, 0);
+        var position = center.add(7, 3, -7);
+        if (idleCamera == null) idleCamera = new net.minecraft.world.entity.decoration.ArmorStand(mc.level, position.x, position.y, position.z);
+        idleCamera.setPos(position.x, position.y, position.z);
+        var delta = center.subtract(idleCamera.getEyePosition());
+        idleCamera.setYRot((float) Math.toDegrees(Math.atan2(delta.z, delta.x)) - 90);
+        idleCamera.setXRot((float) -Math.toDegrees(Math.atan2(delta.y, Math.hypot(delta.x, delta.z))));
+        idleCamera.yRotO = idleCamera.getYRot(); idleCamera.xRotO = idleCamera.getXRot();
+        idleCamera.xo = position.x; idleCamera.yo = position.y; idleCamera.zo = position.z;
+        mc.setCameraEntity(idleCamera);
+    }
+
+    private static void renderIdle() throws Exception {
+        if (!(phase.equals("idle-stationary") || phase.equals("idle-turned"))) return;
+        var mc = Minecraft.getInstance();
+        if (mc.level == null || mc.player == null || mc.screen != null) return;
+        SuxiaSummonEntity summon = null;
+        for (var entity : mc.level.entitiesForRendering()) if (entity instanceof SuxiaSummonEntity candidate) summon = candidate;
+        require(summon != null && mc.player.getUUID().equals(summon.getOwnerUUID()), "actual owner-bound summon synchronized");
+        var pose = poses.get(summon.getId());
+        boolean ready = pose != null && pose[2] > 5 && summon.tickCount - pose[3] > 40
+                && renderedFrames.getOrDefault(summon.getId(), -1) == renderFrame;
+        if (ticks < 300 && !ready) return;
+        require(ready, "idle summon actually rendered in current frame");
+        var behind = mc.player.position().subtract(net.minecraft.world.phys.Vec3.directionFromRotation(0, mc.player.getYRot()).scale(2));
+        String evidence = "phase=" + phase + " owner=" + mc.player.position() + " yaw=" + mc.player.getYRot()
+                + " pitch=" + mc.player.getXRot() + " summon=" + summon.position() + " headYaw=" + summon.getYHeadRot()
+                + " pitch=" + summon.getXRot() + " bodyYaw=" + summon.yBodyRot + " entityYaw=" + summon.getYRot()
+                + " modelHeadPitch=" + pose[0] + " renderFrame=" + renderFrame + "\n";
+        Files.writeString(RESULTS.resolve(phase + "-camera.txt"), evidence);
+        require(summon.position().subtract(behind).horizontalDistanceSqr() <= 0.75 * 0.75
+                && Math.abs(summon.getY() - mc.player.getY()) < 0.5, "client sees summon two blocks behind owner");
+        require(Math.abs(net.minecraft.util.Mth.wrapDegrees(summon.getYHeadRot() - mc.player.getYRot())) < 5
+                && Math.abs(summon.getXRot() - mc.player.getXRot()) < 5, "client receives owner-mirrored head yaw and pitch: " + evidence);
+        require(Math.abs(pose[0] - (-0.523599F + mc.player.getXRot() * net.minecraft.util.Mth.DEG_TO_RAD * 0.5F)) < 0.05,
+                "rendered head model uses synchronized owner pitch");
+        try (var screenshot = Screenshot.takeScreenshot(mc.getMainRenderTarget())) {
+            var colors = new HashSet<Integer>();
+            for (int x = 0; x < screenshot.getWidth(); x += 4) for (int y = 0; y < screenshot.getHeight(); y += 4) colors.add(screenshot.getPixelRGBA(x, y));
+            require(colors.size() > 100, "nonblank actual Minecraft framebuffer");
+            screenshot.writeToFile(RESULTS.resolve(phase + ".png"));
+        }
+        Files.writeString(RESULTS.resolve("client-" + phase + ".pass"), evidence);
+        captured = true;
+    }
+
     @SubscribeEvent public static void model(RenderLivingEvent.Post<?, ?> event) {
+        if (IDLE_ONLY) {
+            if (!failed && event.getEntity() instanceof SuxiaSummonEntity summon
+                    && event.getRenderer().getModel() instanceof SuxiaModel<?> model) {
+                var head = model.root().getChild("body").getChild("neck").getChild("head");
+                float[] pose = poses.computeIfAbsent(summon.getId(), id -> new float[]{head.xRot, 0, 0, summon.tickCount});
+                pose[0] = head.xRot; pose[2]++;
+                renderedFrames.put(summon.getId(), renderFrame);
+            }
+            return;
+        }
         if (failed || !(phase.equals("gallery") || phase.startsWith("hostile-") || phase.startsWith("restored"))
                 || !(event.getEntity() instanceof SuxiaEntity mob)
                 || !(event.getRenderer().getModel() instanceof SuxiaModel<?> model)) return;
@@ -124,7 +198,24 @@ public final class SuxiaTestClient {
     }
     @SubscribeEvent public static void render(TickEvent.RenderTickEvent event) {
         if (event.phase == TickEvent.Phase.START) { renderFrame++; return; }
+        if (IDLE_ONLY && !failed && phase.isEmpty()) {
+            var mc = Minecraft.getInstance();
+            if (mc.level != null && mc.player != null && mc.screen == null
+                    && mc.level.hasChunkAt(mc.player.blockPosition())
+                    && mc.player.distanceToSqr(0, 65, -12) < 0.25
+                    && mc.player.getMainHandItem().is(ModItems.SUXIA_POCKET_WATCH.get())) {
+                try {
+                    Files.writeString(RESULTS.resolve("client-idle-ready.signal"),
+                            "Actual world, teleport and watch inventory rendered; frame=" + renderFrame + "\n");
+                } catch (Throwable error) { fail(error); }
+            }
+            return;
+        }
         if (event.phase != TickEvent.Phase.END || failed || captured || ticks < 100) return;
+        if (IDLE_ONLY) {
+            try { renderIdle(); } catch (Throwable error) { fail(error); }
+            return;
+        }
         if (!java.util.Set.of("gallery", "summoned", "recalled", "second-summoned", "second-recalled",
                 "cooldown-rejected", "rejoined", "hostile-sleep", "hostile-awake", "restored", "restored-awake").contains(phase)) return;
         var mc = Minecraft.getInstance();

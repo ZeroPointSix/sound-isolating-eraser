@@ -1,0 +1,54 @@
+SUXIA_QA_RESULTS=/data2/suxia-20261015/build/suxia-e2e-1792113388270204280
+SUXIA_IDLE_REAL_CLIENT_PASSED
+--- client.log ---
+[01:21:16] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Dispatching wrapped packet reply for channel fml:handshake with index 25
+[01:21:16] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Recieved login wrapper packet event for channel fml:handshake with index 26
+[01:21:16] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.HandshakeHandler/FMLHANDSHAKE]: Received config sync from server
+[01:21:16] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Dispatching wrapped packet reply for channel fml:handshake with index 26
+[01:21:16] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Recieved login wrapper packet event for channel fml:handshake with index 27
+[01:21:16] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.HandshakeHandler/FMLHANDSHAKE]: Received config sync from server
+[01:21:16] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Dispatching wrapped packet reply for channel fml:handshake with index 27
+[01:21:16] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Recieved login wrapper packet event for channel fml:handshake with index 28
+[01:21:16] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.HandshakeHandler/FMLHANDSHAKE]: Received config sync from server
+[01:21:16] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Dispatching wrapped packet reply for channel fml:handshake with index 28
+[01:21:16] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Recieved login wrapper packet event for channel fml:handshake with index 29
+[01:21:16] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.HandshakeHandler/FMLHANDSHAKE]: Received config sync from server
+[01:21:16] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Dispatching wrapped packet reply for channel fml:handshake with index 29
+[01:21:16] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Recieved login wrapper packet event for channel fml:handshake with index 30
+[01:21:16] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.HandshakeHandler/FMLHANDSHAKE]: Received config sync from server
+[01:21:16] [Netty Epoll Client IO #0/DEBUG] [ne.mi.co.ForgeConfig/FORGEMOD]: Forge config just got changed on the file system!
+[01:21:16] [Netty Epoll Client IO #0/DEBUG] [ne.mi.ne.LoginWrapper/FMLHANDSHAKE]: Dispatching wrapped packet reply for channel fml:handshake with index 30
+[01:21:16] [Netty Epoll Client IO #0/INFO] [ne.mi.ne.NetworkHooks/]: Connected to a modded server.
+[01:21:18] [Render thread/DEBUG] [ne.mi.ne.fi.NetworkFilters/]: Injected net.minecraftforge.network.filters.ForgeConnectionNetworkFilter@5e66733b into net.minecraft.network.Connection@3694461d
+[01:21:19] [Render thread/INFO] [minecraft/AdvancementList]: Loaded 2 advancements
+[01:21:24] [Render thread/INFO] [minecraft/ChatComponent]: [System] [CHAT] 回忆属性：召唤
+[01:21:24] [Render thread/INFO] [minecraft/ChatComponent]: [System] [CHAT] 召唤物：素霞
+[01:21:24] [Render thread/INFO] [minecraft/ChatComponent]: [System] [CHAT] 素霞的中药是苦的，素霞的生活是苦的。
+[01:21:24] [Render thread/INFO] [minecraft/ChatComponent]: [System] [CHAT] 当你明白素霞的苦时，你就成为了素霞的朋友。
+[01:21:24] [Render thread/INFO] [minecraft/ChatComponent]: [System] [CHAT] 在你遇到危险时，素霞愿意为你战斗至最后一刻。
+--- server.log ---
+[01:21:33] [Server thread/WARN] [minecraft/MinecraftServer]: Can't keep up! Is the server overloaded? Running 2612ms or 52 ticks behind
+SUXIA_QA_PHASE=idle-turning
+SUXIA_QA_PASS=idle-turned Actual item-use/look packets; owner=(0.0, 65.0, -12.0) yaw=90.0 pitch=35.0 summon=(1.7933045048932812, 65.0, -12.202926012684538) headYaw=89.999985 pitch=34.99703; rear error <=0.75, view error <5 degrees, navigation stopped for 20 ticks.
+SUXIA_QA_PHASE=idle-turned
+SUXIA_QA_PASS=idle-complete Real client summon, stationary rear positioning and owner look-packet turn verified.
+[01:21:45] [Server thread/INFO] [minecraft/MinecraftServer]: Stopping the server
+[01:21:45] [Server thread/INFO] [minecraft/MinecraftServer]: Stopping server
+[01:21:45] [Server thread/INFO] [minecraft/MinecraftServer]: Saving players
+[01:21:46] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: SuxiaTester lost connection: Disconnected
+[01:21:46] [Server thread/INFO] [minecraft/MinecraftServer]: SuxiaTester left the game
+[01:21:46] [Server thread/INFO] [minecraft/MinecraftServer]: Saving worlds
+[01:21:56] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[world]'/minecraft:overworld
+[01:22:16] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[world]'/qihai:yuji_fodu
+[01:22:16] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_nether
+[01:22:16] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[world]'/sound_isolating_eraser:eternal_night
+[01:22:16] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_end
+[01:22:16] [Server thread/DEBUG] [ne.mi.co.ForgeHooks/WP]: Gathering id map for writing to world save world
+[01:22:16] [Server thread/DEBUG] [ne.mi.co.ForgeHooks/WP]: ID Map collection complete world
+[01:22:16] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (world): All chunks are saved
+[01:22:16] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (yuji_fodu): All chunks are saved
+[01:22:16] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (DIM-1): All chunks are saved
+[01:22:16] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (eternal_night): All chunks are saved
+[01:22:16] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (DIM1): All chunks are saved
+[01:22:16] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage: All dimensions are saved
+[01:22:16] [Server thread/DEBUG] [ne.mi.fm.co.ConfigTracker/CONFIG]: Unloading configs type SERVER
