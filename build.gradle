@@ -440,3 +440,8 @@ def verifyRedNailsAssets = tasks.register('verifyRedNailsAssets', Exec) {
     commandLine 'python3', 'tools/red-nails/verify_assets.py'
 }
 tasks.named('check').configure { dependsOn verifyRedNailsAssets }
+
+def verifyFlareGunAssets = tasks.register('verifyFlareGunAssets', Exec) {
+    commandLine 'python3', 'tools/flare/verify_gun_assets.py'
+}
+tasks.named('check').configure { dependsOn verifyFlareGunAssets }
