@@ -33,7 +33,7 @@ public final class SuxiaPocketWatchItem extends Item {
         ItemStack stack = player.getItemInHand(hand);
         if (!(level instanceof ServerLevel serverLevel)) return InteractionResultHolder.success(stack);
         var tag = stack.getOrCreateTag();
-        if (tag.hasUUID("Owner") && !tag.getUUID("Owner").equals(player.getUUID())) {
+        if (!com.zeropointsix.eraser.memory.PreciousMemories.accepts(stack, player)) {
             message(player, "not_owner");
             return InteractionResultHolder.fail(stack);
         }
@@ -77,11 +77,7 @@ public final class SuxiaPocketWatchItem extends Item {
         SuxiaMotion.smoke(summon);
         summon.playSound(SoundEvents.DROWNED_AMBIENT, 0.8F, 0.6F);
         level.playSound(null, player.blockPosition(), SoundEvents.CHAIN_PLACE, SoundSource.PLAYERS, 0.7F, 1.6F);
-        if (!tag.getBoolean("FirstUseShown")) {
-            for (int i = 1; i <= 5; i++) player.displayClientMessage(
-                    Component.translatable(MESSAGE + "first_use_" + i).withStyle(ChatFormatting.DARK_RED), false);
-            tag.putBoolean("FirstUseShown", true);
-        }
+        com.zeropointsix.eraser.memory.PreciousMemories.firstUse(stack, player, MESSAGE, 5);
         return InteractionResultHolder.consume(stack);
     }
 

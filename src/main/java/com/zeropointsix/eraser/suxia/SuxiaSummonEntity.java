@@ -200,15 +200,7 @@ public class SuxiaSummonEntity extends TamableAnimal implements SuxiaPoseSource 
     }
 
     @Override public boolean wantsToAttack(LivingEntity target, LivingEntity owner) {
-        if (target == null || owner == null || target == owner || !target.isAlive()
-                || target instanceof AbstractVillager || target instanceof IronGolem
-                || isAlliedTo(target)) return false;
-        if (target instanceof OwnableEntity ownable && owner.getUUID().equals(ownable.getOwnerUUID())) return false;
-        if (target instanceof Player player) {
-            return !player.isCreative() && !player.isSpectator() && getServer() != null
-                    && getServer().isPvpAllowed() && owner instanceof Player p && p.canHarmPlayer(player);
-        }
-        return true;
+        return com.zeropointsix.eraser.memory.SummonTargets.allowed(this, target, owner);
     }
 
     @Override public boolean doHurtTarget(Entity target) {

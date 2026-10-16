@@ -1,0 +1,32 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "sound_isolating_eraser:item/red_nails"
+  },
+  "overrides": [
+    {
+      "predicate": {
+        "sound_isolating_eraser:fallen_nails": 0.25
+      },
+      "model": "sound_isolating_eraser:item/red_nails_3"
+    },
+    {
+      "predicate": {
+        "sound_isolating_eraser:fallen_nails": 0.5
+      },
+      "model": "sound_isolating_eraser:item/red_nails_2"
+    },
+    {
+      "predicate": {
+        "sound_isolating_eraser:fallen_nails": 0.75
+      },
+      "model": "sound_isolating_eraser:item/red_nails_1"
+    },
+    {
+      "predicate": {
+        "sound_isolating_eraser:fallen_nails": 1
+      },
+      "model": "sound_isolating_eraser:item/red_nails_0"
+    }
+  ]
+}

@@ -12,8 +12,9 @@ import net.minecraftforge.network.simple.SimpleChannel;
 
 public final class EraserNetwork {
     public record Cycle(InteractionHand hand) { }
+    public record RedNailsKey(boolean down) { }
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
-            new ResourceLocation(ModMain.MOD_ID, "eraser"), () -> "1", "1"::equals, "1"::equals);
+            new ResourceLocation(ModMain.MOD_ID, "eraser"), () -> "2", "2"::equals, "2"::equals);
 
     public static boolean cycle(ServerPlayer player, InteractionHand hand) {
         var stack = player.getItemInHand(hand);
@@ -26,6 +27,16 @@ public final class EraserNetwork {
     }
 
     public static void register() {
+        CHANNEL.registerMessage(1, RedNailsKey.class,
+                (message, buffer) -> buffer.writeBoolean(message.down()),
+                buffer -> new RedNailsKey(buffer.readBoolean()),
+                (message, supplier) -> {
+                    var context = supplier.get();
+                    context.enqueueWork(() -> {
+                        if (context.getSender() != null) com.zeropointsix.eraser.rednails.RedNailsInput.key(context.getSender(), message.down());
+                    });
+                    context.setPacketHandled(true);
+                }, Optional.of(NetworkDirection.PLAY_TO_SERVER));
         CHANNEL.registerMessage(0, Cycle.class,
                 (message, buffer) -> buffer.writeEnum(message.hand()),
                 buffer -> new Cycle(buffer.readEnum(InteractionHand.class)),

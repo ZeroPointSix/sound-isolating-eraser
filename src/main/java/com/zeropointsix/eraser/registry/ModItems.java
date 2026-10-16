@@ -25,6 +25,11 @@ public final class ModItems {
 
     public static final RegistryObject<SuxiaPocketWatchItem> SUXIA_POCKET_WATCH =
             ITEMS.register("suxia_pocket_watch", SuxiaPocketWatchItem::new);
+    public static final RegistryObject<com.zeropointsix.eraser.rednails.RedNailsItem> RED_NAILS =
+            ITEMS.register("red_nails", com.zeropointsix.eraser.rednails.RedNailsItem::new);
+    public static final RegistryObject<ForgeSpawnEggItem> WATER_GHOST_SPAWN_EGG =
+            ITEMS.register("water_ghost_spawn_egg", () -> new ForgeSpawnEggItem(
+                    ModEntities.WATER_GHOST, 0x3C4157, 0x7A0F17, new Item.Properties()));
     public static final RegistryObject<ForgeSpawnEggItem> SUXIA_SPAWN_EGG =
             ITEMS.register("suxia_spawn_egg", () -> new ForgeSpawnEggItem(
                     ModEntities.SUXIA, 0x16161B, 0xA8141C, new Item.Properties()));
