@@ -20,6 +20,13 @@ import net.minecraftforge.server.ServerLifecycleHooks;
 @Mod.EventBusSubscriber(modid = "gravity_qa")
 public final class ItemCategoryServerProbe {
     private static final String[] PHASES = {"baseline", "daoju", "both", "restored"};
+    static final java.util.List<ResourceLocation> GUIDE_ITEMS = java.util.List.of(
+            "sound_isolating_eraser:super_fertilizer_bag", "sound_isolating_eraser:gravity_jade_pendant",
+            "sound_isolating_eraser:shaxiadao", "sound_isolating_eraser:sound_isolating_eraser",
+            "sound_isolating_eraser:enhancement_pill_pack", "sound_isolating_eraser:red_nails",
+            "sound_isolating_eraser:suxia_pocket_watch", "sound_isolating_eraser:wind_thunder_wings",
+            "qihai:flare_gun", "qihai:karma_mark_yuchi", "qihai:holy_light_source", "qihai:yuchi_spawn_egg")
+            .stream().map(ResourceLocation::new).toList();
     private static int phase;
     private static volatile boolean reloading;
     private static volatile boolean tagsReloaded;
@@ -41,12 +48,10 @@ public final class ItemCategoryServerProbe {
                     var player = server.getPlayerList().getPlayerByName(name);
                     if (player == null) return;
                     player.setGameMode(GameType.SURVIVAL);
-                    String[] ids = {"super_fertilizer_bag", "gravity_jade_pendant", "shaxiadao", "sound_isolating_eraser"};
-                    for (int i = 0; i < ids.length; i++) {
-                        player.getInventory().setItem(i, ForgeRegistries.ITEMS.getValue(
-                                new ResourceLocation("sound_isolating_eraser", ids[i])).getDefaultInstance());
+                    for (int i = 0; i < GUIDE_ITEMS.size(); i++) {
+                        player.getInventory().setItem(i, ForgeRegistries.ITEMS.getValue(GUIDE_ITEMS.get(i)).getDefaultInstance());
                     }
-                    player.getInventory().setItem(4, Items.STICK.getDefaultInstance());
+                    player.getInventory().setItem(GUIDE_ITEMS.size(), Items.STICK.getDefaultInstance());
                     player.inventoryMenu.broadcastChanges();
                 }
                 Files.writeString(results.resolve("server-category-baseline.pass"), "server inventory fixture supplied\n");
@@ -71,7 +76,7 @@ public final class ItemCategoryServerProbe {
                 for (String name : new String[]{GravityTestServer.WEARER, GravityTestServer.OBSERVER}) {
                     var player = server.getPlayerList().getPlayerByName(name);
                     if (player == null) throw new AssertionError("Client disconnected before fixture cleanup");
-                    for (int i = 0; i < 5; i++) player.getInventory().setItem(i, ItemStack.EMPTY);
+                    for (int i = 0; i <= GUIDE_ITEMS.size(); i++) player.getInventory().setItem(i, ItemStack.EMPTY);
                     player.setGameMode(GameType.CREATIVE);
                     player.inventoryMenu.broadcastChanges();
                 }

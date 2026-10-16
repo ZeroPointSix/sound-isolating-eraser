@@ -69,7 +69,8 @@ public final class ItemCategoryClientProbe {
             if (!Files.exists(results.resolve("server-category.pass"))) return false;
             if (changeLanguage(mc, originalLanguage)) return false;
             Files.writeString(results.resolve(role + "-category.pass"),
-                    "38 native hovers; default/Shift/Ctrl/both; en_us/zh_cn; synced tags; original language restored\n");
+                    (ItemCategoryServerProbe.GUIDE_ITEMS.size() * 8 + 6)
+                            + " native hovers; default/Shift/Ctrl/both; en_us/zh_cn; synced tags; original language restored\n");
             finished = true;
             return true;
         }
@@ -80,9 +81,8 @@ public final class ItemCategoryClientProbe {
             if (STICK.is(ModItemTags.QIWU) != (phase == 2)
                     || STICK.is(ModItemTags.DAOJU) != (phase == 1 || phase == 2)) return false;
         }
-        Item[] items = phase == 0 ? new Item[]{item("super_fertilizer_bag"),
-                item("gravity_jade_pendant"), item("shaxiadao"),
-                item("sound_isolating_eraser")} : new Item[]{Items.STICK};
+        Item[] items = phase == 0 ? ItemCategoryServerProbe.GUIDE_ITEMS.stream()
+                .map(ForgeRegistries.ITEMS::getValue).toArray(Item[]::new) : new Item[]{Items.STICK};
         int modes = phase == 0 ? MODES.length : 1;
         if (sample == items.length * 2 * modes) {
             expectedItem = null;
@@ -105,11 +105,15 @@ public final class ItemCategoryClientProbe {
                 KeyMapping.resetMapping();
             }
             expectedRarity = expectedItem.getDefaultInstance().getRarity();
-            boolean qiwu = phase == 0 || phase == 2;
-            expectedLabel = phase == 3 ? "" : (qiwu
-                    ? (language.equals("zh_cn") ? "\u5947\u7269" : "Curio")
-                    : (language.equals("zh_cn") ? "\u9053\u5177" : "Tool"));
-            expectedColor = qiwu ? 0xFFAA00 : 0x8FAAC4;
+            ItemStack stack = expectedItem.getDefaultInstance();
+            boolean precious = stack.is(ModItemTags.PRECIOUS_MEMORY);
+            boolean qiwu = stack.is(ModItemTags.QIWU);
+            boolean tool = stack.is(ModItemTags.DAOJU);
+            expectedLabel = precious
+                    ? Component.translatable("tooltip.sound_isolating_eraser.suxia_pocket_watch.category").getString()
+                    : qiwu ? Component.translatable("tooltip.sound_isolating_eraser.qiwu").getString()
+                    : tool ? Component.translatable("tooltip.sound_isolating_eraser.daoju").getString() : "";
+            expectedColor = precious || qiwu ? 0xFFAA00 : 0x8FAAC4;
             screen = new InventoryScreen(mc.player);
             mc.setScreen(screen);
             renderedTooltips = 0;
@@ -175,8 +179,12 @@ public final class ItemCategoryClientProbe {
             var nameColor = ((Component) lines.get(0)).getStyle().getColor();
             require(nameColor != null && nameColor.getValue() == expectedRarity.color.getColor(),
                     "native item name retains its original rarity color");
-            long categories = lines.stream().map(FormattedText::getString)
-                    .filter(text -> List.of("Curio", "Tool", "\u5947\u7269", "\u9053\u5177").contains(text)).count();
+            long categories = lines.stream().filter(Component.class::isInstance).map(Component.class::cast)
+                    .map(Component::getContents).filter(TranslatableContents.class::isInstance)
+                    .map(TranslatableContents.class::cast).map(TranslatableContents::getKey)
+                    .filter(key -> List.of("tooltip.sound_isolating_eraser.qiwu",
+                            "tooltip.sound_isolating_eraser.daoju",
+                            "tooltip.sound_isolating_eraser.suxia_pocket_watch.category").contains(key)).count();
             if (expectedLabel.isEmpty()) {
                 require(categories == 0, "removed tags must remove the native label");
             } else {

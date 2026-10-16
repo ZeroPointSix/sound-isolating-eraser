@@ -4,7 +4,7 @@ on:
   push:
     branches: [feature/gravity-jade-pendant, feature/wind-thunder-wings]
   pull_request:
-    branches: [main, devin/sound-isolating-eraser, feature/flat-mark-server-opts-gha, feature/wind-thunder-wings]
+    branches: [main, devin/sound-isolating-eraser, feature/flat-mark-server-opts-gha, feature/wind-thunder-wings, feat/t3-item-guide-framework]
     paths:
       - src/**
       - gradle/**

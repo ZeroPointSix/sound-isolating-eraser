@@ -2,7 +2,7 @@ name: Shadow Tangler Validation
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, feat/t3-item-guide-framework]
     paths:
       - '**/shadow/**'
       - '**/*Shadow*'
