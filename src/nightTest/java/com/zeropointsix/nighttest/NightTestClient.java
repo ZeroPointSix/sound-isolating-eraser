@@ -24,9 +24,51 @@ public final class NightTestClient {
     private static boolean finished, walking, hidePlane, returning;
     private static boolean restarting, respawnClicked;
     private static boolean surveyWalking;
+    private static boolean entryCaptionProven;
     private static int respawnFrames;
     private static java.util.List<net.minecraft.core.BlockPos> savedExits;
     private static Pixels negativeControl;
+
+    @SubscribeEvent(priority = EventPriority.LOWEST)
+    public static void entryCaption(net.minecraftforge.client.event.RenderGuiEvent.Post event) {
+        if (Minecraft.getInstance().screen == null) captureEntryCaption(event.getGuiGraphics());
+    }
+
+    @SubscribeEvent(priority = EventPriority.LOWEST)
+    public static void entryCaptionScreen(net.minecraftforge.client.event.ScreenEvent.Render.Post event) {
+        captureEntryCaption(event.getGuiGraphics());
+    }
+
+    private static void captureEntryCaption(net.minecraft.client.gui.GuiGraphics graphics) {
+        var client = Minecraft.getInstance();
+        if (ROLE == null || "server".equals(ROLE) || RELOADED || finished || entryCaptionProven
+                || client.level == null || !client.level.dimension().equals(Level.OVERWORLD)
+                || !CityClientRuntime.entryCaptionVisible()) return;
+        graphics.flush();
+        try (var frame = Screenshot.takeScreenshot(client.getMainRenderTarget())) {
+            int dark = 0, bright = 0, samples = 0;
+            for (int y = 0; y < frame.getHeight(); y++) {
+                for (int x = 0; x < frame.getWidth(); x++) {
+                    int pixel = frame.getPixelRGBA(x, y);
+                    int r = pixel & 255, g = (pixel >>> 8) & 255, b = (pixel >>> 16) & 255;
+                    samples++;
+                    if (r < 10 && g < 10 && b < 10) dark++;
+                    if (r > 180 && g > 180 && b > 180) bright++;
+                }
+            }
+            require(dark > samples * 0.995 && bright >= 25,
+                    "pre-teleport frame hides game HUD beneath black caption: dark=" + dark + " bright=" + bright);
+            frame.writeToFile(RESULTS.resolve(ROLE + "-entry-caption.png"));
+            Files.writeString(RESULTS.resolve(ROLE + "-entry-caption.pass"),
+                    "PASS full-frame black caption before leaving overworld; dark=" + dark + " bright=" + bright + "\n");
+            entryCaptionProven = true;
+        } catch (Throwable failure) {
+            failure.printStackTrace();
+            try { Files.writeString(RESULTS.resolve(ROLE + ".failed"), failure.toString()); }
+            catch (Exception ignored) { }
+            finished = true;
+        }
+    }
 
     // QA-only negative control removes just the white plane; particles and the open door remain.
     @SubscribeEvent(priority = EventPriority.HIGHEST)
@@ -79,6 +121,7 @@ public final class NightTestClient {
             if (phase.equals("READY") && ticks >= 80) {
                 if (ticks == 80) {
                     require(EternalNightContent.isCity(client.level), "client actually loaded the city dimension");
+                    require(RELOADED || entryCaptionProven, "native frame proves caption before city teleport");
                     client.setScreen(null);
                     org.lwjgl.glfw.GLFW.glfwFocusWindow(client.getWindow().getWindow());
                     client.mouseHandler.grabMouse();

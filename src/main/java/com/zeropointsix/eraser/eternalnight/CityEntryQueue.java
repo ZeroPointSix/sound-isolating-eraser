@@ -23,6 +23,7 @@ public final class CityEntryQueue {
         final ServerLevel source, city;
         final int x, z;
         final long deadline;
+        final long readyAt;
         final CompletableFuture<Boolean> art;
         final List<ChunkPos> tickets = new ArrayList<>();
         CompletableFuture<Boolean> chunks;
@@ -31,6 +32,7 @@ public final class CityEntryQueue {
             this.player = player; this.source = player.serverLevel(); this.city = city;
             this.x = x; this.z = z;
             deadline = player.server.overworld().getGameTime() + TIMEOUT_TICKS;
+            readyAt = player.server.overworld().getGameTime() + CityEntryOverlay.MIN_ENTRY_TICKS;
             // StructureTemplateManager is also used by vanilla's parallel world generation.
             art = CompletableFuture.supplyAsync(() -> CityTemplates.available(city), Util.backgroundExecutor());
         }
@@ -48,7 +50,7 @@ public final class CityEntryQueue {
         int z = Math.floorMod((int) (hash >>> 32), 256) * 64;
         PENDING.put(player.getUUID(), new Entry(player, city, x, z));
         // Fade to black before teleport; wake so vanilla cannot skip this night while chunks load.
-        CityExitNetwork.fadeIn(player, 20);
+        CityExitNetwork.fadeIn(player, CityEntryOverlay.FADE_IN_TICKS);
         player.stopSleepInBed(true, true);
         player.displayClientMessage(Component.translatable("message.sound_isolating_eraser.city.preparing"), true);
         return true;
@@ -65,13 +67,16 @@ public final class CityEntryQueue {
             try {
                 ServerPlayer player = entry.player;
                 if (server.getPlayerList().getPlayer(player.getUUID()) != player || !player.isAlive()
-                        || player.serverLevel() != entry.source) remove = true;
+                        || player.serverLevel() != entry.source) {
+                    if (server.getPlayerList().getPlayer(player.getUUID()) == player) CityExitNetwork.cancelFade(player);
+                    remove = true;
+                }
                 else if (server.overworld().getGameTime() >= entry.deadline) {
                     failed(player); remove = true;
                 } else if (entry.art.isDone()) {
                     if (!entry.art.join()) { failed(player); remove = true; }
                     else if (entry.chunks == null) prepareChunks(entry);
-                    else if (entry.chunks.isDone()) {
+                    else if (entry.chunks.isDone() && server.overworld().getGameTime() >= entry.readyAt) {
                         if (!entry.chunks.join() || !NightEvents.finishEntry(player, entry.city, entry.x, entry.z)) failed(player);
                         remove = true;
                     }
@@ -104,6 +109,7 @@ public final class CityEntryQueue {
     }
 
     private static void failed(ServerPlayer player) {
+        CityExitNetwork.cancelFade(player);
         player.displayClientMessage(Component.translatable("message.sound_isolating_eraser.city.entry_failed"), true);
     }
     private static void release(Entry entry) {
@@ -112,7 +118,10 @@ public final class CityEntryQueue {
     }
     public static void cancel(UUID id) {
         Entry entry = PENDING.remove(id);
-        if (entry != null) release(entry);
+        if (entry != null) {
+            if (entry.player.server.getPlayerList().getPlayer(id) == entry.player) CityExitNetwork.cancelFade(entry.player);
+            release(entry);
+        }
     }
     public static void clear() {
         PENDING.values().forEach(CityEntryQueue::release);

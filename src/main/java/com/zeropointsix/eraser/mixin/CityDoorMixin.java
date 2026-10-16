@@ -41,8 +41,10 @@ public abstract class CityDoorMixin {
         if (before.getBlock() instanceof DoorBlock && before.hasProperty(DoorBlock.OPEN)
                 && before.getValue(DoorBlock.OPEN) && state.hasProperty(DoorBlock.OPEN)
                 && !state.getValue(DoorBlock.OPEN) && level instanceof ServerLevel server
-                && CitySavedData.get(server).active(NightEvents.lowerDoor(pos, before), server.getGameTime()))
-            return false;
+                && CitySavedData.get(server).active(NightEvents.lowerDoor(pos, before), server.getGameTime())) {
+            // Keep the exit open without freezing POWERED; the next rising edge must work after expiry.
+            state = state.setValue(DoorBlock.OPEN, true);
+        }
         boolean changed = level.setBlock(pos, state, flags);
         if (changed) CityDoorActions.opened(level, pos, before);
         return changed;

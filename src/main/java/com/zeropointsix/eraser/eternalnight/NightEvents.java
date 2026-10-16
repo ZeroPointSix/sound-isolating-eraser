@@ -168,6 +168,10 @@ public final class NightEvents {
         if (state.getBlock() instanceof BedBlock || state.getBlock() instanceof RespawnAnchorBlock) {
             event.setCanceled(true);
             event.setCancellationResult(InteractionResult.SUCCESS);
+            if (event.getEntity() instanceof ServerPlayer player
+                    && event.getHand() == InteractionHand.MAIN_HAND) {
+                player.displayClientMessage(Component.translatable("message.sound_isolating_eraser.city.no_sleep"), true);
+            }
             return;
         }
     }
@@ -184,7 +188,8 @@ public final class NightEvents {
         if (!result.counted()) return result;
         data.putLongArray("Doors", doors.save());
         player.getPersistentData().put(PLAYER_TAG, data);
-        player.displayClientMessage(Component.translatable("message.sound_isolating_eraser.city.doors", result.count()), true);
+        player.displayClientMessage(Component.translatable("message.sound_isolating_eraser.city.doors",
+                result.count(), NightConfig.DOOR_GUARANTEE.get()), true);
         if (NightRules.milestone(result.count()) != 0) {
             player.sendSystemMessage(Component.translatable("message.sound_isolating_eraser.city.milestone." + result.count()));
         }

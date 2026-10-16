@@ -6,7 +6,9 @@ import com.zeropointsix.eraser.gravity.*;
 import com.zeropointsix.eraser.registry.ModItems;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
@@ -25,6 +27,7 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.monster.Zombie;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
@@ -47,6 +50,10 @@ public final class GravityGameTests {
     private static final List<Entity> allyEntities = new ArrayList<>();
     private static BlockPos allyRoof;
     private static BlockState allyRoofBefore;
+    private static final Set<Long> hoverTickets = new HashSet<>();
+    private static final Map<BlockPos, BlockState> hoverPrevious = new LinkedHashMap<>();
+    private static GravityFieldEntity hoverField;
+    private static Zombie hoverZombie;
 
     @AfterBatch(batch = "gravity_allies")
     public static void cleanUpAllies(ServerLevel level) {
@@ -60,6 +67,44 @@ public final class GravityGameTests {
             level.setChunkForced(chunk.x, chunk.z, false);
         }
         allyTickets.clear();
+    }
+
+    @AfterBatch(batch = "gravity_hover")
+    public static void cleanUpHover(ServerLevel level) {
+        if (hoverField != null) hoverField.discard();
+        if (hoverZombie != null) hoverZombie.discard();
+        hoverField = null;
+        hoverZombie = null;
+        hoverPrevious.forEach((pos, state) -> level.setBlock(pos, state, 3));
+        hoverPrevious.clear();
+        for (long key : hoverTickets) {
+            ChunkPos chunk = new ChunkPos(key);
+            level.setChunkForced(chunk.x, chunk.z, false);
+        }
+        hoverTickets.clear();
+    }
+
+    private static void forceHoverChunks(ServerLevel level, BlockPos origin) {
+        for (int x = (origin.getX() - 24) >> 4; x <= (origin.getX() + 24) >> 4; x++) {
+            for (int z = (origin.getZ() - 24) >> 4; z <= (origin.getZ() + 24) >> 4; z++) {
+                long key = ChunkPos.asLong(x, z);
+                if (!level.getForcedChunks().contains(key)) {
+                    level.setChunkForced(x, z, true);
+                    hoverTickets.add(key);
+                }
+                level.getChunk(x, z);
+            }
+        }
+    }
+
+    private static void dryHoverShaft(ServerLevel level, BlockPos center) {
+        // Seal the mob volume against flowing water left by earlier GameTests.
+        for (BlockPos pos : BlockPos.betweenClosed(center.offset(-2, -1, -2), center.offset(2, 6, 2))) {
+            hoverPrevious.putIfAbsent(pos.immutable(), level.getBlockState(pos));
+            boolean shell = pos.getY() == center.getY() - 1 || pos.getY() == center.getY() + 6
+                    || Math.abs(pos.getX() - center.getX()) == 2 || Math.abs(pos.getZ() - center.getZ()) == 2;
+            level.setBlock(pos, shell ? Blocks.STONE.defaultBlockState() : Blocks.AIR.defaultBlockState(), 3);
+        }
     }
 
     private static FakePlayer player(GameTestHelper h) {
@@ -326,49 +371,69 @@ public final class GravityGameTests {
         }
     }
 
-    @GameTest(template = "empty", batch = "gravity_hover", timeoutTicks = 200)
+    @GameTest(template = "empty", batch = "gravity_hover", timeoutTicks = 400)
     public static void hostileHoversThenFallsOutsideCylinder(GameTestHelper h) {
-        Vec3 center = Vec3.atBottomCenterOf(h.absolutePos(new BlockPos(3, 7, 3)));
-        BlockPos floor = BlockPos.containing(center).below();
-        h.getLevel().setBlockAndUpdate(floor, Blocks.STONE.defaultBlockState());
-        Vec3 landing = center.add(-18, 0, 0);
-        BlockPos landingFloor = BlockPos.containing(landing).below();
-        for (BlockPos pos : BlockPos.betweenClosed(landingFloor.offset(-1, 0, -1), landingFloor.offset(1, 6, 1))) {
-            h.getLevel().setBlockAndUpdate(pos, pos.getY() == landingFloor.getY()
-                    ? Blocks.STONE.defaultBlockState() : Blocks.AIR.defaultBlockState());
-        }
-        var zombie = EntityType.ZOMBIE.create(h.getLevel());
-        zombie.setPos(center);
-        // NoAI also disables travel(), so keep physics active while preventing walking.
-        zombie.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(0);
-        zombie.getAttribute(Attributes.MAX_HEALTH).setBaseValue(300);
-        zombie.setHealth(300);
-        zombie.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.DIAMOND_HELMET));
-        h.getLevel().addFreshEntity(zombie);
-        GravityFieldEntity field = field(h, center);
-        h.runAtTickTime(85, () -> {
-            logHoverState(h, "hover", zombie, landing);
-            double height = zombie.getY() - center.y;
-            h.assertTrue(height > 2.5 && height <= 5.5, "bounded hover near 3 blocks: " + height
-                    + " fieldRemoved=" + field.isRemoved() + " motion=" + zombie.getDeltaMovement());
-            h.assertTrue(zombie.getEffect(MobEffects.MOVEMENT_SLOWDOWN).getAmplifier() == 4, "slowness V");
-            zombie.getNavigation().stop();
-            zombie.setPos(landing.add(0, 3, 0));
-            zombie.setDeltaMovement(Vec3.ZERO);
-            logHoverState(h, "exit", zombie, landing);
-        });
-        h.runAtTickTime(145, () -> {
-            logHoverState(h, "land", zombie, landing);
-            h.assertTrue(!zombie.hasEffect(MobEffects.MOVEMENT_SLOWDOWN), "hostile debuff fades outside");
-            // Outside the cylinder, vanilla gravity must pull the zombie down. Allow a few
-            // ticks of settling so a lagged tick does not fail a grounded assertion.
-            h.assertTrue(zombie.onGround() || Math.abs(zombie.getY() - landing.y) <= 1.5,
-                    "natural gravity after leaving: pos=" + zombie.position() + " ground=" + zombie.onGround()
-                            + " motion=" + zombie.getDeltaMovement() + " removed=" + zombie.isRemoved());
-            field.discard();
-            zombie.discard();
-            h.succeed();
-        });
+        ServerLevel level = h.getLevel();
+        BlockPos origin = h.absolutePos(new BlockPos(3, 7, 3));
+        BlockPos outside = origin.west(18);
+        forceHoverChunks(level, origin);
+        dryHoverShaft(level, origin);
+        dryHoverShaft(level, outside);
+        h.startSequence().thenWaitUntil(() -> h.assertTrue(level.isPositionEntityTicking(origin)
+                        && level.isPositionEntityTicking(outside),
+                "hover and landing volumes are entity-ticking before physics timing begins"))
+                .thenExecute(() -> {
+                    Vec3 center = Vec3.atBottomCenterOf(origin);
+                    Vec3 landing = Vec3.atBottomCenterOf(outside);
+                    hoverZombie = EntityType.ZOMBIE.create(level);
+                    hoverZombie.setPos(center);
+                    // NoAI also disables travel(), so keep physics active while preventing walking.
+                    hoverZombie.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(0);
+                    hoverZombie.getAttribute(Attributes.MAX_HEALTH).setBaseValue(300);
+                    hoverZombie.setHealth(300);
+                    hoverZombie.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.DIAMOND_HELMET));
+                    level.addFreshEntity(hoverZombie);
+                    hoverField = field(h, center);
+                    int[] exitTicks = new int[1];
+                    h.runAfterDelay(85, () -> {
+                        logHoverState(h, "hover", hoverZombie, landing);
+                        h.assertTrue(!hoverZombie.isInWater(), "dry hover fixture has no water contact");
+                        double height = hoverZombie.getY() - center.y;
+                        h.assertTrue(height > 2.5 && height <= 5.5, "bounded hover near 3 blocks: " + height
+                                + " fieldRemoved=" + hoverField.isRemoved()
+                                + " motion=" + hoverZombie.getDeltaMovement());
+                        h.assertTrue(hoverZombie.getEffect(MobEffects.MOVEMENT_SLOWDOWN) != null
+                                && hoverZombie.getEffect(MobEffects.MOVEMENT_SLOWDOWN).getAmplifier() == 4,
+                                "slowness V");
+                        hoverZombie.getNavigation().stop();
+                        hoverZombie.setPos(landing.add(0, 3, 0));
+                        hoverZombie.setDeltaMovement(Vec3.ZERO);
+                        h.assertTrue(!hoverField.contains(hoverZombie.position()),
+                                "landing is outside the live cylinder: " + hoverZombie.position());
+                        h.assertTrue(level.isPositionEntityTicking(hoverZombie.blockPosition()),
+                                "landing remains entity-ticking after exit");
+                        exitTicks[0] = hoverZombie.tickCount;
+                        logHoverState(h, "exit", hoverZombie, landing);
+                    });
+                    h.runAfterDelay(115, () -> {
+                        logHoverState(h, "land", hoverZombie, landing);
+                        int elapsed = hoverZombie.tickCount - exitTicks[0];
+                        h.assertTrue(elapsed == 30, "thirty real entity ticks since exit: " + elapsed);
+                        h.assertTrue(!hoverZombie.isInWater(), "dry landing fixture has no water contact");
+                        h.assertTrue(!hoverZombie.hasEffect(MobEffects.MOVEMENT_SLOWDOWN),
+                                "hostile debuff fades outside");
+                        double error = Math.abs(hoverZombie.getY() - landing.y);
+                        h.assertTrue(hoverZombie.onGround() && error <= .01,
+                                "natural gravity after leaving: pos=" + hoverZombie.position()
+                                        + " ground=" + hoverZombie.onGround()
+                                        + " motion=" + hoverZombie.getDeltaMovement()
+                                        + " removed=" + hoverZombie.isRemoved()
+                                        + " error=" + error);
+                        hoverField.discard();
+                        hoverZombie.discard();
+                        h.succeed();
+                    });
+                });
     }
 
     private static void logHoverState(GameTestHelper h, String phase, LivingEntity entity, Vec3 landing) {

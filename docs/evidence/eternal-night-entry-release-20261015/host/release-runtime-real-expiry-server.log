@@ -1,0 +1,334 @@
+2026-10-15 04:15:09,851 main WARN Advanced terminal features are not available in this environment
+[04:15:14] [main/INFO] [cp.mo.mo.Launcher/MODLAUNCHER]: ModLauncher running: args [--launchTarget, forgeserver, --fml.forgeVersion, 47.2.0, --fml.mcVersion, 1.20.1, --fml.forgeGroup, net.minecraftforge, --fml.mcpVersion, 20230612.114412, --nogui]
+[04:15:14] [main/INFO] [cp.mo.mo.Launcher/MODLAUNCHER]: ModLauncher 10.0.9+10.0.9+main.dcd20f30 starting: java version 17.0.20.1 by Ubuntu; OS Linux arch amd64 version 6.8.0-138-generic
+[04:15:16] [main/WARN] [ne.mi.fm.lo.FMLConfig/CORE]: Configuration file /data/eternal-night-city-20261011/remapped-runtime-expiry-20261015/config/fml.toml is not correct. Correcting
+[04:15:17] [main/INFO] [ne.mi.fm.lo.FMLConfig/CORE]: Incorrect key [earlyWindowSkipGLVersions] was corrected from null to []
+[04:15:17] [main/INFO] [ne.mi.fm.lo.FMLConfig/CORE]: Incorrect key [earlyWindowSquir] was corrected from null to false
+[04:15:20] [main/INFO] [ne.mi.fm.lo.ImmediateWindowHandler/]: ImmediateWindowProvider not loading because launch target is forgeserver
+[04:15:21] [main/INFO] [mixin/]: SpongePowered MIXIN Subsystem Version=0.8.5 Source=union:/data/eternal-night-city-20261011/remapped-runtime-expiry-20261015/libraries/org/spongepowered/mixin/0.8.5/mixin-0.8.5.jar%2365!/ Service=ModLauncher Env=SERVER
+[04:15:33] [main/WARN] [ne.mi.fm.lo.mo.ModFileParser/LOADING]: Mod file /data/eternal-night-city-20261011/remapped-runtime-expiry-20261015/libraries/net/minecraftforge/fmlcore/1.20.1-47.2.0/fmlcore-1.20.1-47.2.0.jar is missing mods.toml file
+[04:15:33] [main/WARN] [ne.mi.fm.lo.mo.ModFileParser/LOADING]: Mod file /data/eternal-night-city-20261011/remapped-runtime-expiry-20261015/libraries/net/minecraftforge/javafmllanguage/1.20.1-47.2.0/javafmllanguage-1.20.1-47.2.0.jar is missing mods.toml file
+[04:15:33] [main/WARN] [ne.mi.fm.lo.mo.ModFileParser/LOADING]: Mod file /data/eternal-night-city-20261011/remapped-runtime-expiry-20261015/libraries/net/minecraftforge/lowcodelanguage/1.20.1-47.2.0/lowcodelanguage-1.20.1-47.2.0.jar is missing mods.toml file
+[04:15:33] [main/WARN] [ne.mi.fm.lo.mo.ModFileParser/LOADING]: Mod file /data/eternal-night-city-20261011/remapped-runtime-expiry-20261015/libraries/net/minecraftforge/mclanguage/1.20.1-47.2.0/mclanguage-1.20.1-47.2.0.jar is missing mods.toml file
+[04:15:42] [main/INFO] [ne.mi.fm.lo.mo.JarInJarDependencyLocator/]: Found 1 dependencies adding them to mods collection
+[04:16:52] [main/INFO] [mixin/]: Compatibility level set to JAVA_17
+[04:16:52] [main/INFO] [cp.mo.mo.LaunchServiceHandler/MODLAUNCHER]: Launching target 'forgeserver' with arguments [--nogui]
+[04:21:23] [modloading-worker-0/INFO] [ne.mi.co.ForgeMod/FORGEMOD]: Forge mod loading, version 47.2.0, for MC 1.20.1 with MCP 20230612.114412
+[04:21:23] [modloading-worker-0/INFO] [ne.mi.co.MinecraftForge/FORGE]: MinecraftForge v47.2.0 Initialized
+[04:21:57] [main/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Configuration file /data/eternal-night-city-20261011/remapped-runtime-expiry-20261015/config/curios-common.toml is not correct. Correcting
+[04:21:57] [main/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key slots was corrected from null to its default, []. 
+[04:22:18] [main/WARN] [ne.mi.fm.DeferredWorkQueue/LOADING]: Mod 'curios' took 4.216 s to run a deferred task.
+[04:22:20] [Forge Version Check/INFO] [ne.mi.fm.VersionChecker/]: [forge] Starting version check at https://files.minecraftforge.net/net/minecraftforge/forge/promotions_slim.json
+[04:22:37] [Forge Version Check/WARN] [ne.mi.fm.VersionChecker/]: Failed to process update information
+java.net.http.HttpConnectTimeoutException: HTTP connect timed out
+	at jdk.internal.net.http.HttpClientImpl.send(HttpClientImpl.java:894) ~[java.net.http:?] {}
+	at jdk.internal.net.http.HttpClientFacade.send(HttpClientFacade.java:133) ~[java.net.http:?] {}
+	at net.minecraftforge.fml.VersionChecker$1.openUrlString(VersionChecker.java:139) ~[fmlcore-1.20.1-47.2.0.jar%23110!/:?] {}
+	at net.minecraftforge.fml.VersionChecker$1.process(VersionChecker.java:177) ~[fmlcore-1.20.1-47.2.0.jar%23110!/:?] {}
+	at java.lang.Iterable.forEach(Iterable.java:75) ~[?:?] {}
+	at net.minecraftforge.fml.VersionChecker$1.run(VersionChecker.java:114) ~[fmlcore-1.20.1-47.2.0.jar%23110!/:?] {}
+Caused by: java.net.http.HttpConnectTimeoutException: HTTP connect timed out
+	at jdk.internal.net.http.ResponseTimerEvent.handle(ResponseTimerEvent.java:68) ~[java.net.http:?] {}
+	at jdk.internal.net.http.HttpClientImpl.purgeTimeoutsAndReturnNextDeadline(HttpClientImpl.java:1693) ~[java.net.http:?] {}
+	at jdk.internal.net.http.HttpClientImpl$SelectorManager.run(HttpClientImpl.java:1311) ~[java.net.http:?] {}
+Caused by: java.net.ConnectException: HTTP connect timed out
+	at jdk.internal.net.http.ResponseTimerEvent.handle(ResponseTimerEvent.java:69) ~[java.net.http:?] {}
+	at jdk.internal.net.http.HttpClientImpl.purgeTimeoutsAndReturnNextDeadline(HttpClientImpl.java:1693) ~[java.net.http:?] {}
+	at jdk.internal.net.http.HttpClientImpl$SelectorManager.run(HttpClientImpl.java:1311) ~[java.net.http:?] {}
+[04:22:48] [main/INFO] [mojang/YggdrasilAuthenticationService]: Environment: authHost='https://authserver.mojang.com', accountsHost='https://api.mojang.com', sessionHost='https://sessionserver.mojang.com', servicesHost='https://api.minecraftservices.com', name='PROD'
+[04:22:52] [main/WARN] [minecraft/VanillaPackResourcesBuilder]: Assets URL 'union:/data/eternal-night-city-20261011/remapped-runtime-expiry-20261015/libraries/net/minecraft/server/1.20.1-20230612.114412/server-1.20.1-20230612.114412-srg.jar%23109!/assets/.mcassetsroot' uses unexpected schema
+[04:22:52] [main/WARN] [minecraft/VanillaPackResourcesBuilder]: Assets URL 'union:/data/eternal-night-city-20261011/remapped-runtime-expiry-20261015/libraries/net/minecraft/server/1.20.1-20230612.114412/server-1.20.1-20230612.114412-srg.jar%23109!/data/.mcassetsroot' uses unexpected schema
+[04:22:58] [main/WARN] [minecraft/Pack]: Missing metadata in pack mod:night_release_qa
+[04:22:58] [main/WARN] [minecraft/MinecraftServer]: Missing data pack mod:night_release_qa
+[04:23:22] [main/ERROR] [minecraft/DedicatedServerProperties]: No key layers in MapLike[{}]
+[04:24:12] [main/INFO] [minecraft/RecipeManager]: Loaded 7 recipes
+[04:24:17] [main/INFO] [minecraft/AdvancementList]: Loaded 1271 advancements
+[04:24:18] [main/INFO] [to.th.cu.Curios/]: Loaded 10 curio slots
+[04:24:18] [main/INFO] [to.th.cu.Curios/]: Loaded 1 curio entities
+[04:24:35] [Server thread/INFO] [minecraft/DedicatedServer]: Starting minecraft server version 1.20.1
+[04:24:35] [Server thread/INFO] [minecraft/DedicatedServer]: Loading properties
+[04:24:35] [Server thread/INFO] [minecraft/DedicatedServer]: Default game type: SURVIVAL
+[04:24:35] [Server thread/INFO] [minecraft/MinecraftServer]: Generating keypair
+[04:24:39] [Server thread/INFO] [minecraft/DedicatedServer]: Starting Minecraft server on 127.0.0.1:25589
+[04:24:43] [Server thread/INFO] [minecraft/ServerConnectionListener]: Using epoll channel type
+[04:24:50] [Server thread/WARN] [minecraft/DedicatedServer]: **** SERVER IS RUNNING IN OFFLINE/INSECURE MODE!
+[04:24:50] [Server thread/WARN] [minecraft/DedicatedServer]: The server will make no attempt to authenticate usernames. Beware.
+[04:24:50] [Server thread/WARN] [minecraft/DedicatedServer]: While this makes the game possible to play without internet access, it also opens up the ability for hackers to connect with any username they choose.
+[04:24:50] [Server thread/WARN] [minecraft/DedicatedServer]: To change this, set "online-mode" to "true" in the server.properties file.
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Configuration file ./world/serverconfig/eternal-night-server.toml is not correct. Correcting
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key eternalNight was corrected from null to its default, SimpleCommentedConfig:{}. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key eternalNight.enabled was corrected from null to its default, true. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key eternalNight.entryDimensions was corrected from null to its default, [minecraft:overworld]. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key eternalNight.entryBase was corrected from null to its default, 0.02. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key eternalNight.entryPerSleeplessDay was corrected from null to its default, 0.08. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key eternalNight.entryCap was corrected from null to its default, 0.5. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key eternalNight.newDoorExitChance was corrected from null to its default, 0.01. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key eternalNight.doorGuarantee was corrected from null to its default, 100. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key eternalNight.sharedExitSeconds was corrected from null to its default, 300. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key eternalNight.spawnCityMonsters was corrected from null to its default, true. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key eternalNight.nearbyShadowCap was corrected from null to its default, 10. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key eternalNight.nearbyNeonCap was corrected from null to its default, 12. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key eternalNight.returnAndResetOnDeath was corrected from null to its default, true. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key eternalNight.disablePlantGrowth was corrected from null to its default, true. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Configuration file ./world/serverconfig/curios-server.toml is not correct. Correcting
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key keepCurios was corrected from null to its default, DEFAULT. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key menu was corrected from null to its default, SimpleCommentedConfig:{}. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key menu.enableLegacyMenu was corrected from null to its default, false. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key menu.experimental was corrected from null to its default, SimpleCommentedConfig:{}. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key menu.experimental.minimumColumns was corrected from null to its default, 1. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key menu.experimental.maxSlotsPerPage was corrected from null to its default, 48. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Configuration file ./world/serverconfig/qihai-yuji-server.toml is not correct. Correcting
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key betrayed was corrected from null to its default, SimpleCommentedConfig:{}. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key betrayed.affectPets was corrected from null to its default, true. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key betrayed.affectVillagers was corrected from null to its default, true. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key betrayed.hostileBuff was corrected from null to its default, 0.3. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key enthralled was corrected from null to its default, SimpleCommentedConfig:{}. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key enthralled.pullStrength was corrected from null to its default, 1.0. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key enthralled.cameraTurn was corrected from null to its default, true. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key cursed was corrected from null to its default, SimpleCommentedConfig:{}. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key cursed.maxDamage was corrected from null to its default, 3.0. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key tanyu was corrected from null to its default, SimpleCommentedConfig:{}. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key tanyu.maxLayers was corrected from null to its default, 12. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Configuration file ./world/serverconfig/qihai-city-server.toml is not correct. Correcting
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key ambientCap was corrected from null to its default, 300. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key spawnDistance was corrected from null to its default, 96. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key spawnBudgetPerTick was corrected from null to its default, 4. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key hordeMultiplier was corrected from null to its default, 1.0. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Configuration file ./world/serverconfig/super-fertilizer-server.toml is not correct. Correcting
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key bagCapacity was corrected from null to its default, 64. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key boneMealAttempts was corrected from null to its default, 10. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key groveThreshold was corrected from null to its default, 5. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key groveTreeCount was corrected from null to its default, 15. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key groveRadius was corrected from null to its default, 24. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key meadowRadius was corrected from null to its default, 12. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key auraThreshold was corrected from null to its default, 10. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key fruitNutrition was corrected from null to its default, 8. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key fruitSaturation was corrected from null to its default, 1.2. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key fruitHealHP was corrected from null to its default, 6.0. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key fruitRegenerationTicks was corrected from null to its default, 3600. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Configuration file ./world/serverconfig/forge-server.toml is not correct. Correcting
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key server was corrected from null to its default, SimpleCommentedConfig:{}. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key server.removeErroringBlockEntities was corrected from null to its default, false. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key server.removeErroringEntities was corrected from null to its default, false. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key server.fullBoundingBoxLadders was corrected from null to its default, false. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key server.zombieBaseSummonChance was corrected from null to its default, 0.1. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key server.zombieBabyChance was corrected from null to its default, 0.05. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key server.permissionHandler was corrected from null to its default, forge:default_handler. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key server.advertiseDedicatedServerToLan was corrected from null to its default, true. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Configuration file ./world/serverconfig/sound_isolating_eraser-eraser-server.toml is not correct. Correcting
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key eraser_wall was corrected from null to its default, SimpleCommentedConfig:{}. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key eraser_wall.barrierHeight was corrected from null to its default, 5. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key eraser_item was corrected from null to its default, SimpleCommentedConfig:{}. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key eraser_item.eraserDurability was corrected from null to its default, 64. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key enhancement_pill was corrected from null to its default, SimpleCommentedConfig:{}. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key enhancement_pill.pillPackUses was corrected from null to its default, 12. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key enhancement_pill.pillDurationTicks was corrected from null to its default, 48000. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key enhancement_pill.withdrawalDurationTicks was corrected from null to its default, 12000. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key enhancement_pill.useDurationTicks was corrected from null to its default, 32. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key enhancement_pill.strengthAmplifier was corrected from null to its default, 1. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key enhancement_pill.speedAmplifier was corrected from null to its default, 1. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key enhancement_pill.hasteAmplifier was corrected from null to its default, 1. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key enhancement_pill.resistanceAmplifier was corrected from null to its default, 0. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key enhancement_pill.withdrawalSlownessAmplifier was corrected from null to its default, 1. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key enhancement_pill.withdrawalMiningFatigueAmplifier was corrected from null to its default, 1. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key enhancement_pill.withdrawalWeaknessAmplifier was corrected from null to its default, 1. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key enhancement_pill.withdrawalDarknessEnabled was corrected from null to its default, true. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key enhancement_pill.withdrawalNauseaEnabled was corrected from null to its default, false. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key enhancement_pill.allowMilkCureWithdrawal was corrected from null to its default, false. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key enhancement_pill.consumeInCreative was corrected from null to its default, false. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key enhancement_pill.showHudTimer was corrected from null to its default, true. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Configuration file ./world/serverconfig/sound_isolating_eraser-server.toml is not correct. Correcting
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key gravity_jade was corrected from null to its default, SimpleCommentedConfig:{}. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key gravity_jade.gravitySenseRange was corrected from null to its default, 16. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key gravity_jade.movementThreshold was corrected from null to its default, 0.02. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key gravity_jade.senseFadeTicks was corrected from null to its default, 4. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key gravity_jade.maxHighlightedEntities was corrected from null to its default, 64. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key gravity_jade.gravityFieldRadius was corrected from null to its default, 16. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key gravity_jade.gravityFieldBelow was corrected from null to its default, 8. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key gravity_jade.gravityFieldAbove was corrected from null to its default, 16. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key gravity_jade.gravityFieldDurationTicks was corrected from null to its default, 300. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key gravity_jade.maxPercent was corrected from null to its default, 0.2. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key gravity_jade.capDamage was corrected from null to its default, 10.0. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key gravity_jade.referenceHealth was corrected from null to its default, 300.0. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key gravity_jade.referencePercent was corrected from null to its default, 0.01. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key gravity_jade.gravitySlownessAmplifier was corrected from null to its default, 4. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key gravity_jade.gravityFieldCooldownTicks was corrected from null to its default, 1200. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key gravity_jade.levitationHoverHeight was corrected from null to its default, 3.0. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key gravity_jade.slamDamageMultiplier was corrected from null to its default, 3.0. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key gravity_jade.allyBuffLingerTicks was corrected from null to its default, 80. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key gravity_jade.surfaceBreakChance was corrected from null to its default, 0.25. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Configuration file ./world/serverconfig/sound_isolating_eraser-wings-server.toml is not correct. Correcting
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key flight was corrected from null to its default, SimpleCommentedConfig:{}. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key flight.hoverMaxSpeed was corrected from null to its default, 5.0. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key flight.cruiseSpeed was corrected from null to its default, 30.0. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key flight.boostSpeed was corrected from null to its default, 60.0. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key flight.stormSpeed was corrected from null to its default, 120.0. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key flight.accelLerp was corrected from null to its default, 2.5. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key flight.unloadedChunkSpeedCap was corrected from null to its default, 30.0. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key flight.voidPushMargin was corrected from null to its default, 5. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key hunger was corrected from null to its default, SimpleCommentedConfig:{}. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key hunger.hoverExhaustPerSec was corrected from null to its default, 0.4. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key hunger.cruiseExhaustPerSec was corrected from null to its default, 0.8. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key hunger.boostExhaustPerSec was corrected from null to its default, 2.0. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key hunger.stormExhaustPerSec was corrected from null to its default, 4.0. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key hunger.minFoodToDeploy was corrected from null to its default, 4. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key hunger.minFoodForFastTiers was corrected from null to its default, 6. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key blink was corrected from null to its default, SimpleCommentedConfig:{}. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key blink.blinkDistance was corrected from null to its default, 24.0. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key blink.blinkExhaust was corrected from null to its default, 6.0. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key blink.blinkChainWindowTicks was corrected from null to its default, 12. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key blink.blinkChainMax was corrected from null to its default, 3. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key blink.blinkCooldownTicks was corrected from null to its default, 40. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key blink.blinkChainCooldownTicks was corrected from null to its default, 160. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key blink.blinkDamageEnabled was corrected from null to its default, false. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key blink.blinkDamage was corrected from null to its default, 4.0. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key safety was corrected from null to its default, SimpleCommentedConfig:{}. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key safety.wallDamageEnabled was corrected from null to its default, true. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key safety.wallDamageThresholdSpeed was corrected from null to its default, 40.0. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key safety.wallDamageCap was corrected from null to its default, 10.0. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key safety.chargedDurationTicks was corrected from null to its default, 1200. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Configuration file ./world/serverconfig/sound_isolating_eraser-shaxiadao-server.toml is not correct. Correcting
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key item was corrected from null to its default, SimpleCommentedConfig:{}. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key item.baseAttackDamage was corrected from null to its default, 4.0. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key item.attackSpeed was corrected from null to its default, 2.4. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key combat was corrected from null to its default, SimpleCommentedConfig:{}. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key combat.normalBonus was corrected from null to its default, 2.5. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key combat.trueDamage was corrected from null to its default, 2.0. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key combat.scaleWithCooldown was corrected from null to its default, true. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key combat.allowFakePlayers was corrected from null to its default, false. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key target was corrected from null to its default, SimpleCommentedConfig:{}. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key target.enemyFallback was corrected from null to its default, true. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key target.conditionalRequiresPlayerIntent was corrected from null to its default, true. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key target.includeEntityTypes was corrected from null to its default, []. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key target.excludeEntityTypes was corrected from null to its default, []. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key factory was corrected from null to its default, SimpleCommentedConfig:{}. 
+[04:24:51] [Server thread/WARN] [ne.mi.co.ForgeConfigSpec/CORE]: Incorrect key factory.restoreMissing was corrected from null to its default, true. 
+[04:24:55] [Server thread/INFO] [minecraft/DedicatedServer]: Preparing level "world"
+[04:25:39] [Server thread/INFO] [minecraft/MinecraftServer]: Preparing start region for dimension minecraft:overworld
+[04:25:52] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[04:25:52] [Worker-Main-1/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[04:25:52] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[04:25:52] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[04:25:52] [Worker-Main-1/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[04:25:52] [Worker-Main-1/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[04:25:52] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[04:25:52] [Worker-Main-1/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[04:25:52] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[04:25:52] [Worker-Main-3/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[04:25:52] [Worker-Main-3/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[04:25:52] [Worker-Main-3/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[04:25:52] [Worker-Main-1/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[04:25:52] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[04:25:52] [Worker-Main-1/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[04:25:52] [Worker-Main-1/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[04:25:52] [Worker-Main-1/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[04:25:52] [Worker-Main-1/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[04:25:52] [Worker-Main-3/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[04:25:52] [Worker-Main-3/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[04:25:52] [Worker-Main-1/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[04:25:52] [Worker-Main-3/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[04:25:52] [Worker-Main-1/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[04:25:52] [Worker-Main-3/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[04:25:52] [Worker-Main-1/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[04:25:52] [Worker-Main-3/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[04:25:52] [Worker-Main-1/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[04:25:52] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 0%
+[04:25:53] [Worker-Main-3/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 1%
+[04:25:56] [Worker-Main-3/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 1%
+[04:25:56] [Worker-Main-3/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 1%
+[04:25:56] [Worker-Main-1/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 1%
+[04:25:56] [Worker-Main-1/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 1%
+[04:25:56] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 1%
+[04:25:56] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 1%
+[04:25:56] [Worker-Main-1/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 1%
+[04:25:57] [Worker-Main-1/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 2%
+[04:25:57] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 2%
+[04:25:58] [Worker-Main-1/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 4%
+[04:25:58] [Worker-Main-3/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 4%
+[04:25:59] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 6%
+[04:26:01] [Worker-Main-3/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 6%
+[04:26:01] [Worker-Main-3/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 6%
+[04:26:01] [Worker-Main-3/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 6%
+[04:26:01] [Worker-Main-1/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 6%
+[04:26:02] [Worker-Main-1/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 6%
+[04:26:02] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 7%
+[04:26:02] [Worker-Main-3/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 8%
+[04:26:03] [Worker-Main-3/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 9%
+[04:26:03] [Worker-Main-1/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 9%
+[04:26:04] [Worker-Main-1/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 10%
+[04:26:04] [Worker-Main-1/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 13%
+[04:26:08] [Worker-Main-3/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 15%
+[04:26:08] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 15%
+[04:26:08] [Worker-Main-3/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 15%
+[04:26:08] [Worker-Main-1/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 15%
+[04:26:08] [Worker-Main-1/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 15%
+[04:26:08] [Worker-Main-3/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 15%
+[04:26:08] [Worker-Main-3/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 15%
+[04:26:08] [Worker-Main-1/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 15%
+[04:26:09] [Worker-Main-1/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 15%
+[04:26:09] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 16%
+[04:26:10] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 18%
+[04:26:10] [Worker-Main-1/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 20%
+[04:26:12] [Worker-Main-1/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 20%
+[04:26:13] [Worker-Main-1/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 20%
+[04:26:13] [Worker-Main-1/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 20%
+[04:26:13] [Worker-Main-1/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 20%
+[04:26:13] [Worker-Main-1/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 21%
+[04:26:13] [Worker-Main-1/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 22%
+[04:26:14] [Worker-Main-3/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 26%
+[04:26:14] [Worker-Main-1/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 31%
+[04:26:15] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 38%
+[04:26:15] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 41%
+[04:26:16] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 42%
+[04:26:18] [Worker-Main-3/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 43%
+[04:26:18] [Worker-Main-3/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 43%
+[04:26:18] [Worker-Main-3/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 43%
+[04:26:18] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 43%
+[04:26:19] [Worker-Main-1/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 44%
+[04:26:19] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 46%
+[04:26:19] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 49%
+[04:26:20] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 54%
+[04:26:20] [Worker-Main-3/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 55%
+[04:26:21] [Worker-Main-1/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 57%
+[04:26:21] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 61%
+[04:26:23] [Worker-Main-3/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 62%
+[04:26:23] [Worker-Main-3/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 62%
+[04:26:23] [Worker-Main-1/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 62%
+[04:26:23] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 62%
+[04:26:24] [Worker-Main-3/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 64%
+[04:26:24] [Worker-Main-1/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 67%
+[04:26:25] [Worker-Main-1/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 68%
+[04:26:25] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 70%
+[04:26:26] [Worker-Main-3/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 77%
+[04:26:27] [Worker-Main-3/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 82%
+[04:26:27] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 83%
+[04:26:29] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 84%
+[04:26:29] [Worker-Main-3/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 84%
+[04:26:29] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 84%
+[04:26:29] [Worker-Main-3/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 84%
+[04:26:30] [Worker-Main-3/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 85%
+[04:26:30] [Worker-Main-3/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 85%
+[04:26:30] [Worker-Main-1/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 86%
+[04:26:31] [Worker-Main-1/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 89%
+[04:26:31] [Worker-Main-3/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 93%
+[04:26:32] [Worker-Main-1/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 98%
+[04:26:32] [Server thread/INFO] [minecraft/LoggerChunkProgressListener]: Time elapsed: 53165 ms
+[04:26:32] [Server thread/INFO] [minecraft/DedicatedServer]: Done (101.519s)! For help, type "help"
+[04:26:36] [Server thread/INFO] [ne.mi.se.pe.PermissionAPI/]: Successfully initialized permission handler forge:default_handler
+NIGHT_RELEASE_DOOR_LOCK_ACTIVE production=true SRG=m_153165_ now=0 until=20
+[04:26:54] [Server thread/WARN] [minecraft/MinecraftServer]: Can't keep up! Is the server overloaded? Running 6242ms or 124 ticks behind
+NIGHT_RELEASE_DOOR_LOCK_PASS production=true SRG=m_153165_ activeCloseBlocked=true expiredClosed=true inactiveCloseAllowed=true now=20 until=20
+[04:26:58] [Server thread/INFO] [minecraft/MinecraftServer]: Stopping server
+[04:26:58] [Server thread/INFO] [minecraft/MinecraftServer]: Saving players
+[04:26:58] [Server thread/INFO] [minecraft/MinecraftServer]: Saving worlds
+[04:27:40] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[world]'/minecraft:overworld
+[04:28:48] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_nether
+[04:28:48] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[world]'/sound_isolating_eraser:eternal_night
+[04:28:49] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_end
+[04:28:49] [Server thread/INFO] [minecraft/MinecraftServer]: Saving chunks for level 'ServerLevel[world]'/qihai:yuji_fodu
+[04:28:49] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (world): All chunks are saved
+[04:28:49] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (DIM-1): All chunks are saved
+[04:28:49] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (eternal_night): All chunks are saved
+[04:28:49] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (DIM1): All chunks are saved
+[04:28:49] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage (yuji_fodu): All chunks are saved
+[04:28:49] [Server thread/INFO] [minecraft/MinecraftServer]: ThreadedAnvilChunkStorage: All dimensions are saved

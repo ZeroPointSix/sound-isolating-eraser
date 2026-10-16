@@ -1,0 +1,14 @@
+// Separate remapped probe mod. Never included in the player-facing JAR.
+sourceSets {
+    nightReleaseQA {
+        compileClasspath += sourceSets.main.compileClasspath + sourceSets.main.output
+    }
+}
+tasks.register('nightReleaseQAJar', Jar) {
+    dependsOn 'nightReleaseQAClasses'
+    from sourceSets.nightReleaseQA.output
+    archiveClassifier = 'night-release-qa'
+    destinationDirectory = layout.buildDirectory.dir('night-release-qa/probe')
+}
+reobf { nightReleaseQAJar { } }
+tasks.named('nightReleaseQAJar').configure { finalizedBy 'reobfNightReleaseQAJar' }

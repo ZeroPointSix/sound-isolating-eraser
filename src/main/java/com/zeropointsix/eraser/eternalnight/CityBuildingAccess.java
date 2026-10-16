@@ -37,25 +37,34 @@ public final class CityBuildingAccess {
 
     public static List<Placement> locateBuildings(long seed) {
         Map<String, Placement> found = new LinkedHashMap<>();
-        for (int bx = -12; bx <= 12; bx++) for (int bz = -12; bz <= 12; bz++) {
-            String civic = CityTemplates.largeCivic(seed, bx, bz);
-            for (int lx = 1; lx <= 3; lx++) for (int lz = 1; lz <= 3; lz++) {
-                String name;
-                if (civic != null && lx <= 2 && lz <= 2) {
-                    if (lx != 1 || lz != 1) continue;
-                    name = civic;
-                } else {
-                    if (lx == 3 && lz == 3 && CityTemplates.hasStation(seed, bx, bz)) continue;
-                    if (lx == 3 && lz == 1 && Math.floorMod(CityLayout.hash(seed + 3, bx, bz), 4) == 0) continue;
-                    name = CityLayout.building(seed, bx * 4 + lx, bz * 4 + lz);
+        // Rare civic templates need not occur in the first window. Search outer rings
+        // without loading chunks, preserving existing sample locations when complete.
+        for (int radius = 12; radius <= 64 && found.size() < CityTemplates.BUILDINGS.size(); radius++) {
+            for (int bx = -radius; bx <= radius; bx++) for (int bz = -radius; bz <= radius; bz++) {
+                if (radius > 12 && Math.abs(bx) < radius && Math.abs(bz) < radius) continue;
+                String civic = CityTemplates.largeCivic(seed, bx, bz);
+                for (int lx = 1; lx <= 3; lx++) for (int lz = 1; lz <= 3; lz++) {
+                    String name;
+                    if (civic != null && lx <= 2 && lz <= 2) {
+                        if (lx != 1 || lz != 1) continue;
+                        name = civic;
+                    } else {
+                        if (lx == 3 && lz == 3 && CityTemplates.hasStation(seed, bx, bz)) continue;
+                        if (lx == 3 && lz == 1 && Math.floorMod(CityLayout.hash(seed + 3, bx, bz), 4) == 0) continue;
+                        name = CityLayout.building(seed, bx * 4 + lx, bz * 4 + lz);
+                    }
+                    int x = (bx * 4 + lx) * 16, z = (bz * 4 + lz) * 16;
+                    found.putIfAbsent(name, new Placement(name, new BlockPos(x, CityLayout.plateau(bx, bz), z),
+                            CityLayout.district(x, z)));
                 }
-                int x = (bx * 4 + lx) * 16, z = (bz * 4 + lz) * 16;
-                found.putIfAbsent(name, new Placement(name, new BlockPos(x, CityLayout.plateau(bx, bz), z),
-                        CityLayout.district(x, z)));
             }
         }
-        if (found.size() != CityTemplates.BUILDINGS.size())
-            throw new AssertionError("could not locate every original building class: " + found.keySet());
+        if (found.size() != CityTemplates.BUILDINGS.size()) {
+            Set<String> missing = new TreeSet<>(CityTemplates.BUILDINGS);
+            missing.removeAll(found.keySet());
+            throw new AssertionError("could not locate every original building class: seed=" + seed
+                    + " radius=64 missing=" + missing + " located=" + found.keySet());
+        }
         return List.copyOf(found.values());
     }
 
@@ -77,12 +86,15 @@ public final class CityBuildingAccess {
         doors.removeIf(info -> !info.state().hasProperty(DoorBlock.HALF)
                 || info.state().getValue(DoorBlock.HALF) != DoubleBlockHalf.LOWER);
         doors.sort(Comparator.comparingInt(info -> info.pos().getY()));
+        int entranceY = doors.isEmpty() ? origin.getY() : doors.get(0).pos().getY();
         List<Approach> ranked = new ArrayList<>();
         for (var info : doors) {
             var world = city.getBlockState(info.pos());
             if (!(world.getBlock() instanceof DoorBlock) || !world.hasProperty(DoorBlock.FACING)) continue;
             openDoor(city, info.pos());
             clearApproachSlabs(city, info.pos());
+            // A survey must enter from the ground floor, never teleport onto an upper landing.
+            if (info.pos().getY() != entranceY) continue;
             Direction facing = world.getValue(DoorBlock.FACING);
             for (Direction outward : new Direction[] {facing, facing.getOpposite()}) {
                 for (int distance = 1; distance <= 4; distance++) {
@@ -106,8 +118,20 @@ public final class CityBuildingAccess {
                     && !CityLayout.street(found.feet().getX(), found.feet().getZ()) ? 5000 : 0;
             return insideStart + score(found);
         }));
-        for (Approach candidate : ranked)
-            if (entranceWalkable(city, candidate)) return Optional.of(candidate);
+        int expected = expectedFloors(city, origin, building);
+        Set<BlockPos> checkedDoors = new HashSet<>();
+        Approach fallback = null;
+        for (Approach candidate : ranked) {
+            if (!entranceWalkable(city, candidate)) continue;
+            if (fallback == null) fallback = candidate;
+            if (!checkedDoors.add(candidate.door())) continue;
+            // Some original templates have a separate ground-floor room with its own entrance.
+            // Survey the stair-connected entrance, not merely the nearest isolated room.
+            int reached = floorCount(city, origin, size.getX(), size.getZ(), size.getY(),
+                    candidate.door().relative(candidate.inward()));
+            if (reached >= expected) return Optional.of(candidate);
+        }
+        if (fallback != null) return Optional.of(fallback);
         return Optional.empty();
     }
 
@@ -168,11 +192,18 @@ public final class CityBuildingAccess {
         ArrayDeque<BlockPos> queue = new ArrayDeque<>();
         Set<Long> seen = new HashSet<>();
         TreeSet<Integer> floors = new TreeSet<>();
+        Set<Integer> storeyY = new HashSet<>();
+        for (BlockPos pos : BlockPos.betweenClosed(origin, origin.offset(sizeX - 1, sizeY - 1, sizeZ - 1))) {
+            BlockState state = city.getBlockState(pos);
+            if (state.getBlock() instanceof DoorBlock && state.getValue(DoorBlock.HALF) == DoubleBlockHalf.LOWER)
+                storeyY.add(pos.getY());
+        }
         queue.add(start);
         int budget = 12000;
-        while (!queue.isEmpty() && budget-- > 0) {
+        while (!queue.isEmpty() && budget > 0) {
             BlockPos pos = queue.poll();
             if (!seen.add(pos.asLong())) continue;
+            budget--;
             if (pos.getX() < origin.getX() - 1 || pos.getZ() < origin.getZ() - 1
                     || pos.getX() > origin.getX() + sizeX || pos.getZ() > origin.getZ() + sizeZ
                     || pos.getY() < origin.getY() - 1 || pos.getY() > origin.getY() + sizeY + 1)
@@ -180,7 +211,13 @@ public final class CityBuildingAccess {
             AABB body = bodyAt(pos.getX(), pos.getY(), pos.getZ());
             boolean ladder = ladderAt(city, pos) || ladderAt(city, pos.below());
             if ((!city.getBlockState(pos.below()).isSolid() && !ladder) || !city.noCollision(body)) continue;
-            floors.add(pos.getY());
+            // Reach a standing landing at an authored storey height. The door itself can be
+            // in a separate room; merely climbing past that height on a ladder is not arrival.
+            if (pos.getX() >= origin.getX() && pos.getX() < origin.getX() + sizeX
+                    && pos.getZ() >= origin.getZ() && pos.getZ() < origin.getZ() + sizeZ
+                    && storeyY.contains(pos.getY()) && !ladderAt(city, pos)
+                    && city.getBlockState(pos.below()).isSolid())
+                floors.add(pos.getY());
             for (Direction direction : Direction.Plane.HORIZONTAL) {
                 BlockPos next = pos.relative(direction);
                 int nextY = standY(city, next.getX(), next.getZ(), pos.getY());
@@ -202,6 +239,8 @@ public final class CityBuildingAccess {
                 last = y;
             }
         }
+        if (budget == 0 && !queue.isEmpty())
+            throw new IllegalStateException("floor survey exceeded its node budget at " + origin.toShortString());
         return count;
     }
 
@@ -314,7 +353,8 @@ public final class CityBuildingAccess {
         for (int dy : new int[] {0, -1, 1, -2, 2, -3, -4}) {
             int y = nearY + dy;
             BlockPos below = new BlockPos(x, y - 1, z);
-            if (city.getBlockState(below).isSolid() && walkableSpace(city, x, y, z)
+            if ((city.getBlockState(below).isSolid() || ladderAt(city, below.above()))
+                    && walkableSpace(city, x, y, z)
                     && city.getFluidState(new BlockPos(x, y, z)).isEmpty())
                 return y;
         }

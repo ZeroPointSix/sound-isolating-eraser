@@ -1,4 +1,5 @@
 import com.zeropointsix.eraser.eternalnight.CityLayout;
+import com.zeropointsix.eraser.eternalnight.CityEntryOverlay;
 import com.zeropointsix.eraser.eternalnight.NightRules;
 import java.util.Arrays;
 
@@ -26,6 +27,7 @@ public final class NightRulesCheck {
             check(!doors.open(i, 100, .01, 0).counted(), "repeat never rerolls " + i);
         }
         check(new NightRules.Doors(doors.save()).count() == 100, "save/reload");
+        check(doors.open(101, 100, 0, .5).exit(), "retain configured >= guarantee after the hundredth door");
         check(new NightRules.Doors(new long[]{2, 2, 3}).count() == 2, "corrupt duplicate data");
         check(new NightRules.Doors(new long[0]).count() == 0, "visit reset");
         check(new NightRules.Doors(new long[0]).open(2, 100, .01, 0).exit(), "early random exit");
@@ -67,6 +69,31 @@ public final class NightRulesCheck {
         check(mixin.contains("\"m_153165_\""), "CityDoorMixin targets official setOpen SRG m_153165_");
         check(!mixin.contains("\"m_153166_\""), "setOpen SRG is m_153165_, not the off-by-one id");
         check(mixin.contains("min = 3"), "citySetBlock group requires all three door methods");
+        String arrivalMixin = java.nio.file.Files.readString(java.nio.file.Path.of(
+                "src/main/java/com/zeropointsix/eraser/mixin/CityArrivalSleepMixin.java"));
+        check(arrivalMixin.contains("\"m_5796_()V\""), "arrival sleep targets the official stopSleeping SRG descriptor");
+        check(arrivalMixin.contains("remap = false"), "explicit arrival aliases do not depend on an empty refmap");
+        CityEntryOverlay overlay = new CityEntryOverlay();
+        check(overlay.alpha() == 0 && !overlay.showsCaption(), "overlay starts clear");
+        overlay.begin(CityEntryOverlay.FADE_IN_TICKS, true);
+        for (int i = 0; i < CityEntryOverlay.FADE_IN_TICKS; i++) {
+            check(overlay.alpha() >= 0 && overlay.alpha() < 255 && !overlay.showsCaption(), "caption waits for full black");
+            overlay.tick();
+        }
+        for (int i = 0; i < CityEntryOverlay.CAPTION_TICKS; i++) {
+            check(overlay.alpha() == 255 && overlay.showsCaption(), "caption remains on black before teleport");
+            overlay.tick();
+        }
+        overlay.begin(40, false);
+        check(overlay.alpha() == 255 && !overlay.showsCaption(), "arrival hides caption and starts fade out");
+        for (int i = 0; i < 40; i++) overlay.tick();
+        check(overlay.alpha() == 0 && !overlay.showsCaption(), "arrival fades out completely");
+        overlay.begin(20, true);
+        overlay.begin(0, false);
+        check(overlay.alpha() == 0 && !overlay.showsCaption(), "entry cancellation cannot leave a black screen");
+        overlay.begin(0, true);
+        overlay.clear();
+        check(overlay.alpha() == 0 && !overlay.showsCaption(), "disconnect clears held blackout");
         System.out.println("NightRulesCheck PASS assertions=" + assertions);
     }
 }

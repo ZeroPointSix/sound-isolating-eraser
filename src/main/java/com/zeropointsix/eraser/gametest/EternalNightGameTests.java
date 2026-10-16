@@ -84,6 +84,8 @@ public final class EternalNightGameTests {
     @AfterBatch(batch = "eternal_night_unload") public static void afterUnload(ServerLevel level) { restoreConfig(); }
     @AfterBatch(batch = "eternal_night_arrival") public static void afterArrival(ServerLevel level) { restoreConfig(); }
     @AfterBatch(batch = "eternal_night_entrances") public static void afterEntrances(ServerLevel level) { restoreConfig(); }
+    @AfterBatch(batch = "eternal_night_floor_levels") public static void afterFloorLevels(ServerLevel level) { restoreConfig(); }
+    @AfterBatch(batch = "eternal_night_feedback") public static void afterFeedback(ServerLevel level) { restoreConfig(); }
 
     @GameTest(template = "empty", batch = "eternal_night_sleep", timeoutTicks = 1400)
     public static void cityDeepSleepAndReturnPreservePlayer(GameTestHelper h) {
@@ -249,10 +251,15 @@ public final class EternalNightGameTests {
     }
 
     private static TestSession login(GameTestHelper h) {
+        return login(h, packet -> { });
+    }
+
+    private static TestSession login(GameTestHelper h,
+            java.util.function.Consumer<net.minecraft.network.protocol.Packet<?>> capture) {
         var connection = new net.minecraft.network.Connection(net.minecraft.network.protocol.PacketFlow.SERVERBOUND) {
-            @Override public void send(net.minecraft.network.protocol.Packet<?> packet) { }
+            @Override public void send(net.minecraft.network.protocol.Packet<?> packet) { capture.accept(packet); }
             @Override public void send(net.minecraft.network.protocol.Packet<?> packet,
-                    net.minecraft.network.PacketSendListener callback) { }
+                    net.minecraft.network.PacketSendListener callback) { capture.accept(packet); }
         };
         // Forge's login hook needs a channel before PlayerList.placeNewPlayer, unlike vanilla's helper.
         var channel = new io.netty.channel.embedded.EmbeddedChannel(connection);
@@ -387,6 +394,62 @@ public final class EternalNightGameTests {
             var restored = net.minecraft.world.level.block.entity.BlockEntity.loadStatic(
                     container.getBlockPos(), container.getBlockState(), emptied);
             h.assertTrue(restored instanceof net.minecraft.world.Container c && c.isEmpty(), "empty inventory survives NBT reload");
+            } finally {
+                container.load(before);
+                container.setChanged();
+            }
+        }
+        h.succeed();
+    }
+
+    @GameTest(template = "empty", batch = "eternal_night_loot", timeoutTicks = 240)
+    public static void cityGeneratedStationSupplyUsesCommonLoot(GameTestHelper h) {
+        isolate(h.getLevel());
+        ServerLevel city = h.getLevel().getServer().getLevel(EternalNightContent.LEVEL);
+        var containers = new java.util.ArrayList<net.minecraft.world.level.block.entity.RandomizableContainerBlockEntity>();
+        int originX = 0, originZ = 0;
+        // Skip already-generated empty station chunks from a reused GameTest world.
+        search:
+        for (int bz = 0; bz < 6; bz++) {
+            for (int bx = 0; bx < 80; bx++) {
+                if (!CityTemplates.hasStation(city.getSeed(), bx, bz)) continue;
+                originX = bx * 64 + 48;
+                originZ = bz * 64 + 48;
+                city.getBlockState(new BlockPos(originX + 8, CityChunkGenerator.SUBWAY_Y + 2, originZ + 7));
+                city.getBlockState(new BlockPos(originX + 8, CityLayout.plateau(bx, bz) + 1, originZ + 8));
+                containers.clear();
+                var chunk = city.getChunk(originX >> 4, originZ >> 4);
+                for (BlockPos pos : chunk.getBlockEntitiesPos()) {
+                    var entity = city.getBlockEntity(pos);
+                    if (entity instanceof net.minecraft.world.level.block.entity.RandomizableContainerBlockEntity container) {
+                        CompoundTag tag = container.saveWithFullMetadata();
+                        if (CityTemplates.STATION_COMMON_LOOT.toString().equals(tag.getString("LootTable")))
+                            containers.add(container);
+                    }
+                }
+                if (!containers.isEmpty()) break search;
+            }
+        }
+        System.out.println("STATION_SUPPLY_FOUND count=" + containers.size() + " chunk=" + originX + "," + originZ);
+        h.assertTrue(!containers.isEmpty(), "runtime station supply injects at least one common container; got " + containers.size());
+        for (var container : containers) {
+            CompoundTag before = container.saveWithFullMetadata();
+            try {
+                h.assertTrue(CityTemplates.STATION_COMMON_LOOT.toString().equals(before.getString("LootTable")),
+                        "station container uses chests/eternal_night/common");
+                h.assertTrue(!before.contains("Items"), "generator does not prefill station inventory");
+                container.unpackLootTable(null);
+                h.assertTrue(!container.isEmpty(), "common loot table produces equipment");
+                for (int slot = 0; slot < container.getContainerSize(); slot++) {
+                    var stack = container.getItem(slot);
+                    h.assertTrue(!stack.isEdible() && !(stack.getItem() instanceof net.minecraft.world.item.PotionItem)
+                            && !stack.is(net.minecraft.world.item.Items.WATER_BUCKET), "no food, potion or water in station loot");
+                }
+                container.clearContent();
+                container.unpackLootTable(null);
+                h.assertTrue(container.isEmpty(), "empty station container never refills");
+                CompoundTag emptied = container.saveWithFullMetadata();
+                h.assertTrue(!emptied.contains("LootTable"), "consumed station loot marker is removed");
             } finally {
                 container.load(before);
                 container.setChanged();
@@ -690,6 +753,62 @@ public final class EternalNightGameTests {
         h.assertTrue(EternalNightContent.NEON_SIGN.get().defaultBlockState().getLightEmission() == 12, "art neon has light 12");
         h.assertTrue(EternalNightContent.EMERGENCY_LIGHT.get().defaultBlockState().getLightEmission() == 4, "emergency light has light 4");
         h.succeed();
+    }
+
+    @GameTest(template = "empty", batch = "eternal_night_feedback", timeoutTicks = 200)
+    public static void cityFeedbackMatchesSleepAndDoorRules(GameTestHelper h) {
+        isolate(h.getLevel());
+        ServerLevel city = h.getLevel().getServer().getLevel(EternalNightContent.LEVEL);
+        var messages = new java.util.ArrayList<net.minecraft.network.protocol.game.ClientboundSystemChatPacket>();
+        var session = login(h, packet -> {
+            if (packet instanceof net.minecraft.network.protocol.game.ClientboundSystemChatPacket message)
+                messages.add(message);
+        });
+        var player = session.player();
+        BlockPos pos = new BlockPos(11000, 240, 11000);
+        var before = new java.util.LinkedHashMap<BlockPos, net.minecraft.world.level.block.state.BlockState>();
+        try {
+            for (BlockPos block : java.util.List.of(pos.below(), pos, pos.above()))
+                before.put(block, city.getBlockState(block));
+            city.setBlock(pos.below(), Blocks.STONE.defaultBlockState(), 2);
+            city.setBlock(pos, Blocks.RED_BED.defaultBlockState(), 2);
+            player.teleportTo(city, pos.getX() + .5, pos.getY(), pos.getZ() - 1.5, 0, 0);
+            messages.clear();
+            var click = new net.minecraftforge.event.entity.player.PlayerInteractEvent.RightClickBlock(
+                    player, net.minecraft.world.InteractionHand.MAIN_HAND, pos,
+                    new net.minecraft.world.phys.BlockHitResult(Vec3.atCenterOf(pos), Direction.UP, pos, false));
+            net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(click);
+            h.assertTrue(click.isCanceled(), "city bed remains non-explosive and cannot sleep");
+            h.assertTrue(messages.stream().anyMatch(message -> message.overlay()
+                            && message.content().getContents() instanceof net.minecraft.network.chat.contents.TranslatableContents text
+                            && text.getKey().equals("message.sound_isolating_eraser.city.no_sleep")),
+                    "Notion 6.1: rejected city sleep explains that there is no night to skip");
+
+            installDoor(city, pos, Blocks.OAK_DOOR);
+            NightConfig.EXIT_CHANCE.set(0.0);
+            NightConfig.DOOR_GUARANTEE.set(7);
+            player.getPersistentData().remove(NightEvents.PLAYER_TAG);
+            messages.clear();
+            use(player, pos);
+            h.assertTrue(messages.stream().anyMatch(message -> message.overlay()
+                            && message.content().getContents() instanceof net.minecraft.network.chat.contents.TranslatableContents text
+                            && text.getKey().equals("message.sound_isolating_eraser.city.doors")
+                            && java.util.Arrays.equals(text.getArgs(), new Object[] {1, 7})),
+                    "Notion 5.4: action bar shows opened count and configured guarantee");
+            messages.clear();
+            use(player, pos);
+            use(player, pos);
+            h.assertTrue(messages.stream().noneMatch(message -> message.content().getContents()
+                            instanceof net.minecraft.network.chat.contents.TranslatableContents text
+                            && text.getKey().equals("message.sound_isolating_eraser.city.doors")),
+                    "reopening the same door does not create another progress notification");
+            System.out.println("NIGHT_FEEDBACK_PASS sleepHint=true configuredDoorProgress=1/7 duplicateSuppressed=true");
+            h.succeed();
+        } finally {
+            h.getLevel().getServer().getPlayerList().remove(player);
+            session.channel().finishAndReleaseAll();
+            before.forEach((block, state) -> city.setBlock(block, state, 2));
+        }
     }
 
     /** Spec bans in the city: sleep problem, bed/anchor click, spawn set, growth, vanilla mobs. */
@@ -1071,6 +1190,25 @@ public final class EternalNightGameTests {
         }).thenSucceed();
     }
 
+    @GameTest(template = "empty", batch = "eternal_night_survey_seeds", timeoutTicks = 200)
+    public static void cityBuildingSurveyFindsRareTemplatesBeyondInitialWindow(GameTestHelper h) {
+        for (long seed : new long[] {52L, 0L, 5376539267146632372L}) {
+            var placements = CityBuildingAccess.locateBuildings(seed);
+            var names = placements.stream().map(CityBuildingAccess.Placement::name)
+                    .collect(java.util.stream.Collectors.toSet());
+            h.assertTrue(names.equals(new java.util.HashSet<>(CityTemplates.BUILDINGS)),
+                    "survey includes every original template for seed=" + seed + ": " + names);
+            if (seed == 52L) {
+                var mall = placements.stream().filter(p -> "mall".equals(p.name())).findFirst().orElseThrow();
+                h.assertTrue(Math.abs(Math.floorDiv(mall.origin().getX(), 64)) > 12
+                                || Math.abs(Math.floorDiv(mall.origin().getZ(), 64)) > 12,
+                        "seed 52 keeps the real mall outside the original search window");
+            }
+        }
+        System.out.println("CITY_SURVEY_SEEDS_PASS seeds=52,0,5376539267146632372 templates=12/12");
+        h.succeed();
+    }
+
     @GameTest(template = "empty", batch = "eternal_night_entrances", timeoutTicks = 2000)
     public static void cityTwelveBuildingEntrancesWalkable(GameTestHelper h) {
         isolate(h.getLevel());
@@ -1099,6 +1237,14 @@ public final class EternalNightGameTests {
             int expected = CityBuildingAccess.expectedFloors(city, placement.origin(), placement.name());
             boolean floorsReached = floors >= expected;
             if (floorsReached) floorsOk++;
+            if ("res_tenement".equals(placement.name())) {
+                h.assertTrue(floorsReached, "res_tenement industrial counterexample must reach every door-bearing floor: origin="
+                        + placement.origin().toShortString() + " door=" + approach.get().door().toShortString()
+                        + " floors=" + floors + " expectedDoorFloors=" + expected);
+                System.out.println("CITY_TENEMENT_FLOOR_GATE origin=" + placement.origin().toShortString()
+                        + " door=" + approach.get().door().toShortString()
+                        + " floors=" + floors + " expectedDoorFloors=" + expected);
+            }
             int dist = Math.abs(approach.get().feet().getX() - approach.get().door().getX())
                     + Math.abs(approach.get().feet().getZ() - approach.get().door().getZ());
             double stepUp = CityBuildingAccess.stepUp(city, approach.get().feet());
@@ -1116,7 +1262,55 @@ public final class EternalNightGameTests {
         System.out.print(table);
         System.out.println("CITY_ENTRANCE_SUMMARY walked=" + walked + "/12 floorsReached=" + floorsOk + "/12");
         h.assertTrue(walked == 12, "all 12 original building classes have a walkable entrance; missing " + missing);
+        h.assertTrue(floorsOk == 12, "all 12 original building classes reach every door-bearing floor: " + table);
         h.succeed();
+    }
+
+    @GameTest(template = "empty", batch = "eternal_night_floor_levels", timeoutTicks = 200)
+    public static void cityFloorSurveyDoesNotCountStairHeightAsStoreys(GameTestHelper h) {
+        isolate(h.getLevel());
+        ServerLevel level = h.getLevel();
+        BlockPos origin = h.absolutePos(new BlockPos(1, 2, 1));
+        var previous = new java.util.LinkedHashMap<BlockPos, net.minecraft.world.level.block.state.BlockState>();
+        for (BlockPos pos : BlockPos.betweenClosed(origin, origin.offset(4, 12, 4)))
+            previous.put(pos.immutable(), level.getBlockState(pos));
+        try {
+        for (BlockPos pos : BlockPos.betweenClosed(origin, origin.offset(4, 12, 4)))
+            level.setBlock(pos, pos.getY() == origin.getY() ? Blocks.STONE.defaultBlockState()
+                    : Blocks.AIR.defaultBlockState(), 3);
+        BlockPos door = origin.offset(1, 1, 1);
+        var state = Blocks.OAK_DOOR.defaultBlockState().setValue(DoorBlock.OPEN, true);
+        level.setBlock(door, state.setValue(DoorBlock.HALF, DoubleBlockHalf.LOWER), 3);
+        level.setBlock(door.above(), state.setValue(DoorBlock.HALF, DoubleBlockHalf.UPPER), 3);
+        for (int y = 1; y <= 10; y++) {
+            level.setBlock(origin.offset(3, y, 2), Blocks.STONE.defaultBlockState(), 3);
+            level.setBlock(origin.offset(2, y, 2), Blocks.LADDER.defaultBlockState()
+                    .setValue(net.minecraft.world.level.block.LadderBlock.FACING, Direction.WEST), 3);
+        }
+        h.assertTrue(CityBuildingAccess.floorCount(level, origin, 5, 5, 13, door) == 1,
+                "ten blocks of climbable height are not extra door-bearing storeys");
+        // Like res_apartment_low, the ladder continues below the ground-floor entry.
+        level.setBlock(origin.offset(3, 0, 2), Blocks.STONE.defaultBlockState(), 3);
+        level.setBlock(origin.offset(2, 0, 2), Blocks.LADDER.defaultBlockState()
+                .setValue(net.minecraft.world.level.block.LadderBlock.FACING, Direction.WEST), 3);
+        BlockPos upperDoor = origin.offset(0, 7, 4);
+        level.setBlock(upperDoor.below(), Blocks.STONE.defaultBlockState(), 3);
+        level.setBlock(upperDoor, state.setValue(DoorBlock.HALF, DoubleBlockHalf.LOWER), 3);
+        level.setBlock(upperDoor.above(), state.setValue(DoorBlock.HALF, DoubleBlockHalf.UPPER), 3);
+        h.assertTrue(CityBuildingAccess.floorCount(level, origin, 5, 5, 13, door) == 1,
+                "climbing past an inaccessible door's storey height does not reach its landing");
+        BlockPos landing = origin.offset(1, 7, 2);
+        level.setBlock(landing.below(), Blocks.STONE.defaultBlockState(), 3);
+        h.assertTrue(CityBuildingAccess.floorCount(level, origin, 5, 5, 13, door) == 2,
+                "entering a ladder from the side reaches an upper landing even without standing in its door");
+        level.setBlock(origin.offset(2, 4, 2), Blocks.STONE.defaultBlockState(), 3);
+        h.assertTrue(CityBuildingAccess.floorCount(level, origin, 5, 5, 13, door) == 1,
+                "a blocked ladder prevents reaching the upper landing");
+        System.out.println("CITY_FLOOR_LEVELS_PASS ladderHeight=10 initialStoreys=1 ladderLanding=2 blockedLadder=1");
+        h.succeed();
+        } finally {
+            previous.forEach((pos, original) -> level.setBlock(pos, original, 3));
+        }
     }
 
     private static int[] sampleDistrict(CityLayout.District want) {

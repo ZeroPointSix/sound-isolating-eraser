@@ -2,7 +2,10 @@ package com.zeropointsix.eraser.eternalnight;
 
 import com.zeropointsix.eraser.ModMain;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.level.block.entity.ChestBlockEntity;
+import net.minecraft.world.level.block.entity.RandomizableContainerBlockEntity;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.WorldGenRegion;
@@ -22,6 +25,8 @@ public final class CityTemplates {
             "res_tenement", "office_dark", "office_tower", "shop_neon", "warehouse", "mall", "civic_center", "townhall", "library");
     /** 2×2-chunk civic building placed in the 3×3 interior of a 64-block tile. Commercial only. */
     public static final List<String> CIVIC_LARGE = List.of("mall", "civic_center", "townhall", "library");
+    /** Runtime station supply uses the existing common table; original subway NBT has no container candidates. */
+    public static final ResourceLocation STATION_COMMON_LOOT = new ResourceLocation(ModMain.MOD_ID, "chests/eternal_night/common");
 
     /** Every structure template the generator may place, per the supplied art pack. */
     public static final List<String> STRUCTURES = List.of(
@@ -93,6 +98,10 @@ public final class CityTemplates {
                             .setValue(LadderBlock.FACING, net.minecraft.core.Direction.EAST), 2 | 16);
                     region.setBlock(new BlockPos(x + 5, y, z + 13), Blocks.AIR.defaultBlockState(), 2 | 16);
                 }
+                injectStationSupply(region, x, CityChunkGenerator.SUBWAY_Y + 1, z,
+                        CityLayout.hash(region.getSeed(), x, z) ^ 0x51a71011L);
+                injectStationSupply(region, x, top, z,
+                        CityLayout.hash(region.getSeed(), x, z) ^ 0x51a7e071L);
             } else if (lx == 3 && lz == 1 && Math.floorMod(CityLayout.hash(region.getSeed() + 3, bx, bz), 4) == 0) {
                 String plaza = Math.floorMod(CityLayout.hash(region.getSeed() + 4, bx, bz), 2) == 0
                         ? "plaza_parking" : "plaza_fountain" + (district.equals("com") ? "_com" : "");
@@ -171,6 +180,59 @@ public final class CityTemplates {
                     || !CityLayout.street(x, z + distance) || !CityLayout.street(x, z - distance))
                 return true;
         return false;
+    }
+
+    /**
+     * Place a chest in air on a solid floor after the original template is applied.
+     * Does not rewrite NBT files; skips the subway walkway (local z=7) and the runtime ladder.
+     */
+    private static void injectStationSupply(WorldGenRegion region, int originX, int minY, int originZ, long salt) {
+        BlockPos found = null;
+        Direction facing = Direction.NORTH;
+        int[][] preferred = {{2, 2}, {13, 2}, {2, 14}, {13, 14}, {1, 4}, {14, 4}, {4, 1}, {11, 1}, {1, 11}, {14, 11}};
+        List<int[]> order = new ArrayList<>();
+        Collections.addAll(order, preferred);
+        for (int dx = 1; dx <= 14; dx++) for (int dz = 1; dz <= 14; dz++) {
+            boolean seen = false;
+            for (int[] c : preferred) if (c[0] == dx && c[1] == dz) { seen = true; break; }
+            if (!seen) order.add(new int[]{dx, dz});
+        }
+        search:
+        for (int[] c : order) {
+            int dx = c[0], dz = c[1];
+            if (dz == 7) continue;
+            if (dx >= 3 && dx <= 5 && dz == 13) continue;
+            for (int y = minY; y <= minY + 4; y++) {
+                BlockPos pos = new BlockPos(originX + dx, y, originZ + dz);
+                if (!region.getBlockState(pos).isAir() || !region.getBlockState(pos.above()).isAir()) continue;
+                BlockState below = region.getBlockState(pos.below());
+                if (!below.isSolid() || !below.getFluidState().isEmpty()) continue;
+                if (below.getBlock() instanceof LadderBlock || below.getBlock() instanceof ChestBlock) continue;
+                found = pos;
+                int cx = 8 - dx, cz = 8 - dz;
+                facing = Math.abs(cx) >= Math.abs(cz)
+                        ? (cx >= 0 ? Direction.EAST : Direction.WEST)
+                        : (cz >= 0 ? Direction.SOUTH : Direction.NORTH);
+                break search;
+            }
+        }
+        if (found == null) {
+            System.out.println("STATION_SUPPLY_SKIP origin=" + originX + "," + minY + "," + originZ);
+            return;
+        }
+        BlockState chest = Blocks.CHEST.defaultBlockState().setValue(ChestBlock.FACING, facing);
+        region.setBlock(found, chest, 2 | 16);
+        RandomizableContainerBlockEntity container;
+        if (region.getBlockEntity(found) instanceof RandomizableContainerBlockEntity existing) {
+            container = existing;
+        } else {
+            ChestBlockEntity created = new ChestBlockEntity(found, chest);
+            region.getChunk(found).setBlockEntity(created);
+            container = created;
+        }
+        container.setLootTable(STATION_COMMON_LOOT, salt ^ found.asLong());
+        System.out.println("STATION_SUPPLY_INJECTED pos=" + found.getX() + "," + found.getY() + "," + found.getZ()
+                + " loot=" + STATION_COMMON_LOOT);
     }
 
     private static Set<Long> chooseContainers(StructureTemplate template, StructurePlaceSettings settings, BlockPos origin, long seed) {

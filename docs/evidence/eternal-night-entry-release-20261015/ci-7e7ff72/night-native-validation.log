@@ -1,0 +1,19 @@
+NIGHT_REAL_RESTART old_pid=3455 new_pid=3765 world=/home/runner/work/sound-isolating-eraser/sound-isolating-eraser/build/night-e2e/server/world
+COLLECTED city survey: 12/12 entrances crossed, floors 12/12; consult deviations in city-survey.json; not full building/monster acceptance
+PASS checkpoint before restart: owner doors=100, two visiting players, shared exit until=7325, gameTime=1388
+PASS full-frame black caption before leaving overworld; dark=517882 bright=518
+PASS full-frame black caption before leaving overworld; dark=517882 bright=518
+PASS original models and shared white plane with rendered negative control; negative=Pixels[white=4549, square=400] positive=Pixels[white=21683, square=4225]
+PASS original models and shared white plane with rendered negative control; negative=Pixels[white=3287, square=225] positive=Pixels[white=15162, square=1936]
+PASS native client ready for intentional server shutdown
+PASS native client ready for intentional server shutdown
+PASS new server process loaded same world, exact shared expiry, two player compounds, owner 100 doors, both original beds and inventories
+PASS original models and shared white plane with rendered negative control; negative=Pixels[white=2306, square=225] positive=Pixels[white=20113, square=2704]
+PASS original models and shared white plane with rendered negative control; negative=Pixels[white=2161, square=196] positive=Pixels[white=14550, square=1849]
+PASS: native bed clicks and deep sleep, responsive cold-world same-night entry, native 100th door, shared exit, distinct beds, inventory and counter reset; max entry tick gap 3638 ms
+PASS native walking through shared exit returned client to overworld
+PASS native walking through shared exit returned client to overworld
+PASS real client death screen and native respawn: seven visible dropped diamonds, zero retained diamonds, original bed and cleared history
+PASS real DeathScreen, native Respawn-button click and rendered living overworld player with no diamonds
+NIGHT_TWO_CLIENT_E2E_PASS
+NIGHT_RESTART_AND_REAL_CLIENT_DEATH_PASS

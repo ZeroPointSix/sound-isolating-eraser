@@ -6,12 +6,17 @@ on:
     paths:
       - '**/eternalnight/**'
       - '**/nightTest/**'
+      - '**/nightReleaseQA/**'
+      - '**/mixin/City*Mixin.java'
       - '**/EternalNightGameTests.java'
       - 'tools/night-e2e.py'
+      - 'tools/night-release-door-lock.py'
+      - 'tools/NightRulesCheck.java'
       - 'tools/*city_art.py'
       - 'src/main/resources/assets/qihai/**'
       - 'src/main/resources/data/qihai/**'
       - 'gradle/night-e2e.gradle'
+      - 'gradle/night-release-qa.gradle'
       - build.gradle
       - .github/workflows/eternal-night-validation.yml
   workflow_dispatch:
@@ -41,7 +46,7 @@ jobs:
       - name: Build, verify original art and run the complete Forge suite
         run: |
           mkdir -p build
-          bash ./gradlew --no-daemon --max-workers=2 -PnightE2E checkNightRules verifyCityAssets build writeNightTestClasspath runGameTestServer | tee build/night-validation.log
+          bash ./gradlew --no-daemon --max-workers=2 -PnightE2E -PnightReleaseQA checkNightRules verifyCityAssets build nightReleaseQAJar writeNightTestClasspath runGameTestServer | tee build/night-validation.log
           sha256sum build/libs/*.jar | tee build/night-jar-sha256.txt
       - name: Install native input and software-rendering support
         run: sudo apt-get update && sudo apt-get install -y xvfb xdotool libgl1-mesa-dri
@@ -49,6 +54,14 @@ jobs:
         env:
           NIGHT_QA_TIMEOUT_SECONDS: '900'
         run: python3 tools/night-e2e.py | tee build/night-native-validation.log
+      - name: Verify door lock in an installed SRG Forge process
+        run: |
+          mkdir -p build/night-release-server
+          curl --fail --location --retry 3 --output build/night-release-qa/forge-installer.jar https://maven.minecraftforge.net/net/minecraftforge/forge/1.20.1-47.2.0/forge-1.20.1-47.2.0-installer.jar
+          java -jar build/night-release-qa/forge-installer.jar --installServer build/night-release-server 2>&1 | tee build/night-release-qa/install.log
+          mapfile -t jars < <(find build/libs -maxdepth 1 -name '*.jar' ! -name '*-sources.jar' ! -name '*-javadoc.jar')
+          test "${#jars[@]}" -eq 1
+          python3 tools/night-release-door-lock.py --server-dir build/night-release-server --eula build/night-e2e/server/eula.txt --mod-jar "${jars[0]}" 2>&1 | tee build/night-release-qa/result.log
       - name: Retain success and failure evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -61,6 +74,10 @@ jobs:
             build/night-validation.log
             build/night-jar-sha256.txt
             build/night-native-validation.log
+            build/night-release-qa/*.log
+            build/night-release-qa/jar-sha256.txt
+            build/night-release-qa/probe/*.jar
+            build/night-release-server/logs/
             build/night-e2e/*.pass
             build/night-e2e/*.failed
             build/night-e2e/*.complete

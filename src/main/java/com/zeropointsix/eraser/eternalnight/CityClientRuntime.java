@@ -6,6 +6,7 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.RenderGuiEvent;
+import net.minecraftforge.client.event.ScreenEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -13,9 +14,7 @@ import net.minecraftforge.fml.common.Mod;
 @Mod.EventBusSubscriber(modid = ModMain.MOD_ID, value = Dist.CLIENT)
 public final class CityClientRuntime {
     private static ResourceKey<Level> previous;
-    private static int fadeTicks;
-    private static int fadeTotal = 40;
-    private static boolean fadeHold;
+    private static final CityEntryOverlay ENTRY_OVERLAY = new CityEntryOverlay();
     private static java.util.List<net.minecraft.core.BlockPos> exits = java.util.List.of();
 
     public static void setExits(java.util.List<net.minecraft.core.BlockPos> doors) { exits = java.util.List.copyOf(doors); }
@@ -23,23 +22,19 @@ public final class CityClientRuntime {
 
     /** Fade to black before teleport ({@code hold}) or start a timed overlay. */
     public static void beginFade(int ticks, boolean hold) {
-        fadeTotal = Math.max(1, ticks);
-        fadeTicks = fadeTotal;
-        fadeHold = hold;
+        ENTRY_OVERLAY.begin(ticks, hold);
     }
+
+    public static boolean entryCaptionVisible() { return ENTRY_OVERLAY.showsCaption(); }
 
     @SubscribeEvent public static void tick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
         Minecraft client = Minecraft.getInstance();
-        if (client.level == null) { previous = null; fadeTicks = 0; fadeHold = false; exits = java.util.List.of(); return; }
+        if (client.level == null) { previous = null; ENTRY_OVERLAY.clear(); exits = java.util.List.of(); return; }
         ResourceKey<Level> dimension = client.level.dimension();
         if (!dimension.equals(previous) && dimension.equals(EternalNightContent.LEVEL)) {
-            fadeHold = false;
-            fadeTotal = 40;
-            fadeTicks = 40;
-        } else if (fadeHold) {
-            if (fadeTicks > 0) fadeTicks--;
-        } else if (fadeTicks > 0) fadeTicks--;
+            ENTRY_OVERLAY.begin(40, false);
+        } else ENTRY_OVERLAY.tick();
         previous = dimension;
         if (!dimension.equals(EternalNightContent.LEVEL)) exits = java.util.List.of();
     }
@@ -84,13 +79,35 @@ public final class CityClientRuntime {
     }
 
     @SubscribeEvent public static void fade(RenderGuiEvent.Post event) {
-        int alpha;
-        if (fadeHold) alpha = fadeTicks <= 0 ? 255 : Math.min(255, (fadeTotal - fadeTicks) * 255 / fadeTotal);
-        else if (fadeTicks > 0) alpha = Math.min(255, fadeTicks * 255 / fadeTotal);
-        else return;
+        if (Minecraft.getInstance().screen == null) renderFade(event.getGuiGraphics());
+    }
+
+    @SubscribeEvent public static void fadeScreen(ScreenEvent.Render.Post event) {
+        renderFade(event.getGuiGraphics());
+    }
+
+    private static void renderFade(net.minecraft.client.gui.GuiGraphics graphics) {
+        int alpha = ENTRY_OVERLAY.alpha();
         if (alpha <= 0) return;
         Minecraft client = Minecraft.getInstance();
-        event.getGuiGraphics().fill(0, 0, client.getWindow().getGuiScaledWidth(), client.getWindow().getGuiScaledHeight(), alpha << 24);
+        // Item/HUD layers use positive Z; the entry scene must also cover a still-open sleep screen.
+        graphics.pose().pushPose();
+        graphics.pose().translate(0, 0, 1000);
+        graphics.fill(0, 0, client.getWindow().getGuiScaledWidth(), client.getWindow().getGuiScaledHeight(), alpha << 24);
+        if (ENTRY_OVERLAY.showsCaption()) {
+            int width = client.getWindow().getGuiScaledWidth();
+            int height = client.getWindow().getGuiScaledHeight();
+            var lines = client.font.split(net.minecraft.network.chat.Component.translatable(
+                    "message.sound_isolating_eraser.city.arrival"), Math.max(1, width - 40));
+            int y = (height - lines.size() * client.font.lineHeight) / 2;
+            for (var line : lines) {
+                graphics.drawString(client.font, line, (width - client.font.width(line)) / 2,
+                        y, 0xFFFFFFFF, false);
+                y += client.font.lineHeight;
+            }
+        }
+        graphics.flush();
+        graphics.pose().popPose();
     }
     private CityClientRuntime() { }
 }
