@@ -1,0 +1,4 @@
+frame=0 phase=shoot white=4100 mean=113,117,126 grey=true sepiaLike=false
+frame=1 phase=shoot white=4092 mean=108,114,126 grey=true sepiaLike=false
+frame=2 phase=shoot white=4092 mean=110,115,128 grey=true sepiaLike=false
+frame=3 phase=shoot white=60283 mean=154,158,166 grey=true sepiaLike=false

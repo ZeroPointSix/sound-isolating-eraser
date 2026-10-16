@@ -1,0 +1,1 @@
+bestWhite=60283 baselineWhite=424 mean=154,158,166 frame=3 pixels=921600 lum=true cover=false
