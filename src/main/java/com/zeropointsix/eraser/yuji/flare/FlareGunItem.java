@@ -99,7 +99,7 @@ public final class FlareGunItem extends Item implements GeoItem {
             // Remember an emptied gun even if the same color is replenished during cooldown.
             gun.getOrCreateTag().putInt(VISUAL_AMMO, ammunition(player).isEmpty() ? -1 : color);
             triggerAnim(player, GeoItem.getOrAssignId(gun, (ServerLevel) level), "action", "fire");
-            level.playSound(null, player.blockPosition(), SoundEvents.FIREWORK_ROCKET_LAUNCH, SoundSource.PLAYERS, 1, 1);
+            FlareGunEffects.fire((ServerLevel) level, player);
         }
         return InteractionResultHolder.sidedSuccess(gun, level.isClientSide);
     }
