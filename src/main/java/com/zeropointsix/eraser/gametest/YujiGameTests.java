@@ -935,8 +935,7 @@ public final class YujiGameTests {
         // A private floor high above the batch grid: summons land 2-4 blocks out, beyond this tiny template.
         qiyu.moveTo(qiyu.getX(), Math.floor(qiyu.getY()) + 64, qiyu.getZ());
         summonFloor(h, qiyu, Blocks.STONE.defaultBlockState());
-        boolean summoning = YujiConfig.QIYU_SUMMONING.get();
-        try {
+        try (var ignored = GameTestConfigs.sandbox(YujiConfig.SPEC)) {
             YujiConfig.QIYU_SUMMONING.set(true);
             int total = 0;
             for (int cast = 0; cast < 8; cast++) total += qiyu.summonAllies();
@@ -955,7 +954,6 @@ public final class YujiGameTests {
             for (YujiMonster s : h.getLevel().getEntitiesOfClass(YujiMonster.class, qiyu.getBoundingBox().inflate(32), y -> qiyu.getUUID().equals(y.summoner()))) s.discard();
             h.succeed();
         } finally {
-            YujiConfig.QIYU_SUMMONING.set(summoning);
             summonFloor(h, qiyu, Blocks.AIR.defaultBlockState());
         }
     }
@@ -963,8 +961,7 @@ public final class YujiGameTests {
     public static void yujiQiyuNeedsAudienceAndNotPeaceful(GameTestHelper h) {
         YujiMonster qiyu = monster(h, YujiKind.QIYU);
         var server = h.getLevel().getServer(); var difficulty = h.getLevel().getDifficulty();
-        boolean summoning = YujiConfig.QIYU_SUMMONING.get();
-        try {
+        try (var ignored = GameTestConfigs.sandbox(YujiConfig.SPEC)) {
             YujiConfig.QIYU_SUMMONING.set(true);
             server.setDifficulty(net.minecraft.world.Difficulty.NORMAL, true);
             h.assertTrue(!qiyu.canSummon(), "no summoning without a target or nearby player");
@@ -974,7 +971,6 @@ public final class YujiGameTests {
             h.assertTrue(!qiyu.canSummon(), "never summons on peaceful");
             h.succeed();
         } finally {
-            YujiConfig.QIYU_SUMMONING.set(summoning);
             server.setDifficulty(difficulty, true);
         }
     }
@@ -985,8 +981,7 @@ public final class YujiGameTests {
         summonFloor(h, qiyu, Blocks.STONE.defaultBlockState());
         var server = h.getLevel().getServer();
         var difficulty = h.getLevel().getDifficulty();
-        boolean summoning = YujiConfig.QIYU_SUMMONING.get();
-        try {
+        try (var ignored = GameTestConfigs.sandbox(YujiConfig.SPEC)) {
             YujiConfig.QIYU_SUMMONING.set(true);
             server.setDifficulty(net.minecraft.world.Difficulty.NORMAL, true);
             var cow = h.spawn(EntityType.COW, new BlockPos(2, 2, 2));
@@ -1014,7 +1009,6 @@ public final class YujiGameTests {
                     y -> qiyu.getUUID().equals(y.summoner()))) ally.discard();
             h.succeed();
         } finally {
-            YujiConfig.QIYU_SUMMONING.set(summoning);
             server.setDifficulty(difficulty, true);
             summonFloor(h, qiyu, Blocks.AIR.defaultBlockState());
             qiyu.discard();
@@ -1026,8 +1020,7 @@ public final class YujiGameTests {
         YujiMonster qiyu = monster(h, YujiKind.QIYU), ally = monster(h, YujiKind.YUCHI);
         var cow = h.spawn(EntityType.COW, new BlockPos(3, 2, 2));
         cow.setNoAi(true); qiyu.setTarget(cow);
-        boolean summoning = YujiConfig.QIYU_SUMMONING.get();
-        try {
+        try (var ignored = GameTestConfigs.sandbox(YujiConfig.SPEC)) {
             YujiConfig.QIYU_SUMMONING.set(false);
             h.assertTrue(!qiyu.canSummon(), "disabled summoning rejects a live audience");
             h.assertTrue(qiyu.summonAllies() == 0, "disabled summoning rejects direct calls");
@@ -1041,7 +1034,6 @@ public final class YujiGameTests {
                     "disabled summoning preserves all four ally buffs");
             h.succeed();
         } finally {
-            YujiConfig.QIYU_SUMMONING.set(summoning);
             qiyu.discard(); ally.discard(); cow.discard();
         }
     }
@@ -1053,8 +1045,7 @@ public final class YujiGameTests {
         var cow = h.spawn(EntityType.COW, new BlockPos(3, 2, 2));
         cow.setNoAi(true); cow.setNoGravity(true); cow.moveTo(qiyu.position().add(0, 0, 4));
         qiyu.setTarget(cow);
-        boolean summoning = YujiConfig.QIYU_SUMMONING.get();
-        try {
+        try (var ignored = GameTestConfigs.sandbox(YujiConfig.SPEC)) {
             YujiConfig.QIYU_SUMMONING.set(true);
             h.assertTrue(qiyu.canSummon(), "summoning enabled at cast start");
             qiyu.begin("summon", 30, cow);
@@ -1068,7 +1059,6 @@ public final class YujiGameTests {
             h.assertTrue(qiyu.livingSummons() > 0, "re-enabled summoning still lands with a live audience");
             h.succeed();
         } finally {
-            YujiConfig.QIYU_SUMMONING.set(summoning);
             for (var child : h.getLevel().getEntitiesOfClass(YujiMonster.class, qiyu.getBoundingBox().inflate(32),
                     y -> qiyu.getUUID().equals(y.summoner()))) child.discard();
             summonFloor(h, qiyu, Blocks.AIR.defaultBlockState());
