@@ -3,6 +3,7 @@ package com.zeropointsix.eraser.gametest;
 import com.mojang.authlib.GameProfile;
 import io.netty.channel.embedded.EmbeddedChannel;
 import com.zeropointsix.eraser.eraser.EraserAggro;
+import com.zeropointsix.eraser.memory.SummonCombatConfig;
 import com.zeropointsix.eraser.registry.ModBlocks;
 import com.zeropointsix.eraser.registry.ModEntities;
 import com.zeropointsix.eraser.registry.ModItems;
@@ -185,7 +186,8 @@ public final class SuxiaGameTests {
             var summon = ModEntities.SUXIA_SUMMON.get().create(f.level);
             for (Mob mob : List.of(hostile, summon)) {
                 near(h, mob.getMaxHealth(), 100, "health");
-                near(h, mob.getAttributeValue(Attributes.ATTACK_DAMAGE), 15, "base attack");
+                near(h, mob.getAttributeValue(Attributes.ATTACK_DAMAGE), mob == summon
+                        ? SummonCombatConfig.value(SummonCombatConfig.SUXIA_DAMAGE) : 15, "base attack");
                 near(h, mob.getAttributeValue(Attributes.KNOCKBACK_RESISTANCE), 1, "knockback resistance");
                 near(h, mob.getAttributeValue(Attributes.FOLLOW_RANGE), 32, "follow range");
                 h.assertTrue(mob.canBreatheUnderwater() && !mob.causeFallDamage(100, 1, mob.damageSources().fall()), "fall and water immunity");
@@ -200,6 +202,8 @@ public final class SuxiaGameTests {
             near(h, hostile.getBbHeight(), .6, "dead height");
             near(h, hostile.getAttributeValue(Attributes.MOVEMENT_SPEED), .25, "sleep resets speed");
             h.assertTrue(!summon.shouldDropExperience(), "summon has no XP");
+            near(h, summon.getAttribute(Attributes.MOVEMENT_SPEED).getBaseValue(),
+                    SummonCombatConfig.value(SummonCombatConfig.SUXIA_SPEED), "configured summon speed");
             h.succeed();
         });
     }
@@ -681,6 +685,56 @@ public final class SuxiaGameTests {
                     h.succeed();
                 }
             });
+        });
+    }
+
+    @GameTest(template = "empty", batch = BATCH, timeoutTicks = 240)
+    public static void summon_ai_attacks_idle_zombie_within_100_ticks_without_friendly_fire(GameTestHelper h) {
+        ready(h, f -> {
+            var p = f.player(0, 0); f.watch(p);
+            var zombie = f.add(EntityType.ZOMBIE.create(f.level), 8, 0); zombie.setNoAi(true);
+            zombie.setItemSlot(net.minecraft.world.entity.EquipmentSlot.HEAD,
+                    new ItemStack(net.minecraft.world.item.Items.IRON_HELMET));
+            var villager = f.add(EntityType.VILLAGER.create(f.level), 3, 2); villager.setNoAi(true);
+            var pet = f.add(EntityType.WOLF.create(f.level), 4, -2);
+            pet.setTame(true); pet.setOwnerUUID(p.getUUID()); pet.setNoAi(true);
+            var golem = f.add(EntityType.IRON_GOLEM.create(f.level), 2, -3); golem.setNoAi(true);
+            var creative = f.player(-3, 0); creative.setGameMode(GameType.CREATIVE);
+            var protectedMobs = List.of(p, villager, pet, golem, creative);
+            var health = protectedMobs.stream().map(net.minecraft.world.entity.LivingEntity::getHealth).toList();
+            var summon = f.summon(p);
+            h.assertTrue(!summon.isNoAi() && zombie.getTarget() == null, "Real watch summon and idle hostile");
+            final long start = f.now();
+            final boolean[] hit = {false};
+            h.onEachTick(() -> {
+                if (zombie.getLastHurtByMob() == summon && zombie.getHealth() < zombie.getMaxHealth()) hit[0] = true;
+                for (int i = 0; i < protectedMobs.size(); i++) {
+                    h.assertTrue(summon.getTarget() != protectedMobs.get(i), "Never target protected entities");
+                    near(h, protectedMobs.get(i).getHealth(), health.get(i), "No friendly damage during live combat");
+                }
+                if (f.now() - start >= 100) {
+                    h.assertTrue(hit[0], "Enabled AI must navigate to and damage an idle zombie within 100 ticks");
+                    h.succeed();
+                }
+            });
+        });
+    }
+
+    @GameTest(template = "empty", batch = BATCH, timeoutTicks = 160)
+    public static void summon_ai_owner_priority_preempts_live_ambient_combat(GameTestHelper h) {
+        ready(h, f -> {
+            var p = f.player(0, 0); f.watch(p); var summon = f.summon(p);
+            summon.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(0);
+            var ambient = f.add(EntityType.HUSK.create(f.level), 8, 0); ambient.setNoAi(true);
+            var commanded = f.add(EntityType.HUSK.create(f.level), 12, 3); commanded.setNoAi(true);
+            var attacker = f.add(EntityType.HUSK.create(f.level), 12, -3); attacker.setNoAi(true);
+            h.startSequence().thenWaitUntil(() -> h.assertTrue(summon.getTarget() == ambient, "Ambient hostile acquired by ticking goal"))
+                    .thenExecute(() -> p.setLastHurtMob(commanded))
+                    .thenIdle(10).thenExecute(() -> {
+                        h.assertTrue(summon.getTarget() == commanded, "Owner attack preempts active target");
+                        p.setLastHurtByMob(attacker);
+                    }).thenIdle(10).thenExecute(() -> h.assertTrue(summon.getTarget() == attacker,
+                            "Owner defence preempts owner attack")).thenSucceed();
         });
     }
 
