@@ -62,10 +62,12 @@ public final class RedNailsTestClient {
         try {
             var dispatcher = mc.getEntityRenderDispatcher();
             for (var entity : mc.level.entitiesForRendering()) {
+                RedNailsClient.ensureRenderer(entity);
                 if (dispatcher.getRenderer(entity) == null) {
                     throw new AssertionError("Missing renderer type="
                             + net.minecraft.world.entity.EntityType.getKey(entity.getType())
                             + " class=" + entity.getClass().getName()
+                            + " typeHash=" + System.identityHashCode(entity.getType())
                             + " summonIdentity=" + (entity.getType() == ModEntities.WATER_GHOST_SUMMON.get())
                             + " ghostIdentity=" + (entity.getType() == ModEntities.WATER_GHOST.get()));
                 }
