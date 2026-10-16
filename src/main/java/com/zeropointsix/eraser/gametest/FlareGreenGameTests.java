@@ -1,6 +1,8 @@
 package com.zeropointsix.eraser.gametest;
 
 import com.mojang.authlib.GameProfile;
+import com.zeropointsix.eraser.yuji.YujiContent;
+import com.zeropointsix.eraser.yuji.YujiConfig;
 import com.zeropointsix.eraser.yuji.flare.FallingSupplyCrate;
 import com.zeropointsix.eraser.yuji.flare.FlareConfig;
 import com.zeropointsix.eraser.yuji.flare.FlareContent;
@@ -47,7 +49,9 @@ public final class FlareGreenGameTests {
         final AABB bounds = new AABB(center).inflate(60);
         final Set<Long> chunks = new HashSet<>(), forced = new HashSet<>();
         final Map<BlockPos, BlockState> previous = new LinkedHashMap<>();
+        final GameTestConfigs.LiveConfig config = GameTestConfigs.sandbox(YujiConfig.SPEC);
         final ServerPlayer player;
+        Consumer<BlockEvent.EntityPlaceEvent> guard;
 
         Fixture(GameTestHelper h) {
             level = h.getLevel();
@@ -70,6 +74,9 @@ public final class FlareGreenGameTests {
             player.setPos(Vec3.atBottomCenterOf(center));
             player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(FlareContent.GUN.get()));
             level.addNewPlayer(player);
+            // The headless player's connection only sinks packets; advance its vanilla
+            // cooldown clock once per server test tick, as the network-driven player tick would.
+            h.onEachTick(() -> { if (!player.isRemoved()) player.getCooldowns().tick(); });
         }
 
         boolean ticking() {
@@ -85,6 +92,7 @@ public final class FlareGreenGameTests {
         }
 
         void close() {
+            if (guard != null) MinecraftForge.EVENT_BUS.unregister(guard);
             level.getEntitiesOfClass(FlareProjectile.class, bounds).forEach(Entity::discard);
             level.getEntitiesOfClass(FallingSupplyCrate.class, bounds).forEach(Entity::discard);
             player.discard();
@@ -97,6 +105,7 @@ public final class FlareGreenGameTests {
                 level.getChunkSource().removeRegionTicket(TicketType.PLAYER, c, 2, c);
                 if (forced.contains(key)) level.setChunkForced(c.x, c.z, false);
             }
+            config.close();
         }
     }
 
@@ -156,7 +165,7 @@ public final class FlareGreenGameTests {
             }).thenExecute(() -> {
                 var crate = (SupplyCrateBlockEntity) f.level.getBlockEntity(touchdown);
                 h.assertTrue(falling.isRemoved(), "falling entity becomes a single container");
-                h.assertTrue(crate.saveWithoutMetadata().getString("LootTable").equals("yuji:chests/yuji_airdrop"), "PR1 retains the original deferred loot table");
+                h.assertTrue(crate.saveWithoutMetadata().getString("LootTable").equals(YujiContent.id("chests/yuji_airdrop").toString()), "PR1 retains the original deferred loot table");
                 crate.createMenu(1, f.player.getInventory(), f.player);
                 h.assertTrue(!crate.isEmpty(), "actual first opening yields loot");
                 crate.clearContent(); f.level.setBlock(touchdown, Blocks.AIR.defaultBlockState(), 16);
@@ -195,11 +204,16 @@ public final class FlareGreenGameTests {
                     "the real Forge placement event allows the landing");
             // This isolated batch makes the random-probe miss reproducible, without mocking terrain or placement.
             f.level.random.setSeed(0L);
-            BlockPos landing = FlarePlacement.landing(f.level, Vec3.atBottomCenterOf(f.center), f.player);
+            var search = new FlarePlacement.LandingSearch(Vec3.atBottomCenterOf(f.center));
+            BlockPos first = search.advance(f.level, f.player);
             System.out.println("T5_GREEN_SPARSE_SEARCH attempts=" + FlareConfig.DROP_ATTEMPTS.get()
-                    + " seed=0 legal=" + legal + " result=" + landing);
-            h.assertTrue(legal.equals(landing), "random search must not discard the only safe, permitted landing");
-            h.succeed();
+                    + " seed=0 legal=" + legal + " randomResult=" + first);
+            h.assertTrue(first == null && !search.finished(), "the reproduced random miss remains pending, not rejected");
+            h.startSequence().thenWaitUntil(() -> {
+                BlockPos landing = search.advance(f.level, f.player);
+                h.assertTrue(legal.equals(landing), "bounded fallback must find the only safe, permitted landing");
+                System.out.println("T5_GREEN_SPARSE_FALLBACK_PASSED landing=" + landing);
+            }).thenSucceed();
         });
     }
 
@@ -225,26 +239,34 @@ public final class FlareGreenGameTests {
         });
     }
 
-    @GameTest(templateNamespace = "flare_green_tests", template = "empty", batch = "flare_green_protection", timeoutTicks = 1500)
+    @GameTest(templateNamespace = "flare_green_tests", template = "empty", batch = "flare_green_protection", timeoutTicks = 2100)
     public static void greenSearchNeverBypassesPlacementProtection(GameTestHelper h) {
         ready(h, () -> {
             Fixture f = fixture;
+            FlareConfig.DROP_MAX.set(64);
             Set<BlockPos> denied = new HashSet<>();
-            Consumer<BlockEvent.EntityPlaceEvent> deny = event -> {
+            Map<Long, Integer> eventsPerTick = new LinkedHashMap<>();
+            f.guard = event -> {
                 if (event.getEntity() == f.player && event.getPlacedBlock().is(FlareContent.CRATE.get())) {
                     denied.add(event.getPos().immutable()); event.setCanceled(true);
+                    eventsPerTick.merge(f.level.getGameTime(), 1, Integer::sum);
                 }
             };
-            MinecraftForge.EVENT_BUS.addListener(EventPriority.HIGHEST, false, BlockEvent.EntityPlaceEvent.class, deny);
-            try {
-                h.assertTrue(FlarePlacement.landing(f.level, Vec3.atBottomCenterOf(f.center), f.player) == null,
-                        "an entirely protected annulus must reject the airdrop");
+            MinecraftForge.EVENT_BUS.addListener(EventPriority.HIGHEST, false, BlockEvent.EntityPlaceEvent.class, f.guard);
+            FlareProjectile flare = shoot(h);
+            h.runAfterDelay(85, () -> h.assertTrue(!flare.isRemoved(), "search exhaustion keeps the green flare pending"));
+            h.startSequence().thenWaitUntil(() -> h.assertTrue(flare.isRemoved(), "bounded search eventually exhausts the protected annulus"))
+                    .thenExecute(() -> {
+                h.assertTrue(f.level.getEntitiesOfClass(FallingSupplyCrate.class, f.bounds).isEmpty(), "protected search spawns no crate");
                 h.assertTrue(!denied.isEmpty(), "real Forge protection events were consulted");
+                int maxEvents = eventsPerTick.values().stream().mapToInt(Integer::intValue).max().orElse(0);
+                h.assertTrue(maxEvents <= 48 && eventsPerTick.size() > 1, "maximum-radius fallback preserves the 48-probe per-tick budget");
                 for (BlockPos pos : denied) h.assertTrue(f.level.getBlockState(pos).isAir()
                         && f.level.getBlockEntity(pos) == null, "rejected probes restore air and remove provisional containers");
-                System.out.println("T5_GREEN_PROTECTION_PASSED deniedColumns=" + denied.size() + " provisionalCrates=0");
+                System.out.println("T5_GREEN_PROTECTION_PASSED radius=64 deniedColumns=" + denied.size()
+                        + " maxEventsPerTick=" + maxEvents + " provisionalCrates=0");
                 h.succeed();
-            } finally { MinecraftForge.EVENT_BUS.unregister(deny); }
+            });
         });
     }
 

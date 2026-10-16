@@ -27,6 +27,7 @@ public final class FlareProjectile extends ThrowableProjectile implements ItemSu
     private int age;
     private long extinguishAt = -1;
     private java.util.UUID shooter;
+    private FlarePlacement.LandingSearch greenLandingSearch;
     public FlareProjectile(EntityType<? extends FlareProjectile> type, Level level) { super(type, level); }
     @Override protected void defineSynchedData() { entityData.define(COLOR, 0); entityData.define(LIT, false); }
     public int color() { return entityData.get(COLOR); }
@@ -39,6 +40,7 @@ public final class FlareProjectile extends ThrowableProjectile implements ItemSu
     @Override public ItemStack getItem() { return new ItemStack(FlareContent.ammunition(color())); }
     @Override public void tick() {
         if (lit()) setDeltaMovement(0, -.012, 0);
+        if (color() == 2 && greenLandingSearch != null) setDeltaMovement(Vec3.ZERO);
         super.tick();
         if (isRemoved()) return;
         age++;
@@ -71,11 +73,14 @@ public final class FlareProjectile extends ThrowableProjectile implements ItemSu
             playSound(SoundEvents.FIREWORK_ROCKET_BLAST, 1, 1.2F);
         } else {
             var owner = FlarePlacement.owner(server, shooter);
-            BlockPos landing = owner == null ? null : FlarePlacement.landing(server, position(), owner);
+            if (owner == null) { discard(); return; }
+            if (greenLandingSearch == null) greenLandingSearch = new FlarePlacement.LandingSearch(position());
+            BlockPos landing = greenLandingSearch.advance(server, owner);
+            if (landing == null && !greenLandingSearch.finished()) return;
             if (landing != null) {
                 FallingSupplyCrate crate = new FallingSupplyCrate(FlareContent.FALLING_CRATE.get(), server);
                 crate.prepare(landing, shooter); server.addFreshEntity(crate);
-            } else if (owner != null) owner.displayClientMessage(net.minecraft.network.chat.Component.translatable("message.qihai.flare.no_landing"), true);
+            } else owner.displayClientMessage(net.minecraft.network.chat.Component.translatable("message.qihai.flare.no_landing"), true);
             discard();
         }
     }

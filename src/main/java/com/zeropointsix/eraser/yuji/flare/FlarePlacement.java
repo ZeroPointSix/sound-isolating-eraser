@@ -1,11 +1,14 @@
 package com.zeropointsix.eraser.yuji.flare;
 
 import com.mojang.authlib.GameProfile;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 import javax.annotation.Nullable;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
@@ -138,23 +141,53 @@ public final class FlarePlacement {
         return true;
     }
 
-    @Nullable public static BlockPos landing(ServerLevel level, Vec3 center, Player player) {
-        double min = Math.min(FlareConfig.DROP_MIN.get(), FlareConfig.DROP_MAX.get());
-        double max = Math.max(FlareConfig.DROP_MIN.get(), FlareConfig.DROP_MAX.get());
-        for (int i = 0; i < FlareConfig.DROP_ATTEMPTS.get(); i++) {
-            double angle = level.random.nextDouble() * Math.PI * 2;
-            double radius = Math.sqrt(min * min + level.random.nextDouble() * (max * max - min * min));
-            BlockPos column = BlockPos.containing(center.x + Math.cos(angle) * radius, center.y, center.z + Math.sin(angle) * radius);
-            double dx = column.getX() + .5 - center.x, dz = column.getZ() + .5 - center.z;
-            if (dx * dx + dz * dz < min * min || dx * dx + dz * dz > max * max || !level.hasChunkAt(column)) continue;
-            BlockPos pos = new BlockPos(column.getX(), level.getHeight(Heightmap.Types.MOTION_BLOCKING, column.getX(), column.getZ()), column.getZ());
-            if (!safeGround(level, pos) || !allowed(level, pos, player)) continue;
-            // Probe the actual placement event, then restore the air before the descent.
-            if (canPlace(level, pos, FlareContent.CRATE.get().defaultBlockState(), player)) {
-                return pos;
-            }
+    public static final class LandingSearch {
+        private final Vec3 center;
+        private final double min = Math.min(FlareConfig.DROP_MIN.get(), FlareConfig.DROP_MAX.get());
+        private final double max = Math.max(FlareConfig.DROP_MIN.get(), FlareConfig.DROP_MAX.get());
+        private final int budget = FlareConfig.DROP_ATTEMPTS.get();
+        private final Set<Long> checked = new HashSet<>();
+        private final int x1, z0, z1;
+        private int randomRemaining = budget, x, z;
+        private boolean finished;
+
+        public LandingSearch(Vec3 center) {
+            this.center = center;
+            x = Mth.ceil(center.x - max - .5); x1 = Mth.floor(center.x + max - .5);
+            z = z0 = Mth.ceil(center.z - max - .5); z1 = Mth.floor(center.z + max - .5);
         }
-        return null;
+
+        public boolean finished() { return finished; }
+
+        @Nullable public BlockPos advance(ServerLevel level, Player player) {
+            if (finished) return null;
+            // Random misses do not prove that no landing exists. Scan the remaining
+            // annulus across ticks, retaining the original per-tick probe budget.
+            for (int i = 0; i < budget; i++) {
+                BlockPos column;
+                if (randomRemaining > 0) {
+                    randomRemaining--;
+                    double angle = level.random.nextDouble() * Math.PI * 2;
+                    double radius = Math.sqrt(min * min + level.random.nextDouble() * (max * max - min * min));
+                    column = BlockPos.containing(center.x + Math.cos(angle) * radius, 0, center.z + Math.sin(angle) * radius);
+                } else {
+                    if (x > x1) { finished = true; return null; }
+                    column = new BlockPos(x, 0, z);
+                    if (++z > z1) { z = z0; x++; }
+                }
+                if (!checked.add(column.asLong())) continue;
+                double dx = column.getX() + .5 - center.x, dz = column.getZ() + .5 - center.z;
+                if (dx * dx + dz * dz < min * min || dx * dx + dz * dz > max * max || !level.hasChunkAt(column)) continue;
+                BlockPos pos = new BlockPos(column.getX(), level.getHeight(Heightmap.Types.MOTION_BLOCKING, column.getX(), column.getZ()), column.getZ());
+                if (!safeGround(level, pos) || !allowed(level, pos, player)) continue;
+                // Both phases consult protection and restore the provisional container.
+                if (canPlace(level, pos, FlareContent.CRATE.get().defaultBlockState(), player)) {
+                    finished = true; return pos;
+                }
+            }
+            if (randomRemaining == 0 && x > x1) finished = true;
+            return null;
+        }
     }
     private FlarePlacement() { }
 }
