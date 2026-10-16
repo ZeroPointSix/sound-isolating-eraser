@@ -28,7 +28,7 @@ public final class RedNailsTestServer {
     private static final Path RESULTS = Path.of(System.getProperty("rednails.qa.results"));
     private static ServerPlayer player;
     private static int stage, ticks;
-    private static boolean failed;
+    private static boolean failed, shortPressAcked;
     private static UUID itemId;
     private static long deadline, stageNanos;
     private static WaterGhostEntity swimmer;
@@ -103,7 +103,14 @@ public final class RedNailsTestServer {
             } else if (stage == 1) {
                 var stack = RedNailsItem.findWorn(player);
                 var entry = RedNailsState.get(player.getServer()).read(stack);
-                if (ticks == 20) require(entry == null, "Short real-client key hold must not summon");
+                if (!shortPressAcked) {
+                    if (!Files.exists(RESULTS.resolve("client-short-press.signal"))) return;
+                    require(entry == null, "Short real-client key hold must not summon");
+                    Files.writeString(RESULTS.resolve("server-short-press.ack"),
+                            "no summon after acknowledged short hold\n");
+                    shortPressAcked = true;
+                    return;
+                }
                 if (entry != null && entry.active() == 4) {
                     itemId = entry.item;
                     require(entry.owner.equals(player.getUUID()) && stack.getTag().getBoolean("FirstUseShown"), "Bound first-use state");

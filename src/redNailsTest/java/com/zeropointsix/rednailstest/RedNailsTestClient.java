@@ -32,7 +32,7 @@ public final class RedNailsTestClient {
     private static final Path RESULTS = Path.of(System.getProperty("rednails.qa.results"));
     private static String phase = "";
     private static int ticks, frame;
-    private static boolean failed, captured;
+    private static boolean failed, captured, shortAcked;
     private static ArmorStand camera;
     private static final HashMap<Integer, Integer> rendered = new HashMap<>();
     private static final HashMap<Integer, float[]> poses = new HashMap<>();
@@ -54,7 +54,7 @@ public final class RedNailsTestClient {
                     player.connection.send(new ServerboundPlayerCommandPacket(player, ServerboundPlayerCommandPacket.Action.RELEASE_SHIFT_KEY));
                 }
             }
-            phase = text.substring("RED_NAILS_QA:".length()); ticks = 0; captured = false;
+            phase = text.substring("RED_NAILS_QA:".length()); ticks = 0; captured = false; shortAcked = false;
             rendered.clear(); poses.clear(); RedNailsClient.KEY.setDown(false); event.setCanceled(true);
         }
     }
@@ -79,21 +79,38 @@ public final class RedNailsTestClient {
                 GLFW.glfwFocusWindow(mc.getWindow().getWindow());
                 mc.setScreen(null);
                 mc.mouseHandler.grabMouse();
-                boolean qa = System.getProperty("rednails.qa.results") != null;
-                if (!mc.isWindowActive() && !qa) return;
+                if (!mc.isWindowActive()) return;
                 Files.writeString(RESULTS.resolve("client-ready.signal"),
-                        "overlay=null windowActive=" + mc.isWindowActive() + " qa=" + qa
-                                + " curios synchronized.\n");
-                System.out.println("RED_NAILS_CLIENT_READY overlay=null windowActive="
-                        + mc.isWindowActive() + " qa=" + qa);
+                        "overlay=null windowActive=true curios synchronized.\n");
+                System.out.println("RED_NAILS_CLIENT_READY overlay=null windowActive=true");
                 return;
             }
             ticks++;
             mc.options.hideGui = phase.equals("guard") || phase.equals("water");
+            if (phase.equals("input") || phase.equals("recall")) {
+                GLFW.glfwFocusWindow(mc.getWindow().getWindow());
+                mc.setScreen(null);
+                mc.mouseHandler.grabMouse();
+                if (!mc.isWindowActive()) {
+                    ticks = 0;
+                    RedNailsClient.KEY.setDown(false);
+                    return;
+                }
+            }
             if (phase.equals("input")) {
-                if (ticks == 1) {
-                    GLFW.glfwFocusWindow(mc.getWindow().getWindow());
-                    mc.setScreen(null); mc.mouseHandler.grabMouse();
+                if (!shortAcked) {
+                    if (ticks == 1) RedNailsClient.KEY.setDown(true);
+                    if (ticks == 10) {
+                        RedNailsClient.KEY.setDown(false);
+                        Files.writeString(RESULTS.resolve("client-short-press.signal"),
+                                "short hold released windowActive=true\n");
+                    }
+                    if (ticks >= 10 && Files.exists(RESULTS.resolve("server-short-press.ack"))) {
+                        shortAcked = true;
+                        ticks = 0;
+                        RedNailsClient.KEY.setDown(false);
+                    }
+                    return;
                 }
                 if (ticks == 1 || ticks == 25 || ticks == 65 || ticks == 105 || ticks == 145) RedNailsClient.KEY.setDown(true);
                 if (ticks == 10 || ticks == 55 || ticks == 95 || ticks == 135 || ticks == 175) RedNailsClient.KEY.setDown(false);

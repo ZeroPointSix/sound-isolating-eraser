@@ -395,4 +395,51 @@ public final class RedNailsGameTests {
         var hostile = f.hostile(3, 0); hostile.setTarget(f.add(EntityType.ZOMBIE.create(f.level), 3, 1));
         check(h, !hostile.ghostBody().grab.canUse(), "Hostile grab cannot attack allied monsters"); h.succeed();
     }
+    @GameTest(template = "empty", batch = BATCH, timeoutTicks = 80) public static void land_to_water_grab_gets_full_water_stage(GameTestHelper h) {
+        var f = new Fixture(h);
+        var g = f.hostile(0, 0);
+        var victim = f.add(EntityType.VILLAGER.create(f.level), 0, 1);
+        g.setTarget(victim);
+        g.ghostBody().grab.start();
+        for (int i = 0; i < 40; i++) g.ghostBody().grab.tick();
+        check(h, g.ghostBody().grab.held() == victim, "Still holding after forty land ticks");
+        f.water(-3, 3);
+        g.setPos(Vec3.atBottomCenterOf(f.center.offset(0, 2, 0)));
+        victim.setPos(g.position().add(0, 0, 1));
+        h.runAfterDelay(8, () -> {
+            check(h, g.isInWater() && g.ghostBody().swimming(), "Grab has entered water");
+            check(h, g.ghostBody().grab.held() == victim, "Hold survives the land-to-water transition");
+            for (int i = 0; i < 99; i++) g.ghostBody().grab.tick();
+            check(h, g.ghostBody().grab.canContinueToUse() && g.ghostBody().grab.held() == victim,
+                    "Water stage still has a full hundred ticks after forty land ticks");
+            for (int i = 0; i < 5; i++) g.ghostBody().grab.tick();
+            check(h, !g.ghostBody().grab.canContinueToUse(), "Water stage ends after one hundred water ticks");
+            h.succeed();
+        });
+    }
+    @GameTest(template = "empty", batch = BATCH, timeoutTicks = 200) public static void hostile_ai_grabs_and_drags_in_water(GameTestHelper h) {
+        var f = new Fixture(h);
+        f.water(-4, 4);
+        var g = ModEntities.WATER_GHOST.get().create(f.level);
+        g.setPos(Vec3.atBottomCenterOf(f.center.offset(0, 3, 0)));
+        g.setNoAi(false);
+        f.level.addFreshEntity(g);
+        f.entities.add(g);
+        var victim = EntityType.VILLAGER.create(f.level);
+        victim.setPos(Vec3.atBottomCenterOf(f.center.offset(0, 3, 1)));
+        victim.setNoAi(true);
+        f.level.addFreshEntity(victim);
+        f.entities.add(victim);
+        double startY = g.getY();
+        h.runAfterDelay(60, () -> {
+            check(h, g.ghostBody().grab.held() == victim, "Goal selector grabs without a direct start() call");
+            check(h, g.ghostBody().swimming(), "AI grab is in water");
+        });
+        h.runAfterDelay(140, () -> {
+            check(h, g.ghostBody().grab.held() == victim, "AI grab still holds while dragging");
+            check(h, g.getY() < startY - 0.8, "Ghost sank under effective AI");
+            check(h, victim.getY() < startY, "Victim was dragged downward");
+            h.succeed();
+        });
+    }
 }

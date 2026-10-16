@@ -128,7 +128,11 @@ public final class WaterGhostGrab extends Goal {
         }
         target.fallDistance = 0;
         if (body.swimming()) {
-            if (!enteredWater) { enteredWater = true; duration = 100; startY = mob.getY(); }
+            if (!enteredWater) {
+                enteredWater = true;
+                duration = ticks + 100;
+                startY = mob.getY();
+            }
             double down = Math.max(-0.08, startY - 6 - mob.getY());
             if (mob.getY() > startY - 6 && !mob.verticalCollisionBelow
                     && mob.level().noCollision(mob, mob.getBoundingBox().move(0, down, 0))) {
