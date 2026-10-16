@@ -3,6 +3,7 @@ package com.zeropointsix.rednailstest;
 import com.zeropointsix.eraser.client.RedNailsClient;
 import com.zeropointsix.eraser.client.WaterGhostModel;
 import com.zeropointsix.eraser.rednails.*;
+import com.zeropointsix.eraser.registry.ModEntities;
 import com.zeropointsix.eraser.ModMain;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -59,6 +60,16 @@ public final class RedNailsTestClient {
         var mc = Minecraft.getInstance();
         if (mc.level == null || mc.player == null) return;
         try {
+            var dispatcher = mc.getEntityRenderDispatcher();
+            for (var entity : mc.level.entitiesForRendering()) {
+                if (dispatcher.getRenderer(entity) == null) {
+                    throw new AssertionError("Missing renderer type="
+                            + net.minecraft.world.entity.EntityType.getKey(entity.getType())
+                            + " class=" + entity.getClass().getName()
+                            + " summonIdentity=" + (entity.getType() == ModEntities.WATER_GHOST_SUMMON.get())
+                            + " ghostIdentity=" + (entity.getType() == ModEntities.WATER_GHOST.get()));
+                }
+            }
             if (phase.isEmpty()) {
                 if (!RedNailsItem.findWorn(mc.player).isEmpty() && mc.level.hasChunkAt(mc.player.blockPosition())) {
                     mc.setScreen(null); mc.mouseHandler.grabMouse();
