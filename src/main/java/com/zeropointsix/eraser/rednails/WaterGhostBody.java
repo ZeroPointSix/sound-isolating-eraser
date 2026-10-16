@@ -23,6 +23,10 @@ import net.minecraft.world.phys.Vec3;
 public final class WaterGhostBody {
     public static final EntityDimensions SWIMMING = EntityDimensions.scalable(1.2F, 1.2F);
     public static final double SWIM_SPEED = 0.35;
+    /** Design §声音: ambient 0.6, hurt/death 0.7, grab start 0.5. */
+    public static final float AMBIENT_PITCH = 0.6F;
+    public static final float HURT_DEATH_PITCH = 0.7F;
+    public static final float GRAB_PITCH = 0.5F;
     public final PathfinderMob mob;
     public final WaterGhostGrab grab;
     private final EntityDataAccessor<Boolean> swimData, grabData;

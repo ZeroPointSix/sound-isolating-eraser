@@ -72,7 +72,7 @@ public final class WaterGhostGrab extends Goal {
         body.stopMoving();
         body.grabbing(true);
         lock();
-        mob.playSound(SoundEvents.DROWNED_AMBIENT, 1.5F, 0.5F);
+        mob.playSound(SoundEvents.DROWNED_AMBIENT, 1.5F, WaterGhostBody.GRAB_PITCH);
         mob.playSound(SoundEvents.GENERIC_SPLASH, 1, 0.7F);
     }
     private Vec3 findShoreWater() {

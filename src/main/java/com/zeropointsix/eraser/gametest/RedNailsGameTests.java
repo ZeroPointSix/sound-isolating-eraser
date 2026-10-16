@@ -129,6 +129,15 @@ public final class RedNailsGameTests {
         FIXTURES.forEach(Fixture::close); FIXTURES.clear(); RedNailsInput.clear();
     }
     private static void check(GameTestHelper h, boolean value, String message) { h.assertTrue(value, message); }
+    private static void sealShorePit(Fixture f, int floorY) {
+        for (int x = -4; x <= 1; x++) for (int z = -4; z <= 4; z++) {
+            for (int y = floorY; y <= -1; y++) f.set(f.center.offset(x, y, z), Blocks.STONE.defaultBlockState());
+        }
+        for (int x = 2; x <= 7; x++) for (int z = -3; z <= 3; z++) {
+            f.set(f.center.offset(x, floorY, z), Blocks.STONE.defaultBlockState());
+            for (int y = floorY + 1; y <= -1; y++) f.set(f.center.offset(x, y, z), Blocks.WATER.defaultBlockState());
+        }
+    }
     private static int tooltipAvailable(ItemStack stack, ServerPlayer player) {
         for (Component line : stack.getTooltipLines(player, TooltipFlag.NORMAL)) {
             if (line.getContents() instanceof TranslatableContents text
@@ -486,19 +495,18 @@ public final class RedNailsGameTests {
                     "Natural release starts 160-tick cooldown: remaining=" + remaining);
         }).thenSucceed();
     }
-    @GameTest(template = "empty", batch = BATCH, timeoutTicks = 280) public static void summon_ai_carries_enemy_from_shore_into_water(GameTestHelper h) {
+    @GameTest(template = "empty", batch = BATCH, timeoutTicks = 320) public static void summon_ai_carries_enemy_from_shore_into_water(GameTestHelper h) {
+        // Deep pit: floor below the 6-block water-stage cap so release is by duration, not terrain.
+        runShoreCarryUntilRelease(h, -10, false);
+    }
+    @GameTest(template = "empty", batch = BATCH, timeoutTicks = 320) public static void summon_ai_shore_grab_stops_on_shallow_seafloor(GameTestHelper h) {
+        runShoreCarryUntilRelease(h, -5, true);
+    }
+    private static void runShoreCarryUntilRelease(GameTestHelper h, int floorY, boolean expectSeafloor) {
         var f = new Fixture(h);
         var p = f.player(0, 0);
         var stack = f.wear(p);
-        // Seal under the bank so pit water cannot run beneath the stone floor, then
-        // fill a pit whose surface is below the shore so spawn stays dry.
-        for (int x = -4; x <= 1; x++) for (int z = -4; z <= 4; z++) {
-            for (int y = -5; y <= -1; y++) f.set(f.center.offset(x, y, z), Blocks.STONE.defaultBlockState());
-        }
-        for (int x = 2; x <= 7; x++) for (int z = -3; z <= 3; z++) {
-            f.set(f.center.offset(x, -5, z), Blocks.STONE.defaultBlockState());
-            for (int y = -4; y <= -1; y++) f.set(f.center.offset(x, y, z), Blocks.WATER.defaultBlockState());
-        }
+        sealShorePit(f, floorY);
         var g = f.summon(p, stack);
         g.setNoAi(false);
         g.setPos(Vec3.atBottomCenterOf(f.center));
@@ -512,7 +520,26 @@ public final class RedNailsGameTests {
         double startX = g.getX();
         double[] waterEntryY = { Double.NaN };
         int[] airAtWaterEntry = { -1 };
+        long[] waterEntryAt = { -1 };
+        long[] releaseAt = { -1 };
+        double[] minY = { Double.POSITIVE_INFINITY };
+        boolean[] hitFloor = { false };
+        int[] swimTicks = { 0 };
+        int[] extraDrainTicks = { 0 };
+        int[] prevAir = { -1 };
         h.onEachTick(() -> {
+            if (g.ghostBody().grab.held() == victim && g.ghostBody().swimming()) {
+                minY[0] = Math.min(minY[0], g.getY());
+                if (g.verticalCollisionBelow || !f.level.noCollision(g, g.getBoundingBox().move(0, -0.08, 0))) {
+                    hitFloor[0] = true;
+                }
+                int air = victim.getAirSupply();
+                if (waterEntryAt[0] >= 0 && prevAir[0] >= 0 && swimTicks[0] < 10) {
+                    if (prevAir[0] - air >= 3) extraDrainTicks[0]++;
+                    swimTicks[0]++;
+                }
+                prevAir[0] = air;
+            }
             if (g.tickCount % 10 == 0) System.out.println("RED_NAILS_SHORE_TRACE t=" + f.level.getGameTime()
                     + " held=" + (g.ghostBody().grab.held() == victim)
                     + " ghost=" + g.position() + " victim=" + victim.position()
@@ -541,7 +568,9 @@ public final class RedNailsGameTests {
         }).thenExecute(() -> {
             waterEntryY[0] = g.getY();
             airAtWaterEntry[0] = victim.getAirSupply();
-            System.out.println("RED_NAILS_SHORE_ENTRY t=" + f.level.getGameTime()
+            waterEntryAt[0] = f.level.getGameTime();
+            minY[0] = g.getY();
+            System.out.println("RED_NAILS_SHORE_ENTRY t=" + waterEntryAt[0]
                     + " holder=" + victim.getPersistentData().getUUID("sound_isolating_eraser_grabbed_by")
                     + " ghost=" + g.position() + " victim=" + victim.position()
                     + " victimInWater=" + victim.isInWater());
@@ -551,13 +580,39 @@ public final class RedNailsGameTests {
             check(h, victim.isEyeInFluid(net.minecraft.tags.FluidTags.WATER)
                     && victim.getY() < waterEntryY[0], "Carried victim is submerged and dragged downward");
             check(h, victim.getAirSupply() < airAtWaterEntry[0], "Carried victim loses oxygen underwater");
-        }).thenExecute(() -> System.out.println("RED_NAILS_SHORE_AI t=" + f.level.getGameTime()
-                + " ghost=" + g.position() + " victim=" + victim.position()
-                + " victimInWater=" + victim.isInWater()
-                + " submerged=" + victim.isEyeInFluid(net.minecraft.tags.FluidTags.WATER)
-                + " descent=" + (waterEntryY[0] - g.getY())
-                + " airBefore=" + airAtWaterEntry[0] + " airAfter=" + victim.getAirSupply()))
-        .thenSucceed();
+        }).thenWaitUntil(() -> {
+            check(h, g.ghostBody().grab.held() == victim, "Hold survives the extra-oxygen sample window");
+            check(h, swimTicks[0] >= 10, "Observed ten water-stage oxygen ticks");
+        }).thenExecute(() -> {
+            System.out.println("RED_NAILS_SHORE_AIR t=" + f.level.getGameTime()
+                    + " extraDrainTicks=" + extraDrainTicks[0] + " air=" + victim.getAirSupply());
+            check(h, extraDrainTicks[0] >= 8,
+                    "Extra -3 air applied on most water-stage ticks: " + extraDrainTicks[0]);
+        }).thenWaitUntil(() -> check(h, g.ghostBody().grab.held() == null,
+                "Shore-to-water grab releases without extending production duration"))
+        .thenExecute(() -> {
+            releaseAt[0] = f.level.getGameTime();
+            long lived = releaseAt[0] - waterEntryAt[0];
+            double descent = waterEntryY[0] - minY[0];
+            long remaining = g.ghostBody().grab.cooldownUntil() - f.level.getGameTime();
+            System.out.println("RED_NAILS_SHORE_RELEASE t=" + releaseAt[0] + " dt=" + lived
+                    + " descent=" + descent + " minY=" + minY[0] + " floor=" + hitFloor[0]
+                    + " air=" + victim.getAirSupply() + " cooldown=" + remaining
+                    + " seafloor=" + expectSeafloor);
+            check(h, lived >= 99 && lived <= 101,
+                    "Observed shore-to-water water-stage lifetime is 100 ticks: " + lived);
+            check(h, WaterGhostGrab.grabbable(victim), "Natural shore release clears victim lease");
+            check(h, remaining >= 150 && remaining <= 160,
+                    "Natural shore release starts 160-tick cooldown: remaining=" + remaining);
+            check(h, descent <= 6.2, "Water-stage descent does not exceed the six-block cap: " + descent);
+            if (expectSeafloor) {
+                check(h, hitFloor[0], "Shallow shore pit hits the seafloor before the six-block cap");
+                check(h, descent < 5.5, "Shallow seafloor stop is shallower than the six-block cap: " + descent);
+            } else {
+                check(h, descent >= 5.5, "Deep shore pit reaches the six-block water-stage cap: " + descent);
+                check(h, minY[0] >= waterEntryY[0] - 6.2, "Deep sink stops at the six-block cap, not through the floor");
+            }
+        }).thenSucceed();
     }
     @GameTest(template = "empty", batch = BATCH, timeoutTicks = 80) public static void tooltip_counts_active_healthy_nails(GameTestHelper h) {
         var f = new Fixture(h); var p = f.player(0, 0); var stack = f.wear(p);
@@ -629,7 +684,11 @@ public final class RedNailsGameTests {
         .thenExecute(() -> {
             check(h, g.ghostBody().grab.held() == victim, "Hold survives the swimmer trying to swim away");
             check(h, victim.distanceTo(g) < 3.5, "Swimmer cannot walk or swim out of the hold");
-            check(h, g.getVoicePitch() == 0.7F, "Hostile hurt/death voice pitch matches design");
+            check(h, g.getVoicePitch() == WaterGhostBody.HURT_DEATH_PITCH
+                            && WaterGhostBody.HURT_DEATH_PITCH == 0.7F,
+                    "Hostile hurt/death voice pitch matches design 0.7");
+            check(h, WaterGhostBody.AMBIENT_PITCH == 0.6F, "Hostile ambient pitch matches design 0.6");
+            check(h, WaterGhostBody.GRAB_PITCH == 0.5F, "Grab-start pitch matches design 0.5");
             h.succeed();
         });
     }

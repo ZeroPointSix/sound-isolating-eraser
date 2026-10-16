@@ -167,8 +167,12 @@ public final class WaterGhostEntity extends Monster implements WaterGhostPoseSou
     @Override protected boolean canAddPassenger(Entity entity) { return false; }
     @Override protected boolean shouldDropLoot() { return false; }
     @Override protected SoundEvent getAmbientSound() { return isInWater() ? getTarget() == null ? null : SoundEvents.DROWNED_AMBIENT_WATER : SoundEvents.DROWNED_AMBIENT; }
+    @Override public void playAmbientSound() {
+        SoundEvent sound = getAmbientSound();
+        if (sound != null) playSound(sound, getSoundVolume(), WaterGhostBody.AMBIENT_PITCH);
+    }
     @Override protected SoundEvent getHurtSound(DamageSource source) { return SoundEvents.DROWNED_HURT; }
     @Override protected SoundEvent getDeathSound() { return SoundEvents.DROWNED_DEATH; }
-    @Override public float getVoicePitch() { return 0.7F; }
+    @Override public float getVoicePitch() { return WaterGhostBody.HURT_DEATH_PITCH; }
     @Override protected void playStepSound(BlockPos pos, BlockState state) { playSound(SoundEvents.GENERIC_SPLASH, 0.3F, 0.7F); }
 }
