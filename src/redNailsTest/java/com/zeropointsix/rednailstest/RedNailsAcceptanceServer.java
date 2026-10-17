@@ -25,6 +25,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.living.LivingDamageEvent;
+import net.minecraftforge.event.entity.living.LivingEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.server.ServerStartedEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
@@ -63,6 +64,10 @@ public final class RedNailsAcceptanceServer {
     private static boolean boatContact;
     private static int boatColumnSamples, clearFallbackSamples, releasedInputSamples, lastReleasedClientTick;
     private static Vec3 releasedPosition;
+    private static long decisionTick = -1;
+    private static boolean decisionHeld;
+    private static double decisionDistanceSquared;
+    private static boolean damageStartedHeld;
 
     private static boolean frontal() { return scenario.startsWith("front"); }
     private static boolean shallow() { return scenario.equals("bottom") || scenario.equals("front-bottom"); }
@@ -108,6 +113,13 @@ public final class RedNailsAcceptanceServer {
         p.setItemSlot(EquipmentSlot.FEET, new ItemStack(Items.DIAMOND_BOOTS));
         p.getInventory().setItem(0, new ItemStack(Items.DIAMOND_SWORD));
     }
+    @SubscribeEvent(priority = EventPriority.HIGHEST) public static void beforeDamage(LivingDamageEvent event) {
+        if (ENABLED && ghost != null && event.getEntity() == ghost && event.getSource().getEntity() == player) {
+            damageStartedHeld = ghost.ghostBody().grab.held() == player;
+            System.out.println("RED_NAILS_ACCEPTANCE_DAMAGE_ENTRY held=" + damageStartedHeld
+                    + " priorDamage=" + damage + " amount=" + event.getAmount());
+        }
+    }
     @SubscribeEvent(priority = EventPriority.LOWEST) public static void damaged(LivingDamageEvent event) {
         if (ENABLED && event.getEntity() == ghost && grabbedAt >= 0 && event.getSource().getEntity() == player) {
             damage += event.getAmount();
@@ -115,6 +127,12 @@ public final class RedNailsAcceptanceServer {
             System.out.println("RED_NAILS_ACCEPTANCE_DAMAGE tick=" + player.level().getGameTime()
                     + " amount=" + event.getAmount() + " cumulative=" + damage);
         }
+    }
+    @SubscribeEvent(priority = EventPriority.LOWEST) public static void beforeGhostTick(LivingEvent.LivingTickEvent event) {
+        if (!ENABLED || ghost == null || event.getEntity() != ghost || player == null) return;
+        decisionTick = ghost.level().getGameTime();
+        decisionHeld = ghost.ghostBody().grab.held() == player;
+        decisionDistanceSquared = ghost.distanceToSqr(player);
     }
     private static void setupCapture(String name) {
         scenario = name;
@@ -261,14 +279,22 @@ public final class RedNailsAcceptanceServer {
             stage = 3; phase(scenario + "-held");
         }
         if (grabbedAt < 0) return;
+        if (held || releasedAt < 0) {
+            // Check the unchanged leash at AI tick entry. END includes the ghost's new
+            // descent before the next client correction, not the AI decision position.
+            sampleCheck(decisionTick == now, "real ghost tick observation exists tick=" + now);
+            sampleCheck(!decisionHeld || decisionDistanceSquared <= 16,
+                    "original four-block ongoing hold limit at AI tick entry tick=" + now);
+            Files.writeString(RESULTS.resolve("acceptance-" + scenario + "-decision.csv"),
+                    now + "," + decisionHeld + "," + decisionDistanceSquared + "," + ghost.distanceToSqr(player) + "\n",
+                    StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+        }
         if (held) {
             observeHoldGeometry(now);
             samples++; minY = Math.min(minY, ghost.getY());
             lastHeldOnFloor = onFixtureFloor();
             playerMinY = Math.min(playerMinY, player.getY());
             maxDistance = Math.max(maxDistance, ghost.distanceTo(player));
-            // Initial capture reach is not the ongoing leash limit; real player velocity packets converge asynchronously.
-            sampleCheck(ghost.distanceToSqr(player) <= 16, "original four-block ongoing hold limit tick=" + now);
             var resist = RESULTS.resolve("acceptance-client-" + scenario + "-resist.signal");
             if (!scenario.equals("damage") && Files.exists(resist)) {
                 var input = JsonParser.parseString(Files.readString(resist)).getAsJsonObject();
@@ -350,7 +376,8 @@ public final class RedNailsAcceptanceServer {
                                 + boatColumnSamples + "/" + clearFallbackSamples);
             }
             if (scenario.equals("damage")) {
-                check(damage >= 8 && belowDamageTicks > 0 && duration < 99, "real attacks cross eight damage after a retained subthreshold hold");
+                check(damage >= 8 && damageStartedHeld && belowDamageTicks > 0 && duration < 99,
+                        "real attacks cross eight damage while still held after a retained subthreshold hold");
             } else {
                 check(duration >= 99 && duration <= 101, "unchanged 100-tick water hold despite movement/jump: " + duration);
                 check(resistedTicks >= 40, "native movement/jump resistance sampled for >=40 server ticks: " + resistedTicks);

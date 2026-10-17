@@ -15,7 +15,10 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.shapes.BooleanOp;
+import net.minecraft.world.phys.shapes.Shapes;
 
 public final class WaterGhostGrab extends Goal {
     private static final String HOLDER = "sound_isolating_eraser_grabbed_by";
@@ -117,11 +120,26 @@ public final class WaterGhostGrab extends Goal {
                 || (target instanceof ServerPlayer && !mob.level().getEntities(target, descentColumn,
                         entity -> entity != mob && target.canCollideWith(entity)).isEmpty());
     }
+    private boolean clearForDescent(AABB box) {
+        for (var collision : mob.level().getBlockCollisions(mob, box)) {
+            if (!collision.isEmpty()) return false;
+        }
+        // Entity collision queries inflate the box. A boat touching only its side
+        // must not prevent sinking, but any actual overlapping shape still does.
+        for (var collision : mob.level().getEntityCollisions(mob, box)) {
+            for (var collisionBox : collision.toAabbs()) {
+                if (box.intersects(collisionBox)) return false;
+            }
+        }
+        var border = mob.level().getWorldBorder();
+        return !border.isInsideCloseToBorder(mob, box)
+                || !Shapes.joinIsNotEmpty(border.getCollisionShape(), Shapes.create(box), BooleanOp.AND);
+    }
     @Override public void tick() {
         if (target == null) return;
         if (!canContinueToUse()) { stop(); return; }
         lock();
-        if (shoreWater == null || !mob.level().noCollision(mob, mob.getBoundingBox().move(0, -0.08, 0))) {
+        if (shoreWater == null || !clearForDescent(mob.getBoundingBox().move(0, -0.08, 0))) {
             Vec3 found = findShoreWater();
             if (found != null) shoreWater = found;
         }
@@ -161,7 +179,7 @@ public final class WaterGhostGrab extends Goal {
             double down = Math.max(-0.08, startY - 6 - mob.getY());
             Vec3 swim = new Vec3(shoreStep.x, 0, shoreStep.z);
             if (mob.getY() > startY - 6 && !mob.verticalCollisionBelow
-                    && mob.level().noCollision(mob, mob.getBoundingBox().move(shoreStep.x, down, shoreStep.z))
+                    && clearForDescent(mob.getBoundingBox().move(shoreStep.x, down, shoreStep.z))
                     && !blocked(hold.add(shoreStep.x, down, shoreStep.z))) {
                 swim = new Vec3(shoreStep.x, down, shoreStep.z);
             } else if (shoreStep.lengthSqr() > 0

@@ -129,6 +129,38 @@ public final class RedNailsGameTests {
         FIXTURES.forEach(Fixture::close); FIXTURES.clear(); RedNailsInput.clear();
     }
     private static void check(GameTestHelper h, boolean value, String message) { h.assertTrue(value, message); }
+    @GameTest(template = "empty", batch = BATCH)
+    public static void descent_distinguishes_boat_tangency_from_overlap(GameTestHelper h) throws Exception {
+        var f = new Fixture(h);
+        var ghost = f.hostile(6, 6);
+        var boat = f.add(EntityType.BOAT.create(f.level), 0, 0);
+        boat.setPos(f.center.getX() + 0.5, f.center.getY() + 2, f.center.getZ() + 0.5);
+        var hull = boat.getBoundingBox();
+        double x = boat.getX(), y = boat.getY() - 0.6, z = boat.getZ();
+        var boxes = new net.minecraft.world.phys.AABB[] {
+                new net.minecraft.world.phys.AABB(hull.minX - 1.2, y, z - 0.6, hull.minX, y + 1.2, z + 0.6),
+                new net.minecraft.world.phys.AABB(hull.maxX, y, z - 0.6, hull.maxX + 1.2, y + 1.2, z + 0.6),
+                new net.minecraft.world.phys.AABB(x - 0.6, y, hull.minZ - 1.2, x + 0.6, y + 1.2, hull.minZ),
+                new net.minecraft.world.phys.AABB(x - 0.6, y, hull.maxZ, x + 0.6, y + 1.2, hull.maxZ + 1.2)
+        };
+        var inward = new Vec3[] { new Vec3(0.05, 0, 0), new Vec3(-0.05, 0, 0),
+                new Vec3(0, 0, 0.05), new Vec3(0, 0, -0.05) };
+        var predicate = WaterGhostGrab.class.getDeclaredMethod("clearForDescent", net.minecraft.world.phys.AABB.class);
+        predicate.setAccessible(true);
+        for (int i = 0; i < boxes.length; i++) {
+            check(h, !f.level.noCollision(ghost, boxes[i]), "Vanilla broad phase includes tangent boat face " + i);
+            check(h, (boolean) predicate.invoke(ghost.ghostBody().grab, boxes[i]), "Tangent boat face permits descent " + i);
+            check(h, !(boolean) predicate.invoke(ghost.ghostBody().grab, boxes[i].move(inward[i])),
+                    "Positive boat overlap still blocks descent " + i);
+        }
+        var throughHull = new net.minecraft.world.phys.AABB(x - 0.3, hull.maxY - 0.08, z - 0.3,
+                x + 0.3, hull.maxY + 1.12, z + 0.3);
+        check(h, !(boolean) predicate.invoke(ghost.ghostBody().grab, throughHull), "Boat support still blocks downward penetration");
+        var floor = new net.minecraft.world.phys.AABB(x - 0.3, f.center.getY() - 0.08, z - 0.3,
+                x + 0.3, f.center.getY() + 1.12, z + 0.3);
+        check(h, !(boolean) predicate.invoke(ghost.ghostBody().grab, floor), "Actual stone floor still blocks descent");
+        h.succeed();
+    }
     private static void sealShorePit(Fixture f, int floorY) {
         for (int x = -4; x <= 1; x++) for (int z = -4; z <= 4; z++) {
             for (int y = floorY; y <= -1; y++) f.set(f.center.offset(x, y, z), Blocks.STONE.defaultBlockState());
