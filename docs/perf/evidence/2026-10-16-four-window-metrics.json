@@ -1,0 +1,537 @@
+{
+  "schemaVersion": 1,
+  "collectedAtUtc": "2026-10-16",
+  "sourceSha": "bb325dc9ccf3d99565d8a1eedb7efee372fdcd45",
+  "harnessSha": "013f97061b004248a2ca6510536daa35522807e8",
+  "runUrl": "https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38966307507",
+  "artifact": {
+    "id": 12077285827,
+    "url": "https://github.com/ZeroPointSix/sound-isolating-eraser/actions/runs/38966307507/artifacts/12077285827",
+    "bytes": 68723631,
+    "sha256": "e0a5505f00f9fd0aeccf85dedf7c4c9990a0a201c2f33bf14bb6755ad718de88",
+    "retentionDays": 30
+  },
+  "environment": {
+    "sourceSha": "bb325dc9ccf3d99565d8a1eedb7efee372fdcd45",
+    "harnessSha": "013f97061b004248a2ca6510536daa35522807e8",
+    "modVersion": "0.14.2",
+    "forge": "1.20.1-47.2.0",
+    "spark": "1.10.53-forge",
+    "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39",
+    "cpuCount": 4,
+    "modSha256": "a13db04b82dec3bac59ca7d974895d0c51924511076f4d38220655820c1caff0",
+    "serverCpus": [
+      0,
+      1
+    ],
+    "clientCpus": [
+      2,
+      3
+    ],
+    "cpuTopology": "# The following is the parsable format, which can be fed to other\n# programs. Each different item in every column has an unique ID\n# starting usually from zero.\n# CPU,Core,Socket\n0,0,0\n1,0,0\n2,1,0\n3,1,0\n",
+    "clientRendering": "llvmpipe, capped 20 FPS, 1280x720; not a GPU benchmark",
+    "scope": "A/B1/B2/C synthetic CI server baseline; no optimization or hardware-GPU FPS claim",
+    "java": "openjdk version \"17.0.20.1\" 2026-08-18\nOpenJDK Runtime Environment Temurin-17.0.20.1+1 (build 17.0.20.1+1)\nOpenJDK 64-Bit Server VM Temurin-17.0.20.1+1 (build 17.0.20.1+1, mixed mode, sharing)\n"
+  },
+  "metricDefinition": {
+    "mspt": "spark metadata platformStatistics.mspt.last5m, captured at profiler end; rolling statistics, not a reconstructed per-tick series",
+    "entities": "300 per-second loaded-entity snapshots with @e[distance=0..] per dimension; includes players and non-mobs",
+    "summons": "actual YujiSummoner NBT, not subtraction from total entities",
+    "fps": "not measured; 20 is a software-renderer cap, not observed FPS",
+    "status": "real diagnostic baseline; strict fixed-position paired comparison not accepted"
+  },
+  "windows": [
+    {
+      "id": "A",
+      "url": "https://spark.lucko.me/QMZXUwQZ26",
+      "startUtc": "2026-10-16T21:06:32.391Z",
+      "endUtc": "2026-10-16T21:11:32.472Z",
+      "durationSeconds": 300.081,
+      "ticks": 6000,
+      "sampleIntervalMicroseconds": 4000,
+      "players": 0,
+      "msptLast5m": {
+        "mean": 0.8870327215,
+        "max": 52.605313,
+        "min": 0.478594,
+        "median": 0.762563,
+        "percentile95": 1.409572
+      },
+      "tpsLast5m": 19.99999639100065,
+      "entitiesEnd": 110,
+      "worldsEnd": [
+        {
+          "name": "yuji_fodu",
+          "totalEntities": 0
+        },
+        {
+          "name": "the_nether",
+          "totalEntities": 0
+        },
+        {
+          "name": "eternal_night",
+          "totalEntities": 0
+        },
+        {
+          "name": "overworld",
+          "totalEntities": 110
+        },
+        {
+          "name": "the_end",
+          "totalEntities": 0
+        }
+      ],
+      "entitySnapshots": {
+        "rows": 300,
+        "stats": {
+          "elapsedSeconds": {
+            "min": 0,
+            "max": 299,
+            "first": 0,
+            "last": 299
+          },
+          "load1": {
+            "min": 0.1318359375,
+            "max": 0.994140625,
+            "first": 0.8193359375,
+            "last": 0.19873046875
+          },
+          "overworld": {
+            "min": 110,
+            "max": 110,
+            "first": 110,
+            "last": 110
+          },
+          "nether": {
+            "min": 0,
+            "max": 0,
+            "first": 0,
+            "last": 0
+          },
+          "end": {
+            "min": 0,
+            "max": 0,
+            "first": 0,
+            "last": 0
+          },
+          "rain": {
+            "min": 0,
+            "max": 0,
+            "first": 0,
+            "last": 0
+          },
+          "night": {
+            "min": 0,
+            "max": 0,
+            "first": 0,
+            "last": 0
+          },
+          "parents": null,
+          "summons": null
+        }
+      },
+      "fps": null,
+      "fpsStatus": "not applicable"
+    },
+    {
+      "id": "B1",
+      "url": "https://spark.lucko.me/BQ1iJ9qI3b",
+      "startUtc": "2026-10-16T21:16:37.641Z",
+      "endUtc": "2026-10-16T21:21:37.713Z",
+      "durationSeconds": 300.072,
+      "ticks": 6000,
+      "sampleIntervalMicroseconds": 4000,
+      "players": 1,
+      "msptLast5m": {
+        "mean": 5.000348642166666,
+        "max": 73.898627,
+        "min": 3.656348,
+        "median": 4.793498,
+        "percentile95": 6.135176
+      },
+      "tpsLast5m": 20.000002347266943,
+      "entitiesEnd": 277,
+      "worldsEnd": [
+        {
+          "name": "yuji_fodu",
+          "totalEntities": 42
+        },
+        {
+          "name": "eternal_night",
+          "totalEntities": 0
+        },
+        {
+          "name": "the_nether",
+          "totalEntities": 0
+        },
+        {
+          "name": "overworld",
+          "totalEntities": 235
+        },
+        {
+          "name": "the_end",
+          "totalEntities": 0
+        }
+      ],
+      "entitySnapshots": {
+        "rows": 300,
+        "stats": {
+          "elapsedSeconds": {
+            "min": 0,
+            "max": 299,
+            "first": 0,
+            "last": 299
+          },
+          "load1": {
+            "min": 1.431640625,
+            "max": 2.08349609375,
+            "first": 2.02392578125,
+            "last": 1.6259765625
+          },
+          "overworld": {
+            "min": 235,
+            "max": 235,
+            "first": 235,
+            "last": 235
+          },
+          "nether": {
+            "min": 0,
+            "max": 0,
+            "first": 0,
+            "last": 0
+          },
+          "end": {
+            "min": 0,
+            "max": 0,
+            "first": 0,
+            "last": 0
+          },
+          "rain": {
+            "min": 37,
+            "max": 42,
+            "first": 41,
+            "last": 42
+          },
+          "night": {
+            "min": 0,
+            "max": 0,
+            "first": 0,
+            "last": 0
+          },
+          "parents": null,
+          "summons": null
+        }
+      },
+      "fps": null,
+      "fpsStatus": "not measured"
+    },
+    {
+      "id": "B2",
+      "url": "https://spark.lucko.me/Scz8kd12Ic",
+      "startUtc": "2026-10-16T21:26:43.632Z",
+      "endUtc": "2026-10-16T21:31:43.721Z",
+      "durationSeconds": 300.089,
+      "ticks": 6000,
+      "sampleIntervalMicroseconds": 4000,
+      "players": 1,
+      "msptLast5m": {
+        "mean": 3.7848337191666666,
+        "max": 52.070133,
+        "min": 2.72475,
+        "median": 3.58466,
+        "percentile95": 4.799317
+      },
+      "tpsLast5m": 19.999998891133394,
+      "entitiesEnd": 255,
+      "worldsEnd": [
+        {
+          "name": "yuji_fodu",
+          "totalEntities": 0
+        },
+        {
+          "name": "eternal_night",
+          "totalEntities": 11
+        },
+        {
+          "name": "the_nether",
+          "totalEntities": 0
+        },
+        {
+          "name": "overworld",
+          "totalEntities": 244
+        },
+        {
+          "name": "the_end",
+          "totalEntities": 0
+        }
+      ],
+      "entitySnapshots": {
+        "rows": 300,
+        "stats": {
+          "elapsedSeconds": {
+            "min": 0,
+            "max": 299,
+            "first": 0,
+            "last": 299
+          },
+          "load1": {
+            "min": 1.4765625,
+            "max": 2.17041015625,
+            "first": 2.15087890625,
+            "last": 1.484375
+          },
+          "overworld": {
+            "min": 244,
+            "max": 244,
+            "first": 244,
+            "last": 244
+          },
+          "nether": {
+            "min": 0,
+            "max": 0,
+            "first": 0,
+            "last": 0
+          },
+          "end": {
+            "min": 0,
+            "max": 0,
+            "first": 0,
+            "last": 0
+          },
+          "rain": {
+            "min": 0,
+            "max": 0,
+            "first": 0,
+            "last": 0
+          },
+          "night": {
+            "min": 8,
+            "max": 11,
+            "first": 10,
+            "last": 11
+          },
+          "parents": null,
+          "summons": null
+        }
+      },
+      "fps": null,
+      "fpsStatus": "not measured"
+    },
+    {
+      "id": "C",
+      "url": "https://spark.lucko.me/aCKjSDJu2S",
+      "startUtc": "2026-10-16T21:36:54.677Z",
+      "endUtc": "2026-10-16T21:41:54.765Z",
+      "durationSeconds": 300.088,
+      "ticks": 6000,
+      "sampleIntervalMicroseconds": 4000,
+      "players": 1,
+      "msptLast5m": {
+        "mean": 7.2297122855,
+        "max": 104.04283,
+        "min": 4.270126,
+        "median": 5.8077,
+        "percentile95": 12.921204
+      },
+      "tpsLast5m": 20.00000302073379,
+      "entitiesEnd": 170,
+      "worldsEnd": [
+        {
+          "name": "yuji_fodu",
+          "totalEntities": 0
+        },
+        {
+          "name": "the_nether",
+          "totalEntities": 0
+        },
+        {
+          "name": "eternal_night",
+          "totalEntities": 0
+        },
+        {
+          "name": "overworld",
+          "totalEntities": 170
+        },
+        {
+          "name": "the_end",
+          "totalEntities": 0
+        }
+      ],
+      "entitySnapshots": {
+        "rows": 300,
+        "stats": {
+          "elapsedSeconds": {
+            "min": 0,
+            "max": 299,
+            "first": 0,
+            "last": 299
+          },
+          "load1": {
+            "min": 1.64208984375,
+            "max": 3.6923828125,
+            "first": 2.93994140625,
+            "last": 1.9013671875
+          },
+          "overworld": {
+            "min": 170,
+            "max": 204,
+            "first": 203,
+            "last": 170
+          },
+          "nether": {
+            "min": 0,
+            "max": 0,
+            "first": 0,
+            "last": 0
+          },
+          "end": {
+            "min": 0,
+            "max": 0,
+            "first": 0,
+            "last": 0
+          },
+          "rain": {
+            "min": 0,
+            "max": 0,
+            "first": 0,
+            "last": 0
+          },
+          "night": {
+            "min": 0,
+            "max": 0,
+            "first": 0,
+            "last": 0
+          },
+          "parents": {
+            "min": 16,
+            "max": 16,
+            "first": 16,
+            "last": 16
+          },
+          "summons": {
+            "min": 64,
+            "max": 64,
+            "first": 64,
+            "last": 64
+          }
+        }
+      },
+      "fps": null,
+      "fpsStatus": "not measured"
+    }
+  ],
+  "fixtures": {
+    "A-before": {
+      "sha256": "5fbe667e1ce72d9d18651a925233e6fb1a7e7405e3551d1e1c1a619f29e84633",
+      "configSha256": "22c66c8fbc8e8e597bc869cc186a30e0b8dbbb3a6c2b7cd9c824b49266724b59",
+      "nightEntry": [
+        "entryBase = 0.02",
+        "entryCap = 0.5"
+      ]
+    },
+    "A-after": {
+      "sha256": "c2cec0548c343f4562fc0a6c110bb86a79cac9d38afd246e2b51c887be09fb46",
+      "configSha256": "22c66c8fbc8e8e597bc869cc186a30e0b8dbbb3a6c2b7cd9c824b49266724b59",
+      "nightEntry": [
+        "entryBase = 0.02",
+        "entryCap = 0.5"
+      ]
+    },
+    "B1-before": {
+      "sha256": "b11993c7a340b2c1e5677549fe0fdba61b4a8e512122a11556d90f62a8aabe62",
+      "configSha256": "22c66c8fbc8e8e597bc869cc186a30e0b8dbbb3a6c2b7cd9c824b49266724b59",
+      "nightEntry": [
+        "entryBase = 0.02",
+        "entryCap = 0.5"
+      ]
+    },
+    "B1-after": {
+      "sha256": "b9fa45580be30b9fa8c916870490bb9b0b8a021e9644aceb8c1e5b637ebfea0a",
+      "configSha256": "22c66c8fbc8e8e597bc869cc186a30e0b8dbbb3a6c2b7cd9c824b49266724b59",
+      "nightEntry": [
+        "entryBase = 0.02",
+        "entryCap = 0.5"
+      ]
+    },
+    "B2-before": {
+      "sha256": "14614856dd4c60c63290114261f448d0834ca29e9a324f696f7a74315ece03d6",
+      "configSha256": "22c66c8fbc8e8e597bc869cc186a30e0b8dbbb3a6c2b7cd9c824b49266724b59",
+      "nightEntry": [
+        "entryBase = 0.02",
+        "entryCap = 0.5"
+      ]
+    },
+    "B2-after": {
+      "sha256": "47db722103fc309d331f94a1f2018e1e4635b5d31349ce6fe1d33dd2fa803eb2",
+      "configSha256": "22c66c8fbc8e8e597bc869cc186a30e0b8dbbb3a6c2b7cd9c824b49266724b59",
+      "nightEntry": [
+        "entryBase = 0.02",
+        "entryCap = 0.5"
+      ]
+    },
+    "C-before": {
+      "sha256": "e69395a2ab8be8ac35ae23a96e53ca02afa5587fc4ae45d8a6425b60b552fe2f",
+      "configSha256": "22c66c8fbc8e8e597bc869cc186a30e0b8dbbb3a6c2b7cd9c824b49266724b59",
+      "nightEntry": [
+        "entryBase = 0.02",
+        "entryCap = 0.5"
+      ]
+    },
+    "C-after": {
+      "sha256": "0a0b6da72b88aae87ba3ddb13cb6f301441cf6e61f01ae5febd30a6df29f7e5c",
+      "configSha256": "22c66c8fbc8e8e597bc869cc186a30e0b8dbbb3a6c2b7cd9c824b49266724b59",
+      "nightEntry": [
+        "entryBase = 0.02",
+        "entryCap = 0.5"
+      ]
+    }
+  },
+  "sceneChecks": {
+    "B1": {
+      "data": [
+        "[21:16:33] [Server thread/INFO] [minecraft/MinecraftServer]: T2Perf has the following entity data: \"qihai:yuji_fodu\"",
+        "[21:16:33] [Server thread/INFO] [minecraft/MinecraftServer]: T2Perf has the following entity data: [82.5d, 129.0d, 82.5d]",
+        "[21:16:33] [Server thread/INFO] [minecraft/MinecraftServer]: T2Perf has the following entity data: [-180.0f, 8.0f]",
+        "[21:16:37] [Server thread/INFO] [minecraft/MinecraftServer]: T2Perf has the following entity data: 20.0f",
+        "[21:16:47] [Server thread/INFO] [minecraft/MinecraftServer]: T2Perf has the following entity data: 20.0f",
+        "[21:21:27] [Server thread/INFO] [minecraft/MinecraftServer]: T2Perf has the following entity data: 20.0f",
+        "[21:21:39] [Server thread/INFO] [minecraft/MinecraftServer]: T2Perf has the following entity data: \"qihai:yuji_fodu\""
+      ],
+      "healthMin": 20,
+      "healthMax": 20
+    },
+    "B2": {
+      "data": [
+        "[21:26:39] [Server thread/INFO] [minecraft/MinecraftServer]: T2Perf has the following entity data: \"sound_isolating_eraser:eternal_night\"",
+        "[21:26:39] [Server thread/INFO] [minecraft/MinecraftServer]: T2Perf has the following entity data: [4.079615072681328d, 79.5d, 12600.217450962768d]",
+        "[21:26:39] [Server thread/INFO] [minecraft/MinecraftServer]: T2Perf has the following entity data: [89.99999f, 0.0f]",
+        "[21:26:43] [Server thread/INFO] [minecraft/MinecraftServer]: T2Perf has the following entity data: 20.0f",
+        "[21:26:53] [Server thread/INFO] [minecraft/MinecraftServer]: T2Perf has the following entity data: 20.0f",
+        "[21:31:33] [Server thread/INFO] [minecraft/MinecraftServer]: T2Perf has the following entity data: 20.0f",
+        "[21:31:44] [Server thread/INFO] [minecraft/MinecraftServer]: T2Perf has the following entity data: \"sound_isolating_eraser:eternal_night\""
+      ],
+      "healthMin": 20,
+      "healthMax": 20
+    },
+    "C": {
+      "data": [
+        "[21:36:50] [Server thread/INFO] [minecraft/MinecraftServer]: T2Perf has the following entity data: \"minecraft:overworld\"",
+        "[21:36:50] [Server thread/INFO] [minecraft/MinecraftServer]: T2Perf has the following entity data: [-14.937140809063845d, 100.0d, 5.822418254200797d]",
+        "[21:36:50] [Server thread/INFO] [minecraft/MinecraftServer]: T2Perf has the following entity data: [-180.0f, 8.0f]",
+        "[21:36:54] [Server thread/INFO] [minecraft/MinecraftServer]: T2Perf has the following entity data: 20.0f",
+        "[21:37:04] [Server thread/INFO] [minecraft/MinecraftServer]: T2Perf has the following entity data: 20.0f",
+        "[21:41:44] [Server thread/INFO] [minecraft/MinecraftServer]: T2Perf has the following entity data: 20.0f",
+        "[21:41:57] [Server thread/INFO] [minecraft/MinecraftServer]: T2Perf has the following entity data: \"minecraft:overworld\""
+      ],
+      "healthMin": 20,
+      "healthMax": 20
+    }
+  },
+  "limitations": [
+    "C moved from initial [0.5,100,0.5] to [-14.937140809063845,100,5.822418254200797] before sampling; no continuous or end position log",
+    "One run per scene, no measured repeat variance",
+    "Early city, single player, 16 parents; no multiplayer/late-day/32-or-64-parent cap validation",
+    "Sampling includes entity/NBT polling overhead; not zero",
+    "No client FPS, sparkc, allocation profile or optimized build"
+  ]
+}

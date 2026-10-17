@@ -1,0 +1,28 @@
+# 上游方案对照与适用边界
+
+检索日期：2026-10-16。只以作者文档、仓库和维护者讨论为依据；以下是思路迁移，不是直接复制代码或推荐安装一组优化模组。外部默认分支会变化，实施 PR 必须锁定实际参照的版本与许可。
+
+| 项目 / 一手来源 | 可核实的方法 | 可借鉴到本仓库 | 限制与尚未核实项 |
+| --- | --- | --- | --- |
+| [In Control!，1.20 文档](https://mcjty.eu/docs/mods/control-mods/control-mods-20) | `mincount/maxcount` 规则、按玩家或区块数缩放的计数限制；生成尝试和规则分离 | PR2 配置化总量、玩家/可刷怪区块相关预算；保留已有局部种类 cap | 按区块数量缩放总量不等于每个区块硬 cap。缩放分母、加载区块和可刷怪区块口径须依据实际版本确认，不照搬未核实公式 |
+| [MobSpawnController 作者发布页](https://modrinth.com/mod/mobspawncontroller) / [对应仓库](https://github.com/taisuiyileba/MobSpawnController) | 按实体类型与生成原因分别允许/拒绝，在入世前检查；自然刷怪条件包含邻域数量；每世界 JSON 规则于启动加载、停止保存 | PR2 在受控生成入口提前准入，区分自然生成/召唤/加载原因，配置与热路径分离；保留本仓库波次余额及剧情实体例外 | 本次采用 taisuiyileba 的同名项目作对照，作者页列有 Forge 1.20.1；不混用同名旧模组或插件。发布页/CurseForge 标 ARR、GitHub 根 LICENSE 标 MIT，许可存在不一致，复制前须核对具体版本。未审计其计数索引/缓存算法，不能据功能说明声称它实现了区块硬 cap |
+| [Clumps](https://github.com/jaredlll08/Clumps) | 合并经验球以减少同质实体及交互负担 | 同质、可合并载荷的减量思路；先测实体数量，再谈每实体效率 | 有所有权、AI、独立掉落和冷却的召唤物不能照搬合并；不把经验球收益百分比套到本模组 |
+| [Entity Culling](https://github.com/tr7zw/EntityCulling) | 异步遮挡/可见性计算与客户端渲染剔除 | PR4 缓存可见性、跳过不可见渲染、为特殊实体设置例外 | 客户端优化不等于服务器 tick 减少。不得跨线程直接访问不安全世界状态；本项目先用实测决定是否只需距离判断，不自造遮挡引擎 |
+| [FerriteCore](https://github.com/malte0811/FerriteCore)，仓库 `summary.md` | 不可变状态、谓词、模型和部分数组/形状共享或去重 | 复用不可变常量；减少重复模型数据；区分初始化分配和逐帧临时分配 | Suxia 动画工作区是可变数据，不能把它当不可变数组跨实体共享。历史整合包的 MB 节约值不适用于当前工程 |
+| [ModernFix](https://github.com/embeddedt/ModernFix) | 加载、内存等多项优化，具有可配置、可关闭的兼容策略 | 把每项优化做成小范围、可回退的变更；缓存避免无效重复工作 | 本轮未证实某个 ModernFix 选项就是本仓库热点的修复；不宣称安装即能降低目标场景 MSPT |
+| [Lithium](https://github.com/CaffeineMC/lithium) 与 [配置说明](https://github.com/CaffeineMC/lithium/blob/develop/lithium-mixin-config.md) | AI、寻路等机制的细粒度性能改进，按配置项禁用不兼容项 | PR3 通过缓存、局部更新和准确失效保持行为；逐项验证与回退 | 当前发行版与 Forge 1.20.1 的加载器适配不能凭项目名推断；学习算法不等于可直接安装 Fabric/NeoForge 包 |
+| [Canary 作者发布页](https://www.curseforge.com/minecraft/mc-mods/canary)；[ModernFix 维护者历史讨论 #179](https://github.com/embeddedt/ModernFix/issues/179) | 作者明确说明为 Forge 的 Lithium 非官方分支，涉及 AI、区块加载、物理优化，可分别关闭补丁；历史讨论涉及重叠的 ItemStack 缓存 | 保留可逐项禁用的优化边界，检查重复缓存、相同注入点和生命周期依赖；不叠加两个未经验证的相同优化 | 作者页列出 1.20.1 的 0.3.3 发布及 LGPLv3，但 `AbdElAziz333/Canary` 仓库在 2026-10-16 复核仍返回404，未完成具体实现/源码许可文件核验；不能据发布页断言与本整合包兼容或直接复制实现 |
+
+## 面向本仓库的设计结论
+
+1. **cap 有两层**：按可刷怪区块数/玩家覆盖范围缩放的总体预算，以及某一个区块或区域的局部硬限额。配置需分别命名，并明确跨维度、重叠玩家、波次/召唤物、命名持久化实体的计数范围。
+2. **预算与上限不同**：每 tick 只做少量生成尝试可平滑 CPU，却不能阻止长期累积实体；本仓库的雨寂生成预算应保留，再考虑活体总量门控。
+3. **分片要有全局视角**：FleeLight 已有每实体预算；若大量实体同时进入搜索，仍可能形成峰值。是否需要错峰或更高层预算由火焰图与帧/ tick 分布决定，避免饿死某些实体。
+4. **缓存先定义失效**：按 ServerLevel/区块或区域持有有界缓存，处理生成失败、死亡、移动、传送、卸载和服务器关闭；同 tick 的生成预留计数应立即更新，单靠 TTL 无法保证硬 cap。
+5. **剔除只负责画面**：服务器 AI 和存档状态不受相机距离控制。客户端先检查原有距离/视锥机制；大型模型、轮廓和越界特效需例外，避免物体突然消失。
+6. **减少分配不等于全局共享**：IK 可评估标量化或模型实例内可复用工作区，但必须测试多个实体不同姿态，防止状态串扰；PoseStack 必须保留正确矩阵生命周期。
+7. **持久化需要语义**：长期账本先考虑 owner 索引和观测基数；回收条目需要证明没有有效物品/离线/卸载引用。性能不能以丢进度、重置冷却或复活召唤物为代价。
+
+每条结论都是针对当前源码的工程推断，收益仍待本项目实测。任何第三方代码复用前单独核对固定提交的 LICENSE，不把此调研表当作再分发授权。
+
+2026-10-16 22:10 UTC 补核：MobSpawnController 的 Modrinth 官方 Source 链接从 `taisuiyileba/MobSpawnSwitch` 重定向到上述仓库；名称变更由作者页说明支持。其[发行许可页](https://www.curseforge.com/minecraft/mc-mods/mobspawncontroller/license)与[仓库 LICENSE](https://github.com/taisuiyileba/MobSpawnController/blob/master/LICENSE)显示不同许可，因此本表仅总结设计思路，不将公开仓库等同于所有已发布制品都获得相同授权。没有把用户所说的名字擅自替换成近似的其他项目。

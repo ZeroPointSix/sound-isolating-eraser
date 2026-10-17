@@ -1,0 +1,403 @@
+{
+  "status": "complete",
+  "windows": [
+    {
+      "frames": 3315,
+      "intervals": 3314,
+      "seconds": 300.005780744,
+      "meanFps": 11.046453810928037,
+      "meanFrameMs": 90.5267896028968,
+      "medianFrameMs": 89.651459,
+      "p95FrameMs": 96.67159575,
+      "p99FrameMs": 114.54191742999996,
+      "maxFrameMs": 172.254019,
+      "onePercentLowFps": 7.930353676614091,
+      "framesOver50Ms": 3314,
+      "framesOver100Ms": 92,
+      "startPose": {
+        "x": -9.5,
+        "y": 64.0,
+        "z": -22.5,
+        "yaw": 0.0,
+        "pitch": 0.0
+      },
+      "endPose": {
+        "x": -9.5,
+        "y": 64.0,
+        "z": -22.5,
+        "yaw": 0.0,
+        "pitch": 0.0
+      },
+      "maxDisplacementFromFirstFrame": 0.0,
+      "yawRange": 0.0,
+      "pitchRange": 0.0,
+      "csvSha256": "44787513cdef0b8e8bc52347d65529df2b43c000cb3050d37d14e1800d584538",
+      "label": "A1",
+      "metadata": {
+        "label": "A1",
+        "dimension": "minecraft:overworld",
+        "startUtc": "2026-10-17T01:51:31.365649034Z",
+        "renderer": "llvmpipe (LLVM 20.1.2, 256 bits)",
+        "vendor": "Mesa",
+        "openGlVersion": "4.5 (Core Profile) Mesa 25.2.8-0ubuntu0.24.04.4",
+        "width": 1280,
+        "height": 720,
+        "framerateLimit": 260,
+        "vsync": false,
+        "renderDistance": 8,
+        "simulationDistance": 6,
+        "graphics": "fancy",
+        "particles": "ALL",
+        "fov": 70,
+        "camera": "FIRST_PERSON",
+        "probe": "Forge RenderTickEvent END timestamps; not GPU-only timing",
+        "endUtc": "2026-10-17T01:56:31.380976495Z",
+        "frames": 3315,
+        "intervals": 3314,
+        "elapsedNanos": 300005780744,
+        "callbackNanosIncludingStartMetadata": 7578887,
+        "validWorldFrames": 3315,
+        "status": "complete"
+      },
+      "entityRows": 301,
+      "entityRange": [
+        216,
+        257
+      ],
+      "dimensionEntityRanges": {
+        "overworld": [
+          216,
+          257
+        ],
+        "nether": [
+          0,
+          0
+        ],
+        "end": [
+          0,
+          0
+        ],
+        "rain": [
+          0,
+          0
+        ],
+        "night": [
+          0,
+          0
+        ]
+      },
+      "parentsRange": [
+        0,
+        0
+      ],
+      "ownedChildrenRange": [
+        0,
+        0
+      ],
+      "snapshot": {
+        "sourceArtifactId": 12077285827,
+        "sourceMember": "fixtures/A-before.tar.gz",
+        "snapshotSha256": "5fbe667e1ce72d9d18651a925233e6fb1a7e7405e3551d1e1c1a619f29e84633"
+      }
+    },
+    {
+      "frames": 2919,
+      "intervals": 2918,
+      "seconds": 300.039039081,
+      "meanFps": 9.725401097595979,
+      "meanFrameMs": 102.82352264599041,
+      "medianFrameMs": 102.9825225,
+      "p95FrameMs": 108.75162800000001,
+      "p99FrameMs": 129.55645397999996,
+      "maxFrameMs": 153.093538,
+      "onePercentLowFps": 7.243016568015313,
+      "framesOver50Ms": 2918,
+      "framesOver100Ms": 2079,
+      "startPose": {
+        "x": 82.5,
+        "y": 129.0,
+        "z": 82.5,
+        "yaw": -180.0,
+        "pitch": 8.0
+      },
+      "endPose": {
+        "x": 82.5,
+        "y": 129.0,
+        "z": 82.5,
+        "yaw": -180.0,
+        "pitch": 8.0
+      },
+      "maxDisplacementFromFirstFrame": 0.0,
+      "yawRange": 0.0,
+      "pitchRange": 0.0,
+      "csvSha256": "58ae296332ec31ce700a974471db78725650e18f28ff291d7e51a69aa841e846",
+      "label": "B1",
+      "metadata": {
+        "label": "B1",
+        "dimension": "qihai:yuji_fodu",
+        "startUtc": "2026-10-17T01:59:32.209582468Z",
+        "renderer": "llvmpipe (LLVM 20.1.2, 256 bits)",
+        "vendor": "Mesa",
+        "openGlVersion": "4.5 (Core Profile) Mesa 25.2.8-0ubuntu0.24.04.4",
+        "width": 1280,
+        "height": 720,
+        "framerateLimit": 260,
+        "vsync": false,
+        "renderDistance": 8,
+        "simulationDistance": 6,
+        "graphics": "fancy",
+        "particles": "ALL",
+        "fov": 70,
+        "camera": "FIRST_PERSON",
+        "probe": "Forge RenderTickEvent END timestamps; not GPU-only timing",
+        "endUtc": "2026-10-17T02:04:32.262282863Z",
+        "frames": 2919,
+        "intervals": 2918,
+        "elapsedNanos": 300039039081,
+        "callbackNanosIncludingStartMetadata": 6417792,
+        "validWorldFrames": 2919,
+        "status": "complete"
+      },
+      "entityRows": 301,
+      "entityRange": [
+        273,
+        277
+      ],
+      "dimensionEntityRanges": {
+        "overworld": [
+          235,
+          235
+        ],
+        "nether": [
+          0,
+          0
+        ],
+        "end": [
+          0,
+          0
+        ],
+        "rain": [
+          38,
+          42
+        ],
+        "night": [
+          0,
+          0
+        ]
+      },
+      "parentsRange": [
+        0,
+        0
+      ],
+      "ownedChildrenRange": [
+        0,
+        0
+      ],
+      "snapshot": {
+        "sourceArtifactId": 12077285827,
+        "sourceMember": "fixtures/B1-before.tar.gz",
+        "snapshotSha256": "b11993c7a340b2c1e5677549fe0fdba61b4a8e512122a11556d90f62a8aabe62"
+      }
+    },
+    {
+      "frames": 2541,
+      "intervals": 2540,
+      "seconds": 300.092965052,
+      "meanFps": 8.464043799093623,
+      "meanFrameMs": 118.14683663464568,
+      "medianFrameMs": 116.524528,
+      "p95FrameMs": 124.06054334999999,
+      "p99FrameMs": 161.36682472,
+      "maxFrameMs": 189.224867,
+      "onePercentLowFps": 5.708302068816535,
+      "framesOver50Ms": 2540,
+      "framesOver100Ms": 2540,
+      "startPose": {
+        "x": 3.4144285483924017,
+        "y": 79.5,
+        "z": 12601.5,
+        "yaw": 89.99999237060547,
+        "pitch": 0.0
+      },
+      "endPose": {
+        "x": 3.4144285483924017,
+        "y": 79.5,
+        "z": 12601.5,
+        "yaw": 89.99999237060547,
+        "pitch": 0.0
+      },
+      "maxDisplacementFromFirstFrame": 0.0,
+      "yawRange": 0.0,
+      "pitchRange": 0.0,
+      "csvSha256": "e43f65f8e3f54029993e9aa9f03495ef378f8265fb01eee6ce2b2fb00b0708d6",
+      "label": "B2",
+      "metadata": {
+        "label": "B2",
+        "dimension": "sound_isolating_eraser:eternal_night",
+        "startUtc": "2026-10-17T02:07:32.561084340Z",
+        "renderer": "llvmpipe (LLVM 20.1.2, 256 bits)",
+        "vendor": "Mesa",
+        "openGlVersion": "4.5 (Core Profile) Mesa 25.2.8-0ubuntu0.24.04.4",
+        "width": 1280,
+        "height": 720,
+        "framerateLimit": 260,
+        "vsync": false,
+        "renderDistance": 8,
+        "simulationDistance": 6,
+        "graphics": "fancy",
+        "particles": "ALL",
+        "fov": 70,
+        "camera": "FIRST_PERSON",
+        "probe": "Forge RenderTickEvent END timestamps; not GPU-only timing",
+        "endUtc": "2026-10-17T02:12:32.665769098Z",
+        "frames": 2541,
+        "intervals": 2540,
+        "elapsedNanos": 300092965052,
+        "callbackNanosIncludingStartMetadata": 5502032,
+        "validWorldFrames": 2541,
+        "status": "complete"
+      },
+      "entityRows": 301,
+      "entityRange": [
+        253,
+        256
+      ],
+      "dimensionEntityRanges": {
+        "overworld": [
+          244,
+          244
+        ],
+        "nether": [
+          0,
+          0
+        ],
+        "end": [
+          0,
+          0
+        ],
+        "rain": [
+          0,
+          0
+        ],
+        "night": [
+          9,
+          12
+        ]
+      },
+      "parentsRange": [
+        0,
+        0
+      ],
+      "ownedChildrenRange": [
+        0,
+        0
+      ],
+      "snapshot": {
+        "sourceArtifactId": 12077285827,
+        "sourceMember": "fixtures/B2-before.tar.gz",
+        "snapshotSha256": "14614856dd4c60c63290114261f448d0834ca29e9a324f696f7a74315ece03d6"
+      }
+    },
+    {
+      "frames": 2259,
+      "intervals": 2258,
+      "seconds": 300.077009227,
+      "meanFps": 7.524735086558681,
+      "meanFrameMs": 132.8950439446413,
+      "medianFrameMs": 125.111456,
+      "p95FrameMs": 172.12704,
+      "p99FrameMs": 184.34297103999984,
+      "maxFrameMs": 244.35983,
+      "onePercentLowFps": 5.015980327763071,
+      "framesOver50Ms": 2258,
+      "framesOver100Ms": 2240,
+      "startPose": {
+        "x": -15.077039327433758,
+        "y": 66.0,
+        "z": -6.608070961271094,
+        "yaw": -180.0,
+        "pitch": 8.0
+      },
+      "endPose": {
+        "x": -16.30000001192093,
+        "y": 62.0,
+        "z": -11.300000011920929,
+        "yaw": -180.0,
+        "pitch": 8.0
+      },
+      "maxDisplacementFromFirstFrame": 10.016167796086528,
+      "yawRange": 0.0,
+      "pitchRange": 0.0,
+      "csvSha256": "5cd666dcff4da80db72ae06e7f139dc487dd165069ebb629a2952cea546c6395",
+      "label": "C",
+      "metadata": {
+        "label": "C",
+        "dimension": "minecraft:overworld",
+        "startUtc": "2026-10-17T02:15:32.039997500Z",
+        "renderer": "llvmpipe (LLVM 20.1.2, 256 bits)",
+        "vendor": "Mesa",
+        "openGlVersion": "4.5 (Core Profile) Mesa 25.2.8-0ubuntu0.24.04.4",
+        "width": 1280,
+        "height": 720,
+        "framerateLimit": 260,
+        "vsync": false,
+        "renderDistance": 8,
+        "simulationDistance": 6,
+        "graphics": "fancy",
+        "particles": "ALL",
+        "fov": 70,
+        "camera": "FIRST_PERSON",
+        "probe": "Forge RenderTickEvent END timestamps; not GPU-only timing",
+        "endUtc": "2026-10-17T02:20:32.130051568Z",
+        "frames": 2259,
+        "intervals": 2258,
+        "elapsedNanos": 300077009227,
+        "callbackNanosIncludingStartMetadata": 4756921,
+        "validWorldFrames": 2259,
+        "status": "complete"
+      },
+      "entityRows": 301,
+      "entityRange": [
+        170,
+        208
+      ],
+      "dimensionEntityRanges": {
+        "overworld": [
+          170,
+          208
+        ],
+        "nether": [
+          0,
+          0
+        ],
+        "end": [
+          0,
+          0
+        ],
+        "rain": [
+          0,
+          0
+        ],
+        "night": [
+          0,
+          0
+        ]
+      },
+      "parentsRange": [
+        16,
+        16
+      ],
+      "ownedChildrenRange": [
+        60,
+        69
+      ],
+      "snapshot": {
+        "sourceArtifactId": 12077285827,
+        "sourceMember": "fixtures/C-before.tar.gz",
+        "snapshotSha256": "e69395a2ab8be8ac35ae23a96e53ca02afa5587fc4ae45d8a6425b60b552fe2f"
+      }
+    }
+  ],
+  "scope": "software-rendered diagnostic client FPS, no hardware GPU or optimization claim",
+  "sourceArtifactSha256": "e0a5505f00f9fd0aeccf85dedf7c4c9990a0a201c2f33bf14bb6755ad718de88"
+}
