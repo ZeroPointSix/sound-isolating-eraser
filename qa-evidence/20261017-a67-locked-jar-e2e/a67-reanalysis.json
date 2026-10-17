@@ -1,0 +1,75 @@
+{
+  "utc": "2026-10-17T09:42:39Z",
+  "test_head": "723cc578993455937b85dc8c39a0d02cb455c621",
+  "test_job": "job-36VosJndJq8DcA0f",
+  "test_exit_code": 1,
+  "results": {
+    "flash": "FAIL",
+    "sepia": "PASS",
+    "hud_countdown": "PASS",
+    "exit_cleanup": "PASS"
+  },
+  "checks": {
+    "a63b": {
+      "input_sha256": "7aed17cc7bce35873abd3a97a0229d536daf99b3286b5acef9c02f3d3624e096",
+      "report": {
+        "origin": "first_visible_interior_pixel_frame",
+        "product_origin": "native_packet_deadline_minus_200ms",
+        "first_visible_product_ms": null,
+        "visible_clear_ms": null,
+        "visible_result": "FAIL",
+        "product_timing_result": "FAIL",
+        "acceptance": "original_gates_still_required",
+        "reason": "No real visible flash; no timing origin assigned"
+      }
+    },
+    "a63c": {
+      "input_sha256": "cd5e5ca753b7ffa749636af1b98c7b0d291a74f2d7ccf2450a62e314ff921a0e",
+      "report": {
+        "origin": "first_visible_interior_pixel_frame",
+        "product_origin": "native_packet_deadline_minus_200ms",
+        "first_visible_product_ms": null,
+        "visible_clear_ms": null,
+        "visible_result": "FAIL",
+        "product_timing_result": "FAIL",
+        "acceptance": "original_gates_still_required",
+        "reason": "No real visible flash; no timing origin assigned"
+      }
+    },
+    "a67": {
+      "input_sha256": "5929fad7756700230f0f166c83cbd3a08cde2cd69ef10c6c25c34221b439eb38",
+      "report": {
+        "origin": "first_visible_interior_pixel_frame",
+        "product_origin": "native_packet_deadline_minus_200ms",
+        "first_visible_product_ms": 203.814037,
+        "visible_clear_ms": 119.58130399999996,
+        "visible_result": "OBSERVED",
+        "product_timing_result": "FAIL",
+        "acceptance": "original_gates_still_required",
+        "visible_samples": 7,
+        "max_capture_gap_ms": 32.809368000000006,
+        "visible_clear_product_ms": 323.395341,
+        "reason": "Visible pixels measured, but original timing window not met",
+        "supersedes": "flash-visible-timing.json",
+        "correction": "Original supplement only searched 0..200ms; delayed pixels now reported without changing original FAIL gates."
+      }
+    }
+  },
+  "jars_unchanged": {
+    "qa-evidence/20261016-200ms-rebuild-a3/prebuild/delivery.jar": "6e5250ceec0abf5bbd0a013308d768e41fc3028be2204ee4e52597823b32ee52",
+    "qa-evidence/20261016-200ms-rebuild-a3/prebuild/runtime.jar": "5ba9520754e5cfbde43030a99d235950637423cd268e86283711d559ac27c5f9",
+    "build/libs/sound_isolating_eraser-0.13.0-keeper.2.jar": "2dc4f746ebeea31eed48cc6040d15f9c5ad31bfc675adeeec69edb42aa6d36c0",
+    "build/keeper-runtime/keeper-runtime.jar": "5d39ee45df3ce5977419407b7593df13c83106a356ad35cc4756b25e54fc8fe6"
+  },
+  "original_acceptance_unchanged": true,
+  "remaining_a67_processes": [],
+  "other_java_processes_untouched": [
+    {
+      "pid": 825654,
+      "cwd": "/data2/red-nails-20261016/build/red-nails-e2e-1792230062010089679/server"
+    }
+  ],
+  "qa_compilation_exit_code": 0,
+  "client_launch_count": 1,
+  "original_supplement_preserved": true
+}

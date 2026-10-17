@@ -1,0 +1,15 @@
+{
+  "origin": "first_visible_interior_pixel_frame",
+  "product_origin": "native_packet_deadline_minus_200ms",
+  "first_visible_product_ms": 203.814037,
+  "visible_clear_ms": 119.58130399999996,
+  "visible_result": "OBSERVED",
+  "product_timing_result": "FAIL",
+  "acceptance": "original_gates_still_required",
+  "visible_samples": 7,
+  "max_capture_gap_ms": 32.809368000000006,
+  "visible_clear_product_ms": 323.395341,
+  "reason": "Visible pixels measured, but original timing window not met",
+  "supersedes": "flash-visible-timing.json",
+  "correction": "Original supplement only searched 0..200ms; delayed pixels now reported without changing original FAIL gates."
+}

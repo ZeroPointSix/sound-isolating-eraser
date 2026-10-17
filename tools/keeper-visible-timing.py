@@ -10,7 +10,8 @@ def analyze(rows):
     report = {'origin': 'first_visible_interior_pixel_frame',
               'product_origin': 'native_packet_deadline_minus_200ms',
               'first_visible_product_ms': None, 'visible_clear_ms': None,
-              'visible_result': 'FAIL', 'acceptance': 'original_gates_still_required'}
+              'visible_result': 'FAIL', 'product_timing_result': 'FAIL',
+              'acceptance': 'original_gates_still_required'}
     if len(normal) < 3:
         return report | {'reason': 'No stable post-flash reference'}, []
     reference = [sum(float(row[c]) for row in normal) / len(normal) for c in ('r', 'g', 'b')]
@@ -23,7 +24,7 @@ def analyze(rows):
                     for i, c in enumerate(('r', 'g', 'b'))) / denominator
         values.append({**row, 'estimated_alpha': alpha})
     visible = [row for row in values
-               if 0 <= float(row['start_ms']) <= 200 and row['estimated_alpha'] >= .08]
+               if 0 <= float(row['start_ms']) <= 500 and row['estimated_alpha'] >= .08]
     if not visible:
         return report | {'reason': 'No real visible flash; no timing origin assigned'}, values
     origin = float(visible[0]['start_ms'])
@@ -31,6 +32,7 @@ def analyze(rows):
         row['visible_start_ms'] = float(row['start_ms']) - origin
         row['visible_end_ms'] = float(row['end_ms']) - origin
     report['first_visible_product_ms'] = origin
+    report['visible_samples'] = len(visible)
     strong = any(row['estimated_alpha'] >= .25 for row in visible)
     clear = [row for row in values if row['visible_start_ms'] >= 0
              and abs(row['estimated_alpha']) < .05]
@@ -39,12 +41,17 @@ def analyze(rows):
     if clear:
         report['visible_clear_ms'] = clear[0]['visible_start_ms']
         report['visible_clear_product_ms'] = float(clear[0]['start_ms'])
-    good = (strong and len(visible) >= 2 and clear and gaps and min(gaps) >= 0
-            and max(gaps) <= 50 and 0 < report['visible_clear_ms'] <= 250
-            and report['visible_clear_product_ms'] <= 250)
-    report['visible_result'] = 'OBSERVED' if good else 'FAIL'
-    report['reason'] = ('Visible frames observed; original 200ms/250ms gates remain authoritative'
-                        if good else 'Visible-pixel duration or sampling requirements not met')
+    observed = strong and len(visible) >= 2 and gaps and min(gaps) >= 0 and max(gaps) <= 50
+    report['visible_result'] = 'OBSERVED' if observed else 'FAIL'
+    in_window = [row for row in visible if float(row['start_ms']) <= 200]
+    late_clear = all(abs(row['estimated_alpha']) < .08 for row in values
+                     if float(row['start_ms']) >= 300)
+    product_good = (observed and clear and in_window
+                    and any(row['estimated_alpha'] >= .25 for row in in_window)
+                    and 200 <= report['visible_clear_product_ms'] <= 250 and late_clear)
+    report['product_timing_result'] = 'OBSERVED_WITHIN_WINDOW' if product_good else 'FAIL'
+    report['reason'] = ('Visible pixels observed; original render and pixel gates remain authoritative'
+                        if product_good else 'Visible pixels measured, but original timing window not met')
     return report, values
 
 
@@ -59,7 +66,7 @@ def main():
             writer.writeheader()
             writer.writerows(values)
     print(json.dumps(report), flush=True)
-    return 0 if report['visible_result'] == 'OBSERVED' else 1
+    return 0 if report['product_timing_result'] == 'OBSERVED_WITHIN_WINDOW' else 1
 
 
 if __name__ == '__main__':
