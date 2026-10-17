@@ -109,8 +109,13 @@ public final class WaterGhostGrab extends Goal {
     }
     private boolean blocked(Vec3 hold) {
         var holdBox = target.getDimensions(target.getPose()).makeBoundingBox(hold);
+        // A boat above the destination can still support a dismounted player. Keep
+        // pulling beside it until clear instead of aiming straight through its hull.
+        var descentColumn = holdBox.expandTowards(0, Math.max(0, target.getY() - hold.y), 0);
         return !mob.level().getWorldBorder().isWithinBounds(holdBox)
-                || mob.level().getBlockCollisions(target, holdBox).iterator().hasNext();
+                || mob.level().getBlockCollisions(target, holdBox).iterator().hasNext()
+                || (target instanceof ServerPlayer && !mob.level().getEntities(target, descentColumn,
+                        entity -> entity != mob && target.canCollideWith(entity)).isEmpty());
     }
     @Override public void tick() {
         if (target == null) return;

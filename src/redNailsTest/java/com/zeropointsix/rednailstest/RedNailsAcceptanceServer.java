@@ -248,6 +248,8 @@ public final class RedNailsAcceptanceServer {
             if (samples % 5 == 0) System.out.println("RED_NAILS_ACCEPTANCE_PHYSICS tick=" + now
                     + " player=" + player.position() + " ghost=" + ghost.position() + " boat=" + boat.position()
                     + " ghostBox=" + ghost.getBoundingBox() + " boatBox=" + boat.getBoundingBox()
+                    + " playerBox=" + player.getBoundingBox()
+                    + " playerBoatOverlap=" + player.getBoundingBox().move(0, -0.08, 0).intersects(boat.getBoundingBox())
                     + " below=" + ghost.verticalCollisionBelow
                     + " stepClear=" + ghost.level().noCollision(ghost, ghost.getBoundingBox().move(0, -0.08, 0))
                     + " stepBlock=" + ghost.level().getBlockCollisions(ghost, ghost.getBoundingBox().move(0, -0.08, 0)).iterator().hasNext()
@@ -301,6 +303,7 @@ public final class RedNailsAcceptanceServer {
                 }
                 if (scenario.equals("bottom")) {
                     check(startY - minY > 0 && startY - minY < 6, "shallow-water descent stops before six blocks");
+                    check(playerStartY - playerMinY > 1, "actual resisting player leaves the boat and descends in shallow water");
                     check(releasedOnFloor, "descent stopped at fixture stone floor, not at an entity collider");
                 }
             }
