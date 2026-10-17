@@ -55,6 +55,7 @@ public final class FlareContent {
 
     public static void register(IEventBus bus) {
         ITEMS.register(bus); BLOCKS.register(bus); ENTITIES.register(bus); BLOCK_ENTITIES.register(bus); LOOT.register(bus);
+        bus.addListener((net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent e) -> e.enqueueWork(FlareGunNetwork::register));
         bus.addListener((net.minecraftforge.event.entity.EntityAttributeCreationEvent e) -> e.put(DECOY.get(), FlareDecoy.attributes().build()));
         MinecraftForge.EVENT_BUS.register(FlareEvents.class);
     }

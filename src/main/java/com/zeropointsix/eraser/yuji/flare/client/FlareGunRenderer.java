@@ -9,6 +9,8 @@ import software.bernie.geckolib.renderer.GeoItemRenderer;
 public final class FlareGunRenderer extends GeoItemRenderer<FlareGunItem> {
     public FlareGunRenderer() { super(new Model()); }
 
+    public net.minecraft.world.item.ItemDisplayContext perspective() { return renderPerspective; }
+
     private static final class Model extends GeoModel<FlareGunItem> {
         @Override public ResourceLocation getModelResource(FlareGunItem item) {
             return YujiContent.id("geo/flare_gun.geo.json");

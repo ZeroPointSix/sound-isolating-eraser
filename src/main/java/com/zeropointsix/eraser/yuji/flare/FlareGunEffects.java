@@ -1,6 +1,5 @@
 package com.zeropointsix.eraser.yuji.flare;
 
-import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
@@ -11,9 +10,8 @@ import net.minecraft.world.phys.Vec3;
 final class FlareGunEffects {
     static void fire(ServerLevel level, Player player) {
         Vec3 muzzle = FlareGunPose.muzzle(player);
-        level.sendParticles(ParticleTypes.FLASH, muzzle.x, muzzle.y, muzzle.z, 1, 0, 0, 0, 0);
-        level.sendParticles(ParticleTypes.SMALL_FLAME, muzzle.x, muzzle.y, muzzle.z, 4, .025, .025, .025, .015);
-        level.sendParticles(ParticleTypes.SMOKE, muzzle.x, muzzle.y, muzzle.z, 2, .025, .025, .025, .012);
+        // Each viewer resolves its own held-item pose; an eye offset is not a third-person muzzle.
+        FlareGunNetwork.fire(player);
         // Broadcast once from the server so the shooter and other players hear the same shot.
         level.playSound(null, muzzle.x, muzzle.y, muzzle.z, SoundEvents.FIREWORK_ROCKET_BLAST,
                 SoundSource.PLAYERS, .7F, 1.25F + level.random.nextFloat() * .12F);

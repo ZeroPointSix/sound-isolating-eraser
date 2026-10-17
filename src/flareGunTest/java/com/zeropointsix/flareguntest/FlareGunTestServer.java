@@ -113,7 +113,17 @@ public final class FlareGunTestServer {
             if (ticks == 1040) phase("left-third-up-fire", false);
             if (ticks == 1140) {
                 if (shots != 6 || !actor.getOffhandItem().isEmpty()) throw new AssertionError("Pitch shots: " + shots);
-                Files.writeString(RESULTS.resolve("server.pass"), "Dedicated server: 6 actual player shots including up/down pitch, 6 cartridges consumed; two cooldown-refill and two empty attempts rejected; two clients synchronized.\n");
+                phase("right-third-down-load", true);
+            }
+            if (ticks == 1200) phase("right-third-down-fire", false);
+            if (ticks == 1260) {
+                if (shots != 7) throw new AssertionError("Right third-person down shot missing: " + shots);
+                phase("left-third-down-load", true);
+            }
+            if (ticks == 1320) phase("left-third-down-fire", false);
+            if (ticks == 1420) {
+                if (shots != 8 || !actor.getOffhandItem().isEmpty()) throw new AssertionError("Third-person down shots: " + shots);
+                Files.writeString(RESULTS.resolve("server.pass"), "Dedicated server: 8 actual player shots including left/right third-person down shots, 8 cartridges consumed; two cooldown-refill and two empty attempts rejected; two clients synchronized.\n");
                 phase("done", false);
                 finished = true;
             }

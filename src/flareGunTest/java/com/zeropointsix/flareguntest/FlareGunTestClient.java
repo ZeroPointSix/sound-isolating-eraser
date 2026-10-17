@@ -1,7 +1,12 @@
 package com.zeropointsix.flareguntest;
 
 import com.zeropointsix.eraser.yuji.flare.FlareContent;
+import com.zeropointsix.eraser.yuji.flare.FlareGunItem;
+import com.zeropointsix.eraser.yuji.flare.FlareGunPose;
+import com.zeropointsix.eraser.yuji.flare.client.FlareGunMuzzleClient;
 import com.zeropointsix.eraser.yuji.flare.client.FlareGunRenderer;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import java.nio.file.Files;
@@ -18,20 +23,30 @@ import net.minecraft.client.gui.screens.DisconnectedScreen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.multiplayer.resolver.ServerAddress;
+import net.minecraft.client.particle.Particle;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.RenderType;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.protocol.game.ClientboundLevelParticlesPacket;
 import net.minecraft.network.protocol.game.ServerboundUseItemPacket;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.HumanoidArm;
+import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.ClientChatReceivedEvent;
+import net.minecraftforge.client.event.RenderLevelStageEvent;
 import net.minecraftforge.client.event.sound.PlaySoundEvent;
 import net.minecraftforge.client.extensions.common.IClientItemExtensions;
 import net.minecraftforge.client.gui.LoadingErrorScreen;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+import org.joml.Matrix4f;
+import org.joml.Vector3f;
+import software.bernie.geckolib.cache.object.GeoBone;
+import software.bernie.geckolib.event.GeoRenderEvent;
+import software.bernie.geckolib.renderer.layer.GeoRenderLayer;
 
 @Mod.EventBusSubscriber(modid = "flare_gun_qa", value = Dist.CLIENT)
 public final class FlareGunTestClient {
@@ -43,6 +58,9 @@ public final class FlareGunTestClient {
     private static int ticks, lastFrame = -1, reports, launches, clicks, flashes, flames, smoke;
     private static int completedFires, completedEmpty, completedRefills, samples, bootTicks;
     private static boolean failed, connecting;
+    private static final Matrix4f worldFromView = new Matrix4f();
+    private static Vec3 camera = Vec3.ZERO, renderedMuzzle;
+    private static int muzzleChecks;
 
     private static Path file(String name) { return RESULTS.resolve(ROLE + "-" + name); }
 
@@ -67,7 +85,8 @@ public final class FlareGunTestClient {
         require(samples > 8, "Insufficient rendered samples: " + samples);
         if (phase.endsWith("fire")) {
             require(reports == 1 && launches == 1, "Expected exactly one of each firing sound");
-            require(flashes == 1 && flames == 1 && smoke == 1, "Expected exactly one of each muzzle particle packet");
+            require(flashes == 1 && flames == 4 && smoke == 2, "Missing or duplicate actual muzzle particles");
+            require(muzzleChecks == 1, "Missing rendered-geometry muzzle check");
             require(animated.contains(phase), "Missing rendered recoil");
             completedFires++;
         } else {
@@ -96,7 +115,8 @@ public final class FlareGunTestClient {
         try {
             finishPhase();
             phase = message.substring("FLARE_GUN_QA:".length());
-            ticks = reports = launches = clicks = flashes = flames = smoke = samples = 0;
+            ticks = reports = launches = clicks = flashes = flames = smoke = samples = muzzleChecks = 0;
+            renderedMuzzle = null;
             lastFrame = -1;
             var mc = Minecraft.getInstance();
             mc.options.setCameraType(!OBSERVER && phase.contains("third") ? CameraType.THIRD_PERSON_FRONT : CameraType.FIRST_PERSON);
@@ -123,9 +143,9 @@ public final class FlareGunTestClient {
                 Files.writeString(RESULTS.resolve(ROLE + ".ready"), "real client connected\n");
             }
             if (phase.equals("done")) {
-                require(completedFires == 6 && completedEmpty == 2 && completedRefills == 2,
+                require(completedFires == 8 && completedEmpty == 2 && completedRefills == 2,
                         "Missing complete right/left, first/third, pitch, empty or cooldown-refill cases");
-                Files.writeString(RESULTS.resolve(ROLE + ".pass"), "PASS 6 rendered shots including up/down pitch, 2 empty cases, 2 cooldown refills; recoil direction excludes break-open; camera-space muzzle checked.\n");
+                Files.writeString(RESULTS.resolve(ROLE + ".pass"), "PASS 8 rendered shots including left/right third-person down shots, 2 empty cases, 2 cooldown refills; recoil direction excludes break-open; actual particles checked against rendered barrel vertices.\n");
             }
         } catch (Throwable failure) { fail(failure); }
     }
@@ -134,36 +154,76 @@ public final class FlareGunTestClient {
         if (failed || phase.isEmpty() || phase.equals("ready")) return;
         var type = packet.getParticle().getType();
         if (type != ParticleTypes.FLASH && type != ParticleTypes.SMALL_FLAME && type != ParticleTypes.SMOKE) return;
+        fail(new AssertionError("Legacy world-coordinate muzzle packet bypassed rendered attachment: " + type));
+    }
+
+    @SubscribeEvent public static void world(RenderLevelStageEvent event) {
+        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_SKY) return;
+        worldFromView.set(event.getPoseStack().last().pose()).invert();
+        camera = event.getCamera().getPosition();
+    }
+
+    @SubscribeEvent public static void modelProbe(GeoRenderEvent.Item.CompileRenderLayers event) {
+        if (!(event.getRenderer() instanceof FlareGunRenderer flareRenderer)) return;
+        event.addLayer(new GeoRenderLayer<FlareGunItem>(flareRenderer) {
+            @Override public void renderForBone(PoseStack pose, FlareGunItem item, GeoBone bone, RenderType type,
+                    MultiBufferSource buffers, VertexConsumer buffer, float partial, int light, int overlay) {
+                if (!bone.getName().equals("barrel")) return;
+                ItemDisplayContext view = flareRenderer.perspective();
+                if (view != ItemDisplayContext.THIRD_PERSON_LEFT_HAND && view != ItemDisplayContext.THIRD_PERSON_RIGHT_HAND) return;
+                // Independent oracle: the actual baked front-face vertices in the renderer's already-transformed pose.
+                float front = Float.POSITIVE_INFINITY;
+                for (var cube : bone.getCubes()) for (var quad : cube.quads()) if (quad != null)
+                    for (var vertex : quad.vertices()) front = Math.min(front, vertex.position().z());
+                float minX = Float.POSITIVE_INFINITY, minY = Float.POSITIVE_INFINITY;
+                float maxX = Float.NEGATIVE_INFINITY, maxY = Float.NEGATIVE_INFINITY;
+                for (var cube : bone.getCubes()) for (var quad : cube.quads()) if (quad != null)
+                    for (var vertex : quad.vertices()) if (Math.abs(vertex.position().z() - front) < .0001F) {
+                        minX = Math.min(minX, vertex.position().x()); maxX = Math.max(maxX, vertex.position().x());
+                        minY = Math.min(minY, vertex.position().y()); maxY = Math.max(maxY, vertex.position().y());
+                    }
+                Vector3f center = pose.last().pose().transformPosition(new Vector3f((minX + maxX) / 2, (minY + maxY) / 2, front));
+                worldFromView.transformPosition(center);
+                renderedMuzzle = camera.add(center.x(), center.y(), center.z());
+            }
+        });
+    }
+
+    private static Vec3 position(Particle particle) {
+        require(particle != null && particle.isAlive(), "Muzzle particle was not created");
+        var box = particle.getBoundingBox();
+        return new Vec3((box.minX + box.maxX) / 2, box.minY, (box.minZ + box.maxZ) / 2);
+    }
+
+    @SubscribeEvent public static void emitted(FlareGunMuzzleClient.Emitted event) {
+        if (failed) return;
         try {
-            if (type == ParticleTypes.FLASH) flashes++;
-            if (type == ParticleTypes.SMALL_FLAME) flames++;
-            if (type == ParticleTypes.SMOKE) smoke++;
-            require(phase.endsWith("fire"), "Muzzle packet in rejected/load phase: " + type);
+            require(phase.endsWith("fire"), "Actual muzzle particles in rejected/load phase");
             var mc = Minecraft.getInstance();
             var actor = mc.level.players().stream().filter(p -> p.getGameProfile().getName().equals("FlareTester")).findFirst().orElseThrow();
-            Vec3 look = actor.getLookAngle();
-            Vec3 right = look.cross(new Vec3(0, 1, 0));
-            if (right.lengthSqr() < 1.0E-6) {
-                double yaw = Math.toRadians(actor.getYRot());
-                right = new Vec3(-Math.cos(yaw), 0, -Math.sin(yaw));
-            } else {
-                right = right.normalize();
+            require(event.owner == actor.getId(), "Muzzle belongs to wrong player");
+            boolean first = event.view == ItemDisplayContext.FIRST_PERSON_LEFT_HAND || event.view == ItemDisplayContext.FIRST_PERSON_RIGHT_HAND;
+            require(first == (!OBSERVER && !phase.contains("third")), "Incorrect muzzle render perspective");
+            Vec3 actual = position(event.flash);
+            Vec3 expected = renderedMuzzle;
+            if (first) {
+                Vec3 look = actor.getLookAngle();
+                Vec3 right = look.cross(new Vec3(0, 1, 0)).normalize();
+                Vec3 down = look.cross(right).normalize();
+                int side = phase.startsWith("left") ? -1 : 1;
+                expected = actor.getEyePosition().add(look.scale(.7)).add(right.scale(side * .22)).add(down.scale(.18));
             }
-            Vec3 down = look.cross(right);
-            if (down.lengthSqr() > 1.0E-12) down = down.normalize();
-            Vec3 actual = new Vec3(packet.getX(), packet.getY(), packet.getZ());
-            Vec3 local = actual.subtract(actor.getEyePosition());
-            int side = phase.startsWith("left") ? -1 : 1;
-            require(Math.abs(local.dot(look) - .7) < .04, "Muzzle not on look axis: " + local.dot(look));
-            require(Math.abs(local.dot(right) - side * .22) < .04, "Muzzle hand offset wrong: " + local.dot(right));
-            require(Math.abs(local.dot(down) - .18) < .04, "Muzzle not camera-down of gun: " + local.dot(down));
-            if (Math.abs(actor.getXRot()) > 50) {
-                double yaw = Math.toRadians(actor.getYRot());
-                Vec3 worldDown = actor.getEyePosition().add(look.scale(.7))
-                        .add(new Vec3(-Math.cos(yaw), 0, -Math.sin(yaw)).scale(side * .22)).add(0, -.18, 0);
-                require(actual.distanceTo(worldDown) > .08, "Steep pitch still used world-down muzzle");
-            }
-            Files.writeString(file("muzzle.csv"), phase + "," + type + "," + actor.getXRot() + "," + actual.x + "," + actual.y + "," + actual.z + "\n",
+            require(expected != null, "No rendered barrel vertices before muzzle emission");
+            double error = actual.distanceTo(expected);
+            require(error < .025, "Flash detached from rendered muzzle by " + error + ": " + actual + " vs " + expected);
+            for (Particle particle : event.flames) require(position(particle).distanceTo(expected) < .025, "Flame detached from muzzle");
+            for (Particle particle : event.smoke) require(position(particle).distanceTo(expected) < .025, "Smoke detached from muzzle");
+            double oldError = FlareGunPose.muzzle(actor).distanceTo(expected);
+            if (!first && phase.contains("down"))
+                require(oldError > .1, "Down-shot oracle cannot distinguish the old eye-offset regression");
+            flashes++; flames += event.flames.size(); smoke += event.smoke.size(); muzzleChecks++;
+            Files.writeString(file("muzzle.csv"), phase + "," + event.view + "," + actor.getXRot() + "," + actual.x + "," + actual.y + "," + actual.z
+                    + "," + expected.x + "," + expected.y + "," + expected.z + ",error=" + error + ",oldEyeError=" + oldError + "\n",
                     StandardOpenOption.CREATE, StandardOpenOption.APPEND);
         } catch (Throwable failure) { fail(failure); }
     }
