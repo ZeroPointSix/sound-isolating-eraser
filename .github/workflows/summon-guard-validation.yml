@@ -1,0 +1,48 @@
+name: Summon Guard Validation
+
+on:
+  pull_request:
+    branches: [main, feat/t1-summon-guard-core-20261016, feat/t1-suxia-20261016]
+    paths:
+      - src/**
+      - gradle/**
+      - build.gradle
+      - gradle.properties
+      - tools/**
+      - .github/workflows/summon-guard-validation.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: summon-guard-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  summon-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Verify production mixin targets
+        run: python3 tools/verify_mixin_targets.py
+      - name: Build and validate resources
+        run: bash ./gradlew --no-daemon build
+      - name: Run Suxia and RedNails integration regression
+        run: bash ./gradlew --no-daemon -PredNailsOnly runGameTestServer
+      - name: Preserve validation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: summon-guard-validation
+          path: |
+            build/reports/
+            build/libs/*.jar
+            run/logs/
+          if-no-files-found: warn
