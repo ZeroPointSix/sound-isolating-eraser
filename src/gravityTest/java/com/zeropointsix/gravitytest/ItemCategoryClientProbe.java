@@ -1,15 +1,24 @@
 package com.zeropointsix.gravitytest;
 
+import com.mojang.blaze3d.platform.InputConstants;
+import com.zeropointsix.eraser.client.EraserClient;
+import com.zeropointsix.eraser.client.GravityClient;
+import com.zeropointsix.eraser.client.RedNailsClient;
+import com.zeropointsix.eraser.client.WingsKeys;
+import com.zeropointsix.eraser.client.ItemGuideTooltipLayout;
+import com.zeropointsix.eraser.item.ItemGuideCatalog;
 import com.zeropointsix.eraser.registry.ModItemTags;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Screenshot;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.FormattedText;
+import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -31,6 +40,13 @@ public final class ItemCategoryClientProbe {
     private static final ItemStack STICK = Items.STICK.getDefaultInstance();
     private static int phase;
     private static int sample;
+    private static int round;
+    private static int configuredRound = -1;
+    private static long resizeReadyFrame;
+    private static String observedBounds;
+    private static int expectedPage;
+    private static boolean pagingBack;
+    private static final java.util.Set<String> renderedExtensionRows = new java.util.HashSet<>();
     private static String originalLanguage;
     private static CompletableFuture<Void> languageReload;
     private static InventoryScreen screen;
@@ -41,10 +57,15 @@ public final class ItemCategoryClientProbe {
     private static int renderedTooltips;
     private static long readyFrame;
     private static long hoverStarted;
+    private static long inventoryWaitStarted;
     private static boolean mouseMoved;
     private static String observedText;
     private static Throwable renderFailure;
     private static boolean finished;
+    private static final String[] MODES = {"default", "shift", "ctrl", "both"};
+    private static int mode;
+    private static boolean modifiersReady;
+    private static InputConstants.Key originalGravityKey;
 
     static boolean tick(Minecraft mc, long frames, Path results, String role) throws Exception {
         if (!Boolean.getBoolean("qiwu.qa") || finished) return true;
@@ -59,45 +80,102 @@ public final class ItemCategoryClientProbe {
             if (!Files.exists(results.resolve("server-category.pass"))) return false;
             if (changeLanguage(mc, originalLanguage)) return false;
             Files.writeString(results.resolve(role + "-category.pass"),
-                    "14 native hovers; en_us/zh_cn; synced daoju/both/restored tags; original language restored\n");
+                    (ItemGuideProbeCases.cases().stream().mapToInt(c -> c.items().size()).sum() * 8 + 6)
+                            + " native hovers; all 53 catalog items; default/Shift/Ctrl/both; en_us/zh_cn; "
+                            + "7 extra viewport/scale cases for 4 long guides; synced tags; original language restored\n");
             finished = true;
             return true;
         }
         if (!Files.exists(results.resolve("server-category-" + PHASES[phase] + ".pass"))) return false;
         if (mc.gameMode.hasInfiniteItems()) return false;
+        var viewport = phase == 0 ? ItemGuideProbeCases.cases().get(round)
+                : new ItemGuideProbeCases.Case("reload", 960, 540, 2, List.of());
+        String roundName = phase == 0 ? viewport.name() : PHASES[phase];
+        if (!Files.exists(results.resolve("server-category-" + roundName + ".pass"))) return false;
+        int desiredRound = phase == 0 ? round : -2;
+        if (configuredRound != desiredRound) {
+            mc.setScreen(null);
+            screen = null;
+            setModifiers(mc, 0);
+            GLFW.glfwSetWindowSize(mc.getWindow().getWindow(), viewport.width(), viewport.height());
+            mc.options.guiScale().set(viewport.scale());
+            mc.resizeDisplay();
+            configuredRound = desiredRound;
+            resizeReadyFrame = frames + 10;
+            return false;
+        }
+        if (frames < resizeReadyFrame) return false;
+        require(mc.getWindow().getScreenWidth() == viewport.width()
+                        && mc.getWindow().getScreenHeight() == viewport.height()
+                        && mc.getWindow().getGuiScale() == viewport.scale(),
+                "native window and GUI scale match case " + roundName);
         if (phase > 0) {
             // Retain the same stack across all reloads to catch stale membership caches.
             if (STICK.is(ModItemTags.QIWU) != (phase == 2)
                     || STICK.is(ModItemTags.DAOJU) != (phase == 1 || phase == 2)) return false;
         }
-        Item[] items = phase == 0 ? new Item[]{item("super_fertilizer_bag"),
-                item("gravity_jade_pendant"), item("shaxiadao"),
-                item("sound_isolating_eraser")} : new Item[]{Items.STICK};
-        if (sample == items.length * 2) {
+        Item[] items = phase == 0 ? viewport.items().stream()
+                .map(ForgeRegistries.ITEMS::getValue).toArray(Item[]::new) : new Item[]{Items.STICK};
+        int modes = phase == 0 ? MODES.length : 1;
+        if (sample == items.length * 2 * modes) {
             expectedItem = null;
             mc.setScreen(null);
+            if (phase == 0) {
+                Files.writeString(results.resolve(role + "-category-" + roundName + ".pass"),
+                        "real window=" + viewport.width() + "x" + viewport.height() + " scale=" + viewport.scale()
+                                + " items=" + items.length + " locales=2 modes=4 complete outer border\n");
+                if (++round < ItemGuideProbeCases.cases().size()) {
+                    sample = 0;
+                    return false;
+                }
+            }
             Files.writeString(results.resolve(role + "-category-" + PHASES[phase] + ".pass"),
                     "native hover and both locales passed: " + PHASES[phase] + "\n");
             phase++;
             sample = 0;
             return false;
         }
-        String language = sample < items.length ? "en_us" : "zh_cn";
+        String language = sample < items.length * modes ? "en_us" : "zh_cn";
+        mode = phase == 0 ? (sample / items.length) % MODES.length : 0;
         if (changeLanguage(mc, language)) return false;
         if (screen == null) {
             expectedItem = items[sample % items.length];
-            if (mc.player.getInventory().items.stream().noneMatch(stack -> stack.is(expectedItem))) return false;
+            if (mc.player.getInventory().items.stream().noneMatch(stack -> stack.is(expectedItem))) {
+                if (inventoryWaitStarted == 0) inventoryWaitStarted = System.nanoTime();
+                if (System.nanoTime() - inventoryWaitStarted > 45_000_000_000L) {
+                    throw new AssertionError("Server-supplied guide item missing: phase=" + PHASES[phase]
+                            + " sample=" + sample + " item=" + ForgeRegistries.ITEMS.getKey(expectedItem)
+                            + " mode=" + MODES[mode] + " language=" + language
+                            + " menu=" + mc.player.containerMenu.getClass().getSimpleName());
+                }
+                return false;
+            }
+            inventoryWaitStarted = 0;
+            if (expectedItem == item("gravity_jade_pendant")) {
+                originalGravityKey = GravityClient.ACTIVATE.getKey();
+                GravityClient.ACTIVATE.setKey(InputConstants.Type.KEYSYM.getOrCreate(GLFW.GLFW_KEY_B));
+                KeyMapping.resetMapping();
+            }
             expectedRarity = expectedItem.getDefaultInstance().getRarity();
-            boolean qiwu = phase == 0 || phase == 2;
-            expectedLabel = phase == 3 ? "" : (qiwu
-                    ? (language.equals("zh_cn") ? "\u5947\u7269" : "Curio")
-                    : (language.equals("zh_cn") ? "\u9053\u5177" : "Tool"));
-            expectedColor = qiwu ? 0xFFAA00 : 0x8FAAC4;
+            ItemStack stack = expectedItem.getDefaultInstance();
+            boolean precious = stack.is(ModItemTags.PRECIOUS_MEMORY);
+            boolean qiwu = stack.is(ModItemTags.QIWU);
+            boolean tool = stack.is(ModItemTags.DAOJU);
+            expectedLabel = precious
+                    ? Component.translatable("tooltip.sound_isolating_eraser.suxia_pocket_watch.category").getString()
+                    : qiwu ? Component.translatable("tooltip.sound_isolating_eraser.qiwu").getString()
+                    : tool ? Component.translatable("tooltip.sound_isolating_eraser.daoju").getString() : "";
+            expectedColor = precious || qiwu ? 0xFFAA00 : 0x8FAAC4;
             screen = new InventoryScreen(mc.player);
             mc.setScreen(screen);
             renderedTooltips = 0;
+            expectedPage = 0;
+            pagingBack = false;
+            ItemGuideExtensionProbe.imageRendered = false;
+            renderedExtensionRows.clear();
             observedText = null;
             mouseMoved = false;
+            modifiersReady = false;
             hoverStarted = System.nanoTime();
             readyFrame = frames + 2;
             return false;
@@ -109,20 +187,60 @@ public final class ItemCategoryClientProbe {
                     + " hovered=" + (screen.getSlotUnderMouse() == null ? "none" : screen.getSlotUnderMouse().getItem()));
         }
         if (!mouseMoved && frames >= readyFrame) {
+            setModifiers(mc, mode);
             moveMouse(mc);
             mouseMoved = true;
             readyFrame = frames + 4;
             return false;
         }
-        if (frames < readyFrame || renderedTooltips < 3) return false;
+        if (mouseMoved && !modifiersReady) {
+            long window = mc.getWindow().getWindow();
+            boolean shift = InputConstants.isKeyDown(window, GLFW.GLFW_KEY_LEFT_SHIFT);
+            boolean control = InputConstants.isKeyDown(window, GLFW.GLFW_KEY_LEFT_CONTROL);
+            if (shift != ((mode & 1) != 0) || control != ((mode & 2) != 0)) return false;
+            modifiersReady = true;
+            renderedTooltips = 0;
+            readyFrame = frames + 4;
+        }
+        if (frames < readyFrame || renderedTooltips < 3
+                || (ItemGuideTooltipLayout.pageCount() > 1 && ItemGuideTooltipLayout.pageIndex() != expectedPage)) return false;
         String id = ForgeRegistries.ITEMS.getKey(expectedItem).getPath();
-        String name = role + "-category-" + PHASES[phase] + "-" + language + "-" + id;
+        String name = role + "-category-" + roundName + "-" + language + "-" + id + "-" + MODES[mode];
+        int pages = ItemGuideTooltipLayout.pageCount();
+        if (roundName.startsWith("overflow-")) require(pages > 1, "late Gather text reaches paginated renderer");
+        if (pages > 1) name += (pagingBack ? "-back-page" : "-page") + (expectedPage + 1);
         try (var image = Screenshot.takeScreenshot(mc.getMainRenderTarget())) {
             image.writeToFile(results.resolve(name + ".png"));
         }
-        Files.writeString(results.resolve(name + ".pass"), observedText + "\n");
+        var drawnRows = ItemGuideTooltipLayout.renderedRows();
+        renderedExtensionRows.addAll(drawnRows);
+        Files.writeString(results.resolve(name + ".pass"), observedBounds + "\ndrawnRows=" + drawnRows
+                + "\nlogicalTooltip=" + observedText + "\n");
         System.out.println("ITEM_CATEGORY_NATIVE_HOVER " + name + " " + observedText);
+        boolean stress = roundName.startsWith("overflow-");
+        if (stress && expectedPage == pages - 1) {
+            require(ItemGuideExtensionProbe.imageRendered, "late custom image component survives pagination");
+            for (int i = 1; i <= 48; i++) require(renderedExtensionRows.contains("Late extension row " + i),
+                    "all late text rows actually drawn across native pages: " + i);
+            require(renderedExtensionRows.contains("component:" + ItemGuideExtensionProbe.Image.class.getName()),
+                    "the newly allocated custom component is included in the drawn page");
+            pagingBack = true;
+        }
+        if ((!pagingBack && expectedPage + 1 < pages) || (pagingBack && expectedPage > 0)) {
+            Process input = new ProcessBuilder("xdotool", "click", pagingBack ? "4" : "5").inheritIO().start();
+            require(input.waitFor() == 0, "native mouse wheel advances tooltip page");
+            expectedPage += pagingBack ? -1 : 1;
+            renderedTooltips = 0;
+            readyFrame = frames + 4;
+            return false;
+        }
         expectedItem = null;
+        if (originalGravityKey != null) {
+            GravityClient.ACTIVATE.setKey(originalGravityKey);
+            KeyMapping.resetMapping();
+            originalGravityKey = null;
+        }
+        setModifiers(mc, 0);
         mc.setScreen(null);
         screen = null;
         sample++;
@@ -131,7 +249,9 @@ public final class ItemCategoryClientProbe {
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void tooltip(RenderTooltipEvent.GatherComponents event) {
-        if (expectedItem == null || screen != Minecraft.getInstance().screen
+        // The outer logical event is checked in full; the inner native page holds those checked rows.
+        if (ItemGuideTooltipLayout.isRenderingPage()) return;
+        if (expectedItem == null || !modifiersReady || screen != Minecraft.getInstance().screen
                 || !event.getItemStack().is(expectedItem)) return;
         try {
             List<FormattedText> lines = event.getTooltipElements().stream()
@@ -141,8 +261,12 @@ public final class ItemCategoryClientProbe {
             var nameColor = ((Component) lines.get(0)).getStyle().getColor();
             require(nameColor != null && nameColor.getValue() == expectedRarity.color.getColor(),
                     "native item name retains its original rarity color");
-            long categories = lines.stream().map(FormattedText::getString)
-                    .filter(text -> List.of("Curio", "Tool", "\u5947\u7269", "\u9053\u5177").contains(text)).count();
+            long categories = lines.stream().filter(Component.class::isInstance).map(Component.class::cast)
+                    .map(Component::getContents).filter(TranslatableContents.class::isInstance)
+                    .map(TranslatableContents.class::cast).map(TranslatableContents::getKey)
+                    .filter(key -> List.of("tooltip.sound_isolating_eraser.qiwu",
+                            "tooltip.sound_isolating_eraser.daoju",
+                            "tooltip.sound_isolating_eraser.suxia_pocket_watch.category").contains(key)).count();
             if (expectedLabel.isEmpty()) {
                 require(categories == 0, "removed tags must remove the native label");
             } else {
@@ -152,7 +276,46 @@ public final class ItemCategoryClientProbe {
                 var color = ((Component) lines.get(1)).getStyle().getColor();
                 require(color != null && color.getValue() == expectedColor, "category color matches specification");
             }
-            observedText = lines.stream().map(FormattedText::getString).toList().toString();
+            var guide = ItemGuideCatalog.find(event.getItemStack());
+            if (guide != null) {
+                var keys = lines.stream().filter(Component.class::isInstance).map(Component.class::cast)
+                        .map(Component::getContents).filter(TranslatableContents.class::isInstance)
+                        .map(TranslatableContents.class::cast).map(TranslatableContents::getKey).toList();
+                require(keys.stream().filter(guide.key("summary")::equals).count() == 1, "one native summary");
+                for (String section : List.of("usage", "controls", "cooldown", "cost")) {
+                    require(keys.contains(guide.key(section)) == ((mode & 1) != 0), "native Shift gate: " + section);
+                }
+                require(keys.contains(guide.key("lore")) == ((mode & 2) != 0), "native Ctrl gate");
+                require(lines.stream().noneMatch(line -> line.getString().contains("guide.")), "no raw guide translation keys");
+                if ((mode & 1) != 0) {
+                    String controls = lines.stream().filter(Component.class::isInstance).map(Component.class::cast)
+                            .filter(line -> line.getContents() instanceof TranslatableContents text
+                                    && text.getKey().equals(guide.key("controls")))
+                            .findFirst().orElseThrow().getString();
+                    for (String binding : guide.controls()) {
+                        var key = switch (binding) {
+                            case "key.sound_isolating_eraser.gravity_target" -> GravityClient.ACTIVATE;
+                            case "key.sound_isolating_eraser.eraser_mode" -> EraserClient.CYCLE;
+                            case "key.sound_isolating_eraser.red_nails" -> RedNailsClient.KEY;
+                            case "key.sound_isolating_eraser.cycle_tier" -> WingsKeys.CYCLE_TIER;
+                            case "key.sound_isolating_eraser.hover" -> WingsKeys.HOVER_TOGGLE;
+                            case "key.sound_isolating_eraser.blink" -> WingsKeys.BLINK;
+                            default -> java.util.Arrays.stream(Minecraft.getInstance().options.keyMappings)
+                                    .filter(candidate -> candidate.getName().equals(binding)).findFirst()
+                                    .orElseThrow(() -> new AssertionError("Missing native key binding: " + binding));
+                        };
+                        require(controls.contains(key.getTranslatedKeyMessage().getString()), "native current binding: " + binding);
+                    }
+                }
+            }
+            if (phase == 0 && ItemGuideProbeCases.cases().get(round).name().startsWith("overflow-")) {
+                // Added after production's LOW Gather listener: prove Pre reads the final event list.
+                for (int i = 1; i <= 48; i++) event.getTooltipElements().add(com.mojang.datafixers.util.Either.left(
+                        Component.literal("Late extension row " + i)));
+                event.getTooltipElements().add(com.mojang.datafixers.util.Either.right(new ItemGuideExtensionProbe.Image()));
+            }
+            observedText = event.getTooltipElements().stream().flatMap(element -> element.left().stream())
+                    .map(FormattedText::getString).toList().toString();
         } catch (Throwable failure) {
             renderFailure = failure;
         }
@@ -160,8 +323,32 @@ public final class ItemCategoryClientProbe {
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void rendered(RenderTooltipEvent.Color event) {
-        if (expectedItem != null && screen == Minecraft.getInstance().screen
-                && event.getItemStack().is(expectedItem) && observedText != null) renderedTooltips++;
+        if (expectedItem == null || !modifiersReady || screen != Minecraft.getInstance().screen
+                || !event.getItemStack().is(expectedItem) || observedText == null) return;
+        try {
+            var window = Minecraft.getInstance().getWindow();
+            int width = event.getComponents().stream().mapToInt(component -> component.getWidth(event.getFont()))
+                    .max().orElse(0);
+            int height = event.getComponents().stream().mapToInt(component -> component.getHeight()).sum()
+                    + (event.getComponents().size() == 1 ? -2 : 0);
+            // Color fires after vanilla wrapping and positioning, including legacy status lines.
+            require(event.getX() >= 4 && event.getY() >= 4
+                            && event.getX() + width + 4 <= window.getGuiScaledWidth()
+                            && event.getY() + height + 4 <= window.getGuiScaledHeight(),
+                    "native tooltip including 4 GUI units of outer border stays within viewport: item=" + ForgeRegistries.ITEMS.getKey(expectedItem)
+                            + " mode=" + MODES[mode] + " bounds=" + event.getX() + "," + event.getY()
+                            + "," + width + "," + height + " viewport=" + window.getGuiScaledWidth()
+                            + "x" + window.getGuiScaledHeight() + " scale=" + window.getGuiScale());
+            observedBounds = "outer=[" + (event.getX() - 4) + "," + (event.getY() - 4) + ","
+                    + (event.getX() + width + 4) + "," + (event.getY() + height + 4)
+                    + "] gui=" + window.getGuiScaledWidth() + "x" + window.getGuiScaledHeight()
+                    + " pixels=" + window.getScreenWidth() + "x" + window.getScreenHeight()
+                    + " scale=" + window.getGuiScale() + " components=" + event.getComponents().size()
+                    + " page=" + (ItemGuideTooltipLayout.pageIndex() + 1) + "/" + ItemGuideTooltipLayout.pageCount();
+            renderedTooltips++;
+        } catch (Throwable failure) {
+            renderFailure = failure;
+        }
     }
 
     private static boolean changeLanguage(Minecraft mc, String language) {
@@ -184,6 +371,15 @@ public final class ItemCategoryClientProbe {
                 Long.toString(GLFWNativeX11.glfwGetX11Window(window.getWindow())),
                 Integer.toString(x), Integer.toString(y)).inheritIO().start();
         require(input.waitFor() == 0, "native mouse motion succeeds");
+    }
+
+    private static void setModifiers(Minecraft mc, int mode) throws Exception {
+        GLFW.glfwFocusWindow(mc.getWindow().getWindow());
+        for (int i = 0; i < 2; i++) {
+            Process input = new ProcessBuilder("xdotool", (mode & (1 << i)) != 0 ? "keydown" : "keyup",
+                    i == 0 ? "Shift_L" : "Control_L").inheritIO().start();
+            require(input.waitFor() == 0, "native modifier input succeeds");
+        }
     }
 
     private static void require(boolean condition, String message) {

@@ -1,5 +1,6 @@
 package com.zeropointsix.eraser.yuji.flare;
 
+import java.util.List;
 import net.minecraftforge.common.ForgeConfigSpec;
 
 public final class FlareConfig {
@@ -11,6 +12,7 @@ public final class FlareConfig {
     public static ForgeConfigSpec.DoubleValue RED_HEALTH, RED_ARMOR, RED_KNOCKBACK,
             TAUNT_RADIUS, DROP_MIN, DROP_MAX, DESCENT_SPEED, COMMON_CHANCE, GREEN_CHANCE;
     public static ForgeConfigSpec.BooleanValue CREATIVE_FREE, ALL_DIMENSIONS;
+    public static ForgeConfigSpec.ConfigValue<List<? extends String>> LOOT_TABLES;
 
     public static void define(ForgeConfigSpec.Builder b) {
         b.push("flare");
@@ -35,6 +37,9 @@ public final class FlareConfig {
         DROP_ATTEMPTS = b.defineInRange("airdropLocationAttempts", 48, 1, 256);
         DESCENT_SPEED = b.defineInRange("airdropDescentSpeed", .35, MIN_DESCENT_SPEED, 1.);
         EMPTY_LIFETIME = b.defineInRange("emptyCrateTicks", 100, 1, 72000);
+        LOOT_TABLES = b.comment("One vanilla chest table is selected per landed crate; duplicates are ignored.",
+                "Missing tables are skipped. An empty/unavailable pool falls back to the default pool.")
+                .defineList("airdropLootTables", FlareAirdropLoot.DEFAULT_TABLES, FlareAirdropLoot::isChestTable);
         LOOT_ROLLS = b.defineInRange("airdropLootRolls", 1, 1, 27);
         SUPPLY_GUNS = b.defineInRange("supplyGuns", 1, 0, 8);
         SUPPLY_RED = b.defineInRange("supplyRed", 2, 0, 64);

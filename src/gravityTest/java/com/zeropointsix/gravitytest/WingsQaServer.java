@@ -40,6 +40,7 @@ public final class WingsQaServer {
     private static final int MAX_RUN_TICKS = 12000;
     private static final boolean SHOWCASE = "showcase".equals(System.getProperty("wings.qa.mode"));
     private static boolean ready;
+    private static boolean awaitingWearer = true;
     private static int readyAt;
     private static int startedAt = -1;
     private static int stopAt = -1;
@@ -114,6 +115,19 @@ public final class WingsQaServer {
                 WingsMotionQaServer.tick(server, results());
                 return;
             }
+            if (awaitingWearer) {
+                if (Files.exists(results().resolve("wings-wearer.ready"))) {
+                    awaitingWearer = false;
+                    LOGGER.info("WINGS_QA_EQUIPMENT_ACKNOWLEDGED waitedTicks={}", server.getTickCount() - readyAt);
+                } else {
+                    // Hold only the startup fixture while the software-rendered client loads.
+                    wearerRef.fallDistance = 0;
+                    if ((server.getTickCount() - readyAt) % 10 == 0) {
+                        wearerRef.teleportTo(server.overworld(), 0.5, 100, 0.5, -90f, 0f);
+                        wearerRef.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
+                    }
+                }
+            }
             if (!networkScenario.isEmpty() && wearerRef != null) {
                 networkMaxStep = Math.max(networkMaxStep, Math.abs(wearerRef.getX() - networkPreviousX));
                 if (NETWORK_TRACE.size() < 6000) {
@@ -187,6 +201,8 @@ public final class WingsQaServer {
         wearer.setGameMode(GameType.SURVIVAL);
         wearer.getInventory().clearContent();
         wearer.setItemSlot(EquipmentSlot.CHEST, new ItemStack(ModItems.WIND_THUNDER_WINGS.get()));
+        // Own-player inventory synchronization must precede the ready phase packet.
+        wearer.inventoryMenu.broadcastChanges();
         wearer.getFoodData().setFoodLevel(20);
         wearer.getFoodData().setSaturation(0f);
         wearer.teleportTo(level, 0.5, 100, 0.5, -90f, 0f);

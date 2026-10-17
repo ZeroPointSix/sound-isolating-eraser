@@ -82,7 +82,4 @@ public final class ShaxiadaoItem extends SwordItem {
         return super.hurtEnemy(stack, target, attacker);
     }
 
-    @Override public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> lines, TooltipFlag flag) {
-        lines.add(Component.translatable("tooltip.sound_isolating_eraser.shaxiadao").withStyle(ChatFormatting.GRAY));
-    }
 }

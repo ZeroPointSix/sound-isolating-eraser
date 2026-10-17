@@ -56,7 +56,7 @@ public final class ShaxiaTestClient {
         if (!ShaxiaStacks.active(event.getItemStack())) return;
         var lines = event.getTooltipElements().stream().flatMap(element -> element.left().stream())
                 .map(text -> text.getString()).toList();
-        tooltipTextObserved = lines.contains("针对畸界怪物具有特殊攻击效果") && lines.contains("畸界特攻");
+        tooltipTextObserved = lines.contains("针对敌对异变生物的近战武器。") && lines.contains("畸界特攻");
     }
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
@@ -198,7 +198,8 @@ public final class ShaxiaTestClient {
                 require(ShaxiaStacks.active(stack) && !stack.hasFoil(), "innate enchantment and glint synchronized");
                 require(stack.getDamageValue() == (ROLE.equals("user") ? 5 : 0), "independent durability synchronized");
                 var tooltip = stack.getTooltipLines(mc.player, TooltipFlag.Default.NORMAL).stream().map(c -> c.getString()).toList();
-                require(tooltip.contains("针对畸界怪物具有特殊攻击效果"), "exact Chinese tooltip loaded");
+                require(tooltip.contains("针对敌对异变生物的近战武器。"), "exact Chinese default summary loaded");
+                require(!tooltip.contains("针对畸界怪物具有特殊攻击效果"), "usage is hidden until Shift");
                 require(ShaxiaEnchantments.JIJIE_SPECIAL_ATTACK.get().getFullname(1).getString().equals("畸界特攻"),
                         "innate name has no level suffix");
                 String sprite = mc.getItemRenderer().getModel(stack, mc.level, mc.player, 0).getParticleIcon().contents().name().toString();
