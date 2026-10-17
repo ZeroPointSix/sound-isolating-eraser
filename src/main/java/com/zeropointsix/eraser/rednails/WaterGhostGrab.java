@@ -136,6 +136,12 @@ public final class WaterGhostGrab extends Goal {
         return !border.isInsideCloseToBorder(mob, box)
                 || !Shapes.joinIsNotEmpty(border.getCollisionShape(), Shapes.create(box), BooleanOp.AND);
     }
+    private boolean targetCanDescendTo(double y) {
+        if (!(target instanceof ServerPlayer) || target.getY() <= y) return true;
+        var column = target.getBoundingBox().expandTowards(0, y - target.getY(), 0);
+        return mob.level().getEntities(target, column,
+                entity -> entity != mob && target.canCollideWith(entity)).isEmpty();
+    }
     @Override public void tick() {
         if (target == null) return;
         if (!canContinueToUse()) { stop(); return; }
@@ -187,6 +193,8 @@ public final class WaterGhostGrab extends Goal {
             double down = Math.max(-0.08, startY - 6 - mob.getY());
             Vec3 swim = new Vec3(shoreStep.x, 0, shoreStep.z);
             if (mob.getY() > startY - 6 && !mob.verticalCollisionBelow
+                    // Pull the player off a supporting hull before sinking away from them.
+                    && targetCanDescendTo(hold.y + down)
                     && clearForDescent(mob.getBoundingBox().move(shoreStep.x, down, shoreStep.z))
                     && !blocked(hold.add(shoreStep.x, down, shoreStep.z))) {
                 swim = new Vec3(shoreStep.x, down, shoreStep.z);
