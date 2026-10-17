@@ -82,6 +82,10 @@ public final class KeeperX11Sampler {
             int droppedCaptures = 0;
             long firstBright = 0;
             double[] baseline = null;
+            boolean captureReady = false;
+            long lastCaptureStart = 0, stableSince = 0;
+            int stableCaptures = 0;
+            StringBuilder warmup = new StringBuilder("epoch_ms,start_ns,end_ns,gap_ms,stable_captures\n");
             while (System.nanoTime() < timeout) {
                 long before = System.nanoTime();
                 BufferedImage image = robot.createScreenCapture(roi);
@@ -107,7 +111,25 @@ public final class KeeperX11Sampler {
                     }
                     throw overrun;
                 }
-                if (captures.size() == 1) atomicSignal(results, "capture.ready", Long.toString(after));
+                if (!captureReady) {
+                    long gap = lastCaptureStart == 0 ? 0 : before - lastCaptureStart;
+                    if (gap > 50_000_000L || after - before > 50_000_000L) {
+                        stableSince = 0;
+                        stableCaptures = 0;
+                    } else {
+                        if (stableSince == 0) stableSince = before;
+                        stableCaptures++;
+                    }
+                    lastCaptureStart = before;
+                    warmup.append(System.currentTimeMillis()).append(',').append(before).append(',')
+                            .append(after).append(',').append(gap / 1_000_000.0).append(',')
+                            .append(stableCaptures).append('\n');
+                    // Warm the real X11 capture path before permitting the native shutter.
+                    if (stableCaptures >= 20 && after - stableSince >= 2_000_000_000L) {
+                        atomicSignal(results, "capture.ready", Long.toString(after));
+                        captureReady = true;
+                    }
+                }
                 if (deadline == 0) {
                     deadline = readLong(results.resolve("flash-deadline.txt"));
                     if (deadline != 0) deadlineReadAt = System.nanoTime();
@@ -122,6 +144,9 @@ public final class KeeperX11Sampler {
                 if (deadline != 0 && after > deadline + 600_000_000L) break;
                 Thread.sleep(10);
             }
+            Files.writeString(results.resolve("sampler-warmup.csv"), warmup);
+            if (!captureReady) throw new AssertionError(
+                    "Real X11 sampling did not sustain 2s with capture latency and gaps <=50ms");
             if (deadline == 0) throw new AssertionError("No real shutter deadline observed");
             Files.writeString(results.resolve("flash-buffer-stats.txt"),
                     "max_captures=256 retention_ms=3000 dropped=" + droppedCaptures
