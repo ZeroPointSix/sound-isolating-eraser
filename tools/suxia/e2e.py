@@ -23,6 +23,9 @@ CLASSPATH = (ROOT / "build/suxia-test-classpath.txt").read_text().strip()
 PORT = int(os.environ.get("SUXIA_QA_PORT", "25589"))
 TIMEOUT = int(os.environ.get("SUXIA_QA_TIMEOUT_SECONDS", "600"))
 IDLE_ONLY = os.environ.get("SUXIA_QA_IDLE_ONLY") == "1"
+COOLDOWN_ONLY = os.environ.get("SUXIA_QA_COOLDOWN_ONLY") == "1"
+if COOLDOWN_ONLY and IDLE_ONLY:
+    raise ValueError("Choose one targeted QA mode")
 processes, logs = [], []
 
 
@@ -73,6 +76,8 @@ def launch(role):
     command = ["java", "-Xmx1024M" if server else "-Xmx1536M", f"-Dsuxia.qa.results={RESULTS}"]
     if IDLE_ONLY:
         command += ["-Dsuxia.qa.idleOnly=true"]
+    if COOLDOWN_ONLY:
+        command += ["-Dsuxia.qa.cooldownOnly=true", f"-Dsuxia.qa.port={PORT}"]
     command += shlex.split(expand(config["vmArgs"]))
     if not server:
         natives = directory / "lwjgl-natives"
@@ -131,6 +136,36 @@ try:
         except OSError:
             time.sleep(1)
     client = launch("client")
+    if COOLDOWN_ONLY:
+        print(f"COOLDOWN_PROCESSES server={server.pid} client={client.pid}", flush=True)
+        wait_for(["server-ready-restart", "client-ready-restart"], [server, client])
+        server.stdin.write("stop\n")
+        server.stdin.flush()
+        if server.wait(timeout=180) != 0:
+            raise RuntimeError("Cooldown QA server did not save cleanly")
+        print(f"COOLDOWN_SERVER_STOPPED pid={server.pid} exit=0", flush=True)
+        server = launch("server")
+        print(f"COOLDOWN_SERVER_RESTARTED pid={server.pid}", flush=True)
+        deadline = time.monotonic() + TIMEOUT
+        while True:
+            if server.poll() is not None or time.monotonic() > deadline:
+                raise RuntimeError("Cooldown QA restarted server not ready")
+            failures = list(RESULTS.glob("*.failed"))
+            if failures:
+                raise AssertionError("; ".join(p.read_text() for p in failures))
+            # The listening socket opens before Forge finishes loading the saved world.
+            if "SUXIA_COOLDOWN_SERVER_READY stage=20" in (RESULTS / "server-restart.log").read_text(errors="replace"):
+                break
+            time.sleep(1)
+        (RESULTS / "restart-server-ready.signal").write_text(f"pid={server.pid}\n")
+        wait_for(["server-cool-complete", "client-cool-restarted"], [server, client])
+        stop(client)
+        server.stdin.write("stop\n")
+        server.stdin.flush()
+        if server.wait(timeout=180) != 0:
+            raise RuntimeError("Cooldown QA final server save failed")
+        print("SUXIA_COOLDOWN_BOUNDARIES_REAL_CLIENT_PASSED", flush=True)
+        sys.exit(0)
     if IDLE_ONLY:
         wait_for(["server-idle-stationary", "client-idle-stationary",
                   "server-idle-turned", "client-idle-turned", "server-idle-complete"], [server, client])

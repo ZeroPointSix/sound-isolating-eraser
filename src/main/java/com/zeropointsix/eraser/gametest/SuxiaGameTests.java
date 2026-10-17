@@ -68,6 +68,7 @@ public final class SuxiaGameTests {
         final Map<BlockPos, BlockState> blocks = new LinkedHashMap<>();
         final List<ChunkPos> tickets = new ArrayList<>();
         final List<EmbeddedChannel> channels = new ArrayList<>();
+        Boolean originalPvp;
         Fixture(GameTestHelper h) {
             level = h.getLevel();
             int slot = FIXTURES.size();
@@ -131,6 +132,7 @@ public final class SuxiaGameTests {
         SuxiaSummons ledger() { return SuxiaSummons.get(level.getServer()); }
         long now() { return SuxiaMotion.clock(level); }
         void close() {
+            if (originalPvp != null) level.getServer().setPvpAllowed(originalPvp);
             entities.stream().filter(e -> e instanceof ServerPlayer).forEach(e -> SuxiaPocketWatchItem.cancelOwner((ServerPlayer) e));
             entities.forEach(Entity::discard);
             blocks.forEach((p, state) -> level.setBlock(p, state, 3));
@@ -373,6 +375,164 @@ public final class SuxiaGameTests {
             h.assertTrue(summon.isRemoved() && f.ledger().active(p.getUUID()) == null, "beyond 64 blocks without a supported teleport destination ends summon");
             System.out.println("SUXIA_UNSUPPORTED_DESTINATION_CLEANUP_PASSED destination=" + unsupported);
             h.succeed();
+        });
+    }
+
+    @GameTest(template = "empty", batch = BATCH)
+    public static void acceptance_safe_teleport_preserves_active_summon(GameTestHelper h) {
+        acceptanceSafeTeleport(h, false);
+    }
+
+    @GameTest(template = "empty", batch = BATCH)
+    public static void acceptance_safe_fallback_teleport_preserves_active_summon(GameTestHelper h) {
+        acceptanceSafeTeleport(h, true);
+    }
+
+    private static void acceptanceSafeTeleport(GameTestHelper h, boolean fallbackOnly) {
+        ready(h, f -> {
+            var owner = f.player(0, 0); f.watch(owner); var summon = f.summon(owner);
+            // Suppress vanilla FollowOwnerGoal only in the case isolating our distance fallback.
+            summon.setNoAi(fallbackOnly);
+            var entry = f.ledger().active(owner.getUUID());
+            UUID originalEntity = summon.getUUID();
+            long originalUntil = entry.until;
+            BlockPos supported = f.center.east(70);
+            for (int x = -3; x <= 3; x++) for (int z = -3; z <= 3; z++) {
+                f.set(supported.offset(x, -1, z), Blocks.STONE.defaultBlockState());
+                for (int y = 0; y <= 4; y++) f.set(supported.offset(x, y, z), Blocks.AIR.defaultBlockState());
+                h.assertTrue(f.level.getBlockState(supported.offset(x, -1, z)).is(Blocks.STONE),
+                        "positive teleport fixture has a solid floor");
+            }
+            owner.setPos(Vec3.atBottomCenterOf(supported));
+            double before = summon.distanceTo(owner);
+            h.assertTrue(before > 64, "positive counterpart starts beyond 64 blocks");
+            summon.tick();
+            h.assertTrue(!summon.isRemoved() && summon.isAlive(), "supported teleport keeps summon alive");
+            h.assertTrue(summon.distanceToSqr(owner) <= 36, "supported teleport arrives within six blocks");
+            h.assertTrue(f.ledger().active(owner.getUUID()) == entry && originalEntity.equals(entry.summon)
+                            && entry.until == originalUntil && entry.cooldown == 0,
+                    "supported teleport preserves identity, active lifetime and zero cooldown");
+            System.out.println("SUXIA_ACCEPT_SAFE_TELEPORT_PASS fallbackOnly=" + fallbackOnly + " before=" + before + " after="
+                    + summon.distanceTo(owner) + " sameEntity=" + originalEntity.equals(entry.summon)
+                    + " cooldown=" + entry.cooldown);
+            h.succeed();
+        });
+    }
+
+    @GameTest(template = "empty", batch = BATCH, timeoutTicks = 300)
+    public static void acceptance_survival_pvp_gate_and_owner_only_triggers(GameTestHelper h) {
+        ready(h, f -> {
+            var server = f.level.getServer();
+            f.originalPvp = server.isPvpAllowed();
+            server.setPvpAllowed(true);
+            var owner = f.player(0, 0); f.watch(owner); var summon = f.summon(owner);
+            var opponent = f.player(3, 0); var attacker = f.player(-3, 0);
+            var bystander = f.player(0, 5);
+            float[] healthAfterOwnerAttack = new float[1];
+            for (var player : List.of(owner, opponent, attacker, bystander)) {
+                player.getAttribute(Attributes.MAX_HEALTH).setBaseValue(200);
+                player.setHealth(200);
+            }
+            // Embedded channels are not in the server network loop that normally calls doTick.
+            h.onEachTick(() -> List.of(owner, opponent, attacker, bystander).forEach(ServerPlayer::doTick));
+            h.startSequence().thenIdle(70).thenExecute(() -> {
+                h.assertTrue(opponent.getAttackStrengthScale(0.5F) > 0.9F,
+                        "real player ticking charges the first attack");
+                h.assertTrue(summon.getTarget() == null, "nearby survival players are not proactively attacked");
+                opponent.attack(attacker);
+                h.assertTrue(opponent.getLastHurtMob() == attacker, "bystander combat is real player damage");
+            }).thenIdle(20).thenExecute(() -> {
+                h.assertTrue(summon.getTarget() == null, "another player's combat does not trigger owner's summon");
+                boolean originalPvp = server.isPvpAllowed();
+                try {
+                    server.setPvpAllowed(false);
+                    float before = opponent.getHealth();
+                    h.assertTrue(!summon.wantsToAttack(opponent, owner), "PvP off rejects survival player");
+                    h.assertTrue(!summon.doHurtTarget(opponent) && opponent.getHealth() == before,
+                            "PvP off prevents actual summon damage");
+                    summon.setTarget(opponent);
+                    summon.tick();
+                    h.assertTrue(summon.getTarget() == null, "PvP off clears a stale player target");
+                    System.out.println("SUXIA_ACCEPT_PVP_OFF_PASS damage=0 staleTargetCleared=true");
+                } finally {
+                    server.setPvpAllowed(originalPvp);
+                }
+                h.assertTrue(summon.wantsToAttack(opponent, owner), "PvP on allows survival opponent");
+                opponent.setGameMode(GameType.SPECTATOR);
+                h.assertTrue(!summon.wantsToAttack(opponent, owner), "spectator remains protected with PvP on");
+                opponent.setGameMode(GameType.SURVIVAL);
+                owner.attack(opponent);
+                h.assertTrue(owner.getLastHurtMob() == opponent, "owner attack reaches real vanilla combat bookkeeping");
+                healthAfterOwnerAttack[0] = opponent.getHealth();
+            }).thenWaitUntil(() -> h.assertTrue(summon.getTarget() == opponent,
+                    "live owner-attack goal selects survival opponent"))
+                    .thenWaitUntil(() -> h.assertTrue(opponent.getHealth() < healthAfterOwnerAttack[0]
+                                    && opponent.getLastHurtByMob() == summon,
+                            "PvP-on summon actually damages the selected survival opponent"))
+                    .thenExecute(() -> {
+                        float before = owner.getHealth();
+                        h.assertTrue(owner.hurt(owner.damageSources().playerAttack(attacker), 1)
+                                        && owner.getHealth() < before && owner.getLastHurtByMob() == attacker,
+                                "survival attacker really damages owner");
+                    }).thenWaitUntil(() -> h.assertTrue(summon.getTarget() == attacker,
+                            "owner-defense priority supersedes owner-attack for survival PvP"))
+                    .thenExecute(() -> {
+                        h.assertTrue(bystander.getHealth() == 200 && summon.getTarget() != bystander,
+                                "unrelated player remains unharmed");
+                        System.out.println("SUXIA_ACCEPT_PVP_ON_PASS ownerAttack=true actualSummonDamage=true ownerDefensePreempts=true bystanderHealth="
+                                + bystander.getHealth());
+                    }).thenSucceed();
+        });
+    }
+
+    @GameTest(template = "empty", batch = BATCH, timeoutTicks = 300)
+    public static void acceptance_owner_combat_goal_priority(GameTestHelper h) {
+        ready(h, f -> {
+            var owner = f.player(0, 0); f.watch(owner); var summon = f.summon(owner);
+            h.onEachTick(owner::doTick);
+            // Husks avoid daylight fire damage interfering with the actual player-hit precondition.
+            var proactive = f.add(EntityType.HUSK.create(f.level), 10, 0);
+            var ownerTarget = f.add(EntityType.HUSK.create(f.level), 2, 0);
+            var attacker = f.add(EntityType.HUSK.create(f.level), -2, 0);
+            var laterTarget = f.add(EntityType.HUSK.create(f.level), 0, 3);
+            for (var mob : List.of(proactive, ownerTarget, attacker, laterTarget)) {
+                mob.setNoAi(true);
+                mob.setSilent(true);
+                mob.getAttribute(Attributes.MAX_HEALTH).setBaseValue(200);
+                mob.setHealth(200);
+            }
+            proactive.setTarget(owner);
+            h.startSequence().thenIdle(70).thenWaitUntil(() -> h.assertTrue(summon.getTarget() == proactive,
+                    "priority 3 acquires mob targeting owner"))
+                    .thenExecute(() -> {
+                        h.assertTrue(owner.getAttackStrengthScale(0.5F) > 0.9F
+                                        && ownerTarget.isAlive() && ownerTarget.invulnerableTime == 0,
+                                "owner attack has charged damage and a vulnerable living target");
+                        owner.attack(ownerTarget);
+                        h.assertTrue(owner.getLastHurtMob() == ownerTarget, "owner dealt real damage to second mob");
+                    }).thenWaitUntil(() -> h.assertTrue(summon.getTarget() == ownerTarget,
+                            "priority 2 owner-attack supersedes proactive target"))
+                    .thenExecute(() -> {
+                        h.assertTrue(owner.hurt(owner.damageSources().mobAttack(attacker), 1)
+                                        && owner.getLastHurtByMob() == attacker,
+                                "third mob really damages owner");
+                    }).thenWaitUntil(() -> h.assertTrue(summon.getTarget() == attacker,
+                            "priority 1 owner-defense supersedes owner-attack"))
+                    .thenExecute(() -> {
+                        owner.attack(laterTarget);
+                        h.assertTrue(owner.getLastHurtMob() == laterTarget, "later owner attack is recorded");
+                    }).thenIdle(20).thenExecute(() -> {
+                        h.assertTrue(summon.getTarget() == attacker,
+                                "lower-priority later owner attack cannot displace live defense target");
+                        attacker.discard();
+                    }).thenWaitUntil(() -> h.assertTrue(summon.getTarget() == laterTarget,
+                            "owner-attack goal resumes after defense target disappears"))
+                    .thenExecute(() -> laterTarget.discard())
+                    .thenWaitUntil(() -> h.assertTrue(summon.getTarget() == proactive,
+                            "proactive goal resumes when higher-priority target disappears"))
+                    .thenExecute(() -> System.out.println(
+                            "SUXIA_ACCEPT_PRIORITY_PASS proactive->ownerAttack->ownerDefense->ownerAttack->proactive"))
+                    .thenSucceed();
         });
     }
 
