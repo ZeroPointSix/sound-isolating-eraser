@@ -17,11 +17,18 @@ if any(RESULTS.glob("*.pass")) or (RESULTS / "client.log").exists():
 RESULTS.mkdir(parents=True, exist_ok=True)
 CONFIGS = {c["name"]: c for c in json.loads((ROOT / ".vscode/launch.json").read_text())["configurations"]}
 CLASSPATH = (ROOT / "build/keeper-test-classpath.txt").read_text().strip()
-RUNTIME_JAR = ROOT / "build/keeper-runtime/keeper-runtime.jar"
-DELIVERY_JAR = ROOT / "build/libs/sound_isolating_eraser-0.13.0-keeper.2.jar"
-assert RUNTIME_JAR.is_file() and DELIVERY_JAR.is_file(), "Build both artifacts first"
+RUNTIME_JAR = Path(os.environ.get("KEEPER_QA_RUNTIME_JAR", str(ROOT / "build/keeper-runtime/keeper-runtime.jar"))).resolve()
+DELIVERY_JAR = Path(os.environ.get("KEEPER_QA_DELIVERY_JAR", str(ROOT / "build/libs/sound_isolating_eraser-0.13.0-keeper.2.jar"))).resolve()
+for role, artifact in (("RUNTIME", RUNTIME_JAR), ("DELIVERY", DELIVERY_JAR)):
+    assert artifact.is_file() and artifact.is_relative_to(ROOT), "Artifact must exist within this workspace"
+    expected = os.environ.get("KEEPER_QA_" + role + "_SHA256")
+    if "KEEPER_QA_" + role + "_JAR" in os.environ:
+        assert expected, "An explicitly selected artifact requires its SHA256"
+    if expected:
+        assert hashlib.sha256(artifact.read_bytes()).hexdigest() == expected, role + " artifact fingerprint mismatch"
 CLASSPATH = ":".join(p for p in CLASSPATH.split(":") if p not in
-                     [str(ROOT / "build/classes/java/main"), str(ROOT / "build/resources/main")]) + ":" + str(RUNTIME_JAR)
+                     [str(ROOT / "build/classes/java/main"), str(ROOT / "build/resources/main"),
+                      str(ROOT / "build/keeper-runtime/keeper-runtime.jar"), str(RUNTIME_JAR)]) + ":" + str(RUNTIME_JAR)
 PORT = int(os.environ.get("KEEPER_QA_PORT", "25578"))
 processes, logs = [], []
 displays = []
@@ -208,7 +215,7 @@ finally:
     (RESULTS / "results.md").write_text(
         "# Keeper camera client E2E\n\n"
         + "commit=" + commit + "\n"
-        + "jar=build/libs/sound_isolating_eraser-0.13.0-keeper.2.jar\n"
+        + "jar=" + str(DELIVERY_JAR) + "\n"
         + "jar_sha256=" + hashlib.sha256(DELIVERY_JAR.read_bytes()).hexdigest() + "\n"
         + "runtime_jar=" + str(RUNTIME_JAR) + "\n"
         + "runtime_jar_sha256=" + hashlib.sha256(RUNTIME_JAR.read_bytes()).hexdigest() + "\n"
