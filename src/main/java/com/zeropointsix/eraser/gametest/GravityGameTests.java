@@ -6,7 +6,9 @@ import com.zeropointsix.eraser.gravity.*;
 import com.zeropointsix.eraser.registry.ModItems;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
@@ -47,6 +49,21 @@ public final class GravityGameTests {
     private static final List<Entity> allyEntities = new ArrayList<>();
     private static BlockPos allyRoof;
     private static BlockState allyRoofBefore;
+    private static final Map<BlockPos, BlockState> hoverBlocks = new LinkedHashMap<>();
+    private static final List<Entity> hoverEntities = new ArrayList<>();
+
+    @AfterBatch(batch = "gravity_hover")
+    public static void cleanUpHover(ServerLevel level) {
+        hoverEntities.forEach(Entity::discard);
+        hoverEntities.clear();
+        hoverBlocks.forEach(level::setBlockAndUpdate);
+        hoverBlocks.clear();
+    }
+
+    private static void setHoverBlock(ServerLevel level, BlockPos pos, BlockState state) {
+        hoverBlocks.putIfAbsent(pos.immutable(), level.getBlockState(pos));
+        level.setBlockAndUpdate(pos, state);
+    }
 
     @AfterBatch(batch = "gravity_allies")
     public static void cleanUpAllies(ServerLevel level) {
@@ -330,12 +347,15 @@ public final class GravityGameTests {
     public static void hostileHoversThenFallsOutsideCylinder(GameTestHelper h) {
         Vec3 center = Vec3.atBottomCenterOf(h.absolutePos(new BlockPos(3, 7, 3)));
         BlockPos floor = BlockPos.containing(center).below();
-        h.getLevel().setBlockAndUpdate(floor, Blocks.STONE.defaultBlockState());
+        setHoverBlock(h.getLevel(), floor, Blocks.STONE.defaultBlockState());
         Vec3 landing = center.add(-18, 0, 0);
         BlockPos landingFloor = BlockPos.containing(landing).below();
-        for (BlockPos pos : BlockPos.betweenClosed(landingFloor.offset(-1, 0, -1), landingFloor.offset(1, 6, 1))) {
-            h.getLevel().setBlockAndUpdate(pos, pos.getY() == landingFloor.getY()
-                    ? Blocks.STONE.defaultBlockState() : Blocks.AIR.defaultBlockState());
+        // The landing lies outside the template. Seal its dry-air fixture against surrounding fluid ticks.
+        for (BlockPos pos : BlockPos.betweenClosed(landingFloor.offset(-2, 0, -2), landingFloor.offset(2, 7, 2))) {
+            boolean shell = Math.abs(pos.getX() - landingFloor.getX()) == 2
+                    || Math.abs(pos.getZ() - landingFloor.getZ()) == 2
+                    || pos.getY() == landingFloor.getY() || pos.getY() == landingFloor.getY() + 7;
+            setHoverBlock(h.getLevel(), pos, shell ? Blocks.STONE.defaultBlockState() : Blocks.AIR.defaultBlockState());
         }
         var zombie = EntityType.ZOMBIE.create(h.getLevel());
         zombie.setPos(center);
@@ -345,13 +365,17 @@ public final class GravityGameTests {
         zombie.setHealth(300);
         zombie.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.DIAMOND_HELMET));
         h.getLevel().addFreshEntity(zombie);
+        hoverEntities.add(zombie);
         GravityFieldEntity field = field(h, center);
+        hoverEntities.add(field);
         h.runAtTickTime(85, () -> {
             logHoverState(h, "hover", zombie, landing);
             double height = zombie.getY() - center.y;
             h.assertTrue(height > 2.5 && height <= 5.5, "bounded hover near 3 blocks: " + height
                     + " fieldRemoved=" + field.isRemoved() + " motion=" + zombie.getDeltaMovement());
             h.assertTrue(zombie.getEffect(MobEffects.MOVEMENT_SLOWDOWN).getAmplifier() == 4, "slowness V");
+            h.assertTrue(h.getLevel().getFluidState(BlockPos.containing(landing).above(3)).isEmpty(),
+                    "gravity exit fixture starts dry");
             zombie.getNavigation().stop();
             zombie.setPos(landing.add(0, 3, 0));
             zombie.setDeltaMovement(Vec3.ZERO);
@@ -359,6 +383,8 @@ public final class GravityGameTests {
         });
         h.runAtTickTime(145, () -> {
             logHoverState(h, "land", zombie, landing);
+            h.assertTrue(!zombie.isInWater() && h.getLevel().getFluidState(zombie.blockPosition()).isEmpty(),
+                    "gravity landing fixture remains dry");
             h.assertTrue(!zombie.hasEffect(MobEffects.MOVEMENT_SLOWDOWN), "hostile debuff fades outside");
             // Outside the cylinder, vanilla gravity must pull the zombie down. Allow a few
             // ticks of settling so a lagged tick does not fail a grounded assertion.
