@@ -1,8 +1,10 @@
 package com.zeropointsix.eraser.rednails;
 
 import com.zeropointsix.eraser.memory.SummonTargets;
+import com.zeropointsix.eraser.memory.SummonCombatConfig;
+import com.zeropointsix.eraser.memory.SummonGuardGoal;
+import com.zeropointsix.eraser.memory.SummonMeleeAttackGoal;
 import java.util.EnumSet;
-import java.util.LinkedHashSet;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
@@ -20,11 +22,9 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityDimensions;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.Pose;
 import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.entity.ai.goal.Goal;
-import net.minecraft.world.entity.ai.goal.MeleeAttackGoal;
 import net.minecraft.world.entity.ai.navigation.AmphibiousPathNavigation;
 import net.minecraft.world.entity.ai.navigation.PathNavigation;
 import net.minecraft.world.entity.player.Player;
@@ -37,19 +37,23 @@ public final class WaterGhostSummonEntity extends TamableAnimal implements Water
     private static final EntityDataAccessor<Boolean> SWIM = SynchedEntityData.defineId(WaterGhostSummonEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Boolean> GRAB = SynchedEntityData.defineId(WaterGhostSummonEntity.class, EntityDataSerializers.BOOLEAN);
     private final WaterGhostBody body;
+    private final SummonGuardGoal targets;
     private UUID itemId;
     private int nail;
 
     public WaterGhostSummonEntity(EntityType<? extends TamableAnimal> type, Level level) {
         super(type, level);
+        WaterGhostBody.configureSummon(this);
         body = new WaterGhostBody(this, SWIM, GRAB);
+        targets = new SummonGuardGoal(this, this::assigned, 2);
         moveControl = new WaterGhostBody.Movement(body);
         setPersistenceRequired();
         xpReward = 0;
         goalSelector.addGoal(1, body.grab);
-        goalSelector.addGoal(2, new MeleeAttackGoal(this, 1, true));
+        goalSelector.addGoal(2, new SummonMeleeAttackGoal(this, 1,
+                () -> SummonCombatConfig.value(SummonCombatConfig.WATER_GHOST_ATTACK_TICKS)));
         goalSelector.addGoal(3, new GuardGoal());
-        targetSelector.addGoal(1, new TargetsGoal());
+        targetSelector.addGoal(1, targets);
     }
     @Override protected void registerGoals() { }
     @Override protected void defineSynchedData() {
@@ -71,6 +75,7 @@ public final class WaterGhostSummonEntity extends TamableAnimal implements Water
         setTame(true); setOwnerUUID(owner.getUUID()); itemId = item; nail = finger;
     }
     @Override public void tick() {
+        if (!level().isClientSide && tickCount % 20 == 0) WaterGhostBody.configureSummon(this);
         super.tick(); body.tick();
         if (level().isClientSide || !isAlive()) return;
         var entry = itemId == null ? null : RedNailsState.get(getServer()).find(itemId);
@@ -80,7 +85,8 @@ public final class WaterGhostSummonEntity extends TamableAnimal implements Water
         var owner = getOwner();
         if (!(owner instanceof Player player) || !owner.isAlive() || owner.level() != level()
                 || !RedNailsItem.isWorn(player, itemId)) { finish(false); return; }
-        if (distanceToSqr(owner) > 144 && !teleportNear(owner) && distanceToSqr(owner) > 4096) {
+        double leash = getTarget() == null ? 12 : Math.max(12, SummonCombatConfig.guardRadius() + 4);
+        if (distanceToSqr(owner) > leash * leash && !teleportNear(owner) && distanceToSqr(owner) > 4096) {
             finish(false); return;
         }
         if (getTarget() != null && !wantsToAttack(getTarget(), owner)) setTarget(null);
@@ -115,27 +121,7 @@ public final class WaterGhostSummonEntity extends TamableAnimal implements Water
                         && ghost.getTarget() == target).size();
     }
     public void chooseTarget() {
-        var owner = getOwner();
-        if (owner == null || body.grabbing()) return;
-        var priorities = new java.util.ArrayList<java.util.List<LivingEntity>>();
-        var hurtBy = owner.getLastHurtByMob();
-        var hurt = owner.getLastHurtMob();
-        priorities.add(hurtBy != null && owner.tickCount - owner.getLastHurtByMobTimestamp() < 200 ? java.util.List.of(hurtBy) : java.util.List.of());
-        priorities.add(hurt != null && owner.tickCount - owner.getLastHurtMobTimestamp() < 200 ? java.util.List.of(hurt) : java.util.List.of());
-        priorities.add(new java.util.ArrayList<>(level().getEntitiesOfClass(Mob.class, owner.getBoundingBox().inflate(16),
-                mob -> mob.getTarget() == owner && mob.distanceToSqr(owner) <= 256)));
-        for (var group : priorities) {
-            var target = new LinkedHashSet<>(group).stream().filter(e -> wantsToAttack(e, owner) && assigned(e) < 2)
-                    .min(java.util.Comparator.<LivingEntity>comparingInt(this::assigned).thenComparingDouble(this::distanceToSqr)).orElse(null);
-            if (target != null) { setTarget(target); return; }
-        }
-        if (getTarget() != null && (!wantsToAttack(getTarget(), owner) || assigned(getTarget()) >= 2
-                || distanceToSqr(owner) > 1024)) setTarget(null);
-    }
-    private final class TargetsGoal extends Goal {
-        @Override public boolean canUse() { return tickCount % 10 == 0 && getOwner() != null; }
-        @Override public boolean canContinueToUse() { return false; }
-        @Override public void start() { chooseTarget(); }
+        targets.chooseTarget();
     }
     private final class GuardGoal extends Goal {
         GuardGoal() { setFlags(EnumSet.of(Flag.MOVE, Flag.LOOK)); }
@@ -167,6 +153,7 @@ public final class WaterGhostSummonEntity extends TamableAnimal implements Water
     }
     @Override public void readAdditionalSaveData(CompoundTag tag) {
         super.readAdditionalSaveData(tag);
+        WaterGhostBody.configureSummon(this);
         itemId = tag.hasUUID("ItemId") ? tag.getUUID("ItemId") : null;
         nail = tag.getInt("Nail"); body.grab.cooldownUntil(tag.getLong("GrabCooldown"));
     }
