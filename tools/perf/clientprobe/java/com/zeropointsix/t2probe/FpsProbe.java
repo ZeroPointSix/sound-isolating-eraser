@@ -13,6 +13,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.RenderLevelStageEvent;
+import net.minecraftforge.client.gui.LoadingErrorScreen;
+import net.minecraftforge.fml.ModLoader;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -41,6 +43,16 @@ public final class FpsProbe {
         public static void tick(TickEvent.ClientTickEvent event) {
             if (event.phase != TickEvent.Phase.END || ++ticks % 20 != 0 || active) return;
             try {
+                Minecraft mc = Minecraft.getInstance();
+                Files.writeString(OUT.resolve("fps-client-state.json"), JSON.toJson(Map.of(
+                        "utc", Instant.now().toString(),
+                        "screen", mc.screen == null ? "none" : mc.screen.getClass().getName(),
+                        "level", mc.level == null ? "none" : mc.level.dimension().location().toString(),
+                        "player", mc.player != null)));
+                if (mc.screen instanceof LoadingErrorScreen) {
+                    throw new IllegalStateException("Forge loading screen: " + ModLoader.get().getWarnings()
+                            .stream().map(warning -> warning.formatToString()).toList());
+                }
                 if (armed) {
                     if (System.nanoTime() > deadline) throw new IllegalStateException("No valid world frame before deadline");
                     return;

@@ -128,7 +128,23 @@ class Client:
         index = len(server.lines)
         self.process = subprocess.Popen(command, cwd=self.directory, env=env, stdout=self.log,
                                         stderr=subprocess.STDOUT, start_new_session=True)
-        server.wait(PLAYER + r" joined the game", index, 300)
+        if os.environ.get("T2_FPS_PROBE"):
+            deadline = time.monotonic() + 300
+            while True:
+                failure = p.OUT / "fps-failure.json"
+                if failure.exists():
+                    raise RuntimeError(failure.read_text())
+                if time.monotonic() >= deadline:
+                    state = p.OUT / "fps-client-state.json"
+                    raise TimeoutError("Client join timeout: " + (state.read_text() if state.exists() else "no probe state"))
+                try:
+                    server.wait(PLAYER + r" joined the game", index, 2)
+                    break
+                except TimeoutError:
+                    if self.process.poll() is not None:
+                        raise RuntimeError("Client exited before joining")
+        else:
+            server.wait(PLAYER + r" joined the game", index, 300)
         server.send("op " + PLAYER)
         server.send("gamemode survival " + PLAYER)
         server.send(f"effect give {PLAYER} minecraft:resistance 1000000 4 true")

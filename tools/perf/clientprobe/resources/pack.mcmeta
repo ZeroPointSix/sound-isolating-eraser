@@ -1,0 +1,6 @@
+{
+  "pack": {
+    "description": "T2 validation-only read-only client probe",
+    "pack_format": 15
+  }
+}
