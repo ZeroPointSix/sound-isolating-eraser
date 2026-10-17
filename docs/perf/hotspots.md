@@ -33,7 +33,7 @@ C 的计数探针也被采到：`EntityDataAccessor.m_6184_` 单条包含时间 
 - [`shadow/FleeLightGoal.java:16`](https://github.com/ZeroPointSix/sound-isolating-eraser/blob/e1703317583858b73fb1cd29c3db3f0a177c068b/src/main/java/com/zeropointsix/eraser/shadow/FleeLightGoal.java#L16)：已有预计算偏移、游标续扫、目标缓存，以及每批最多 1024 位置、64 寻路候选。缓存目标检查和搜索结束后的间隔也已存在。应测多实体汇总成本，而非重做已存在的分片。
 - [`neon/SeekLightGoal.java:20`](https://github.com/ZeroPointSix/sound-isolating-eraser/blob/e1703317583858b73fb1cd29c3db3f0a177c068b/src/main/java/com/zeropointsix/eraser/neon/SeekLightGoal.java#L20)：`nextCheck=now+200`；单次用 `BlockPos.betweenClosed` 遍历 17x5x17 候选长方体，共 `17*5*17=1445` 个位置，再按半径和已加载区块过滤，并可能多次 `createPath`。候选风险是大量实体同步批次峰值，不是无间隔每 tick 全扫描。
 - [`YujiMonster.java:183`](https://github.com/ZeroPointSix/sound-isolating-eraser/blob/e1703317583858b73fb1cd29c3db3f0a177c068b/src/main/java/com/zeropointsix/eraser/yuji/YujiMonster.java#L183)：追逐/逃离 `moveTo` 已按 `tickCount % 10` 限频。嗔怒破坏邻域也有 10 tick 门控；不能把所有寻路与方块检查归类为每 tick 重算。
-- `monster/LightTier`、`brickrot/` 的接触/伤害查询、其他 Neon/Shadow 战斗调用仍须结合各场景 flamegraph 排序。小范围战斗碰撞查询不能为了统一间隔而延迟伤害；本页不声称已穷尽所有渲染器或所有调用路径。
+- `monster/LightTier.of` 是读取已有亮度，不是重算光照；Neon 的服务端 `aiStep`、Shadow 的存活服务端 `tick` 会读取亮度。Brickrot 的 `findQuarry` 是状态门控的 `inflate(40)` 查询；移动时 `crush` 按身体部件查询，冲锋期间逐 AI step 检查前方方块。具体调用节奏、源码行号、已有清理和渲染器补充见[范围审计](evidence/2026-10-17-pr1-scope-audit.md)。这些仍是静态候选，不能为了统一间隔而延迟战斗伤害，也不声称已穷尽所有调用路径。
 
 ## 客户端分配
 
@@ -44,6 +44,8 @@ C 的计数探针也被采到：`EntityDataAccessor.m_6184_` 单条包含时间 
 | [`client/GravityClient.java:48`](https://github.com/ZeroPointSix/sound-isolating-eraser/blob/e1703317583858b73fb1cd29c3db3f0a177c068b/src/main/java/com/zeropointsix/eraser/client/GravityClient.java#L48)，render 阶段回调 | AFTER_PARTICLES 新建 `PoseStack` 复制 pose/normal，AFTER_LEVEL 消费后清空 | 阶段间复制有正确性用途。不能直接替换成后一个事件的栈；需验证轮廓、矩阵归位、资源重载与每帧复用边界 |
 
 模型初始化期数组不等于逐帧分配。远距剔除只应影响渲染；巨型实体、伸出包围盒的特效、透视轮廓和第三方兼容需独立测试，不能假定原版没有任何距离/视锥剔除。
+
+补充发现：`NeonTumorRenderer.preRender` 的三元素 `String[]`、`GravityWorldRenderer.render` 的 shader color 克隆、圆柱线段向量，以及 `YujiRenderer.preRender` 的骨骼递归/逐层名称构造均位于渲染路径。已有 fieldBounds 视锥剔除、静态纹理及发光层条件不能当成本轮新增。见[逐项证据与边界](evidence/2026-10-17-pr1-scope-audit.md#渲染路径补充)；实际分配率、JIT 消除情况及 FPS 收益仍未测量。
 
 ## SavedData 与账本
 

@@ -13,11 +13,12 @@
 | 文档 | 用途 |
 | --- | --- |
 | [hotspots.md](hotspots.md) | 文件、方法、触发条件、调用频率与风险；区分已存在的优化和待测候选 |
+| [PR1 恢复与补充审计](evidence/2026-10-17-pr1-scope-audit.md) | 固定提交恢复证据；补齐砖蚀、光照、逐帧分配与 State 分类；记录仍未覆盖的验收 |
 | [upstream-comparison.md](upstream-comparison.md) | 八个指定项目的一手资料、可迁移方法、版本及语义限制 |
 | [spark-runbook.md](spark-runbook.md) | 标准启动、三类场景的四个正式窗口、300 秒采样、数据口径、环境证据与复测步骤 |
 | [四窗口诊断基线](evidence/2026-10-16-four-window-baseline.md) | A/B1/B2/C viewer、MSPT/实体数、场景与站位限制、固定世界快照、恢复命令及逐项 CI |
 | [首轮生产专服与空载基线](evidence/2026-10-16-production-idle-baseline.md) | 固定 bb325dc 构建、生产 Forge 启动/存活/停服、真实 300 秒 spark、MSPT 与计数纠错 |
-| [pr2-spawn-cap-plan.md](pr2-spawn-cap-plan.md) | 未开工的 PR2 文件/API/cap 算法/config/生命周期与回归清单；有限默认值待实测 |
+| [pr2-spawn-cap-plan.md](pr2-spawn-cap-plan.md) | PR2 实施前的设计记录：文件/API/cap 算法/config/生命周期与回归清单；后续实现必须使用独立 PR |
 | [缓存与离线启动复核](evidence/2026-10-16-codexweb-cache-check.md) | 19:52 UTC 离线 runServer 的插件缺失历史证据；该次未启动/采样，不代表后续 CI 替代路线仍失败 |
 | [网络分层诊断与 Gradle 恢复](evidence/2026-10-16-network-diagnosis.md) | 19:37 后新增的 DNS/TCP/TLS 证据、官方 Gradle 替代入口、插件解析失败与现有环境负载 |
 
@@ -41,6 +42,8 @@
 不能据此认定哪个候选占用最多 CPU、造成多少 GC 或能降低多少 MSPT。也不能把以下原有优化记到本轮：城市每 100 tick 刷怪、雨寂预算轮转及每 20 tick 维护、避光搜索分片/缓存、霓虹寻光 200 tick 间隔、绮语局部召唤上限。
 
 ## 验证记录
+
+2026-10-17 00:05 UTC 回源：恢复时 HEAD `9955ecd3b96bdfa9a58f8586a18851319fdc8c24` 的八项 Actions 均为 success；同 SHA 的原始日志确认默认 434/434 必需 GameTest 和 Mixin 14/0。四份专服采样仍绑定 `bb325dc` 运行时，不是此次文档补充新测的数据。逐项链接及证据范围见[恢复记录](evidence/2026-10-17-pr1-scope-audit.md)。本段只证明指定 SHA；本文档补充提交后的结果写到原 PR 检查/评论，不继承旧 HEAD 的成功，也不为刷新状态反复制造新提交。
 
 21:43 UTC 固定记录：准确源码 `bb325dc` 在独立 GitHub runner 正常构建，四个生产专服 spark 窗口完成、全部正常停服；无需修改 foojay、项目依赖或网络权限。验证脚本仅在独立分支，未修改本 PR 或既有 CI 门禁。`bb7d241` 已核实默认完整 GameTest 434/434、Mixin14/0，但八项 CI 为 7 success / 1 failure：Gravity 真实双客户端入水断言两次均 `water=false`。完整证据和逐项链接见[四窗口记录](evidence/2026-10-16-four-window-baseline.md#pr-提交级验证)。这些结果绑定指定 SHA，不自动继承到下一文档提交；当前 HEAD 状态以原 PR 的逐项检查记录为准。
 
