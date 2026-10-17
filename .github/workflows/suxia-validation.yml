@@ -1,0 +1,100 @@
+name: Suxia Acceptance
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/main/java/com/zeropointsix/eraser/suxia/**'
+      - 'src/main/java/com/zeropointsix/eraser/memory/**'
+      - 'src/main/java/com/zeropointsix/eraser/client/Suxia*.java'
+      - 'src/main/java/com/zeropointsix/eraser/gametest/SuxiaGameTests.java'
+      - 'src/main/java/com/zeropointsix/eraser/registry/**'
+      - 'src/main/java/com/zeropointsix/eraser/item/ItemCategoryTooltips.java'
+      - 'src/main/resources/**'
+      - 'src/suxiaTest/**'
+      - 'tools/suxia/**'
+      - 'gradle/**'
+      - 'build.gradle'
+      - 'gradle.properties'
+      - '.github/workflows/suxia-validation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: suxia-acceptance-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  gameplay-and-native-recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      LIBGL_ALWAYS_SOFTWARE: '1'
+      LP_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Record exact tested revision
+        run: |
+          mkdir -p build
+          git rev-parse HEAD HEAD^{tree} | tee build/suxia-tested-revision.txt
+          git ls-files -z src/main/java src/main/resources src/suxiaTest tools/suxia gradle/suxia-e2e.gradle build.gradle gradle.properties | xargs -0 sha256sum > build/suxia-tested-sources.sha256
+      - name: Verify evidence summary rejects incomplete runs
+        run: python3 -m unittest discover -s tools/suxia -p 'test_*.py'
+      - name: Run all 33 Suxia Forge regressions and prepare native driver
+        id: prepare
+        run: |
+          bash ./gradlew --no-daemon --max-workers=2 -PsuxiaOnly -PsuxiaE2E -PflareQaRunDir=run-suxia-ci verifySuxiaAssets writeSuxiaTestClasspath runGameTestServer | tee build/suxia-forge.log
+          grep -F 'All 33 required tests passed' build/suxia-forge.log
+          grep -F 'SUXIA_ACCEPT_SAFE_TELEPORT_PASS fallbackOnly=false' build/suxia-forge.log
+          grep -F 'SUXIA_ACCEPT_SAFE_TELEPORT_PASS fallbackOnly=true' build/suxia-forge.log
+          grep -F 'SUXIA_ACCEPT_PVP_OFF_PASS' build/suxia-forge.log
+          grep -F 'SUXIA_ACCEPT_PVP_ON_PASS' build/suxia-forge.log
+          grep -F 'SUXIA_ACCEPT_PRIORITY_PASS' build/suxia-forge.log
+      - name: Install software rendering support
+        id: rendering
+        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y xvfb libgl1-mesa-dri
+      - name: Verify idle position and owner head direction
+        if: ${{ !cancelled() && steps.prepare.outcome == 'success' && steps.rendering.outcome == 'success' }}
+        run: |
+          env -u SUXIA_QA_WORLD_SOURCE -u SUXIA_QA_COOLDOWN_ONLY SUXIA_QA_IDLE_ONLY=1 SUXIA_QA_TIMEOUT_SECONDS=600 python3 -u tools/suxia/e2e.py | tee build/suxia-idle.log
+          grep -F 'SUXIA_IDLE_REAL_CLIENT_PASSED' build/suxia-idle.log
+      - name: Verify complete E2E-8 lifecycle and saved-world restart
+        if: ${{ !cancelled() && steps.prepare.outcome == 'success' && steps.rendering.outcome == 'success' }}
+        run: |
+          env -u SUXIA_QA_WORLD_SOURCE -u SUXIA_QA_IDLE_ONLY -u SUXIA_QA_COOLDOWN_ONLY SUXIA_QA_TIMEOUT_SECONDS=1200 python3 -u tools/suxia/e2e.py | tee build/suxia-full.log
+          grep -F 'SUXIA_REAL_CLIENT_AND_DEDICATED_SERVER_E2E_PASSED' build/suxia-full.log
+      - name: Verify visible cooldown after pickup, reconnect and new server JVM
+        if: ${{ !cancelled() && steps.prepare.outcome == 'success' && steps.rendering.outcome == 'success' }}
+        run: |
+          env -u SUXIA_QA_WORLD_SOURCE -u SUXIA_QA_IDLE_ONLY SUXIA_QA_COOLDOWN_ONLY=1 SUXIA_QA_TIMEOUT_SECONDS=600 python3 -u tools/suxia/e2e.py | tee build/suxia-cooldown.log
+          grep -F 'SUXIA_COOLDOWN_BOUNDARIES_REAL_CLIENT_PASSED' build/suxia-cooldown.log
+      - name: Verify immutable tested sources and summarize native evidence
+        if: ${{ !cancelled() }}
+        run: |
+          sha256sum -c build/suxia-tested-sources.sha256
+          python3 tools/suxia/summarize_evidence.py
+      # Raw screenshots, saved player data and historical restricted archives stay private.
+      - name: Retain revision and derived verification summary only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: suxia-acceptance-summary
+          retention-days: 14
+          if-no-files-found: warn
+          path: |
+            build/suxia-tested-revision.txt
+            build/suxia-tested-sources.sha256
+            build/suxia-acceptance-summary.json

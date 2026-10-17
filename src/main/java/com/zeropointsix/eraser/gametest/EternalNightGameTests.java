@@ -9,6 +9,8 @@ import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.TicketType;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.DoorBlock;
 import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
@@ -25,6 +27,7 @@ import java.util.UUID;
 public final class EternalNightGameTests {
     private static GameTestConfigs.LiveConfig liveConfig;
     private static int configUsers;
+    private static Runnable deathCleanup;
 
     /**
      * Sequential unique batches plus this reset keep config, SavedData and
@@ -67,7 +70,15 @@ public final class EternalNightGameTests {
     @AfterBatch(batch = "eternal_night_pending") public static void afterPending(ServerLevel level) { restoreConfig(); }
     @AfterBatch(batch = "eternal_night_doors") public static void afterDoors(ServerLevel level) { restoreConfig(); }
     @AfterBatch(batch = "eternal_night_loot") public static void afterLoot(ServerLevel level) { restoreConfig(); }
-    @AfterBatch(batch = "eternal_night_death") public static void afterDeath(ServerLevel level) { restoreConfig(); }
+    @AfterBatch(batch = "eternal_night_death") public static void afterDeath(ServerLevel level) {
+        Runnable cleanup = deathCleanup;
+        deathCleanup = null;
+        try {
+            if (cleanup != null) cleanup.run();
+        } finally {
+            restoreConfig();
+        }
+    }
     @AfterBatch(batch = "eternal_night_reach") public static void afterReach(ServerLevel level) { restoreConfig(); }
     @AfterBatch(batch = "eternal_night_district") public static void afterDistrict(ServerLevel level) { restoreConfig(); }
     @AfterBatch(batch = "eternal_night_shadow") public static void afterShadow(ServerLevel level) { restoreConfig(); }
@@ -404,6 +415,9 @@ public final class EternalNightGameTests {
         ServerLevel city = server.getLevel(EternalNightContent.LEVEL);
         boolean keepInventory = city.getGameRules().getBoolean(net.minecraft.world.level.GameRules.RULE_KEEPINVENTORY);
         boolean reset = NightConfig.RESET_ON_DEATH.get();
+        BlockPos death = new BlockPos(4096, 120, 4096);
+        ChunkPos deathChunk = new ChunkPos(death);
+        java.util.concurrent.atomic.AtomicBoolean ticketHeld = new java.util.concurrent.atomic.AtomicBoolean();
         var observed = new java.util.ArrayList<net.minecraftforge.event.entity.living.LivingDropsEvent>();
         java.util.function.Consumer<net.minecraftforge.event.entity.living.LivingDropsEvent> listener = event -> {
             if (event.getEntity() == player) observed.add(event);
@@ -411,14 +425,21 @@ public final class EternalNightGameTests {
         java.util.concurrent.atomic.AtomicBoolean cleaned = new java.util.concurrent.atomic.AtomicBoolean();
         Runnable cleanup = () -> {
             if (!cleaned.compareAndSet(false, true)) return;
-            net.minecraftforge.common.MinecraftForge.EVENT_BUS.unregister(listener);
-            observed.forEach(event -> event.getDrops().forEach(net.minecraft.world.entity.Entity::discard));
-            city.getGameRules().getRule(net.minecraft.world.level.GameRules.RULE_KEEPINVENTORY).set(keepInventory, server);
-            NightConfig.RESET_ON_DEATH.set(reset);
-            var current = server.getPlayerList().getPlayer(player.getUUID());
-            if (current != null) server.getPlayerList().remove(current);
-            session.channel().finishAndReleaseAll();
+            try {
+                net.minecraftforge.common.MinecraftForge.EVENT_BUS.unregister(listener);
+                observed.forEach(event -> event.getDrops().forEach(net.minecraft.world.entity.Entity::discard));
+                city.getGameRules().getRule(net.minecraft.world.level.GameRules.RULE_KEEPINVENTORY).set(keepInventory, server);
+                NightConfig.RESET_ON_DEATH.set(reset);
+                var current = server.getPlayerList().getPlayer(player.getUUID());
+                if (current != null) server.getPlayerList().remove(current);
+                session.channel().finishAndReleaseAll();
+            } finally {
+                if (ticketHeld.compareAndSet(true, false)) {
+                    city.getChunkSource().removeRegionTicket(TicketType.PLAYER, deathChunk, 2, deathChunk);
+                }
+            }
         };
+        deathCleanup = cleanup;
         try {
             net.minecraftforge.common.MinecraftForge.EVENT_BUS.addListener(net.minecraftforge.eventbus.api.EventPriority.LOWEST,
                     true, net.minecraftforge.event.entity.living.LivingDropsEvent.class, listener);
@@ -437,7 +458,10 @@ public final class EternalNightGameTests {
             player.setRespawnPosition(net.minecraft.world.level.Level.OVERWORLD, bed.north(), 0, false, false);
             h.assertTrue(net.minecraft.world.entity.player.Player.findRespawnPositionAndUseSpawnBlock(
                     h.getLevel(), bed.north(), 0, false, true).isPresent(), "bed fixture is safe for this world seed");
-            BlockPos death = new BlockPos(4096, 120, 4096);
+            // An embedded test connection does not provide a real client's chunk-loading handshake.
+            city.getChunkSource().addRegionTicket(TicketType.PLAYER, deathChunk, 2, deathChunk);
+            ticketHeld.set(true);
+            city.getChunk(deathChunk.x, deathChunk.z);
             city.setBlock(death.below(), Blocks.STONE_BRICKS.defaultBlockState(), 2);
             player.teleportTo(city, death.getX() + 0.5, death.getY(), death.getZ() + 0.5, 0, 0);
             player.getInventory().clearContent();
@@ -445,10 +469,10 @@ public final class EternalNightGameTests {
             CompoundTag data = new CompoundTag();
             data.putLongArray("Doors", new long[]{12, 34}); data.putBoolean("Visiting", true);
             player.getPersistentData().put(NightEvents.PLAYER_TAG, data);
-            h.runAfterDelay(290, cleanup);
             h.startSequence().thenWaitUntil(() -> h.assertTrue(city.isPositionEntityTicking(death),
                     "death fixture chunk is entity-ticking")).thenExecute(() -> {
             try {
+            System.out.println("CITY_DEATH_FIXTURE_READY tick=" + h.getTick());
             h.assertTrue(player.hurt(player.damageSources().genericKill(), Float.MAX_VALUE) && !player.isAlive(), "real damage causes death");
             h.assertTrue(NightEvents.playerData(player).getBoolean("ReturnAfterDeath"), "death return marker is persisted before respawn");
             h.assertTrue(NightEvents.playerData(player).getLongArray("Doors").length == 0, "death clears prior door history");

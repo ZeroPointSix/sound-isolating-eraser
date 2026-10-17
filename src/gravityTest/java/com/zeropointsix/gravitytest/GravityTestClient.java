@@ -69,9 +69,12 @@ public final class GravityTestClient {
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void tick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END || finished) return;
+        if (System.getProperty("wings.qa.role") != null) return;
         Minecraft mc = Minecraft.getInstance();
         try {
-            if (++totalTicks > 6000) throw new AssertionError("Timed out in stage " + stage + ", phase " + phase);
+            // The category matrix now exercises 662 real hovers plus overflow pages per client.
+            if (++totalTicks > (Boolean.getBoolean("qiwu.qa") ? 30000 : 6000))
+                throw new AssertionError("Timed out in stage " + stage + ", phase " + phase);
             if (mc.player == null || mc.level == null) return;
             Entity moving = named(mc, "gravityqa_moving");
             Entity still = named(mc, "gravityqa_still");
@@ -80,6 +83,8 @@ public final class GravityTestClient {
                 if (ROLE.equals("wearer") && !GravityEquipment.isEquipped(mc.player)) return;
                 if (!QijieInventoryProbe.tick(mc, renderedFrames, RESULTS, ROLE)) return;
                 if (!ItemCategoryClientProbe.tick(mc, renderedFrames, RESULTS, ROLE)) return;
+                requireSenseFixturesAlive(mc);
+                System.out.println("GRAVITY_QA_SENSE_FIXTURES_ALIVE role=" + ROLE + " after tooltip matrix");
                 mc.setScreen(null);
                 GLFW.glfwFocusWindow(mc.getWindow().getWindow());
                 mc.mouseHandler.grabMouse();
@@ -89,6 +94,7 @@ public final class GravityTestClient {
             }
             ticks++;
             if (stage == 1 && ROLE.equals("wearer")) {
+                requireSenseFixturesAlive(mc);
                 for (Entity target : GravitySense.targets()) sensedKinds.add(target.getName().getString());
             }
             if (stage == 1 && ticks >= 80) {
@@ -127,6 +133,14 @@ public final class GravityTestClient {
                 Files.writeString(RESULTS.resolve(ROLE + ".failed"), failure.toString());
             } catch (Exception ignored) { }
             finished = true;
+        }
+    }
+
+    private static void requireSenseFixturesAlive(Minecraft mc) {
+        for (String kind : new String[]{"moving", "still", "zombie", "item", "arrow", "minecart", "still_item"}) {
+            Entity fixture = named(mc, "gravityqa_" + kind);
+            require(fixture != null && fixture.isAlive() && !fixture.isRemoved(),
+                    "sensing fixture alive and tracked before assertions: gravityqa_" + kind);
         }
     }
 

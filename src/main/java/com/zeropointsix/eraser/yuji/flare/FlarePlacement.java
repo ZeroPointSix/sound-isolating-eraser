@@ -5,7 +5,9 @@ import java.util.UUID;
 import javax.annotation.Nullable;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
@@ -89,6 +91,10 @@ public final class FlarePlacement {
         return place(level, pos, state, player, false);
     }
 
+    static boolean placeVisualLight(ServerLevel level, BlockPos pos, BlockState state, @Nullable Player player) {
+        return place(level, pos, state, player, true, Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE);
+    }
+
     public static boolean canRenew(ServerLevel level, BlockPos pos, BlockState state, @Nullable Player player) {
         if (!allowed(level, pos, player) || !level.getBlockState(pos).equals(state)) return false;
         // Renewal changes only the expiry; consult protection without replacing the block or notifying observers.
@@ -98,6 +104,11 @@ public final class FlarePlacement {
     }
 
     private static boolean place(ServerLevel level, BlockPos pos, BlockState state, @Nullable Player player, boolean commit) {
+        return place(level, pos, state, player, commit, Block.UPDATE_ALL);
+    }
+
+    private static boolean place(ServerLevel level, BlockPos pos, BlockState state, @Nullable Player player,
+                                 boolean commit, int flags) {
         if (!allowed(level, pos, player) || !level.getBlockState(pos).isAir() || !level.getFluidState(pos).isEmpty()) return false;
         BlockSnapshot snapshot = BlockSnapshot.create(level.dimension(), level, pos);
         boolean capture = level.captureBlockSnapshots;
@@ -108,7 +119,7 @@ public final class FlarePlacement {
             if (ForgeEventFactory.onBlockPlace(player, snapshot, Direction.UP)) return false;
             if (!commit) return true;
             committed = true;
-            level.markAndNotifyBlock(pos, level.getChunkAt(pos), snapshot.getReplacedBlock(), state, Block.UPDATE_ALL, 512);
+            level.markAndNotifyBlock(pos, level.getChunkAt(pos), snapshot.getReplacedBlock(), state, flags, 512);
             return true;
         } finally {
             // The snapshot helper's false flag still updates shapes and observers.
@@ -138,23 +149,79 @@ public final class FlarePlacement {
         return true;
     }
 
-    @Nullable public static BlockPos landing(ServerLevel level, Vec3 center, Player player) {
-        double min = Math.min(FlareConfig.DROP_MIN.get(), FlareConfig.DROP_MAX.get());
-        double max = Math.max(FlareConfig.DROP_MIN.get(), FlareConfig.DROP_MAX.get());
-        for (int i = 0; i < FlareConfig.DROP_ATTEMPTS.get(); i++) {
-            double angle = level.random.nextDouble() * Math.PI * 2;
-            double radius = Math.sqrt(min * min + level.random.nextDouble() * (max * max - min * min));
-            BlockPos column = BlockPos.containing(center.x + Math.cos(angle) * radius, center.y, center.z + Math.sin(angle) * radius);
-            double dx = column.getX() + .5 - center.x, dz = column.getZ() + .5 - center.z;
-            if (dx * dx + dz * dz < min * min || dx * dx + dz * dz > max * max || !level.hasChunkAt(column)) continue;
-            BlockPos pos = new BlockPos(column.getX(), level.getHeight(Heightmap.Types.MOTION_BLOCKING, column.getX(), column.getZ()), column.getZ());
-            if (!safeGround(level, pos) || !allowed(level, pos, player)) continue;
-            // Probe the actual placement event, then restore the air before the descent.
-            if (canPlace(level, pos, FlareContent.CRATE.get().defaultBlockState(), player)) {
-                return pos;
-            }
+    public static final class LandingSearch {
+        private final Vec3 center;
+        private final double min, max;
+        private final int budget;
+        private final int x1, z0, z1;
+        private int randomRemaining, x, z;
+        private boolean finished;
+
+        public LandingSearch(Vec3 center) {
+            this(center, FlareConfig.DROP_MIN.get(), FlareConfig.DROP_MAX.get(), FlareConfig.DROP_ATTEMPTS.get());
         }
-        return null;
+
+        private LandingSearch(Vec3 center, double min, double max, int budget) {
+            this.center = center;
+            this.min = Math.min(min, max); this.max = Math.max(min, max);
+            this.budget = budget; randomRemaining = budget;
+            x = Mth.ceil(center.x - this.max - .5); x1 = Mth.floor(center.x + this.max - .5);
+            z = z0 = Mth.ceil(center.z - this.max - .5); z1 = Mth.floor(center.z + this.max - .5);
+        }
+
+        public boolean finished() { return finished; }
+
+        @Nullable public BlockPos advance(ServerLevel level, Player player) {
+            if (finished) return null;
+            // Random misses do not prove that no landing exists. Scan the remaining
+            // annulus across ticks, retaining the original per-tick probe budget.
+            for (int i = 0; i < budget; i++) {
+                BlockPos column;
+                if (randomRemaining > 0) {
+                    randomRemaining--;
+                    double angle = level.random.nextDouble() * Math.PI * 2;
+                    double radius = Math.sqrt(min * min + level.random.nextDouble() * (max * max - min * min));
+                    column = BlockPos.containing(center.x + Math.cos(angle) * radius, 0, center.z + Math.sin(angle) * radius);
+                } else {
+                    if (x > x1) { finished = true; return null; }
+                    column = new BlockPos(x, 0, z);
+                    if (++z > z1) { z = z0; x++; }
+                }
+                double dx = column.getX() + .5 - center.x, dz = column.getZ() + .5 - center.z;
+                if (dx * dx + dz * dz < min * min || dx * dx + dz * dz > max * max || !level.hasChunkAt(column)) continue;
+                BlockPos pos = new BlockPos(column.getX(), level.getHeight(Heightmap.Types.MOTION_BLOCKING, column.getX(), column.getZ()), column.getZ());
+                if (!safeGround(level, pos) || !allowed(level, pos, player)) continue;
+                // Both phases consult protection and restore the provisional container.
+                if (canPlace(level, pos, FlareContent.CRATE.get().defaultBlockState(), player)) {
+                    finished = true; return pos;
+                }
+            }
+            if (randomRemaining == 0 && x > x1) finished = true;
+            return null;
+        }
+
+        public CompoundTag save() {
+            CompoundTag tag = new CompoundTag();
+            tag.putDouble("CenterX", center.x); tag.putDouble("CenterZ", center.z);
+            tag.putDouble("Min", min); tag.putDouble("Max", max); tag.putInt("Budget", budget);
+            tag.putInt("RandomRemaining", randomRemaining); tag.putInt("NextX", x); tag.putInt("NextZ", z);
+            tag.putBoolean("Finished", finished);
+            return tag;
+        }
+
+        public static LandingSearch load(CompoundTag tag, Vec3 fallback) {
+            double cx = tag.getDouble("CenterX"), cz = tag.getDouble("CenterZ");
+            double min = tag.getDouble("Min"), max = tag.getDouble("Max");
+            if (!Double.isFinite(cx) || !Double.isFinite(cz) || Math.abs(cx) > 30_000_000 || Math.abs(cz) > 30_000_000
+                    || !Double.isFinite(min) || !Double.isFinite(max)) return new LandingSearch(fallback);
+            LandingSearch search = new LandingSearch(new Vec3(cx, 0, cz), Mth.clamp(min, 1, 64), Mth.clamp(max, 1, 64),
+                    Mth.clamp(tag.getInt("Budget"), 1, 256));
+            search.randomRemaining = Mth.clamp(tag.getInt("RandomRemaining"), 0, search.budget);
+            search.x = Mth.clamp(tag.getInt("NextX"), search.x, search.x1 + 1);
+            search.z = Mth.clamp(tag.getInt("NextZ"), search.z0, search.z1);
+            search.finished = tag.getBoolean("Finished");
+            return search;
+        }
     }
     private FlarePlacement() { }
 }

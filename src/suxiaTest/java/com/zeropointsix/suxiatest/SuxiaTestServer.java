@@ -63,6 +63,7 @@ public final class SuxiaTestServer {
     }
 
     @SubscribeEvent public static void prepare(ServerStartedEvent event) {
+        if (SuxiaCooldownServer.ENABLED) { SuxiaCooldownServer.prepare(event); return; }
         ServerLevel level = event.getServer().overworld();
         level.setDayTime(6000); level.setWeatherParameters(6000, 0, false, false);
         level.getGameRules().getRule(GameRules.RULE_DOMOBSPAWNING).set(false, level.getServer());
@@ -92,6 +93,7 @@ public final class SuxiaTestServer {
     }
 
     @SubscribeEvent public static void login(PlayerEvent.PlayerLoggedInEvent event) {
+        if (SuxiaCooldownServer.ENABLED) { SuxiaCooldownServer.login(event); return; }
         if (!(event.getEntity() instanceof ServerPlayer p) || !p.getGameProfile().getName().equals("SuxiaTester")) return;
         player = p; ticks = 0;
         try {
@@ -120,10 +122,12 @@ public final class SuxiaTestServer {
     }
 
     @SubscribeEvent public static void logout(PlayerEvent.PlayerLoggedOutEvent event) {
+        if (SuxiaCooldownServer.ENABLED) { SuxiaCooldownServer.logout(event); return; }
         if (stage == 6 && event.getEntity() == player) { stage = 7; player = null; }
     }
 
     @SubscribeEvent public static void used(PlayerInteractEvent.RightClickItem event) {
+        if (SuxiaCooldownServer.ENABLED) { SuxiaCooldownServer.used(event); return; }
         if ((stage == 2 || stage == 4) && event.getEntity() == player && !event.getLevel().isClientSide) {
             var tag = event.getItemStack().getTag();
             UUID expected = stage == 2 ? firstWatch : secondWatch;
@@ -169,6 +173,7 @@ public final class SuxiaTestServer {
     }
 
     @SubscribeEvent public static void tick(TickEvent.ServerTickEvent event) {
+        if (SuxiaCooldownServer.ENABLED) { SuxiaCooldownServer.tick(event); return; }
         if (event.phase != TickEvent.Phase.END || failed || player == null) return;
         try {
             // The existing runner deadline bounds loading; behavior ticks start

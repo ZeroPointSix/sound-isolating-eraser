@@ -22,6 +22,73 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  flare-visual-client:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install native-frame video encoder
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb ffmpeg
+      - name: Prepare existing real-client harness
+        run: |
+          python tools/verify_mixin_targets.py
+          bash ./gradlew -PyujiE2E writeYujiTestClasspath --no-daemon
+      - name: Render three real shots, activation bursts, red radius and night lighting
+        run: FLARE_QA_VISUALS=1 YUJI_QA_PORT=25592 python tools/yuji/e2e.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: flare-three-color-client-evidence
+          path: |
+            build/flare-visuals-e2e-*/*.log
+            build/flare-visuals-e2e-*/*.pass
+            build/flare-visuals-e2e-*/*.failed
+            build/flare-visuals-e2e-*/*.png
+            build/flare-visuals-e2e-*/*.json
+            build/flare-visuals-e2e-*/*.tsv
+            build/flare-visuals-e2e-*/*.mp4
+
+  green-airdrop-client:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Prepare existing real-client harness
+        run: |
+          python tools/verify_mixin_targets.py
+          python -m unittest discover -s tools/flare -p test_verify_gametest_log.py -v
+          bash ./gradlew -PyujiE2E writeYujiTestClasspath --no-daemon
+      - name: Render green launch, natural descent, landing and real chest opening
+        run: FLARE_QA_GREEN=1 YUJI_QA_PORT=25591 python tools/yuji/e2e.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: green-airdrop-client-evidence
+          path: |
+            build/flare-green-e2e-*/*.log
+            build/flare-green-e2e-*/*.pass
+            build/flare-green-e2e-*/*.failed
+            build/flare-green-e2e-*/*.png
+            build/flare-green-e2e-*/*.json
+
   validate:
     runs-on: ubuntu-latest
     timeout-minutes: 40

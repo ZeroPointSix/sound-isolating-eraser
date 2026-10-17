@@ -1,0 +1,134 @@
+{
+  "sourceReport": "https://spark.lucko.me/bf8uw90DTk",
+  "rawMetadata": "https://spark.lucko.me/bf8uw90DTk?raw=1",
+  "extractionNote": "Selected original metadata fields; other fields omitted. MSPT is the report-end last5m rolling window, not reconstructed per-tick samples.",
+  "startTime": 1792183664637,
+  "endTime": 1792183964674,
+  "numberOfTicks": 6000,
+  "interval": 4000,
+  "platform": {
+    "type": 0,
+    "name": "Forge",
+    "version": "47.2.0",
+    "minecraftVersion": "1.20.1",
+    "sparkVersion": 2,
+    "brand": ""
+  },
+  "sources": {
+    "minecraft": {
+      "name": "minecraft",
+      "version": "1.20.1",
+      "author": "",
+      "description": "",
+      "builtIn": false
+    },
+    "spark": {
+      "name": "spark",
+      "version": "1.10.53",
+      "author": "",
+      "description": "",
+      "builtIn": false
+    },
+    "forge": {
+      "name": "forge",
+      "version": "47.2.0",
+      "author": "",
+      "description": "",
+      "builtIn": false
+    },
+    "curios": {
+      "name": "curios",
+      "version": "5.14.1+1.20.1",
+      "author": "",
+      "description": "",
+      "builtIn": false
+    },
+    "geckolib": {
+      "name": "geckolib",
+      "version": "4.4.9",
+      "author": "",
+      "description": "",
+      "builtIn": false
+    },
+    "sound_isolating_eraser": {
+      "name": "sound_isolating_eraser",
+      "version": "0.14.2",
+      "author": "",
+      "description": "",
+      "builtIn": false
+    }
+  },
+  "mspt": {
+    "last1m": {
+      "mean": 0.3911532858333333,
+      "max": 1.440615,
+      "min": 0.165121,
+      "median": 0.366981,
+      "percentile95": 0.722537
+    },
+    "last5m": {
+      "mean": 0.4114875888333333,
+      "max": 23.712475,
+      "min": 0.156211,
+      "median": 0.358368,
+      "percentile95": 0.864341
+    },
+    "gameMaxIdealMspt": 0
+  },
+  "tps": {
+    "last1m": 19.99998941367227,
+    "last5m": 19.99999477926803,
+    "last15m": 20.000425161482365,
+    "gameTargetTps": 0
+  },
+  "playerCount": 0,
+  "world": {
+    "totalEntities": 109,
+    "worlds": [
+      {
+        "name": "yuji_fodu",
+        "totalEntities": 0
+      },
+      {
+        "name": "eternal_night",
+        "totalEntities": 0
+      },
+      {
+        "name": "the_nether",
+        "totalEntities": 0
+      },
+      {
+        "name": "overworld",
+        "totalEntities": 109
+      },
+      {
+        "name": "the_end",
+        "totalEntities": 0
+      }
+    ],
+    "entityCounts": {
+      "minecraft:polar_bear": 8,
+      "minecraft:cow": 5,
+      "minecraft:chicken": 4,
+      "minecraft:falling_block": 28,
+      "minecraft:fox": 4,
+      "minecraft:wolf": 9,
+      "minecraft:pig": 8,
+      "minecraft:sheep": 12,
+      "minecraft:rabbit": 1,
+      "minecraft:item": 30
+    }
+  },
+  "cpu": {
+    "threads": 2,
+    "processUsage": {
+      "last1m": 0.07687967789452495,
+      "last15m": 0.14087065352175657
+    },
+    "systemUsage": {
+      "last1m": 0.019328797048037895,
+      "last15m": 0.056792703467025064
+    },
+    "modelName": "Intel(R) Xeon(R) 6973P-C"
+  }
+}

@@ -74,7 +74,10 @@ final class QijieInventoryProbe {
         }
         if (stage == 2 && frames >= readyFrame) {
             capture(mc, results.resolve(role + "-qijie-search.png"));
-            mc.setScreen(null);
+            // Restore the real player menu before the server sends non-hotbar fixture slots.
+            mc.player.closeContainer();
+            require(mc.player.containerMenu == mc.player.inventoryMenu && mc.screen == null,
+                    "creative inventory closes and restores the player menu");
             screen = null;
             Files.writeString(results.resolve(role + "-inventory.pass"),
                     "all items, search, wing slot bounds and same-ID entity replacement passed\n");

@@ -1,6 +1,10 @@
 package com.zeropointsix.eraser.gametest;
 
 import com.google.gson.JsonParser;
+import com.google.gson.JsonObject;
+import com.zeropointsix.eraser.item.ItemGuideCatalog;
+import com.zeropointsix.eraser.item.ItemGuideLayout;
+import com.zeropointsix.eraser.item.ItemGuideTooltips;
 import com.zeropointsix.eraser.registry.ModItemTags;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
@@ -26,6 +30,48 @@ import net.minecraftforge.registries.ForgeRegistries;
 @GameTestHolder("qijie_tests")
 @PrefixGameTestTemplate(false)
 public final class ItemCategoryGameTests {
+    @GameTest(template = "empty")
+    public static void tooltipPagesPreserveEveryRowExactlyOnce(GameTestHelper helper) {
+        int[] heights = java.util.stream.IntStream.range(0, 80).map(i -> i % 3 == 0 ? 20 : 10).toArray();
+        for (int budget : new int[]{212, 242, 272, 512}) {
+            int next = 0;
+            for (int[] range : ItemGuideLayout.pages(heights, budget)) {
+                helper.assertTrue(range[0] == next && range[1] > range[0], "pages are contiguous and nonempty");
+                int sum = 0;
+                for (int i = range[0]; i < range[1]; i++) sum += heights[i];
+                helper.assertTrue(sum <= budget, "page height retains title, navigation and outer padding");
+                next = range[1];
+            }
+            helper.assertTrue(next == heights.length, "no text/image row was omitted");
+        }
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty")
+    public static void tooltipOuterBorderFitsResolutionAndScaleMatrix(GameTestHelper helper) {
+        int[][] displays = {{640, 480, 1}, {640, 480, 2}, {800, 600, 2},
+                {960, 540, 2}, {1920, 1080, 2}, {1920, 1080, 4}, {1920, 480, 2}, {640, 1080, 2}};
+        for (int[] display : displays) {
+            int w = display[0] / display[2];
+            int h = display[1] / display[2];
+            for (int width : new int[]{1, w / 2, w - 8}) {
+                for (int height : new int[]{8, h / 2, h - 8}) {
+                    helper.assertTrue(ItemGuideLayout.fits(width, height, w, h), "fitting content accepted");
+                    for (int anchor : new int[]{-100, 0, 4, w / 2, w, 10000}) {
+                        int x = ItemGuideLayout.clamp(anchor, width, w);
+                        int y = ItemGuideLayout.clamp(anchor, height, h);
+                        helper.assertTrue(x >= 4 && y >= 4 && x + width + 4 <= w && y + height + 4 <= h,
+                                "entire native border fits at " + display[0] + "x" + display[1] + " scale " + display[2]);
+                    }
+                }
+            }
+            helper.assertTrue(!ItemGuideLayout.fits(w - 7, 8, w, h)
+                            && !ItemGuideLayout.fits(8, h - 7, w, h),
+                    "content-only fits must trigger reflow, not clamp an oversized rectangle");
+        }
+        helper.succeed();
+    }
+
     private static final Set<ResourceLocation> EXPECTED_QIWU = Set.of(
             id("super_fertilizer_bag"), id("gravity_jade_pendant"),
             id("shaxiadao"), id("sound_isolating_eraser"));
@@ -61,8 +107,8 @@ public final class ItemCategoryGameTests {
             Component detail = Component.literal("Existing detail").withStyle(ChatFormatting.ITALIC);
             List<Component> lines = new ArrayList<>(List.of(name, description, detail));
             post(stack, lines);
-            helper.assertTrue(lines.size() == 4 && lines.get(0) == name
-                            && lines.get(2) == description && lines.get(3) == detail,
+            helper.assertTrue(lines.size() == 6 && lines.get(0) == name
+                            && lines.get(4) == description && lines.get(5) == detail,
                     "name and existing lines retain identity, style and order: " + id);
             assertLabel(helper, lines.get(1), "qiwu", 0xFFAA00);
             helper.assertTrue(stack.getRarity() == rarity
@@ -144,6 +190,200 @@ public final class ItemCategoryGameTests {
                                 .equals(language.equals("en_us") ? "Curio" : "\u5947\u7269"), "qiwu translation: " + language);
                 helper.assertTrue(json.get("tooltip.sound_isolating_eraser.daoju").getAsString()
                                 .equals(language.equals("en_us") ? "Tool" : "\u9053\u5177"), "daoju translation: " + language);
+            }
+        }
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty")
+    public static void guideInventoryMatchesEveryOwnedRegisteredItem(GameTestHelper helper) {
+        Set<ResourceLocation> registered = new HashSet<>();
+        ForgeRegistries.ITEMS.forEach(item -> {
+            ResourceLocation id = ForgeRegistries.ITEMS.getKey(item);
+            if (!Set.of("sound_isolating_eraser", "qihai").contains(id.getNamespace())) return;
+            registered.add(id);
+            var entry = ItemGuideCatalog.entries().get(id);
+            helper.assertTrue(entry != null, "registered item has a guide: " + id);
+            ItemStack stack = item.getDefaultInstance();
+            String category = stack.is(ModItemTags.PRECIOUS_MEMORY) ? "precious_memory"
+                    : stack.is(ModItemTags.QIWU) || stack.is(ModItemTags.ODDITIES) ? "qiwu"
+                    : stack.is(ModItemTags.DAOJU) || stack.is(ModItemTags.PROPS) ? "daoju"
+                    : item instanceof net.minecraft.world.item.SpawnEggItem ? "spawn_egg"
+                    : item instanceof net.minecraft.world.item.BlockItem ? "block" : "material";
+            helper.assertTrue(entry.category().equals(category), "tag/registry category matches: " + id);
+            helper.assertTrue(!entry.module().isBlank() && entry.textStatus().equals("complete"),
+                    "module is explicit and documentation is complete: " + id);
+        });
+        helper.assertTrue(!registered.isEmpty() && registered.equals(ItemGuideCatalog.entries().keySet()),
+                "guide inventory equals the complete owned registry; no omissions or stale IDs");
+        System.out.println("ITEM_GUIDE_REGISTRY_COVERAGE " + registered.size());
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty")
+    public static void everyGuideSectionExistsInBothLanguages(GameTestHelper helper) throws Exception {
+        for (String language : List.of("en_us", "zh_cn")) {
+            JsonObject translations = new JsonObject();
+            for (String namespace : List.of("sound_isolating_eraser", "qihai")) {
+                String path = "/assets/" + namespace + "/lang/" + language + ".json";
+                try (var stream = ItemCategoryGameTests.class.getResourceAsStream(path)) {
+                    helper.assertTrue(stream != null, "language resource exists: " + path);
+                    var json = JsonParser.parseReader(new InputStreamReader(stream, StandardCharsets.UTF_8)).getAsJsonObject();
+                    json.entrySet().forEach(entry -> translations.add(entry.getKey(), entry.getValue()));
+                }
+            }
+            for (var entry : ItemGuideCatalog.entries().values()) {
+                for (String section : ItemGuideCatalog.SECTIONS) {
+                    String key = entry.key(section);
+                    helper.assertTrue(translations.has(key) && translations.get(key).isJsonPrimitive()
+                                    && translations.get(key).getAsJsonPrimitive().isString()
+                                    && !translations.get(key).getAsString().isBlank(),
+                            "nonempty guide translation: " + language + " / " + key);
+                    ItemStack stack = ForgeRegistries.ITEMS.getValue(entry.id()).getDefaultInstance();
+                    int supplied = section.equals("controls") ? entry.controls().size()
+                            : ItemGuideTooltips.arguments(entry, section, stack).length;
+                    String value = translations.get(key).getAsString();
+                    helper.assertTrue(!java.util.regex.Pattern.compile("\\b(?:PR2|pending|placeholder)\\b|\u5f85\u8865|\u5360\u4f4d",
+                                    java.util.regex.Pattern.CASE_INSENSITIVE).matcher(value).find(),
+                            "completed guides contain no pending text: " + language + " / " + key);
+                    long placeholders = java.util.regex.Pattern.compile("%s").matcher(value).results().count();
+                    helper.assertTrue(placeholders == supplied, "format arguments match: " + language + " / " + key);
+                }
+            }
+            for (String hint : List.of("hold_both", "hold_shift", "hold_control", "page")) {
+                helper.assertTrue(translations.has("guide.sound_isolating_eraser." + hint), "modifier hint: " + hint);
+            }
+            helper.assertTrue(java.util.regex.Pattern.compile("%s")
+                    .matcher(translations.get("guide.sound_isolating_eraser.page").getAsString()).results().count() == 2,
+                    "page navigation is localized with current and total page numbers");
+        }
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty")
+    public static void modifierMatrixIsCompleteAndDoesNotMutateStacks(GameTestHelper helper) {
+        for (var entry : ItemGuideCatalog.entries().values()) {
+            ItemStack stack = ForgeRegistries.ITEMS.getValue(entry.id()).getDefaultInstance();
+            stack.getOrCreateTag().putString("GuideSentinel", "unchanged");
+            if (entry.id().getPath().equals("super_fertilizer_bag")) {
+                stack.getOrCreateTag().putInt("FertilizerCapacity", 17);
+                stack.setDamageValue(5);
+            }
+            ItemStack original = stack.copy();
+            for (int mode = 0; mode < 4; mode++) {
+                boolean shift = (mode & 1) != 0;
+                boolean control = (mode & 2) != 0;
+                List<Component> lines = ItemGuideTooltips.describe(stack, shift, control,
+                        name -> Component.literal("remapped:" + name));
+                Set<String> keys = new HashSet<>();
+                for (Component line : lines) {
+                    helper.assertTrue(line.getContents() instanceof TranslatableContents, "all sections are translatable");
+                    var text = (TranslatableContents) line.getContents();
+                    helper.assertTrue(keys.add(text.getKey()), "no duplicate guide section: " + entry.id());
+                    if (entry.id().getPath().equals("super_fertilizer_bag") && text.getKey().equals(entry.key("cost"))) {
+                        helper.assertTrue(java.util.Arrays.equals(text.getArgs(), new Object[]{12, 17}),
+                                "fertilizer guide reads this stack's saved capacity and remaining uses");
+                    }
+                    if (text.getKey().equals(entry.key("controls"))) {
+                        helper.assertTrue(text.getArgs().length == entry.controls().size(), "all key bindings supplied");
+                        for (int i = 0; i < text.getArgs().length; i++) {
+                            helper.assertTrue(text.getArgs()[i] instanceof Component key
+                                            && key.getString().equals("remapped:" + entry.controls().get(i)),
+                                    "binding comes from resolver, not a hard-coded key");
+                        }
+                    }
+                }
+                helper.assertTrue(keys.contains(entry.key("summary")), "summary always visible");
+                for (String section : List.of("usage", "controls", "cooldown", "cost")) {
+                    helper.assertTrue(keys.contains(entry.key(section)) == shift, "Shift gate: " + section);
+                }
+                helper.assertTrue(keys.contains(entry.key("lore")) == control, "Ctrl gate");
+                helper.assertTrue(lines.size() == 1 + (shift ? 4 : 0) + (control ? 1 : 0)
+                                + (shift && control ? 0 : 1), "exact layer count");
+                Runnable restore = ItemGuideTooltips.configureClient(
+                        () -> new ItemGuideTooltips.Modifiers(shift, control),
+                        name -> Component.literal("remapped:" + name));
+                try {
+                    List<String> renderedKeys = stack.getTooltipLines(null, TooltipFlag.Default.NORMAL).stream()
+                            .map(Component::getContents).filter(TranslatableContents.class::isInstance)
+                            .map(TranslatableContents.class::cast).map(TranslatableContents::getKey)
+                            .filter(key -> key.startsWith("guide.")).toList();
+                    helper.assertTrue(renderedKeys.size() == keys.size()
+                                    && new HashSet<>(renderedKeys).equals(keys),
+                            "real tooltip entry point mounts each guide exactly once: " + entry.id() + " mode=" + mode);
+                } finally {
+                    restore.run();
+                }
+            }
+            helper.assertTrue(ItemStack.isSameItemSameTags(stack, original), "rendering never changes item NBT");
+        }
+        helper.assertTrue(ItemGuideTooltips.describe(new ItemStack(Items.STONE), true, true,
+                Component::translatable).isEmpty(), "foreign items have no guide");
+        System.out.println("ITEM_GUIDE_TOOLTIP_ENTRYPOINT_COVERAGE items=" + ItemGuideCatalog.entries().size() + " modes=4");
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty")
+    public static void migratedDynamicDetailsSurviveRealTooltipAssembly(GameTestHelper helper) {
+        ItemStack pills = ForgeRegistries.ITEMS.getValue(id("enhancement_pill_pack")).getDefaultInstance();
+        pills.setDamageValue(2);
+        ItemStack watch = ForgeRegistries.ITEMS.getValue(id("suxia_pocket_watch")).getDefaultInstance();
+        watch.getOrCreateTag().putUUID("Owner", java.util.UUID.randomUUID());
+        watch.getOrCreateTag().putString("OwnerName", "GuideTest");
+        watch.getOrCreateTag().putBoolean("Open", true);
+        watch.getOrCreateTag().putInt("Remaining", 400);
+        ItemStack coolingWatch = watch.copy();
+        coolingWatch.getOrCreateTag().putBoolean("Open", false);
+        coolingWatch.getOrCreateTag().putInt("CooldownRemaining", 1200);
+        ItemStack nails = ForgeRegistries.ITEMS.getValue(id("red_nails")).getDefaultInstance();
+        nails.getOrCreateTag().putUUID("Owner", java.util.UUID.randomUUID());
+        nails.getOrCreateTag().putString("OwnerName", "GuideTest");
+        nails.getOrCreateTag().putIntArray("NailLeft", new int[]{1200, 0, 0, 0});
+        var summoned = new net.minecraft.nbt.ListTag();
+        summoned.add(new net.minecraft.nbt.CompoundTag());
+        var activeNail = new net.minecraft.nbt.CompoundTag();
+        activeNail.putUUID("Ghost", java.util.UUID.randomUUID());
+        summoned.add(activeNail);
+        nails.getOrCreateTag().put("NailOut", summoned);
+        String prefix = "tooltip.sound_isolating_eraser.";
+        List<ItemStack> stacks = List.of(pills, watch, coolingWatch, nails);
+        List<Set<String>> expected = List.of(Set.of(prefix + "pill_count"),
+                Set.of(prefix + "suxia_pocket_watch.bound", prefix + "suxia_pocket_watch.active"),
+                Set.of(prefix + "suxia_pocket_watch.bound", prefix + "suxia_pocket_watch.cooling"),
+                Set.of(prefix + "red_nails.bound", prefix + "red_nails.nails", prefix + "red_nails.nail_cooling",
+                        prefix + "red_nails.nail_out", prefix + "red_nails.nail_ready"));
+        for (int mode = 0; mode < 4; mode++) {
+            boolean shift = (mode & 1) != 0;
+            boolean control = (mode & 2) != 0;
+            Runnable restore = ItemGuideTooltips.configureClient(
+                    () -> new ItemGuideTooltips.Modifiers(shift, control), Component::translatable);
+            try {
+                for (int i = 0; i < stacks.size(); i++) {
+                    ItemStack stack = stacks.get(i);
+                    ItemStack original = stack.copy();
+                    List<Component> lines = stack.getTooltipLines(null, TooltipFlag.Default.NORMAL);
+                    for (String key : expected.get(i)) {
+                        helper.assertTrue(lines.stream().anyMatch(line -> line.getContents() instanceof TranslatableContents text
+                                        && text.getKey().equals(key)) == shift, "live details use Shift: " + key);
+                    }
+                    if (shift) {
+                        for (Component line : lines) {
+                            if (!(line.getContents() instanceof TranslatableContents text)) continue;
+                            if (text.getKey().equals(prefix + "pill_count")) {
+                                helper.assertTrue(text.getArgs()[0].equals(pills.getMaxDamage() - 2), "current pill count");
+                            } else if (text.getKey().equals(prefix + "suxia_pocket_watch.active")) {
+                                helper.assertTrue(text.getArgs()[0].equals(20), "current summon seconds");
+                            } else if (text.getKey().equals(prefix + "suxia_pocket_watch.cooling")) {
+                                helper.assertTrue(text.getArgs()[0].equals("1:00"), "current watch cooldown");
+                            } else if (text.getKey().equals(prefix + "red_nails.nail_cooling")) {
+                                helper.assertTrue(text.getArgs()[1].equals("1:00"), "current individual nail cooldown");
+                            }
+                        }
+                    }
+                    helper.assertTrue(ItemStack.isSameItemSameTags(stack, original), "live details never change item data");
+                }
+            } finally {
+                restore.run();
             }
         }
         helper.succeed();

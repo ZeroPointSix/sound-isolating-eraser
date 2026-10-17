@@ -30,6 +30,7 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.GameRules;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.Blocks;
@@ -53,11 +54,15 @@ public final class FlareAcceptanceGameTests {
         final List<Entity> entities = new ArrayList<>();
         final Set<Long> originalLights = new HashSet<>();
         final GameTestConfigs.LiveConfig config;
+        final boolean originalMobSpawning;
+        final boolean arena;
         boolean prepared, completed;
         String phase = "preparation";
 
         Fixture(GameTestHelper h, int slot, boolean arena) {
             level = h.getLevel();
+            this.arena = arena;
+            originalMobSpawning = level.getGameRules().getBoolean(GameRules.RULE_DOMOBSPAWNING);
             center = new BlockPos(8200 + slot * 128, 200, 8200);
             config = GameTestConfigs.sandbox(YujiConfig.SPEC);
             for (Tag tag : FlareLights.get(level).save(new CompoundTag()).getList("Lights", Tag.TAG_COMPOUND))
@@ -162,18 +167,26 @@ public final class FlareAcceptanceGameTests {
         }
 
         void close() {
-            load();
-            entities.forEach(Entity::discard);
-            level.getEntitiesOfClass(FlareDecoy.class, new AABB(center).inflate(24)).forEach(Entity::discard);
-            level.getEntitiesOfClass(FlareProjectile.class, new AABB(center).inflate(24)).forEach(Entity::discard);
-            for (Tag tag : FlareLights.get(level).save(new CompoundTag()).getList("Lights", Tag.TAG_COMPOUND)) {
-                BlockPos pos = BlockPos.of(((CompoundTag) tag).getLong("Pos"));
-                if (!originalLights.contains(pos.asLong()) && pos.distSqr(center) <= 32 * 32
-                        && level.getBlockState(pos).is(Blocks.LIGHT)) level.removeBlock(pos, false);
+            try {
+                load();
+                entities.forEach(Entity::discard);
+                level.getEntitiesOfClass(FlareDecoy.class, new AABB(center).inflate(24)).forEach(Entity::discard);
+                level.getEntitiesOfClass(FlareProjectile.class, new AABB(center).inflate(24)).forEach(Entity::discard);
+                for (Tag tag : FlareLights.get(level).save(new CompoundTag()).getList("Lights", Tag.TAG_COMPOUND)) {
+                    BlockPos pos = BlockPos.of(((CompoundTag) tag).getLong("Pos"));
+                    if (!originalLights.contains(pos.asLong()) && pos.distSqr(center) <= 32 * 32
+                            && level.getBlockState(pos).is(Blocks.LIGHT)) level.removeBlock(pos, false);
+                }
+                previous.forEach((pos, state) -> level.setBlock(pos, state, 3));
+                FlareLights.get(level).cleanup(level);
+                config.close(); release();
+            } finally {
+                if (arena) {
+                    level.getGameRules().getRule(GameRules.RULE_DOMOBSPAWNING)
+                            .set(originalMobSpawning, level.getServer());
+                    System.out.println("FLARE_ACCEPTANCE_SPAWNING_RESTORED value=" + originalMobSpawning);
+                }
             }
-            previous.forEach((pos, state) -> level.setBlock(pos, state, 3));
-            FlareLights.get(level).cleanup(level);
-            config.close(); release();
         }
     }
 
@@ -186,6 +199,9 @@ public final class FlareAcceptanceGameTests {
     private static void ready(GameTestHelper h, int slot, boolean arena, Runnable action) {
         long startedAt = h.getLevel().getGameTime();
         fixture = new Fixture(h, slot, arena);
+        // Set this only after construction, so AfterBatch can always restore it.
+        if (arena) fixture.level.getGameRules().getRule(GameRules.RULE_DOMOBSPAWNING)
+                .set(false, fixture.level.getServer());
         Fixture preparedFixture = fixture;
         h.runAfterDelay(1200, () -> h.assertTrue(preparedFixture.prepared,
                 "acceptance preparation finishes within 1200 ticks: " + preparedFixture.diagnostic()));
@@ -197,6 +213,16 @@ public final class FlareAcceptanceGameTests {
                             "roofed arena is dark before any flare");
                 })
                 .thenExecute(() -> {
+                    if (arena) {
+                        // Remove ambient mobs loaded with a reused test world, before adding test actors.
+                        var ambient = preparedFixture.level.getEntitiesOfClass(Mob.class,
+                                new AABB(preparedFixture.center.offset(-13, 0, -13),
+                                        preparedFixture.center.offset(14, 4, 14)));
+                        System.out.println("FLARE_ACCEPTANCE_ARENA_ISOLATED removedAmbientMobs=" + ambient.size()
+                                + " entities=" + ambient.stream().map(mob -> mob.getType().toShortString()
+                                        + ":" + mob.getUUID()).toList());
+                        ambient.forEach(Entity::discard);
+                    }
                     preparedFixture.prepared = true;
                     System.out.println("FLARE_ACCEPTANCE_READY slot=" + slot + " preparationTicks="
                             + (preparedFixture.level.getGameTime() - startedAt));

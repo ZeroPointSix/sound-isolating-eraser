@@ -4,6 +4,7 @@ import com.zeropointsix.eraser.ModMain;
 import com.zeropointsix.eraser.brickrot.BrickrotContent;
 import com.zeropointsix.eraser.neon.NeonTumorEntity;
 import com.zeropointsix.eraser.registry.ModEntities;
+import com.zeropointsix.eraser.spawn.SpawnCaps;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceLocation;
@@ -140,15 +141,20 @@ public final class CitySpawns {
     }
 
     private static Mob spawn(ServerLevel level, EntityType<?> type, BlockPos feet, int size, boolean persistent) {
-        Entity entity = type.create(level);
-        if (!(entity instanceof Mob mob)) return null;
-        mob.moveTo(feet.getX() + 0.5, feet.getY(), feet.getZ() + 0.5, level.random.nextFloat() * 360, 0);
-        if (mob instanceof NeonTumorEntity tumor && size >= 0) tumor.setSizeIndex(size);
-        if (!level.getBlockState(feet.below()).isSolid() || !level.noCollision(mob)
-                || !level.getFluidState(feet).isEmpty()) return null;
-        mob.finalizeSpawn(level, level.getCurrentDifficultyAt(feet), MobSpawnType.NATURAL, null, null);
-        if (mob instanceof NeonTumorEntity tumor && size >= 0) tumor.setSizeIndex(size);
-        if (persistent) mob.setPersistenceRequired();
-        return level.addFreshEntity(mob) ? mob : null;
+        try (var reservation = SpawnCaps.tryReserve(level, type, feet)) {
+            if (reservation == null) return null;
+            Entity entity = type.create(level);
+            if (!(entity instanceof Mob mob)) return null;
+            mob.moveTo(feet.getX() + 0.5, feet.getY(), feet.getZ() + 0.5, level.random.nextFloat() * 360, 0);
+            if (mob instanceof NeonTumorEntity tumor && size >= 0) tumor.setSizeIndex(size);
+            if (!level.getBlockState(feet.below()).isSolid() || !level.noCollision(mob)
+                    || !level.getFluidState(feet).isEmpty()) return null;
+            mob.finalizeSpawn(level, level.getCurrentDifficultyAt(feet), MobSpawnType.NATURAL, null, null);
+            if (mob instanceof NeonTumorEntity tumor && size >= 0) tumor.setSizeIndex(size);
+            if (persistent) mob.setPersistenceRequired();
+            if (level.addFreshEntity(mob) && reservation.commit(mob)) return mob;
+            mob.discard();
+            return null;
+        }
     }
 }
