@@ -1,5 +1,6 @@
 package com.zeropointsix.rednailstest;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.mojang.blaze3d.platform.InputConstants;
 import com.zeropointsix.eraser.ModMain;
@@ -17,12 +18,14 @@ import net.minecraft.client.gui.screens.DisconnectedScreen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.nbt.Tag;
+import net.minecraft.tags.FluidTags;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ServerboundPlayerCommandPacket;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.vehicle.Boat;
 import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.ClientChatReceivedEvent;
 import net.minecraftforge.event.TickEvent;
@@ -43,6 +46,19 @@ public final class RedNailsAcceptanceClient {
     private static final InputConstants.Key LIFECYCLE_KEY = InputConstants.Type.KEYSYM.getOrCreate(GLFW.GLFW_KEY_O);
     private static InputConstants.Key originalKey;
     private static int rebindTicks, oldKeyHeldTicks;
+    private static SpeedClient speedClient;
+    private static final class SpeedClient {
+        final String name;
+        final double[] recentSteps = new double[20];
+        final JsonArray tickSamples = new JsonArray();
+        int windowCount, windowIndex, samples, chaseTicks, chaseForwardTicks, chaseModeTicks;
+        int lastTick = -1, firstTick = -1;
+        double chaseDistance, chaseMax;
+        Vec3 lastPlayer, lastBoat;
+        String boatUuid = "", fixtureBoatUuid = "";
+        SpeedClient(String name) { this.name = name; }
+        boolean swimmer() { return name.equals("swimmer"); }
+    }
     private static void reset() {
         var mc = Minecraft.getInstance();
         mc.options.keyUp.setDown(false); mc.options.keyJump.setDown(false); mc.options.keySprint.setDown(false);
@@ -66,7 +82,9 @@ public final class RedNailsAcceptanceClient {
             // A server phase notification must not release native boat input mid-capture.
             boolean keepLifecycleKey = phase.equals("lifecycle-gui-start") && next.equals("lifecycle-gui-open")
                     || phase.equals("lifecycle-gui-open") && next.equals("lifecycle-gui-closed");
-            if (!keepLifecycleKey && (nextCase.isEmpty() || !nextCase.equals(captureCase))) reset();
+            boolean keepSpeedInput = !speedCase(phase).isEmpty() && speedCase(phase).equals(speedCase(next))
+                    && phase.endsWith("-warmup") && next.endsWith("-chase");
+            if (!keepLifecycleKey && !keepSpeedInput && (nextCase.isEmpty() || !nextCase.equals(captureCase))) reset();
             if (next.endsWith("-ready")) {
                 captureCase = nextCase;
                 boatHistory = new AcceptanceObservations.BoatHistory();
@@ -79,6 +97,12 @@ public final class RedNailsAcceptanceClient {
     private static String captureCase(String value) {
         for (String name : new String[] {"boat", "bottom", "damage", "front-bottom", "front"}) {
             if (value.startsWith(name + "-")) return name;
+        }
+        return "";
+    }
+    private static String speedCase(String value) {
+        for (String name : new String[] {"swimmer", "boat", "calibration"}) {
+            if (value.startsWith("speed-" + name + "-")) return name;
         }
         return "";
     }
@@ -132,6 +156,10 @@ public final class RedNailsAcceptanceClient {
             mc.setScreen(null); mc.mouseHandler.grabMouse();
             if (!mc.isWindowActive()) return;
             ticks++;
+            if (!speedCase(phase).isEmpty()) {
+                speedTick(mc);
+                return;
+            }
             observeBoat(mc);
             if (phase.isEmpty()) {
                 signal("ready", "real client loaded, active window, real world");
@@ -212,6 +240,128 @@ public final class RedNailsAcceptanceClient {
             catch (Exception ignored) { }
         }
     }
+    private static String speedPosition(Vec3 pos) { return pos == null ? ",," : pos.x + "," + pos.y + "," + pos.z; }
+    private static void speedTick(Minecraft mc) throws Exception {
+        String name = speedCase(phase);
+        if (speedClient == null || !speedClient.name.equals(name)) speedClient = new SpeedClient(name);
+        var run = speedClient;
+        boolean chase = phase.endsWith("-chase");
+        boolean finish = phase.endsWith("-finish");
+        boolean driving = !finish && (!name.equals("calibration") || chase);
+        mc.options.keyUp.setDown(driving);
+        mc.options.keySprint.setDown(driving && run.swimmer());
+        mc.options.keyJump.setDown(false);
+        mc.options.keyShift.setDown(false);
+        if (run.firstTick < 0) {
+            run.firstTick = clientTicks;
+            mc.player.setYRot(0); mc.player.setXRot(0);
+        }
+        Boat nativeBoat = mc.player.getVehicle() instanceof Boat mounted ? mounted : null;
+        if (nativeBoat != null && run.fixtureBoatUuid.isEmpty()) run.fixtureBoatUuid = nativeBoat.getUUID().toString();
+        boolean consecutive = run.lastTick >= 0 && clientTicks == run.lastTick + 1;
+        Vec3 playerStep = consecutive && run.lastPlayer != null ? mc.player.position().subtract(run.lastPlayer) : Vec3.ZERO;
+        Vec3 boatStep = consecutive && nativeBoat != null && run.lastBoat != null
+                && run.boatUuid.equals(nativeBoat.getUUID().toString()) ? nativeBoat.position().subtract(run.lastBoat) : Vec3.ZERO;
+        Vec3 movement = run.swimmer() ? playerStep : boatStep;
+        boolean forward = driving && mc.options.keyUp.isDown() && mc.player.input.forwardImpulse > 0;
+        boolean modeValid = forward && (run.swimmer()
+                ? mc.player.isSwimming() && mc.player.isSprinting() && mc.options.keySprint.isDown()
+                    && mc.player.isEyeInFluid(FluidTags.WATER) && !mc.player.isPassenger()
+                : nativeBoat != null && nativeBoat.isInWater() && run.fixtureBoatUuid.equals(nativeBoat.getUUID().toString()));
+        if (modeValid && consecutive && movement.z > 0.05 && Math.abs(movement.x) < 0.01 && Math.abs(movement.y) < 0.05) {
+            run.recentSteps[run.windowIndex++ % run.recentSteps.length] = movement.horizontalDistance();
+            run.windowCount = Math.min(run.recentSteps.length, run.windowCount + 1);
+        } else { run.windowCount = 0; run.windowIndex = 0; }
+        double min = Double.POSITIVE_INFINITY, max = 0, sum = 0;
+        for (int i = 0; i < run.windowCount; i++) {
+            min = Math.min(min, run.recentSteps[i]); max = Math.max(max, run.recentSteps[i]); sum += run.recentSteps[i];
+        }
+        boolean stable = run.windowCount == run.recentSteps.length && max - min <= 0.005;
+        var sample = new JsonObject();
+        sample.addProperty("clientTick", clientTicks);
+        sample.addProperty("phase", phase);
+        sample.addProperty("consecutive", consecutive);
+        sample.addProperty("forwardInput", forward);
+        sample.addProperty("modeValid", modeValid);
+        sample.addProperty("boatUuid", nativeBoat == null ? "" : nativeBoat.getUUID().toString());
+        sample.addProperty("targetForwardStep", movement.z);
+        sample.addProperty("stable", stable);
+        run.tickSamples.add(sample);
+        if (chase) {
+            run.chaseTicks++;
+            if (forward) run.chaseForwardTicks++;
+            if (modeValid) run.chaseModeTicks++;
+            if (modeValid && consecutive) {
+                run.samples++; run.chaseDistance += movement.horizontalDistance();
+                run.chaseMax = Math.max(run.chaseMax, movement.horizontalDistance());
+            }
+        }
+        WaterGhostEntity observedGhost = null;
+        for (var entity : mc.level.entitiesForRendering()) {
+            if (entity instanceof WaterGhostEntity candidate && candidate.isAlive()) {
+                observedGhost = candidate;
+                break;
+            }
+        }
+        JsonObject input = new JsonObject();
+        input.addProperty("clientTick", clientTicks);
+        input.addProperty("clientWorldTick", mc.level.getGameTime());
+        input.addProperty("phase", phase);
+        input.addProperty("phaseTicks", ticks);
+        input.addProperty("forwardInput", forward);
+        input.addProperty("modeValid", modeValid);
+        input.addProperty("stable", stable);
+        input.addProperty("stableWindowSamples", run.windowCount);
+        input.addProperty("stableWindowMinBlocksPerTick", run.windowCount == 0 ? 0 : min);
+        input.addProperty("stableWindowMaxBlocksPerTick", max);
+        input.addProperty("stableWindowMeanBlocksPerTick", run.windowCount == 0 ? 0 : sum / run.windowCount);
+        input.addProperty("swimming", mc.player.isSwimming());
+        input.addProperty("sprinting", mc.player.isSprinting());
+        input.addProperty("upKey", mc.options.keyUp.isDown());
+        input.addProperty("sprintKey", mc.options.keySprint.isDown());
+        input.addProperty("forwardImpulse", mc.player.input.forwardImpulse);
+        input.addProperty("passenger", mc.player.isPassenger());
+        input.addProperty("boatUuid", nativeBoat == null ? "" : nativeBoat.getUUID().toString());
+        input.addProperty("playerPosition", mc.player.position().toString());
+        input.addProperty("boatPosition", nativeBoat == null ? "" : nativeBoat.position().toString());
+        signal("speed-" + name + "-input", input.toString());
+        var path = RESULTS.resolve("acceptance-speed-" + name + "-client.csv");
+        if (!Files.exists(path)) Files.writeString(path,
+                "clientTick,clientWorldTick,phaseTick,phase,playerX,playerY,playerZ,playerStep3d,playerStepHorizontal,pose,swimming,sprinting,eyeWater,upKey,sprintKey,jumpKey,forwardImpulse,passenger,boatUuid,boatX,boatY,boatZ,boatStepHorizontal,ghostUuid,ghostX,ghostY,ghostZ,ghostSwimAmount,ghostGrabAmount,stable,stableSamples,consecutive,forwardInput,modeValid,fixtureBoatUuid,targetForwardStep\n");
+        Files.writeString(path, clientTicks + "," + mc.level.getGameTime() + "," + ticks + "," + phase
+                + "," + speedPosition(mc.player.position()) + "," + playerStep.length() + "," + playerStep.horizontalDistance()
+                + "," + mc.player.getPose() + "," + mc.player.isSwimming() + "," + mc.player.isSprinting()
+                + "," + mc.player.isEyeInFluid(FluidTags.WATER) + "," + mc.options.keyUp.isDown()
+                + "," + mc.options.keySprint.isDown() + "," + mc.options.keyJump.isDown()
+                + "," + mc.player.input.forwardImpulse + "," + mc.player.isPassenger()
+                + "," + (nativeBoat == null ? "" : nativeBoat.getUUID())
+                + "," + speedPosition(nativeBoat == null ? null : nativeBoat.position()) + "," + boatStep.horizontalDistance()
+                + "," + (observedGhost == null ? "" : observedGhost.getUUID())
+                + "," + speedPosition(observedGhost == null ? null : observedGhost.position())
+                + "," + (observedGhost == null ? 0 : observedGhost.waterGhostSwimAmount(1))
+                + "," + (observedGhost == null ? 0 : observedGhost.waterGhostGrabAmount(1))
+                + "," + stable + "," + run.windowCount + "," + consecutive + "," + forward + "," + modeValid
+                + "," + run.fixtureBoatUuid + "," + movement.z + "\n", StandardOpenOption.APPEND);
+        run.lastTick = clientTicks; run.lastPlayer = mc.player.position();
+        run.lastBoat = nativeBoat == null ? null : nativeBoat.position();
+        run.boatUuid = nativeBoat == null ? "" : nativeBoat.getUUID().toString();
+        if (finish && ticks >= 5 && !Files.exists(RESULTS.resolve("acceptance-client-speed-" + name + "-finished.signal"))) {
+            if (!renderedScreenshot("speed-" + name)) return;
+            var report = new JsonObject();
+            report.addProperty("units", "consecutive client END tick position differences; no wall-clock speed");
+            report.addProperty("firstClientTick", run.firstTick);
+            report.addProperty("lastClientTick", clientTicks);
+            report.addProperty("chaseTicks", run.chaseTicks);
+            report.addProperty("chaseForwardTicks", run.chaseForwardTicks);
+            report.addProperty("chaseValidModeTicks", run.chaseModeTicks);
+            report.addProperty("nativeTargetSpeedSamples", run.samples);
+            report.addProperty("nativeTargetMaxBlocksPerTick", run.chaseMax);
+            report.addProperty("nativeTargetMeanBlocksPerTick", run.samples == 0 ? 0 : run.chaseDistance / run.samples);
+            report.addProperty("fixtureBoatUuid", run.fixtureBoatUuid);
+            report.add("tickSamples", run.tickSamples.deepCopy());
+            signal("speed-" + name + "-finished", report.toString());
+        }
+    }
     private static void require(boolean ok, String why) { if (!ok) throw new AssertionError(why); }
     private static boolean bindLifecycleKey(Minecraft mc) throws Exception {
         if (originalKey != null) return true;
@@ -283,7 +433,11 @@ public final class RedNailsAcceptanceClient {
         proof.addProperty("cooling", RedNailsItem.coolingCount(ring));
         proof.addProperty("backlash", mc.player.hasEffect(MobEffects.DARKNESS)
                 || mc.player.hasEffect(MobEffects.CONFUSION) || mc.player.hasEffect(MobEffects.MOVEMENT_SLOWDOWN));
-        if (!Files.exists(RESULTS.resolve("acceptance-client-" + name + ".signal"))) screenshot(name);
+        if (!Files.exists(RESULTS.resolve("acceptance-client-" + name + ".signal"))) {
+            // A rejoin packet can arrive before the first world frame is drawn.
+            // Keep the same nonblank requirement and wait under the stage timeout.
+            if (ticks < 20 || !renderedScreenshot(name)) return false;
+        }
         signal(name, proof.toString());
         return true;
     }
@@ -336,11 +490,15 @@ public final class RedNailsAcceptanceClient {
         }
     }
     private static void screenshot(String name) throws Exception {
+        if (!renderedScreenshot(name)) throw new AssertionError("nonblank native OpenGL frame required");
+    }
+    private static boolean renderedScreenshot(String name) throws Exception {
         try (var image = Screenshot.takeScreenshot(Minecraft.getInstance().getMainRenderTarget())) {
             java.util.HashSet<Integer> colors = new java.util.HashSet<>();
             for (int y = 0; y < image.getHeight(); y += 8) for (int x = 0; x < image.getWidth(); x += 8) colors.add(image.getPixelRGBA(x, y));
-            if (colors.size() <= 100) throw new AssertionError("nonblank native OpenGL frame required");
+            if (colors.size() <= 100) return false;
             image.writeToFile(RESULTS.resolve("acceptance-" + name + ".png"));
+            return true;
         }
     }
 }

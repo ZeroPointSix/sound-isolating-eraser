@@ -18,7 +18,7 @@ TIMEOUT = int(os.environ.get("RED_NAILS_QA_TIMEOUT", "900"))
 PURSUIT = os.environ.get("RED_NAILS_QA_PURSUIT") == "1"
 ACCEPTANCE = os.environ.get("RED_NAILS_QA_ACCEPTANCE") == "1"
 CASE = os.environ.get("RED_NAILS_QA_CASE", "all")
-if CASE not in {"all", "boat", "bottom", "front", "front-bottom", "damage", "items", "lifecycle"}:
+if CASE not in {"all", "boat", "bottom", "front", "front-bottom", "damage", "items", "lifecycle", "speed"}:
     raise ValueError(f"Unknown native acceptance case: {CASE}")
 processes, logs = [], []
 
@@ -150,6 +150,20 @@ try:
         stop(client)
         save_stop(server)
         print("RED_NAILS_NATIVE_LIFECYCLE_PASSED", flush=True)
+        sys.exit(0)
+    if ACCEPTANCE and CASE == "speed":
+        # Requirement failures are accumulated server-side until BOTH mature-target
+        # chases and the separate stationary-start calibration have written evidence.
+        wait_for(["acceptance-speed", "acceptance-client"], [server, client])
+        for name in ("swimmer", "boat", "calibration"):
+            if not (RESULTS / f"acceptance-speed-{name}-observed.signal").exists():
+                raise AssertionError(f"Missing complete speed observation: {name}")
+        summary = json.loads((RESULTS / "acceptance-speed-summary.json").read_text())
+        if not summary["passed"]:
+            raise AssertionError("Quantitative speed/catch-up requirements failed")
+        stop(client)
+        save_stop(server)
+        print("RED_NAILS_NATIVE_SPEED_AND_CATCH_UP_PASSED", flush=True)
         sys.exit(0)
     if ACCEPTANCE:
         capture = ["boat", "bottom", "front", "front-bottom", "damage"] if CASE == "all" else ([CASE] if CASE != "items" else [])

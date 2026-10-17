@@ -23,6 +23,9 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.level.TicketType;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
+import net.minecraft.tags.FluidTags;
+import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
@@ -56,6 +59,7 @@ public final class RedNailsGameTests {
         final List<EmbeddedChannel> channels = new ArrayList<>();
         final List<ChunkPos> chunks = new ArrayList<>();
         final LinkedHashMap<BlockPos, BlockState> blocks = new LinkedHashMap<>();
+        boolean closed;
         Fixture(GameTestHelper h) {
             level = h.getLevel();
             helper = h;
@@ -118,6 +122,8 @@ public final class RedNailsGameTests {
             }
         }
         void close() {
+            if (closed) return;
+            closed = true;
             entities.stream().filter(e -> e instanceof ServerPlayer).forEach(e -> RedNailsItem.cancelOwner((ServerPlayer) e));
             entities.forEach(Entity::discard);
             blocks.forEach((pos, state) -> level.setBlock(pos, state, 3));
@@ -406,6 +412,136 @@ public final class RedNailsGameTests {
             check(h, f.entry(stack).active() == 1, "Teleport preserves the active finger"); h.succeed();
         });
     }
+    @GameTest(template = "empty", batch = BATCH) public static void summon_spawn_prefers_safe_water_over_clear_ground(GameTestHelper h) {
+        var f = new Fixture(h);
+        try {
+            var owner = f.player(0, 0); owner.setYRot(0);
+            var stack = f.wear(owner);
+            for (int x = 4; x <= 6; x++) for (int z = -1; z <= 1; z++) for (int y = 0; y <= 2; y++) {
+                f.set(f.center.offset(x, y, z), Blocks.WATER.defaultBlockState());
+            }
+            var ghost = f.summon(owner, stack);
+            var guard = ghost.guardPosition(owner);
+            var guardFloor = BlockPos.containing(guard).below();
+            check(h, f.level.noCollision(ghost, ghost.getType().getDimensions().makeBoundingBox(guard))
+                            && f.level.getBlockState(guardFloor).isCollisionShapeFullBlock(f.level, guardFloor),
+                    "Dry guard position is available, so choosing water proves water-first priority");
+            check(h, WaterGhostBody.waterAt(ghost, ghost.blockPosition()) && ghost.ghostBody().swimming(),
+                    "Normal item activation chooses nearby water and its compact swimming dimensions");
+            check(h, ghost.blockPosition().distSqr(owner.blockPosition()) <= 64
+                            && f.level.noCollision(ghost, ghost.getBoundingBox()),
+                    "Preferred water destination remains within eight blocks and collision-free");
+            check(h, ghost.position().distanceToSqr(guard) > 0.01 && f.entry(stack).active() == 1,
+                    "Water placement wins over safe ground without duplicating the summon");
+            h.succeed();
+        } finally { f.close(); }
+    }
+    @GameTest(template = "empty", batch = BATCH) public static void summon_spawn_skips_blocked_water_and_guard_for_safe_ground(GameTestHelper h) {
+        var f = new Fixture(h);
+        try {
+            var owner = f.player(0, 0); owner.setYRot(0);
+            var stack = f.wear(owner);
+            for (int x = 4; x <= 6; x++) for (int z = -1; z <= 1; z++) {
+                f.set(f.center.offset(x, 0, z), Blocks.WATER.defaultBlockState());
+            }
+            for (int x = 3; x <= 7; x++) for (int z = -2; z <= 2; z++) {
+                f.set(f.center.offset(x, 1, z), Blocks.STONE.defaultBlockState());
+            }
+            for (int y = 0; y <= 2; y++) f.set(f.center.offset(0, y, 3), Blocks.STONE.defaultBlockState());
+            var ghost = f.summon(owner, stack);
+            for (int x = 4; x <= 6; x++) for (int z = -1; z <= 1; z++) {
+                var water = f.center.offset(x, 0, z);
+                check(h, WaterGhostBody.waterAt(ghost, water)
+                                && !f.level.noCollision(ghost, WaterGhostBody.SWIMMING.makeBoundingBox(Vec3.atBottomCenterOf(water))),
+                        "Every nearby water candidate has an actual obstructing roof");
+            }
+            check(h, !f.level.noCollision(ghost, ghost.getType().getDimensions().makeBoundingBox(ghost.guardPosition(owner))),
+                    "The preferred formation point is also obstructed");
+            var floor = ghost.blockPosition().below();
+            double distance = ghost.position().subtract(owner.position()).horizontalDistanceSqr();
+            check(h, !ghost.ghostBody().swimming() && !f.level.containsAnyLiquid(ghost.getBoundingBox())
+                            && f.level.noCollision(ghost, ghost.getBoundingBox())
+                            && f.level.getBlockState(floor).isCollisionShapeFullBlock(f.level, floor),
+                    "Fallback chooses dry, supported, full-height collision-free ground");
+            check(h, distance >= 2.25 && distance <= 9 && Math.abs(ghost.getY() - owner.getY()) <= 1
+                            && ghost.position().distanceToSqr(ghost.guardPosition(owner)) > 0.01,
+                    "Blocked water and formation point use the bounded safe-ground search, not owner overlap");
+            h.succeed();
+        } finally { f.close(); }
+    }
+    private static void blockOwnerDestinations(Fixture f, ServerPlayer owner) {
+        for (int x = -3; x <= 3; x++) for (int z = -3; z <= 3; z++) {
+            if (Math.abs(x) < 2 && Math.abs(z) < 2) continue;
+            for (int y = 0; y <= 3; y++) f.set(owner.blockPosition().offset(x, y, z), Blocks.STONE.defaultBlockState());
+        }
+    }
+    @GameTest(template = "empty", batch = BATCH) public static void summon_spawn_overlaps_owner_only_after_all_safe_candidates_fail(GameTestHelper h) {
+        var f = new Fixture(h);
+        try {
+            var owner = f.player(0, 0); owner.setYRot(0);
+            var stack = f.wear(owner);
+            blockOwnerDestinations(f, owner);
+            var ghost = f.summon(owner, stack);
+            for (var at : BlockPos.withinManhattan(owner.blockPosition(), 8, 4, 8)) {
+                if (at.distSqr(owner.blockPosition()) <= 64) check(h, !WaterGhostBody.waterAt(ghost, at),
+                        "Fully blocked spawn fixture contains no alternative water destination");
+            }
+            check(h, !f.level.noCollision(ghost, ghost.getType().getDimensions().makeBoundingBox(ghost.guardPosition(owner))),
+                    "Formation point is blocked before the owner-overlap fallback");
+            for (var at : BlockPos.withinManhattan(owner.blockPosition(), 3, 1, 3)) {
+                Vec3 position = Vec3.atBottomCenterOf(at);
+                double distance = position.subtract(owner.position()).horizontalDistanceSqr();
+                if (distance >= 2.25 && distance <= 9) check(h,
+                        !f.level.noCollision(ghost, ghost.getType().getDimensions().makeBoundingBox(position)),
+                        "Every bounded safe-ground candidate is physically blocked");
+            }
+            check(h, ghost.position().distanceToSqr(owner.position()) == 0
+                            && ghost.getBoundingBox().intersects(owner.getBoundingBox()),
+                    "Only after both searches fail does activation place the summon at the owner's exact position");
+            check(h, ghost.isAlive() && f.entry(stack).active() == 1 && RedNailsItem.coolingCount(stack) == 0,
+                    "Owner-overlap fallback retains one live, healthy summon without a penalty");
+            h.succeed();
+        } finally { f.close(); }
+    }
+    @GameTest(template = "empty", batch = BATCH, timeoutTicks = 180)
+    public static void beyond_sixty_four_blocks_failed_teleport_recalls_without_penalty(GameTestHelper h) {
+        var f = new Fixture(h); var owner = f.player(0, 0); var stack = f.wear(owner); var ghost = f.summon(owner, stack);
+        var deadlines = f.entry(stack).ready.clone();
+        float health = owner.getHealth();
+        h.startSequence().thenWaitUntil(() -> check(h, owner.tickCount >= 65
+                        && f.level.isPositionEntityTicking(f.center), "Owner is past spawn protection and the fixture is entity-ticking"))
+                .thenExecute(() -> {
+                    blockOwnerDestinations(f, owner);
+                    for (int x = -3; x <= 3; x++) for (int z = -3; z <= 3; z++) {
+                        if (Math.abs(x) < 2 && Math.abs(z) < 2) continue;
+                        var at = Vec3.atBottomCenterOf(owner.blockPosition().offset(x, 0, z));
+                        check(h, !f.level.noCollision(ghost, ghost.getType().getDimensions().makeBoundingBox(at)),
+                                "Every safe-teleport candidate is blocked by actual world collision");
+                    }
+                    // Stay in the fixture's loaded X/Z column instead of moving into
+                    // another test's chunks. The next ordinary entity tick must recall.
+                    ghost.setPos(owner.position().add(0, 70, 0));
+                    check(h, ghost.distanceToSqr(owner) > 4096 && ghost.isAlive() && f.entry(stack).active() == 1
+                                    && ghost.getOwner() == owner && RedNailsItem.findWorn(owner) == stack,
+                            "Live, valid owner-bound summon begins beyond the unchanged 64-block boundary");
+                }).thenWaitUntil(() -> check(h, ghost.isRemoved(), "Ordinary summon tick recalls after every safe teleport fails"))
+                .thenExecute(() -> {
+                    try {
+                        check(h, f.entry(stack).active() == 0
+                                        && java.util.Arrays.equals(f.entry(stack).ready, deadlines)
+                                        && java.util.Arrays.equals(stack.getTag().getLongArray("NailReadyAt"), deadlines)
+                                        && RedNailsItem.coolingCount(stack) == 0,
+                                "Automatic distance recall clears the ledger and preserves all exact cooldown deadlines");
+                        check(h, owner.getHealth() == health && !owner.hasEffect(MobEffects.DARKNESS)
+                                        && !owner.hasEffect(MobEffects.CONFUSION) && !owner.hasEffect(MobEffects.MOVEMENT_SLOWDOWN),
+                                "Automatic distance recall causes no damage or backlash effects after spawn protection expires");
+                        check(h, owner.isAlive() && RedNailsItem.findWorn(owner) == stack,
+                                "Recall was not caused by owner death, disappearance or accessory removal");
+                        var resolved = RedNailsItem.resolve(f.level.getServer(), ghost.getUUID());
+                        check(h, resolved == null || resolved.isRemoved(), "Recalled ghost is absent from every loaded dimension");
+                    } finally { f.close(); }
+                }).thenSucceed();
+    }
     @GameTest(template = "empty", batch = BATCH) public static void grab_lock_duration_and_escape(GameTestHelper h) {
         var f = new Fixture(h); var g = f.hostile(0, 0); var second = f.hostile(0, 2);
         var victim = f.add(EntityType.VILLAGER.create(f.level), 0, 1);
@@ -486,6 +622,68 @@ public final class RedNailsGameTests {
             for (int i = 60; i < 100; i++) g.ghostBody().grab.tick();
             check(h, !g.ghostBody().grab.canContinueToUse(), "Water grip ends at one hundred ticks"); h.succeed();
         });
+    }
+    @GameTest(template = "empty", batch = BATCH, timeoutTicks = 100)
+    public static void extra_oxygen_drain_exempts_aquatic_breathing(GameTestHelper h) {
+        extraOxygenExemption(h, EntityType.COD, null, "aquatic breathing");
+    }
+    @GameTest(template = "empty", batch = BATCH, timeoutTicks = 100)
+    public static void extra_oxygen_drain_exempts_water_breathing_effect(GameTestHelper h) {
+        extraOxygenExemption(h, EntityType.PILLAGER, MobEffects.WATER_BREATHING, "Water Breathing");
+    }
+    @GameTest(template = "empty", batch = BATCH, timeoutTicks = 100)
+    public static void extra_oxygen_drain_exempts_conduit_power(GameTestHelper h) {
+        extraOxygenExemption(h, EntityType.PILLAGER, MobEffects.CONDUIT_POWER, "Conduit Power");
+    }
+    private static void extraOxygenExemption(GameTestHelper h, EntityType<? extends Mob> victimType,
+                                            MobEffect protection, String label) {
+        var f = new Fixture(h); f.water(-5, 5);
+        var owner = f.player(0, -8); var stack = f.wear(owner);
+        var ghost = f.summon(owner, stack); var controlGhost = f.summon(owner, stack);
+        ghost.setPos(Vec3.atBottomCenterOf(f.center.offset(-2, 0, 0))); ghost.setYRot(0);
+        controlGhost.setPos(Vec3.atBottomCenterOf(f.center.offset(2, 0, 0))); controlGhost.setYRot(0);
+        Mob victim = f.add(victimType.create(f.level), -2, 1);
+        var control = f.add(EntityType.PILLAGER.create(f.level), 2, 1);
+        h.startSequence().thenWaitUntil(() -> {
+            check(h, ghost.ghostBody().swimming() && controlGhost.ghostBody().swimming()
+                            && victim.isInWater() && control.isInWater()
+                            && control.isEyeInFluid(FluidTags.WATER),
+                    "Protected victim and unprotected control have genuine submerged fluid state");
+        }).thenExecute(() -> {
+            try {
+                check(h, !control.canBreatheUnderwater() && !control.hasEffect(MobEffects.WATER_BREATHING)
+                                && !control.hasEffect(MobEffects.CONDUIT_POWER), "Positive control has no oxygen exemption");
+                if (protection == null) {
+                    check(h, victim.canBreatheUnderwater() && !victim.hasEffect(MobEffects.WATER_BREATHING)
+                                    && !victim.hasEffect(MobEffects.CONDUIT_POWER), "Aquatic species exemption is independent of effects");
+                } else {
+                    check(h, !victim.canBreatheUnderwater(), label + " fixture is not naturally aquatic");
+                    victim.addEffect(new MobEffectInstance(protection, 200));
+                    check(h, victim.hasEffect(protection), label + " is present as a real living-entity effect");
+                }
+                ghost.setTarget(victim); controlGhost.setTarget(control);
+                var grab = ghost.ghostBody().grab; var controlGrab = controlGhost.ghostBody().grab;
+                check(h, grab.canUse() && controlGrab.canUse(), "Both submerged rule fixtures satisfy unchanged grab eligibility");
+                grab.start(); controlGrab.start();
+                check(h, grab.held() == victim && controlGrab.held() == control, "Both production grabs are active during the oxygen comparison");
+                victim.setAirSupply(100); control.setAirSupply(100);
+                float health = victim.getHealth();
+                // Compare only the grab's additional drain in the same server callback;
+                // no intervening vanilla breathing tick can obscure an exact -3 change.
+                grab.tick(); controlGrab.tick();
+                check(h, victim.getAirSupply() == 100 && victim.getHealth() == health,
+                        label + " prevents the extra air loss without canceling or damaging the held victim");
+                check(h, control.getAirSupply() == 97 && controlGrab.held() == control && grab.held() == victim,
+                        "Unprotected control loses exactly three air in the same active water-grab tick");
+                if (protection != null) {
+                    victim.removeEffect(protection);
+                    victim.setAirSupply(100);
+                    grab.tick();
+                    check(h, victim.getAirSupply() == 97 && grab.held() == victim,
+                            "Removing " + label + " immediately restores the unchanged extra -3 drain");
+                }
+            } finally { f.close(); }
+        }).thenSucceed();
     }
     @GameTest(template = "empty", batch = BATCH, timeoutTicks = 150) public static void curio_nbt_changes_keep_other_summons(GameTestHelper h) {
         var f = new Fixture(h); var p = f.player(0, 0); var stack = f.wear(p);

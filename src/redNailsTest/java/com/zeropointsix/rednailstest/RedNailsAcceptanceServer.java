@@ -1,5 +1,7 @@
 package com.zeropointsix.rednailstest;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.zeropointsix.eraser.rednails.RedNailsItem;
 import com.zeropointsix.eraser.rednails.RedNailsInput;
@@ -12,7 +14,9 @@ import com.zeropointsix.eraser.suxia.SuxiaSummons;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.Tag;
@@ -80,6 +84,50 @@ public final class RedNailsAcceptanceServer {
     private static long lifecycleGuiPress = Long.MIN_VALUE, lifecycleGuiRelease = Long.MIN_VALUE;
     private static int lifecycleDimensionEvents, lifecycleLogoutEvents, lifecycleDamageEvents;
     private static boolean lifecycleDimensionActive, lifecycleLogoutActive;
+    private static final int SPEED_WINDOW = 100;
+    private static final int SPEED_MATURITY_TICKS = 30;
+    private static final double SPEED_LIMIT = 0.35;
+    private static final double SPEED_APPROX_MIN_PER_SECOND = 6.5, SPEED_APPROX_MAX_PER_SECOND = 7.1;
+    private static final int SPEED_MIN_NATIVE_SAMPLES = 20, SPEED_BOUNDARY_TICKS = 2;
+    private static final double SPEED_CADENCE_DRIFT = 0.10;
+    private static final JsonArray speedResults = new JsonArray();
+    private static final List<String> speedFailures = new ArrayList<>();
+    private static SpeedRun speedRun;
+
+    private static final class SpeedStats {
+        int count;
+        double sum, max;
+        void add(double value) { count++; sum += value; max = Math.max(max, value); }
+        JsonObject json() {
+            var result = new JsonObject();
+            result.addProperty("samples", count);
+            result.addProperty("maxBlocksPerTick", max);
+            result.addProperty("meanBlocksPerTick", count == 0 ? 0 : sum / count);
+            return result;
+        }
+    }
+    private static final class SpeedRun {
+        final String name;
+        final long warmupAt;
+        final List<String> issues = new ArrayList<>();
+        final JsonArray findings = new JsonArray();
+        final SpeedStats ghostTravel = new SpeedStats(), ghostHorizontal = new SpeedStats();
+        final SpeedStats matureTravel = new SpeedStats(), matureHorizontal = new SpeedStats();
+        final SpeedStats targetTravel = new SpeedStats();
+        long spawnedAt = -1, observationAt = -1, targetAt = -1, pursuitAt = -1, caughtAt = -1, lastTick = -1;
+        long preCatchEndTick = -1, decisionTick = -1;
+        int consecutivePursuit, inputSamples, lastClientTick = -1, observationClientTick = -1, observationSamples;
+        int preCatchClientTick = -1, validServerModeTicks, invalidServerModeTicks;
+        double initialDistance, observationDistance, finalDistance, lastGhostAdvance, closestDistance = Double.POSITIVE_INFINITY;
+        double targetForwardDistance;
+        Vec3 lastPlayer, lastBoat, lastGhost;
+        Vec3 spawnPlayer, spawnGhost, observationPlayer, observationBoat, observationGhost;
+        boolean lastHeld, matureStart, inconclusive, decisionModeValid, captureEntryObserved, captureEntryModeValid;
+        JsonObject startInput, report;
+        SpeedRun(String name, long now) { this.name = name; warmupAt = now; }
+        boolean swimmer() { return name.equals("swimmer"); }
+        boolean calibration() { return name.equals("calibration"); }
+    }
 
     private static boolean frontal() { return scenario.startsWith("front"); }
     private static boolean shallow() { return scenario.equals("bottom") || scenario.equals("front-bottom"); }
@@ -107,7 +155,7 @@ public final class RedNailsAcceptanceServer {
     }
     @SubscribeEvent public static void prepare(ServerStartedEvent event) {
         if (!ENABLED) return;
-        check(java.util.Set.of("all", "boat", "bottom", "front", "front-bottom", "damage", "items", "lifecycle").contains(CASE), "unknown acceptance case " + CASE);
+        check(java.util.Set.of("all", "boat", "bottom", "front", "front-bottom", "damage", "items", "lifecycle", "speed").contains(CASE), "unknown acceptance case " + CASE);
         var level = event.getServer().overworld();
         level.setDayTime(6000);
         level.setWeatherParameters(6000, 0, false, false);
@@ -116,6 +164,17 @@ public final class RedNailsAcceptanceServer {
         level.getGameRules().getRule(GameRules.RULE_NATURAL_REGENERATION).set(false, event.getServer());
         level.getGameRules().getRule(GameRules.RULE_SPAWN_RADIUS).set(0, event.getServer());
         level.setDefaultSpawnPos(new BlockPos(24, 75, 0), 0);
+        if (CASE.equals("speed")) {
+            // Closed, source-water channel: no bank, current or short-course interception.
+            for (var p : BlockPos.betweenClosed(-12, 60, -64, 12, 78, 192)) {
+                boolean wall = p.getX() == -12 || p.getX() == 12 || p.getZ() == -64 || p.getZ() == 192;
+                var block = p.getY() == 60 || wall && p.getY() <= 75 ? Blocks.STONE
+                        : p.getY() <= 74 ? Blocks.WATER : Blocks.AIR;
+                level.setBlock(p, block.defaultBlockState(), 2);
+            }
+            for (var p : BlockPos.betweenClosed(22, 74, -8, 38, 74, 12)) level.setBlock(p, Blocks.STONE.defaultBlockState(), 2);
+            return;
+        }
         for (var p : BlockPos.betweenClosed(-18, 60, -18, 18, 74, 24)) {
             level.setBlock(p, (p.getY() == 60 ? Blocks.STONE : Blocks.WATER).defaultBlockState(), 2);
         }
@@ -163,6 +222,10 @@ public final class RedNailsAcceptanceServer {
         decisionTick = ghost.level().getGameTime();
         decisionHeld = ghost.ghostBody().grab.held() == player;
         decisionDistanceSquared = ghost.distanceToSqr(player);
+        if (CASE.equals("speed") && speedRun != null && stage == 61) {
+            speedRun.decisionTick = decisionTick;
+            speedRun.decisionModeValid = validSpeedServerMode();
+        }
     }
     private static void setupCapture(String name) {
         scenario = name;
@@ -207,7 +270,8 @@ public final class RedNailsAcceptanceServer {
             check(System.nanoTime() - stageNanos < 300_000_000_000L, "native acceptance stage timeout " + stage + " " + scenario);
             check(player.isAlive(), "real player survives the acceptance case");
             if (stage == 0 && Files.exists(RESULTS.resolve("acceptance-client-ready.signal"))) {
-                if (CASE.equals("lifecycle")) setupLifecycle();
+                if (CASE.equals("speed")) setupSpeed("swimmer");
+                else if (CASE.equals("lifecycle")) setupLifecycle();
                 else if (CASE.equals("items")) setupItems();
                 else setupCapture(CASE.equals("all") ? "boat" : CASE);
             }
@@ -239,9 +303,404 @@ public final class RedNailsAcceptanceServer {
                 releasedPosition = player.position(); stage = 5; phase(scenario + "-released");
             } else if (stage == 5) {
                 releasedTick();
-            } else if (CASE.equals("lifecycle") && stage >= 40) lifecycleTick();
+            } else if (CASE.equals("speed") && stage >= 60) speedTick();
+            else if (CASE.equals("lifecycle") && stage >= 40) lifecycleTick();
             else if (stage >= 20) itemTick();
         } catch (Throwable error) { fail(error); }
+    }
+    private static JsonObject speedPolicy() {
+        var policy = new JsonObject();
+        policy.addProperty("scope", "Predeclared QA interpretation of approximately 7 blocks/s; production speed is unchanged.");
+        policy.addProperty("productionReferenceBlocksPerTick", SPEED_LIMIT);
+        policy.addProperty("nominalTicksPerSecond", 20);
+        policy.addProperty("maturePeakMinBlocksPerNominalSecond", SPEED_APPROX_MIN_PER_SECOND);
+        policy.addProperty("maturePeakMaxBlocksPerNominalSecond", SPEED_APPROX_MAX_PER_SECOND);
+        policy.addProperty("excludedInitialPursuitTicks", SPEED_MATURITY_TICKS);
+        policy.addProperty("minimumMatureAndPreCatchSamples", SPEED_MIN_NATIVE_SAMPLES);
+        policy.addProperty("allowedAggregateCadenceDrift", SPEED_CADENCE_DRIFT);
+        policy.addProperty("packetAndPhaseBoundaryAllowanceTicks", SPEED_BOUNDARY_TICKS);
+        policy.addProperty("cadenceRule", "Both clocks normally tick at 20 Hz: abs(clientTicks-serverTicks) <= 0.10*serverTicks+2; also check pre-catch forward displacement against native client speed with the same allowance.");
+        policy.addProperty("modeRule", "Every pre-catch native sample must retain sprint-swim or the same moving boat. Only calibration's initial stationary-to-W transition allows two client ticks.");
+        policy.addProperty("calibrationReference", "Calibration begins stationary: compare its aligned pre-catch client displacement, and require a later stable native boat window; never treat stationary warmup as a speed reference.");
+        return policy;
+    }
+    private static void speedFinding(String classification, String detail) {
+        var finding = new JsonObject();
+        finding.addProperty("classification", classification);
+        finding.addProperty("detail", detail);
+        speedRun.findings.add(finding);
+        speedRun.issues.add(classification + ": " + detail);
+        if (classification.equals("measurement_inconclusive")) speedRun.inconclusive = true;
+    }
+    private static boolean validSpeedServerMode() {
+        return speedRun.swimmer()
+                ? player.isSwimming() && player.isSprinting() && player.isEyeInFluid(FluidTags.WATER) && !player.isPassenger()
+                : boat != null && player.getVehicle() == boat && boat.isInWater();
+    }
+    private static boolean speedRateMatches(double measured, double expected, int serverTicks) {
+        return serverTicks > 0 && expected > 0 && Double.isFinite(measured)
+                && Math.abs(measured - expected) <= expected * (SPEED_CADENCE_DRIFT + (double) SPEED_BOUNDARY_TICKS / serverTicks);
+    }
+    private static void setupSpeed(String name) throws Exception {
+        if (name.equals("swimmer")) {
+            Files.writeString(RESULTS.resolve("acceptance-speed-policy.json"), speedPolicy() + "\n");
+            System.out.println("RED_NAILS_SPEED_PREDECLARED_POLICY " + speedPolicy());
+        }
+        if (ghost != null) ghost.discard();
+        if (boat != null) boat.discard();
+        ghost = null; boat = null;
+        player.stopRiding();
+        player.removeAllEffects();
+        player.setHealth(player.getMaxHealth());
+        player.setAirSupply(player.getMaxAirSupply());
+        player.getFoodData().setFoodLevel(20);
+        player.getFoodData().setSaturation(5);
+        speedRun = new SpeedRun(name, player.level().getGameTime());
+        scenario = "speed-" + name;
+        var level = player.serverLevel();
+        player.teleportTo(level, 0.5, speedRun.swimmer() ? 73 : 75.1, -40.5, 0, 0);
+        if (!speedRun.swimmer()) {
+            boat = new Boat(level, 0.5, 74.5, -40.5);
+            boat.setYRot(0);
+            level.addFreshEntity(boat);
+            check(player.startRiding(boat, true), "speed fixture mounts a real vanilla boat");
+        }
+        stage = 60;
+        phase(scenario + "-warmup");
+    }
+    private static void spawnSpeedGhost() {
+        ghost = ModEntities.WATER_GHOST.get().create(player.serverLevel());
+        check(ghost != null, "speed fixture creates registered ghost");
+        ghost.moveTo(player.getX(), speedRun.swimmer() ? player.getY() : 73.5, player.getZ() - 5, 0, 0);
+        player.serverLevel().addFreshEntity(ghost);
+        check(!ghost.isNoAi() && ghost.getTarget() == null, "speed ghost starts with unmodified normal AI");
+        speedRun.spawnedAt = player.level().getGameTime();
+        speedRun.initialDistance = ghost.distanceTo(player);
+        speedRun.spawnPlayer = player.position(); speedRun.spawnGhost = ghost.position();
+        speedRun.lastGhost = ghost.position();
+        check(ghost.getZ() < player.getZ() && speedRun.initialDistance >= 5 && speedRun.initialDistance <= 6,
+                "speed ghost starts five blocks behind inside the unchanged six-block activation range");
+        System.out.println("RED_NAILS_SPEED_SPAWN case=" + speedRun.name + " serverTick=" + speedRun.spawnedAt
+                + " distance=" + speedRun.initialDistance + " ghost=" + ghost.position() + " player=" + player.position()
+                + " boat=" + (boat == null ? "" : boat.getUUID()) + " matureStart=" + speedRun.matureStart);
+    }
+    private static JsonObject speedInput() throws Exception {
+        var path = RESULTS.resolve("acceptance-client-speed-" + speedRun.name + "-input.signal");
+        return Files.exists(path) ? JsonParser.parseString(Files.readString(path)).getAsJsonObject() : null;
+    }
+    private static String csvPosition(Vec3 pos) {
+        return pos == null ? ",," : pos.x + "," + pos.y + "," + pos.z;
+    }
+    private static void observeSpeed(long now, JsonObject input) throws Exception {
+        var run = speedRun;
+        boolean held = ghost != null && ghost.ghostBody().grab.held() == player;
+        boolean firstCatch = held && run.caughtAt < 0;
+        boolean selected = ghost != null && ghost.getTarget() == player;
+        boolean pursuing = selected && ghost.mayPursue();
+        if (selected && run.targetAt < 0) run.targetAt = now;
+        if (pursuing && run.pursuitAt < 0) run.pursuitAt = now;
+        if (held && run.caughtAt < 0) run.caughtAt = now;
+        boolean consecutive = run.lastTick >= 0 && now == run.lastTick + 1;
+        Vec3 playerStep = consecutive && run.lastPlayer != null ? player.position().subtract(run.lastPlayer) : Vec3.ZERO;
+        Vec3 boatStep = consecutive && boat != null && run.lastBoat != null ? boat.position().subtract(run.lastBoat) : Vec3.ZERO;
+        Vec3 ghostStep = consecutive && ghost != null && run.lastGhost != null ? ghost.position().subtract(run.lastGhost) : Vec3.ZERO;
+        run.lastGhostAdvance = ghostStep.z;
+        boolean chasing = pursuing && ghost.ghostBody().swimming() && !held && !run.lastHeld;
+        run.consecutivePursuit = chasing && consecutive ? run.consecutivePursuit + 1 : 0;
+        boolean observing = stage == 61;
+        boolean mature = observing && run.consecutivePursuit > SPEED_MATURITY_TICKS;
+        boolean preCatch = observing && run.caughtAt < 0;
+        boolean serverModeValid = validSpeedServerMode();
+        if (observing) {
+            run.observationSamples++;
+            if (ghost != null && run.lastGhost != null && consecutive && !held && !run.lastHeld) {
+                run.ghostTravel.add(ghostStep.length());
+                run.ghostHorizontal.add(ghostStep.horizontalDistance());
+                if (mature) {
+                    run.matureTravel.add(ghostStep.length());
+                    run.matureHorizontal.add(ghostStep.horizontalDistance());
+                }
+            }
+            if (preCatch) {
+                if (serverModeValid) run.validServerModeTicks++; else run.invalidServerModeTicks++;
+                run.preCatchEndTick = now;
+                if (input != null) run.preCatchClientTick = input.get("clientTick").getAsInt();
+                if (consecutive) {
+                    var movement = run.swimmer() ? playerStep : boatStep;
+                    run.targetTravel.add(movement.horizontalDistance());
+                    run.targetForwardDistance += movement.z;
+                }
+            }
+            if (firstCatch) {
+                run.captureEntryObserved = run.decisionTick == now;
+                run.captureEntryModeValid = run.captureEntryObserved && run.decisionModeValid;
+            }
+            if (input != null) {
+                int clientTick = input.get("clientTick").getAsInt();
+                if (clientTick > run.lastClientTick && input.get("forwardInput").getAsBoolean()) run.inputSamples++;
+                run.lastClientTick = Math.max(run.lastClientTick, clientTick);
+            }
+        }
+        if (ghost != null) {
+            run.finalDistance = ghost.distanceTo(player);
+            run.closestDistance = Math.min(run.closestDistance, run.finalDistance);
+        }
+        var path = RESULTS.resolve("acceptance-speed-" + run.name + "-server.csv");
+        if (!Files.exists(path)) Files.writeString(path,
+                "serverTick,stage,observationTick,clientTick,clientPhase,clientForward,clientModeValid,playerX,playerY,playerZ,playerStep3d,playerStepHorizontal,playerSwimming,playerSprinting,playerEyeWater,passenger,boatUuid,boatX,boatY,boatZ,boatStepHorizontal,ghostUuid,ghostTick,ghostX,ghostY,ghostZ,ghostStep3d,ghostStepHorizontal,ghostSwimming,targetPlayer,mayPursue,held,consecutivePursuit,mature,distance,preCatch,serverModeValid,serverValidModeTicks,serverInvalidModeTicks,captureEntryObserved,captureEntryModeValid\n");
+        Files.writeString(path, now + "," + stage + "," + (run.observationAt < 0 ? -1 : now - run.observationAt)
+                + "," + (input == null ? -1 : input.get("clientTick").getAsInt())
+                + "," + (input == null ? "" : input.get("phase").getAsString())
+                + "," + (input != null && input.get("forwardInput").getAsBoolean())
+                + "," + (input != null && input.get("modeValid").getAsBoolean())
+                + "," + csvPosition(player.position()) + "," + playerStep.length() + "," + playerStep.horizontalDistance()
+                + "," + player.isSwimming() + "," + player.isSprinting() + "," + player.isEyeInFluid(FluidTags.WATER)
+                + "," + player.isPassenger() + "," + (boat == null ? "" : boat.getUUID())
+                + "," + csvPosition(boat == null ? null : boat.position()) + "," + boatStep.horizontalDistance()
+                + "," + (ghost == null ? "" : ghost.getUUID()) + "," + (ghost == null ? -1 : ghost.tickCount)
+                + "," + csvPosition(ghost == null ? null : ghost.position()) + "," + ghostStep.length()
+                + "," + ghostStep.horizontalDistance() + "," + (ghost != null && ghost.ghostBody().swimming())
+                + "," + selected + "," + pursuing + "," + held + "," + run.consecutivePursuit + "," + mature
+                + "," + (ghost == null ? "" : run.finalDistance) + "," + preCatch + "," + serverModeValid
+                + "," + run.validServerModeTicks + "," + run.invalidServerModeTicks
+                + "," + run.captureEntryObserved + "," + run.captureEntryModeValid + "\n", StandardOpenOption.APPEND);
+        run.lastTick = now; run.lastPlayer = player.position();
+        run.lastBoat = boat == null ? null : boat.position();
+        run.lastGhost = ghost == null ? null : ghost.position();
+        run.lastHeld = held;
+    }
+    private static void speedTick() throws Exception {
+        long now = player.level().getGameTime();
+        var run = speedRun;
+        var input = speedInput();
+        if (stage == 60 || stage == 61) observeSpeed(now, input);
+        if (stage == 60) {
+            // Let the real client acknowledge the new stationary boat before natural acquisition.
+            if (run.calibration() && ghost == null && input != null && input.get("phaseTicks").getAsInt() >= 20
+                    && input.get("boatUuid").getAsString().equals(boat.getUUID().toString())) {
+                spawnSpeedGhost();
+                return;
+            }
+            boolean ready = run.calibration()
+                    ? ghost != null && run.pursuitAt >= 0 && run.consecutivePursuit > 0 && run.lastGhostAdvance > 0.01
+                    : input != null && input.get("stable").getAsBoolean() && input.get("phaseTicks").getAsInt() >= 40
+                        && (run.swimmer() ? player.isSwimming() && player.isSprinting() && !player.isPassenger()
+                        : player.getVehicle() == boat && input.get("boatUuid").getAsString().equals(boat.getUUID().toString()));
+            if (ready || now - run.warmupAt >= 200) {
+                run.matureStart = !run.calibration() && ready;
+                run.startInput = input == null ? null : input.deepCopy();
+                if (!ready) speedFinding("measurement_inconclusive", run.calibration()
+                        ? "stationary calibration acquisition did not start within 200 server ticks"
+                        : "native target did not establish 20 consecutive stable swimming/boat ticks before the 200-tick warmup limit");
+                if (ghost == null) spawnSpeedGhost();
+                run.observationAt = now;
+                run.observationDistance = ghost.distanceTo(player);
+                run.observationPlayer = player.position(); run.observationGhost = ghost.position();
+                run.observationBoat = boat == null ? null : boat.position();
+                run.observationClientTick = input == null ? -1 : input.get("clientTick").getAsInt();
+                run.lastClientTick = run.observationClientTick;
+                run.preCatchClientTick = run.observationClientTick;
+                run.preCatchEndTick = now;
+                stage = 61;
+                phase("speed-" + run.name + "-chase");
+            }
+        } else if (stage == 61 && now - run.observationAt >= SPEED_WINDOW) {
+            finishSpeedObservation(now);
+            // The fixed observation has ended; cleanup must not add a second hold while awaiting screenshots.
+            ghost.discard(); ghost = null;
+            stage = 62;
+            phase("speed-" + run.name + "-finish");
+        } else if (stage == 62) {
+            var finished = RESULTS.resolve("acceptance-client-speed-" + run.name + "-finished.signal");
+            if (Files.exists(finished) || ticks >= 200) {
+                if (Files.exists(finished)) {
+                    var client = JsonParser.parseString(Files.readString(finished)).getAsJsonObject();
+                    run.report.add("client", client);
+                    evaluateSpeedNativeEvidence(client);
+                } else speedFinding("measurement_inconclusive", "native client completion evidence missing after 200 server ticks");
+                classifySpeedResult();
+                var issues = new JsonArray();
+                for (String issue : run.issues) { issues.add(issue); speedFailures.add(run.name + ": " + issue); }
+                run.report.add("failures", issues);
+                run.report.add("findings", run.findings);
+                speedResults.add(run.report);
+                Files.writeString(RESULTS.resolve("acceptance-speed-" + run.name + ".json"), run.report + "\n");
+                Files.writeString(RESULTS.resolve("acceptance-speed-" + run.name + "-observed.signal"), "Complete observation, not a pass.\n");
+                if (ghost != null) ghost.discard();
+                ghost = null;
+                if (run.swimmer()) setupSpeed("boat");
+                else if (!run.calibration()) setupSpeed("calibration");
+                else {
+                    var summary = new JsonObject();
+                    summary.addProperty("units", "actual END tick position differences, blocks/tick; no wall-clock speed");
+                    summary.addProperty("productionReferenceBlocksPerTick", SPEED_LIMIT);
+                    summary.addProperty("nominalBlocksPerSecondAt20Ticks", SPEED_LIMIT * 20);
+                    summary.add("predeclaredQaPolicy", speedPolicy());
+                    summary.addProperty("observationServerTicksPerSegment", SPEED_WINDOW);
+                    summary.addProperty("maturityExcludesFirstConsecutivePursuitTicks", SPEED_MATURITY_TICKS);
+                    summary.addProperty("calibrationScope", "Stationary boat acquires natural pursuit before W; mature motion calibration only, not mature-boat catch-up acceptance.");
+                    summary.add("segments", speedResults);
+                    summary.addProperty("passed", speedFailures.isEmpty());
+                    Files.writeString(RESULTS.resolve("acceptance-speed-summary.json"), summary + "\n");
+                    player.stopRiding();
+                    if (boat != null) boat.discard();
+                    boat = null;
+                    check(speedFailures.isEmpty(), "speed/catch-up failed after ALL three observations: " + String.join("; ", speedFailures));
+                    mark("speed", "Two mature-target chases and independent natural-pursuit speed calibration; actual 100-tick windows, no wall-clock conversion.");
+                    stage = 99; phase("complete");
+                }
+            }
+        }
+    }
+    private static void evaluateSpeedNativeEvidence(JsonObject client) {
+        var run = speedRun;
+        int preServerTicks = (int) (run.preCatchEndTick - run.observationAt);
+        int preClientTicks = run.preCatchClientTick - run.observationClientTick;
+        int fullClientTicks = run.lastClientTick - run.observationClientTick;
+        if (run.observationClientTick < 0 || !speedRateMatches(fullClientTicks, SPEED_WINDOW, SPEED_WINDOW))
+            speedFinding("measurement_inconclusive", "client/server full-window tick cadence differs: " + fullClientTicks + "/" + SPEED_WINDOW);
+        if (preServerTicks < SPEED_MIN_NATIVE_SAMPLES || preClientTicks < SPEED_MIN_NATIVE_SAMPLES)
+            speedFinding("measurement_inconclusive", "need at least 20 pre-catch ticks on BOTH clocks: client=" + preClientTicks + " server=" + preServerTicks);
+        if (!speedRateMatches(preClientTicks, preServerTicks, preServerTicks))
+            speedFinding("measurement_inconclusive", "pre-catch client/server tick cadence differs: " + preClientTicks + "/" + preServerTicks);
+        if (run.targetTravel.count != preServerTicks)
+            speedFinding("measurement_inconclusive", "pre-catch server position samples are not consecutive");
+        if (run.invalidServerModeTicks > 0)
+            speedFinding("measurement_inconclusive", "pre-catch server lost sprint-swim or the original boat for " + run.invalidServerModeTicks + " ticks");
+        if (run.caughtAt >= 0 && !run.captureEntryModeValid)
+            speedFinding("measurement_inconclusive", "capture lacks an observed valid native mode immediately BEFORE the ghost's grab tick");
+        if (!client.has("tickSamples")) {
+            speedFinding("measurement_inconclusive", "complete native client tick history is missing");
+            return;
+        }
+        int fullSamples = 0, previousFullTick = run.observationClientTick, preSamples = 0;
+        int valid = 0, invalid = 0, transitions = 0, stableWindows = 0, gaps = 0;
+        double clientForwardDistance = 0;
+        for (var element : client.getAsJsonArray("tickSamples")) {
+            var sample = element.getAsJsonObject();
+            int clientTick = sample.get("clientTick").getAsInt();
+            if (clientTick <= run.observationClientTick || clientTick > run.lastClientTick) continue;
+            if (clientTick != previousFullTick + 1 || !sample.get("consecutive").getAsBoolean()) gaps++;
+            previousFullTick = clientTick; fullSamples++;
+            if (clientTick > run.preCatchClientTick) continue;
+            preSamples++;
+            boolean nativeMode = sample.get("modeValid").getAsBoolean() && sample.get("forwardInput").getAsBoolean()
+                    && (run.swimmer() || sample.get("boatUuid").getAsString().equals(boat.getUUID().toString()));
+            if (nativeMode) valid++;
+            else if (run.calibration() && clientTick - run.observationClientTick <= SPEED_BOUNDARY_TICKS) transitions++;
+            else invalid++;
+            if (nativeMode && sample.get("stable").getAsBoolean()) stableWindows++;
+            clientForwardDistance += sample.get("targetForwardStep").getAsDouble();
+        }
+        if (gaps > 0 || fullSamples != fullClientTicks || preSamples != preClientTicks)
+            speedFinding("measurement_inconclusive", "native tick history has missing/nonconsecutive samples: full=" + fullSamples
+                    + "/" + fullClientTicks + " preCatch=" + preSamples + "/" + preClientTicks + " gaps=" + gaps);
+        if (invalid > 0 || valid < SPEED_MIN_NATIVE_SAMPLES)
+            speedFinding("measurement_inconclusive", "pre-catch native input/mode validity: valid=" + valid + " invalid=" + invalid
+                    + " calibrationStartupTransitions=" + transitions);
+        double nativeMean = preSamples == 0 ? 0 : clientForwardDistance / preSamples;
+        double reference = run.calibration() ? nativeMean : run.startInput == null ? 0
+                : run.startInput.get("stableWindowMeanBlocksPerTick").getAsDouble();
+        if (run.calibration() && stableWindows == 0)
+            speedFinding("measurement_inconclusive", "stationary-start calibration never established a later 20-tick stable native boat window");
+        double serverMean = preServerTicks == 0 ? 0 : run.targetForwardDistance / preServerTicks;
+        if (!speedRateMatches(serverMean, reference, preServerTicks))
+            speedFinding("measurement_inconclusive", "target actually advanced at " + serverMean + " blocks/server-tick versus native reference "
+                    + reference + "; a slowed client cannot establish catch-up acceptance");
+        if (!run.calibration() && !speedRateMatches(nativeMean, reference, preServerTicks))
+            speedFinding("measurement_inconclusive", "pre-catch native client advance did not maintain its warmup speed: " + nativeMean + " versus " + reference);
+        var evidence = new JsonObject();
+        evidence.addProperty("preCatchServerTicks", preServerTicks);
+        evidence.addProperty("preCatchClientTicks", preClientTicks);
+        evidence.addProperty("preCatchClientToServerTickRatio", preServerTicks == 0 ? 0 : (double) preClientTicks / preServerTicks);
+        evidence.addProperty("completeClientSamples", fullSamples);
+        evidence.addProperty("preCatchClientSamples", preSamples);
+        evidence.addProperty("validNativeModeSamples", valid);
+        evidence.addProperty("invalidNativeModeSamples", invalid);
+        evidence.addProperty("calibrationStartupTransitionSamples", transitions);
+        evidence.addProperty("nonconsecutiveClientSamples", gaps);
+        evidence.addProperty("stableNativeWindowObservations", stableWindows);
+        evidence.addProperty("clientForwardDistance", clientForwardDistance);
+        evidence.addProperty("clientForwardMeanBlocksPerClientTick", nativeMean);
+        evidence.addProperty("serverForwardMeanBlocksPerServerTick", serverMean);
+        evidence.addProperty("referenceBlocksPerClientTick", reference);
+        evidence.addProperty("referenceSource", run.calibration() ? "aligned pre-catch native calibration motion" : "stable native warmup before ghost creation");
+        evidence.addProperty("serverToNativeSpeedRatio", reference == 0 ? 0 : serverMean / reference);
+        run.report.add("nativeMeasurementValidation", evidence);
+    }
+    private static void classifySpeedResult() {
+        var run = speedRun;
+        String pursuit = run.pursuitAt < 0 ? "pursuit_not_started" : run.caughtAt < 0
+                ? run.calibration() ? "pursuit_observed_calibration_only" : "not_caught_within_100_server_ticks" : "naturally_caught";
+        if (run.pursuitAt < 0) speedFinding("pursuit_not_started", "Natural pursuit never started in THIS scenario; idle displacement is not swimming-speed evidence.");
+        else if (!run.calibration() && run.caughtAt < 0)
+            speedFinding("not_caught_within_100_server_ticks", "No natural catch in THIS rear-pursuit scenario; this is not a general speed conclusion.");
+        String speedOutcome = "measured_by_separate_calibration";
+        if (run.calibration()) {
+            if (run.matureTravel.count < SPEED_MIN_NATIVE_SAMPLES)
+                speedFinding("measurement_inconclusive", "Calibration needs 20 mature position samples after 30 consecutive pursuit ticks; missing samples do not establish a production-speed failure.");
+            double peak = run.matureTravel.max * 20;
+            speedOutcome = run.inconclusive ? "measurement_inconclusive" : "within_predeclared_approximate_band";
+            if (!run.inconclusive && (peak < SPEED_APPROX_MIN_PER_SECOND || peak > SPEED_APPROX_MAX_PER_SECOND)) {
+                speedOutcome = "outside_predeclared_approximate_band";
+                speedFinding(speedOutcome, "Mature observed peak=" + peak + " blocks per nominal 20-tick second; predeclared QA band is 6.5..7.1.");
+            }
+        }
+        run.report.addProperty("measurementStatus", run.inconclusive ? "measurement_inconclusive" : "valid");
+        run.report.addProperty("pursuitOutcome", pursuit);
+        run.report.addProperty("speedOutcome", speedOutcome);
+        run.report.addProperty("catchUpPassed", !run.calibration() && !run.inconclusive && run.pursuitAt >= 0 && run.caughtAt >= 0);
+        run.report.addProperty("passed", run.issues.isEmpty());
+        run.report.addProperty("maturePeakBlocksPerNominal20TickSecond", run.matureTravel.max * 20);
+        run.report.add("predeclaredQaPolicy", speedPolicy());
+    }
+    private static void finishSpeedObservation(long now) {
+        var run = speedRun;
+        if (run.observationSamples != SPEED_WINDOW) speedFinding("measurement_inconclusive", "observation is not exactly 100 consecutive server END ticks");
+        var report = new JsonObject();
+        report.addProperty("scenario", run.name);
+        report.addProperty("role", run.calibration() ? "stationary-start mature-speed calibration, NOT mature-boat catch-up" : "mature-target rear pursuit");
+        report.addProperty("matureNativeTargetAtSpawn", run.matureStart);
+        report.add("startClientInput", run.startInput);
+        report.addProperty("spawnServerTick", run.spawnedAt);
+        report.addProperty("firstTargetServerTick", run.targetAt);
+        report.addProperty("firstMayPursueServerTick", run.pursuitAt);
+        report.addProperty("naturalCatchServerTick", run.caughtAt);
+        report.addProperty("observationStartServerTick", run.observationAt);
+        report.addProperty("observationEndServerTick", now);
+        report.addProperty("observationSamples", run.observationSamples);
+        report.addProperty("distinctNativeInputSamples", run.inputSamples);
+        report.addProperty("clientTickAtObservationStart", run.observationClientTick);
+        report.addProperty("lastClientTickObserved", run.lastClientTick);
+        report.addProperty("clientTicksDuringServerWindow", run.lastClientTick - run.observationClientTick);
+        report.addProperty("clientToServerTickRatio", (double) (run.lastClientTick - run.observationClientTick) / SPEED_WINDOW);
+        report.addProperty("preCatchEndServerTick", run.preCatchEndTick);
+        report.addProperty("preCatchEndClientTick", run.preCatchClientTick);
+        report.addProperty("preCatchValidServerModeTicks", run.validServerModeTicks);
+        report.addProperty("preCatchInvalidServerModeTicks", run.invalidServerModeTicks);
+        report.addProperty("captureEntryObserved", run.captureEntryObserved);
+        report.addProperty("captureEntryModeValid", run.captureEntryModeValid);
+        report.addProperty("preCatchTargetForwardDistance", run.targetForwardDistance);
+        report.addProperty("spawnDistance", run.initialDistance);
+        report.addProperty("spawnPlayerPosition", csvPosition(run.spawnPlayer));
+        report.addProperty("spawnGhostPosition", csvPosition(run.spawnGhost));
+        report.addProperty("observationStartDistance", run.observationDistance);
+        report.addProperty("observationStartPlayerPosition", csvPosition(run.observationPlayer));
+        report.addProperty("observationStartBoatPosition", csvPosition(run.observationBoat));
+        report.addProperty("observationStartGhostPosition", csvPosition(run.observationGhost));
+        report.addProperty("observationEndPlayerPosition", csvPosition(player.position()));
+        report.addProperty("observationEndBoatPosition", csvPosition(boat == null ? null : boat.position()));
+        report.addProperty("observationEndGhostPosition", csvPosition(ghost.position()));
+        report.addProperty("finalDistance", run.finalDistance);
+        report.addProperty("closestDistance", run.closestDistance);
+        report.addProperty("boatUuid", boat == null ? "" : boat.getUUID().toString());
+        report.addProperty("ghostUuid", ghost.getUUID().toString());
+        report.add("allUnheldGhost3d", run.ghostTravel.json());
+        report.add("allUnheldGhostHorizontal", run.ghostHorizontal.json());
+        report.add("matureGhost3d", run.matureTravel.json());
+        report.add("matureGhostHorizontal", run.matureHorizontal.json());
+        report.add("preCatchTargetServerHorizontal", run.targetTravel.json());
+        run.report = report;
     }
     private static boolean onFixtureFloor() {
         return ghost.level().getBlockCollisions(ghost, ghost.getBoundingBox().move(0, -0.08, 0)).iterator().hasNext()

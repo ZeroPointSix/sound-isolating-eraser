@@ -327,13 +327,19 @@ public final class RedNailsTestServer {
             player.getFoodData().setFoodLevel(20);
             swimmer = ModEntities.WATER_GHOST.get().create(level);
             require(swimmer != null, "wild watch fixture exists");
-            swimmer.moveTo(-2.5, 68.5, 2.5, 180, 0);
+            // One block farther into the pool clears the bank from the submerged
+            // eye ray while the dry passer is still within six/outside water two.
+            swimmer.moveTo(-2.5, 68.5, 3.5, 180, 0);
             level.addFreshEntity(swimmer);
             watchStart = swimmer.position();
             signal("wild-watch"); stage = 35;
             return true;
         }
         if (stage == 35) {
+            Files.writeString(RESULTS.resolve("wild-watch-ticks.csv"), level.getGameTime() + ","
+                    + swimmer.position() + "," + player.position() + "," + swimmer.hasLineOfSight(player)
+                    + "," + (swimmer.getTarget() == player) + "," + swimmer.mayPursue() + "\n",
+                    java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND);
             require(swimmer.isAlive() && !swimmer.isNoAi() && !player.isInWater()
                             && !swimmer.nearWater(player, 2) && swimmer.distanceToSqr(player) < 36,
                     "real dry passer remains within six blocks but outside the two-block water boundary");
@@ -341,6 +347,7 @@ public final class RedNailsTestServer {
                     "normal wild AI must not chase or grab a dry distant passer");
             require(swimmer.position().subtract(watchStart).horizontalDistance() < 0.1,
                     "watching does not become horizontal pursuit");
+            require(swimmer.hasLineOfSight(player), "watch fixture has an unobstructed eye ray across the bank");
             if (swimmer.getTarget() == player) watchedTicks++;
             if (ticks >= 100 && captured("wild-watch")) {
                 require(watchedTicks >= 40, "normal wild AI visibly selects the passer for watching");
