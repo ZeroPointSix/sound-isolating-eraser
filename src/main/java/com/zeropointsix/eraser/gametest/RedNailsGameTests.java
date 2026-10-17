@@ -434,13 +434,22 @@ public final class RedNailsGameTests {
         check(h, f.summon(p, stale).nail() == 0, "A copy advances to next available finger"); h.succeed();
     }
     @GameTest(template = "empty", batch = BATCH, timeoutTicks = 100) public static void orphan_and_owner_teleport_cleanup(GameTestHelper h) {
-        var f = new Fixture(h); var p = f.player(0, 0); var stack = f.wear(p); var g = f.summon(p, stack);
-        g.setPos(p.position().add(15, 0, 0));
+        var f = new Fixture(h); var p = f.player(0, 0); var stack = f.wear(p);
+        check(h, RedNailsItem.activate(p), "Normal item activation accepts the summon");
+        var id = f.entry(stack).ghosts[RedNailsState.ORDER[0]];
         var orphan = f.add(ModEntities.WATER_GHOST_SUMMON.get().create(f.level), -6, 0);
         orphan.bind(p, UUID.randomUUID(), 0);
+        h.runAfterDelay(1, () -> {
+            // Entities spawned during the server tick enter the UUID lookup at its end.
+            var g = RedNailsItem.resolve(f.level.getServer(), id);
+            check(h, g != null, "New summon becomes visible in the real entity index");
+            f.entities.add(g); g.setNoAi(true);
+            g.setPos(p.position().add(15, 0, 0));
+        });
         h.runAfterDelay(12, () -> {
+            var g = RedNailsItem.resolve(f.level.getServer(), id);
             check(h, orphan.isRemoved(), "Reloaded orphan without an authoritative ledger is discarded");
-            check(h, g.isAlive() && g.distanceToSqr(p) <= 18, "Guardian teleports safely beyond twelve blocks");
+            check(h, g != null && g.isAlive() && g.distanceToSqr(p) <= 18, "Guardian teleports safely beyond twelve blocks");
             check(h, f.entry(stack).active() == 1, "Teleport preserves the active finger"); h.succeed();
         });
     }

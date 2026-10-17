@@ -1,5 +1,6 @@
 package com.zeropointsix.eraser.rednails;
 
+import com.zeropointsix.eraser.eraser.EraserNetwork;
 import java.util.EnumSet;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
@@ -20,6 +21,7 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.BooleanOp;
 import net.minecraft.world.phys.shapes.Shapes;
+import net.minecraftforge.network.PacketDistributor;
 
 public final class WaterGhostGrab extends Goal {
     private static final String HOLDER = "sound_isolating_eraser_grabbed_by";
@@ -142,6 +144,12 @@ public final class WaterGhostGrab extends Goal {
         return mob.level().getEntities(target, column,
                 entity -> entity != mob && target.canCollideWith(entity)).isEmpty();
     }
+    private void syncAnchor(ServerPlayer player, Vec3 hold, int remainingTicks) {
+        if (player.connection != null) {
+            EraserNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
+                    new EraserNetwork.GrabAnchor(mob.getUUID(), mob.level().dimension().location(), hold, remainingTicks));
+        }
+    }
     @Override public void tick() {
         if (target == null) return;
         if (!canContinueToUse()) { stop(); return; }
@@ -169,6 +177,7 @@ public final class WaterGhostGrab extends Goal {
         if (blocked(hold)) hold = mob.position().add(0, body.swimming() ? 0 : 0.6, 0);
         if (!blocked(hold)) {
             if (target instanceof ServerPlayer player) {
+                syncAnchor(player, hold, duration - ticks);
                 Vec3 pull = hold.subtract(player.position()).scale(0.5);
                 player.setDeltaMovement(pull);
                 if (player.connection != null) {
@@ -183,6 +192,8 @@ public final class WaterGhostGrab extends Goal {
                 target.setDeltaMovement(Vec3.ZERO);
             }
             target.fallDistance = 0;
+        } else if (target instanceof ServerPlayer player) {
+            syncAnchor(player, Vec3.ZERO, 0);
         }
         if (body.swimming()) {
             if (!enteredWater) {
@@ -230,6 +241,7 @@ public final class WaterGhostGrab extends Goal {
     }
     @Override public void stop() {
         if (target == null) return;
+        if (target instanceof ServerPlayer player) syncAnchor(player, Vec3.ZERO, 0);
         var tag = target.getPersistentData();
         if (tag.hasUUID(HOLDER) && tag.getUUID(HOLDER).equals(mob.getUUID())) { tag.remove(HOLDER); tag.remove(UNTIL); }
         target = null;

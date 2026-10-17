@@ -5,6 +5,7 @@ import com.google.gson.JsonObject;
 import com.mojang.blaze3d.platform.InputConstants;
 import com.zeropointsix.eraser.ModMain;
 import com.zeropointsix.eraser.client.RedNailsClient;
+import com.zeropointsix.eraser.client.WaterGhostGrabClient;
 import com.zeropointsix.eraser.rednails.RedNailsItem;
 import com.zeropointsix.eraser.rednails.WaterGhostEntity;
 import com.zeropointsix.eraser.rednails.WaterGhostSummonEntity;
@@ -167,6 +168,7 @@ public final class RedNailsAcceptanceClient {
         json.addProperty("pose", mc.player.getPose().toString()); json.addProperty("onGround", mc.player.onGround());
         json.addProperty("bodyWet", mc.player.isInWater()); json.addProperty("eyesWet", mc.player.isEyeInFluid(FluidTags.WATER));
         json.addProperty("passenger", mc.player.isPassenger());
+        json.addProperty("grabPredictionActive", WaterGhostGrabClient.isHeld(mc.player));
         json.addProperty("horizontalCollision", mc.player.horizontalCollision);
         json.addProperty("verticalCollision", mc.player.verticalCollision);
         json.addProperty("air", mc.player.getAirSupply());
@@ -290,6 +292,7 @@ public final class RedNailsAcceptanceClient {
                     input.addProperty("jumping", mc.player.input.jumping);
                     input.addProperty("sprintKey", mc.options.keySprint.isDown());
                     input.addProperty("passenger", mc.player.isPassenger());
+                    input.addProperty("grabPredictionActive", WaterGhostGrabClient.isHeld(mc.player));
                     input.addProperty("position", mc.player.position().toString());
                     signal(phase.replace("-held", "-resist"), input.toString());
                 }
@@ -305,6 +308,7 @@ public final class RedNailsAcceptanceClient {
                 return;
             }
             if (phase.endsWith("-released")) {
+                require(!WaterGhostGrabClient.isHeld(mc.player), "server release clears client grab prediction");
                 if (ticks == 1) { mc.player.setYRot(90); mc.player.setXRot(-20); }
                 mc.options.keyUp.setDown(true); mc.options.keyJump.setDown(true); mc.options.keySprint.setDown(true);
                 JsonObject input = new JsonObject();
