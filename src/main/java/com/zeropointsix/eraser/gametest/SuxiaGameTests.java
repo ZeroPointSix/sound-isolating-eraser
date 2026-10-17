@@ -26,6 +26,9 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.Connection;
 import net.minecraft.network.ConnectionProtocol;
 import net.minecraft.network.protocol.PacketFlow;
+import net.minecraft.network.protocol.game.ClientboundMoveEntityPacket;
+import net.minecraft.network.protocol.game.ClientboundTeleportEntityPacket;
+import net.minecraft.server.level.ServerEntity;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.level.TicketType;
@@ -80,12 +83,15 @@ public final class SuxiaGameTests {
                 level.getChunk(c.x, c.z);
                 tickets.add(c);
             }
+            prepareFlatArena();
+            // This is the disposable QA world; a prior crashed run may have left arena entities behind.
+            level.getEntities(null, new net.minecraft.world.phys.AABB(center).inflate(18)).forEach(Entity::discard);
+        }
+        void prepareFlatArena() {
             for (int x = -17; x <= 17; x++) for (int z = -17; z <= 17; z++) {
                 set(center.offset(x, -1, z), Blocks.STONE.defaultBlockState());
                 for (int y = 0; y <= 4; y++) set(center.offset(x, y, z), Blocks.AIR.defaultBlockState());
             }
-            // This is the disposable QA world; a prior crashed run may have left arena entities behind.
-            level.getEntities(null, new net.minecraft.world.phys.AABB(center).inflate(18)).forEach(Entity::discard);
         }
         void set(BlockPos p, BlockState state) {
             blocks.putIfAbsent(p.immutable(), level.getBlockState(p));
@@ -154,10 +160,18 @@ public final class SuxiaGameTests {
         Vec3 behind = owner.position().subtract(Vec3.directionFromRotation(0, owner.getYRot()).scale(2));
         double error = summon.position().subtract(behind).horizontalDistanceSqr();
         h.assertTrue(summon.getTarget() == null && !summon.isAggressive(), "idle summon is not fighting");
-        h.assertTrue(error <= 0.75 * 0.75 && Math.abs(summon.getY() - owner.getY()) < 0.5,
+        h.assertTrue(error <= 0.75 * 0.75,
                 "idle summon stands within 0.75 blocks of owner's two-block rear position: " + Math.sqrt(error)
                         + " summon=" + summon.position() + " owner=" + owner.position()
                         + " yaw=" + owner.getYRot() + " navigationDone=" + summon.getNavigation().isDone());
+        h.assertTrue(Math.abs(summon.getY() - owner.getY()) < 0.5,
+                "idle summon vertical error is below 0.5: " + Math.abs(summon.getY() - owner.getY())
+                        + " summon=" + summon.position() + " owner=" + owner.position()
+                        + " support=" + summon.level().getBlockState(summon.blockPosition().below())
+                        + " ownerSupport=" + owner.level().getBlockState(owner.blockPosition().below())
+                        + " onGround=" + summon.onGround() + " crawling=" + summon.isCrawling()
+                        + " velocity=" + summon.getDeltaMovement()
+                        + " navigationDone=" + summon.getNavigation().isDone());
         h.assertTrue(summon.getNavigation().isDone(), "idle summon stops navigation after arrival");
         h.assertTrue(Math.abs(Mth.wrapDegrees(summon.getYHeadRot() - owner.getYRot())) < 5,
                 "idle head follows only owner's view yaw: " + summon.getYHeadRot() + " vs " + owner.getYRot());
@@ -378,6 +392,8 @@ public final class SuxiaGameTests {
     @GameTest(template = "empty", batch = BATCH, timeoutTicks = 400)
     public static void summon_idle_tracks_owner_turn_and_movement(GameTestHelper h) {
         ready(h, f -> {
+            // Re-establish the flat movement fixture after the chunks are entity-ticking.
+            f.prepareFlatArena();
             var owner = f.player(0, 0); look(owner, 0, 10); f.watch(owner);
             var summon = f.summon(owner);
             h.startSequence().thenWaitUntil(() -> idleBehind(h, summon, owner))
@@ -387,7 +403,54 @@ public final class SuxiaGameTests {
                     .thenWaitUntil(() -> idleBehind(h, summon, owner))
                     .thenExecute(() -> owner.setPos(Vec3.atBottomCenterOf(f.center.offset(8, 0, 6))))
                     .thenWaitUntil(() -> idleBehind(h, summon, owner))
-                    .thenExecute(() -> System.out.println("SUXIA_IDLE_TURN_FOLLOW_PASSED"))
+                    .thenExecute(() -> {
+                        Vec3 behind = owner.position().subtract(Vec3.directionFromRotation(0, owner.getYRot()).scale(2));
+                        System.out.println("SUXIA_IDLE_TURN_FOLLOW_PASSED horizontal="
+                                + Math.sqrt(summon.position().subtract(behind).horizontalDistanceSqr())
+                                + " vertical=" + Math.abs(summon.getY() - owner.getY())
+                                + " summon=" + summon.position() + " owner=" + owner.position());
+                    })
+                    .thenSucceed();
+        });
+    }
+
+    @AfterBatch(batch = "suxia_pitch_packet")
+    public static void cleanupPitchPacket(ServerLevel level) { cleanup(level); }
+
+    @GameTest(template = "empty", batch = "suxia_pitch_packet", timeoutTicks = 400)
+    public static void summon_idle_pitch_reaches_vanilla_packet_construction(GameTestHelper h) {
+        ready(h, f -> {
+            f.prepareFlatArena();
+            var owner = f.player(0, 0); look(owner, 0, -20); f.watch(owner);
+            var summon = f.summon(owner);
+            float[] wirePitch = {Float.NaN};
+            int[] rotations = {0};
+            // Exercise vanilla packet construction, not a mock packet or a claim
+            // that a headless GameTest has verified client rendering.
+            var tracker = new ServerEntity(f.level, summon, summon.getType().updateInterval(), true, packet -> {
+                if (packet instanceof ClientboundMoveEntityPacket move && move.hasRotation()) {
+                    wirePitch[0] = move.getxRot() * 360F / 256F;
+                    rotations[0]++;
+                } else if (packet instanceof ClientboundTeleportEntityPacket teleport) {
+                    wirePitch[0] = teleport.getxRot() * 360F / 256F;
+                    rotations[0]++;
+                }
+            });
+            h.onEachTick(() -> { if (!summon.isRemoved()) tracker.sendChanges(); });
+            Runnable packetMatches = () -> {
+                idleBehind(h, summon, owner);
+                h.assertTrue(rotations[0] > 0 && Math.abs(wirePitch[0] - owner.getXRot()) < 5,
+                        "Vanilla tracking packet carries owner pitch: " + wirePitch[0] + " vs " + owner.getXRot());
+            };
+            h.startSequence().thenWaitUntil(packetMatches)
+                    .thenExecute(() -> {
+                        System.out.println("SUXIA_PITCH_PACKET negative=" + wirePitch[0] + " count=" + rotations[0]);
+                        look(owner, 0, 35);
+                        wirePitch[0] = Float.NaN;
+                        rotations[0] = 0;
+                    }).thenWaitUntil(packetMatches)
+                    .thenExecute(() -> System.out.println("SUXIA_PITCH_PACKET_PASSED positive=" + wirePitch[0]
+                            + " count=" + rotations[0] + " clientRenderVerified=false"))
                     .thenSucceed();
         });
     }

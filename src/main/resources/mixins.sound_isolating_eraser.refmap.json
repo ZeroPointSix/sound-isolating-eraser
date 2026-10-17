@@ -1,7 +1,16 @@
 {
-  "mappings": {},
+  "mappings": {
+    "com/zeropointsix/eraser/mixin/SuxiaPitchPacketMixin": {
+      "handleMoveEntity(Lnet/minecraft/network/protocol/game/ClientboundMoveEntityPacket;)V": "m_7865_(Lnet/minecraft/network/protocol/game/ClientboundMoveEntityPacket;)V",
+      "Lnet/minecraft/world/entity/Entity;getXRot()F": "Lnet/minecraft/world/entity/Entity;m_146909_()F"
+    }
+  },
   "data": {
     "searge": {
+      "com/zeropointsix/eraser/mixin/SuxiaPitchPacketMixin": {
+        "handleMoveEntity(Lnet/minecraft/network/protocol/game/ClientboundMoveEntityPacket;)V": "m_7865_(Lnet/minecraft/network/protocol/game/ClientboundMoveEntityPacket;)V",
+        "Lnet/minecraft/world/entity/Entity;getXRot()F": "Lnet/minecraft/world/entity/Entity;m_146909_()F"
+      },
       "com/zeropointsix/eraser/mixin/LivingEntityWallVisibilityMixin": {
         "hasLineOfSight(Lnet/minecraft/world/entity/Entity;)Z": "m_142582_(Lnet/minecraft/world/entity/Entity;)Z"
       }

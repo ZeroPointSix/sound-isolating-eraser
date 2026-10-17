@@ -250,7 +250,7 @@ public final class RedNailsItem extends Item implements ICurioItem {
         for (int i = 0; i < 4; i++) {
             boolean cooling = i < left.length && left[i] > 0;
             boolean active = i < out.size() && out.getCompound(i).hasUUID("Ghost");
-            if (!cooling && !active) available++;
+            if (!cooling) available++;
             marks.append(Component.literal(cooling ? "\u25a1 " : "\u25a0 ").withStyle(cooling ? ChatFormatting.GRAY : ChatFormatting.DARK_RED));
             details.add(cooling ? Component.translatable(TIP + "nail_cooling", finger(i), time(left[i]))
                     : Component.translatable(TIP + (active ? "nail_out" : "nail_ready"), finger(i)));

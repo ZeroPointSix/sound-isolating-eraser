@@ -6,15 +6,24 @@ import com.zeropointsix.eraser.eraser.EraserNetwork;
 import com.zeropointsix.eraser.rednails.RedNailsItem;
 import com.zeropointsix.eraser.registry.ModEntities;
 import com.zeropointsix.eraser.registry.ModItems;
+import java.util.function.BiConsumer;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.entity.EntityRendererProvider;
+import net.minecraft.client.renderer.entity.EntityRenderers;
 import net.minecraft.client.renderer.item.ItemProperties;
 import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.packs.resources.PreparableReloadListener;
 import net.minecraft.sounds.SoundEvents;
+import net.minecraft.util.Unit;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.Mob;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.EntityRenderersEvent;
+import net.minecraftforge.client.event.RegisterClientReloadListenersEvent;
 import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -50,6 +59,15 @@ public final class RedNailsClient {
                 mc.player.getY() + 1, mc.player.getZ() + (Math.random() - 0.5), 0, 0, 0);
         if (ticks % 5 == 0) mc.player.playSound(SoundEvents.GENERIC_SWIM, 0.2F, 0.5F);
     }
+    @SuppressWarnings("unchecked")
+    static void bindGhostRenderers(BiConsumer<EntityType<? extends Mob>, EntityRendererProvider<Mob>> register) {
+        register.accept(ModEntities.WATER_GHOST.get(), WaterGhostRenderer::new);
+        register.accept(ModEntities.WATER_GHOST_SUMMON.get(), WaterGhostRenderer::new);
+        for (String path : new String[]{"water_ghost", "water_ghost_summon"}) {
+            BuiltInRegistries.ENTITY_TYPE.getOptional(new ResourceLocation(ModMain.MOD_ID, path)).ifPresent(type ->
+                    register.accept((EntityType<? extends Mob>) type, WaterGhostRenderer::new));
+        }
+    }
     @Mod.EventBusSubscriber(modid = ModMain.MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
     public static final class Registration {
         @SubscribeEvent public static void keys(RegisterKeyMappingsEvent event) { event.register(KEY); }
@@ -57,8 +75,14 @@ public final class RedNailsClient {
             event.registerLayerDefinition(WaterGhostModel.LAYER, WaterGhostModel::createBodyLayer);
         }
         @SubscribeEvent public static void renderers(EntityRenderersEvent.RegisterRenderers event) {
-            event.registerEntityRenderer(ModEntities.WATER_GHOST.get(), WaterGhostRenderer::new);
-            event.registerEntityRenderer(ModEntities.WATER_GHOST_SUMMON.get(), WaterGhostRenderer::new);
+            bindGhostRenderers((type, provider) -> event.registerEntityRenderer(type, provider));
+        }
+        @SubscribeEvent public static void reload(RegisterClientReloadListenersEvent event) {
+            event.registerReloadListener((PreparableReloadListener) (barrier, manager, prep, reload, background, game) -> {
+                bindGhostRenderers((type, provider) -> EntityRenderers.register(type, provider));
+                System.out.println("RED_NAILS_RENDERERS providers bound before dispatcher apply");
+                return barrier.wait(Unit.INSTANCE).thenRun(() -> {});
+            });
         }
         @SubscribeEvent public static void setup(FMLClientSetupEvent event) {
             event.enqueueWork(() -> {

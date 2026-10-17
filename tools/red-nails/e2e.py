@@ -5,6 +5,7 @@ from pathlib import Path
 import shlex
 import socket
 import subprocess
+import sys
 import time
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -14,6 +15,11 @@ CONFIGS = {c["name"]: c for c in json.loads((ROOT / ".vscode/launch.json").read_
 CLASSPATH = (ROOT / "build/red-nails-test-classpath.txt").read_text().strip()
 PORT = int(os.environ.get("RED_NAILS_QA_PORT", "25587"))
 TIMEOUT = int(os.environ.get("RED_NAILS_QA_TIMEOUT", "900"))
+PURSUIT = os.environ.get("RED_NAILS_QA_PURSUIT") == "1"
+ACCEPTANCE = os.environ.get("RED_NAILS_QA_ACCEPTANCE") == "1"
+CASE = os.environ.get("RED_NAILS_QA_CASE", "all")
+if CASE not in {"all", "boat", "bottom", "front", "front-bottom", "damage", "items", "lifecycle", "speed"}:
+    raise ValueError(f"Unknown native acceptance case: {CASE}")
 processes, logs = [], []
 
 
@@ -56,7 +62,15 @@ def launch(role):
                  "--quickPlayMultiplayer", f"127.0.0.1:{PORT}"]
     command = ["java", "-XX:ActiveProcessorCount=2",
                "-Xmx1024M" if server else "-Xmx1536M", f"-Drednails.qa.results={RESULTS}"]
+    if PURSUIT:
+        command += ["-Drednails.qa.pursuit=true"]
+    if ACCEPTANCE:
+        command += ["-Drednails.qa.acceptance=true", f"-Drednails.qa.case={CASE}"]
     command += shlex.split(expand(config["vmArgs"]))
+    if server:
+        # Allow registry synchronization during a software-rendered client join.
+        command += ["-Dforge.readTimeout=120"]
+        print("RED_NAILS_QA_TRANSPORT_READ_TIMEOUT_SECONDS=120", flush=True)
     if not server:
         natives = directory / "lwjgl-natives"
         natives.mkdir(exist_ok=True)
@@ -68,6 +82,7 @@ def launch(role):
     process = subprocess.Popen(command, cwd=directory, env=env, stdin=subprocess.PIPE,
                                stdout=log, stderr=subprocess.STDOUT, text=True)
     processes.append(process)
+    print(f"RED_NAILS_QA_PROCESS role={role} pid={process.pid} cwd={directory}", flush=True)
     return process
 
 
@@ -124,8 +139,49 @@ try:
     server = launch("server")
     ready(server)
     client = launch("client")
-    wait_for(["server-input", "client-guard", "server-backlash", "client-backlash", "server-recall",
-              "client-recalled", "server-water", "client-water"], [server, client])
+    if ACCEPTANCE and CASE == "lifecycle":
+        wait_for(["acceptance-lifecycle-rebind", "acceptance-lifecycle-gui-cancel",
+                  "acceptance-lifecycle-dimension", "acceptance-lifecycle-logout",
+                  "acceptance-client-lifecycle-logout"], [server, client])
+        stop(client)
+        client = launch("client-rejoin")
+        wait_for(["acceptance-lifecycle-rejoin", "acceptance-lifecycle-resummon",
+                  "acceptance-lifecycle-cleanup", "acceptance-client"], [server, client])
+        stop(client)
+        save_stop(server)
+        print("RED_NAILS_NATIVE_LIFECYCLE_PASSED", flush=True)
+        sys.exit(0)
+    if ACCEPTANCE and CASE == "speed":
+        # Requirement failures are accumulated server-side until BOTH mature-target
+        # chases and the separate stationary-start calibration have written evidence.
+        wait_for(["acceptance-speed", "acceptance-client"], [server, client])
+        for name in ("swimmer", "boat", "calibration"):
+            if not (RESULTS / f"acceptance-speed-{name}-observed.signal").exists():
+                raise AssertionError(f"Missing complete speed observation: {name}")
+        summary = json.loads((RESULTS / "acceptance-speed-summary.json").read_text())
+        if not summary["passed"]:
+            raise AssertionError("Quantitative speed/catch-up requirements failed")
+        stop(client)
+        save_stop(server)
+        print("RED_NAILS_NATIVE_SPEED_AND_CATCH_UP_PASSED", flush=True)
+        sys.exit(0)
+    if ACCEPTANCE:
+        capture = ["boat", "bottom", "front", "front-bottom", "damage"] if CASE == "all" else ([CASE] if CASE != "items" else [])
+        items = ["coexist", "recall", "recall-watch", "unequip"] if CASE in {"all", "items"} else []
+        required = [f"acceptance-{name}" for name in [*capture, *items, "client"]]
+        required += [f"acceptance-{name}-released" for name in capture]
+        print(f"RED_NAILS_QA_CASE={CASE} REQUIRED={required}", flush=True)
+        wait_for(required, [server, client])
+        stop(client)
+        save_stop(server)
+        print("RED_NAILS_NATIVE_ACCEPTANCE_PASSED", flush=True)
+        sys.exit(0)
+    required = ["server-input", "client-guard", "server-backlash", "client-backlash", "server-recall", "client-recalled"]
+    required += (["server-shore", "client-shore-complete", "client-wild-watch", "server-wild-watch",
+                  "server-wild-started", "server-wild", "server-wild-give-up", "server-wild-return",
+                  "server-wild-lurk", "client-wild-lurk", "client-wild-complete"]
+                 if PURSUIT else ["server-water", "client-water"])
+    wait_for(required, [server, client])
     stop(client)
     save_stop(server)
     server = launch("server")
@@ -134,7 +190,8 @@ try:
     wait_for(["server-restart", "client-restored"], [server, client])
     stop(client)
     save_stop(server)
-    print("RED_NAILS_REAL_CLIENT_AND_RESTART_E2E_PASSED", flush=True)
+    print("RED_NAILS_PURSUIT_REAL_CLIENT_AND_RESTART_E2E_PASSED" if PURSUIT
+          else "RED_NAILS_REAL_CLIENT_AND_RESTART_E2E_PASSED", flush=True)
 finally:
     for process in reversed(processes):
         stop(process)

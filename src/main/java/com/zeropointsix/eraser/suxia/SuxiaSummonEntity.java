@@ -117,6 +117,10 @@ public class SuxiaSummonEntity extends TamableAnimal implements SuxiaPoseSource 
         }
     }
 
+    public float clientPitchInterpolationTarget() {
+        return lerpSteps > 0 ? (float) lerpXRot : getXRot();
+    }
+
     @Override protected float tickHeadTurn(float yaw, float walkAnimation) {
         float receivedHeadYaw = getYHeadRot();
         float amount = super.tickHeadTurn(yaw, walkAnimation);

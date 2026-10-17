@@ -30,6 +30,7 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.GameRules;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.Blocks;
@@ -53,6 +54,7 @@ public final class FlareAcceptanceGameTests {
         final List<Entity> entities = new ArrayList<>();
         final Set<Long> originalLights = new HashSet<>();
         final GameTestConfigs.LiveConfig config;
+        final boolean originalMobSpawning;
         boolean prepared, completed;
         String phase = "preparation";
 
@@ -60,6 +62,7 @@ public final class FlareAcceptanceGameTests {
             level = h.getLevel();
             center = new BlockPos(8200 + slot * 128, 200, 8200);
             config = GameTestConfigs.sandbox(YujiConfig.SPEC);
+            originalMobSpawning = level.getGameRules().getBoolean(GameRules.RULE_DOMOBSPAWNING);
             for (Tag tag : FlareLights.get(level).save(new CompoundTag()).getList("Lights", Tag.TAG_COMPOUND))
                 originalLights.add(((CompoundTag) tag).getLong("Pos"));
             for (int x = (center.getX() - 16) >> 4; x <= (center.getX() + 16) >> 4; x++)
@@ -77,6 +80,14 @@ public final class FlareAcceptanceGameTests {
                 for (BlockPos p : BlockPos.betweenClosed(center.offset(-4, -4, -4), center.offset(4, 4, 4)))
                     set(p, Blocks.AIR.defaultBlockState());
             }
+            // The dark arena can naturally spawn skeletons outside the player's 24-block
+            // exclusion radius. Only the deliberately spawned actors belong in this test.
+            level.getGameRules().getRule(GameRules.RULE_DOMOBSPAWNING).set(false, level.getServer());
+            var unexpected = level.getEntitiesOfClass(Mob.class, new AABB(center).inflate(14, 4, 14));
+            System.out.println("FLARE_ARENA_ISOLATED slot=" + slot + " mobSpawning="
+                    + level.getGameRules().getBoolean(GameRules.RULE_DOMOBSPAWNING)
+                    + " cleared=" + unexpected.stream().map(e -> e.getType().toShortString()).toList());
+            unexpected.forEach(Entity::discard);
         }
 
         void load() {
@@ -131,8 +142,12 @@ public final class FlareAcceptanceGameTests {
                     + " entities=" + entities.stream().map(entity -> entity.getType().toShortString()
                             + "@" + entity.position() + " alive=" + entity.isAlive()
                             + (entity instanceof Mob mob ? " health=" + mob.getHealth() + " target="
-                                    + (mob.getTarget() == null ? "null" : mob.getTarget().getType().toShortString()) : ""))
-                            .toList();
+                                    + (mob.getTarget() == null ? "null" : mob.getTarget().getType().toShortString())
+                                    + " lastHurtBy=" + (mob.getLastHurtByMob() == null ? "null"
+                                            : mob.getLastHurtByMob().getType().toShortString()) : ""))
+                            .toList()
+                    + " nearbyMobs=" + level.getEntitiesOfClass(Mob.class, new AABB(center).inflate(14, 4, 14))
+                            .stream().map(e -> e.getType().toShortString() + "@" + e.position()).toList();
         }
 
         void set(BlockPos pos, BlockState state) {
@@ -162,18 +177,25 @@ public final class FlareAcceptanceGameTests {
         }
 
         void close() {
-            load();
-            entities.forEach(Entity::discard);
-            level.getEntitiesOfClass(FlareDecoy.class, new AABB(center).inflate(24)).forEach(Entity::discard);
-            level.getEntitiesOfClass(FlareProjectile.class, new AABB(center).inflate(24)).forEach(Entity::discard);
-            for (Tag tag : FlareLights.get(level).save(new CompoundTag()).getList("Lights", Tag.TAG_COMPOUND)) {
-                BlockPos pos = BlockPos.of(((CompoundTag) tag).getLong("Pos"));
-                if (!originalLights.contains(pos.asLong()) && pos.distSqr(center) <= 32 * 32
-                        && level.getBlockState(pos).is(Blocks.LIGHT)) level.removeBlock(pos, false);
+            try {
+                load();
+                entities.forEach(Entity::discard);
+                level.getEntitiesOfClass(FlareDecoy.class, new AABB(center).inflate(24)).forEach(Entity::discard);
+                level.getEntitiesOfClass(FlareProjectile.class, new AABB(center).inflate(24)).forEach(Entity::discard);
+                for (Tag tag : FlareLights.get(level).save(new CompoundTag()).getList("Lights", Tag.TAG_COMPOUND)) {
+                    BlockPos pos = BlockPos.of(((CompoundTag) tag).getLong("Pos"));
+                    if (!originalLights.contains(pos.asLong()) && pos.distSqr(center) <= 32 * 32
+                            && level.getBlockState(pos).is(Blocks.LIGHT)) level.removeBlock(pos, false);
+                }
+                previous.forEach((pos, state) -> level.setBlock(pos, state, 3));
+                FlareLights.get(level).cleanup(level);
+            } finally {
+                level.getGameRules().getRule(GameRules.RULE_DOMOBSPAWNING)
+                        .set(originalMobSpawning, level.getServer());
+                System.out.println("FLARE_ARENA_RESTORED center=" + center + " mobSpawning="
+                        + level.getGameRules().getBoolean(GameRules.RULE_DOMOBSPAWNING));
+                config.close(); release();
             }
-            previous.forEach((pos, state) -> level.setBlock(pos, state, 3));
-            FlareLights.get(level).cleanup(level);
-            config.close(); release();
         }
     }
 
