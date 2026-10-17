@@ -18,14 +18,39 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LightBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.saveddata.SavedData;
+import net.minecraft.world.level.levelgen.Heightmap;
 
 public final class FlareLights extends SavedData {
     private static final BlockState LIGHT = Blocks.LIGHT.defaultBlockState().setValue(LightBlock.LEVEL, 15);
     private final Map<Long, Long> lights = new HashMap<>();
+    private final Set<Long> quietLights = new HashSet<>();
     public static FlareLights get(ServerLevel level) {
         return level.getDataStorage().computeIfAbsent(FlareLights::load, FlareLights::new, "qihai_flare_lights");
     }
     public int size() { return lights.size(); }
+
+    public boolean flightNearby(ServerLevel level, BlockPos pos, Player player) {
+        if (!FlarePlacement.allowed(level, pos, player)) return false;
+        int surface = level.getHeight(Heightmap.Types.MOTION_BLOCKING, pos.getX(), pos.getZ());
+        // Low shots still illuminate the terrain without occupying crate clearance.
+        BlockPos source = pos.getY() == surface || pos.getY() == surface + 1
+                ? new BlockPos(pos.getX(), surface + 2, pos.getZ()) : pos;
+        return flight(level, source, player);
+    }
+
+    public boolean flight(ServerLevel level, BlockPos pos, Player player) {
+        if (!FlarePlacement.allowed(level, pos, player)) return false;
+        int surface = level.getHeight(Heightmap.Types.MOTION_BLOCKING, pos.getX(), pos.getZ());
+        // A cosmetic light must not occupy the two air blocks needed by a supply crate.
+        if (pos.getY() == surface || pos.getY() == surface + 1) return false;
+        long key = pos.asLong(), expiry = level.getGameTime() + 8;
+        if (level.getBlockState(pos).equals(LIGHT)) {
+            if (!lights.containsKey(key) || !FlarePlacement.canRenew(level, pos, LIGHT, player)) return false;
+            lights.merge(key, expiry, Math::max); setDirty(); return true;
+        }
+        if (!FlarePlacement.placeVisualLight(level, pos, LIGHT, player)) return false;
+        lights.put(key, expiry); quietLights.add(key); setDirty(); return true;
+    }
 
     public void illuminate(ServerLevel level, BlockPos center, Player player) {
         int radius = FlareConfig.LIGHT_RADIUS.get();
@@ -41,10 +66,12 @@ public final class FlareLights extends SavedData {
         ordered.sort(BlockPos::compareTo);
         for (BlockPos pos : ordered) {
             if (level.getBlockState(pos).equals(LIGHT)) {
+                boolean durable = !quietLights.contains(pos.asLong()) || lights.get(pos.asLong()) >= expiry;
                 if (lights.containsKey(pos.asLong()) && FlarePlacement.canRenew(level, pos, LIGHT, player)) {
-                    lights.merge(pos.asLong(), expiry, Math::max); setDirty();
+                    lights.merge(pos.asLong(), expiry, Math::max); quietLights.remove(pos.asLong()); setDirty();
+                    durable = true;
                 }
-                cover(pos, air, covered);
+                if (durable) cover(pos, air, covered);
             } else if (Math.floorMod(pos.getX(), 3) == 0 && Math.floorMod(pos.getY(), 3) == 0 && Math.floorMod(pos.getZ(), 3) == 0
                     && add(level, pos, player, expiry)) cover(pos, air, covered);
         }
@@ -56,7 +83,7 @@ public final class FlareLights extends SavedData {
 
     private boolean add(ServerLevel level, BlockPos pos, Player player, long expiry) {
         if (!FlarePlacement.place(level, pos, LIGHT, player)) return false;
-        lights.put(pos.asLong(), expiry); setDirty(); return true;
+        lights.put(pos.asLong(), expiry); quietLights.remove(pos.asLong()); setDirty(); return true;
     }
 
     private static void cover(BlockPos source, Set<BlockPos> air, Set<BlockPos> covered) {
@@ -84,9 +111,10 @@ public final class FlareLights extends SavedData {
             // Never load a chunk to clean it. Its record survives until it is loaded.
             if (!level.hasChunkAt(pos)) continue;
             BlockState state = level.getBlockState(pos);
-            if (!state.is(Blocks.LIGHT)) { iterator.remove(); setDirty(); continue; }
+            if (!state.is(Blocks.LIGHT)) { quietLights.remove(record.getKey()); iterator.remove(); setDirty(); continue; }
             if (level.getGameTime() < record.getValue()) continue;
-            level.setBlock(pos, state.getFluidState().createLegacyBlock(), Block.UPDATE_ALL);
+            int flags = quietLights.remove(record.getKey()) ? Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE : Block.UPDATE_ALL;
+            level.setBlock(pos, state.getFluidState().createLegacyBlock(), flags);
             iterator.remove(); setDirty();
         }
     }
@@ -96,6 +124,7 @@ public final class FlareLights extends SavedData {
         for (Tag entry : tag.getList("Lights", Tag.TAG_COMPOUND)) {
             CompoundTag record = (CompoundTag) entry;
             data.lights.put(record.getLong("Pos"), record.getLong("Expires"));
+            if (record.getBoolean("Quiet")) data.quietLights.add(record.getLong("Pos"));
         }
         return data;
     }
@@ -103,6 +132,7 @@ public final class FlareLights extends SavedData {
         ListTag records = new ListTag();
         lights.forEach((pos, expires) -> {
             CompoundTag record = new CompoundTag(); record.putLong("Pos", pos); record.putLong("Expires", expires); records.add(record);
+            if (quietLights.contains(pos)) record.putBoolean("Quiet", true);
         });
         tag.put("Lights", records); return tag;
     }
