@@ -1,0 +1,30 @@
+diff --git a/tools/KeeperX11Sampler.java b/tools/KeeperX11Sampler.java
+index 30a5911..95ab0c0 100644
+--- a/tools/KeeperX11Sampler.java
++++ b/tools/KeeperX11Sampler.java
+@@ -91,12 +91,19 @@ public final class KeeperX11Sampler {
+                 if (firstBright == 0 && alpha >= .25) firstBright = before;
+                 // This guard reads real screen pixels, not the tautology elapsed=200-left.
+                 if (firstBright != 0 && before - firstBright > 250_000_000L && alpha >= .08) {
+-                    ImageIO.write(image, "png", results.resolve("flash-overrun.png").toFile());
+-                    Files.writeString(results.resolve("flash-overrun.txt"),
+-                            "first_bright_ns=" + firstBright + " capture_before_ns=" + before
+-                                    + " capture_after_ns=" + after + " elapsed_ms="
+-                                    + (before - firstBright) / 1_000_000.0 + " alpha=" + alpha + "\n");
+-                    throw new AssertionError("Real X11 shutter pixels still bright beyond 250ms");
++                    AssertionError overrun = new AssertionError("Real X11 shutter pixels still bright beyond 250ms");
++                    // Publish failure before optional evidence I/O can stall the harness.
++                    Files.writeString(results.resolve("sampler.failed"), overrun.toString());
++                    try {
++                        ImageIO.write(image, "png", results.resolve("flash-overrun.png").toFile());
++                        Files.writeString(results.resolve("flash-overrun.txt"),
++                                "first_bright_ns=" + firstBright + " capture_before_ns=" + before
++                                        + " capture_after_ns=" + after + " elapsed_ms="
++                                        + (before - firstBright) / 1_000_000.0 + " alpha=" + alpha + "\n");
++                    } catch (Exception evidenceError) {
++                        overrun.addSuppressed(evidenceError);
++                    }
++                    throw overrun;
+                 }
+                 if (captures.size() == 1) atomicSignal(results, "capture.ready", Long.toString(after));
+                 if (deadline == 0) deadline = readLong(results.resolve("flash-deadline.txt"));

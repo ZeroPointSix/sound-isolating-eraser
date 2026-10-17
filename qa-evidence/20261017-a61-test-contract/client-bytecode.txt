@@ -1,0 +1,2105 @@
+Compiled from "KeeperTestClient.java"
+public final class com.zeropointsix.keepertest.KeeperTestClient {
+  private static final java.nio.file.Path RESULTS;
+
+  private static volatile java.lang.String phase;
+
+  private static int ticks;
+
+  private static volatile boolean failed;
+
+  private static boolean baselineSaved;
+
+  private static int[] baselineRgb;
+
+  private static int baselineWhite;
+
+  private static boolean photoSaved;
+
+  private static boolean grabberStarted;
+
+  private static boolean shutterSent;
+
+  private static final java.lang.StringBuilder frameTimes;
+
+  private static java.lang.reflect.Field flashDeadline;
+
+  private static volatile long observedDeadline;
+
+  private static boolean timingSaved;
+
+  private static int positiveFrames;
+
+  private static double firstPositive;
+
+  private static double lastPositive;
+
+  private static double firstClear;
+
+  private static int photoSeconds;
+
+  private static int connectionRetries;
+
+  private static boolean joinedWorld;
+
+  private static long warmupBegan;
+
+  private static long lastWarmupFrame;
+
+  private static long stableSince;
+
+  private static int stableFrames;
+
+  private static long shutterClickNs;
+
+  private static long shutterStableNanos;
+
+  private static int shutterStableFrames;
+
+  private static boolean enterPressed;
+
+  private static long enterBegan;
+
+  private static final java.lang.StringBuilder warmupFrames;
+
+  private static volatile boolean samplerReady;
+
+  public com.zeropointsix.keepertest.KeeperTestClient();
+    Code:
+       0: aload_0
+       1: invokespecial #1                  // Method java/lang/Object."<init>":()V
+       4: return
+
+  private static void observeWarmupFrame(long) throws java.lang.Exception;
+    Code:
+       0: getstatic     #7                  // Field shutterSent:Z
+       3: ifne          28
+       6: getstatic     #13                 // Field phase:Ljava/lang/String;
+       9: ldc           #17                 // String baseline
+      11: invokevirtual #19                 // Method java/lang/String.equals:(Ljava/lang/Object;)Z
+      14: ifne          29
+      17: getstatic     #13                 // Field phase:Ljava/lang/String;
+      20: ldc           #25                 // String shoot
+      22: invokevirtual #19                 // Method java/lang/String.equals:(Ljava/lang/Object;)Z
+      25: ifne          29
+      28: return
+      29: getstatic     #27                 // Field warmupBegan:J
+      32: lconst_0
+      33: lcmp
+      34: ifne          41
+      37: lload_0
+      38: putstatic     #27                 // Field warmupBegan:J
+      41: getstatic     #31                 // Field lastWarmupFrame:J
+      44: lconst_0
+      45: lcmp
+      46: ifne          53
+      49: lconst_0
+      50: goto          58
+      53: lload_0
+      54: getstatic     #31                 // Field lastWarmupFrame:J
+      57: lsub
+      58: lstore_2
+      59: getstatic     #31                 // Field lastWarmupFrame:J
+      62: lconst_0
+      63: lcmp
+      64: ifeq          75
+      67: lload_2
+      68: ldc2_w        #34                 // long 250000000l
+      71: lcmp
+      72: ifle          83
+      75: lload_0
+      76: putstatic     #36                 // Field stableSince:J
+      79: iconst_0
+      80: putstatic     #39                 // Field stableFrames:I
+      83: getstatic     #39                 // Field stableFrames:I
+      86: iconst_1
+      87: iadd
+      88: putstatic     #39                 // Field stableFrames:I
+      91: lload_0
+      92: putstatic     #31                 // Field lastWarmupFrame:J
+      95: getstatic     #43                 // Field warmupFrames:Ljava/lang/StringBuilder;
+      98: invokestatic  #47                 // Method java/lang/System.currentTimeMillis:()J
+     101: invokevirtual #53                 // Method java/lang/StringBuilder.append:(J)Ljava/lang/StringBuilder;
+     104: bipush        44
+     106: invokevirtual #59                 // Method java/lang/StringBuilder.append:(C)Ljava/lang/StringBuilder;
+     109: lload_0
+     110: invokevirtual #53                 // Method java/lang/StringBuilder.append:(J)Ljava/lang/StringBuilder;
+     113: bipush        44
+     115: invokevirtual #59                 // Method java/lang/StringBuilder.append:(C)Ljava/lang/StringBuilder;
+     118: lload_2
+     119: l2d
+     120: ldc2_w        #62                 // double 1000000.0d
+     123: ddiv
+     124: invokevirtual #64                 // Method java/lang/StringBuilder.append:(D)Ljava/lang/StringBuilder;
+     127: bipush        44
+     129: invokevirtual #59                 // Method java/lang/StringBuilder.append:(C)Ljava/lang/StringBuilder;
+     132: getstatic     #39                 // Field stableFrames:I
+     135: invokevirtual #67                 // Method java/lang/StringBuilder.append:(I)Ljava/lang/StringBuilder;
+     138: bipush        44
+     140: invokevirtual #59                 // Method java/lang/StringBuilder.append:(C)Ljava/lang/StringBuilder;
+     143: getstatic     #70                 // Field baselineSaved:Z
+     146: invokevirtual #73                 // Method java/lang/StringBuilder.append:(Z)Ljava/lang/StringBuilder;
+     149: bipush        10
+     151: invokevirtual #59                 // Method java/lang/StringBuilder.append:(C)Ljava/lang/StringBuilder;
+     154: pop
+     155: lload_0
+     156: getstatic     #27                 // Field warmupBegan:J
+     159: lsub
+     160: ldc2_w        #76                 // long 90000000000l
+     163: lcmp
+     164: ifle          204
+     167: getstatic     #78                 // Field RESULTS:Ljava/nio/file/Path;
+     170: ldc           #82                 // String render-warmup.csv
+     172: invokeinterface #84,  2           // InterfaceMethod java/nio/file/Path.resolve:(Ljava/lang/String;)Ljava/nio/file/Path;
+     177: getstatic     #43                 // Field warmupFrames:Ljava/lang/StringBuilder;
+     180: iconst_0
+     181: anewarray     #90                 // class java/nio/file/OpenOption
+     184: invokestatic  #92                 // Method java/nio/file/Files.writeString:(Ljava/nio/file/Path;Ljava/lang/CharSequence;[Ljava/nio/file/OpenOption;)Ljava/nio/file/Path;
+     187: pop
+     188: new           #98                 // class java/lang/AssertionError
+     191: dup
+     192: getstatic     #39                 // Field stableFrames:I
+     195: invokedynamic #100,  0            // InvokeDynamic #0:makeConcatWithConstants:(I)Ljava/lang/String;
+     200: invokespecial #104                // Method java/lang/AssertionError."<init>":(Ljava/lang/Object;)V
+     203: athrow
+     204: return
+
+  private static boolean renderReady();
+    Code:
+       0: invokestatic  #107                // Method java/lang/System.nanoTime:()J
+       3: lstore_0
+       4: getstatic     #39                 // Field stableFrames:I
+       7: bipush        20
+       9: if_icmplt     40
+      12: lload_0
+      13: getstatic     #36                 // Field stableSince:J
+      16: lsub
+      17: ldc2_w        #110                // long 2000000000l
+      20: lcmp
+      21: iflt          40
+      24: lload_0
+      25: getstatic     #31                 // Field lastWarmupFrame:J
+      28: lsub
+      29: ldc2_w        #34                 // long 250000000l
+      32: lcmp
+      33: ifgt          40
+      36: iconst_1
+      37: goto          41
+      40: iconst_0
+      41: ireturn
+
+  private static void provenance() throws java.lang.Exception;
+    Code:
+       0: new           #54                 // class java/lang/StringBuilder
+       3: dup
+       4: invokespecial #112                // Method java/lang/StringBuilder."<init>":()V
+       7: astore_0
+       8: iconst_2
+       9: anewarray     #113                // class java/lang/Class
+      12: dup
+      13: iconst_0
+      14: ldc           #115                // class com/zeropointsix/eraser/keeper/client/KeeperVisuals
+      16: aastore
+      17: dup
+      18: iconst_1
+      19: ldc           #117                // class com/zeropointsix/eraser/keeper/client/KeeperVisuals$Registration
+      21: aastore
+      22: astore_1
+      23: aload_1
+      24: arraylength
+      25: istore_2
+      26: iconst_0
+      27: istore_3
+      28: iload_3
+      29: iload_2
+      30: if_icmpge     203
+      33: aload_1
+      34: iload_3
+      35: aaload
+      36: astore        4
+      38: aload         4
+      40: invokevirtual #119                // Method java/lang/Class.getName:()Ljava/lang/String;
+      43: bipush        46
+      45: bipush        47
+      47: invokevirtual #123                // Method java/lang/String.replace:(CC)Ljava/lang/String;
+      50: invokedynamic #127,  0            // InvokeDynamic #1:makeConcatWithConstants:(Ljava/lang/String;)Ljava/lang/String;
+      55: astore        5
+      57: aload         4
+      59: aload         5
+      61: invokevirtual #130                // Method java/lang/Class.getResourceAsStream:(Ljava/lang/String;)Ljava/io/InputStream;
+      64: astore        6
+      66: aload         6
+      68: ifnull        75
+      71: iconst_1
+      72: goto          76
+      75: iconst_0
+      76: ldc           #134                // String loaded class bytes are accessible
+      78: invokestatic  #136                // Method require:(ZLjava/lang/String;)V
+      81: aload_0
+      82: aload         4
+      84: invokevirtual #119                // Method java/lang/Class.getName:()Ljava/lang/String;
+      87: invokevirtual #140                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+      90: ldc           #143                // String \nsource=
+      92: invokevirtual #140                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+      95: aload         4
+      97: invokevirtual #145                // Method java/lang/Class.getProtectionDomain:()Ljava/security/ProtectionDomain;
+     100: invokevirtual #149                // Method java/security/ProtectionDomain.getCodeSource:()Ljava/security/CodeSource;
+     103: invokevirtual #155                // Method java/security/CodeSource.getLocation:()Ljava/net/URL;
+     106: invokevirtual #161                // Method java/lang/StringBuilder.append:(Ljava/lang/Object;)Ljava/lang/StringBuilder;
+     109: ldc           #164                // String \nresource=
+     111: invokevirtual #140                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     114: aload         4
+     116: aload         5
+     118: invokevirtual #166                // Method java/lang/Class.getResource:(Ljava/lang/String;)Ljava/net/URL;
+     121: invokevirtual #161                // Method java/lang/StringBuilder.append:(Ljava/lang/Object;)Ljava/lang/StringBuilder;
+     124: ldc           #170                // String \nsha256=
+     126: invokevirtual #140                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     129: invokestatic  #172                // Method java/util/HexFormat.of:()Ljava/util/HexFormat;
+     132: ldc           #178                // String SHA-256
+     134: invokestatic  #180                // Method java/security/MessageDigest.getInstance:(Ljava/lang/String;)Ljava/security/MessageDigest;
+     137: aload         6
+     139: invokevirtual #186                // Method java/io/InputStream.readAllBytes:()[B
+     142: invokevirtual #192                // Method java/security/MessageDigest.digest:([B)[B
+     145: invokevirtual #196                // Method java/util/HexFormat.formatHex:([B)Ljava/lang/String;
+     148: invokevirtual #140                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     151: ldc           #200                // String \n
+     153: invokevirtual #140                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     156: pop
+     157: aload         6
+     159: ifnull        197
+     162: aload         6
+     164: invokevirtual #202                // Method java/io/InputStream.close:()V
+     167: goto          197
+     170: astore        7
+     172: aload         6
+     174: ifnull        194
+     177: aload         6
+     179: invokevirtual #202                // Method java/io/InputStream.close:()V
+     182: goto          194
+     185: astore        8
+     187: aload         7
+     189: aload         8
+     191: invokevirtual #207                // Method java/lang/Throwable.addSuppressed:(Ljava/lang/Throwable;)V
+     194: aload         7
+     196: athrow
+     197: iinc          3, 1
+     200: goto          28
+     203: ldc           #115                // class com/zeropointsix/eraser/keeper/client/KeeperVisuals
+     205: ldc           #211                // String flashUntil
+     207: invokevirtual #213                // Method java/lang/Class.getDeclaredField:(Ljava/lang/String;)Ljava/lang/reflect/Field;
+     210: putstatic     #217                // Field flashDeadline:Ljava/lang/reflect/Field;
+     213: getstatic     #217                // Field flashDeadline:Ljava/lang/reflect/Field;
+     216: iconst_1
+     217: invokevirtual #221                // Method java/lang/reflect/Field.setAccessible:(Z)V
+     220: ldc           #115                // class com/zeropointsix/eraser/keeper/client/KeeperVisuals
+     222: ldc           #227                // String FLASH_NANOS
+     224: invokevirtual #213                // Method java/lang/Class.getDeclaredField:(Ljava/lang/String;)Ljava/lang/reflect/Field;
+     227: astore_1
+     228: aload_1
+     229: iconst_1
+     230: invokevirtual #221                // Method java/lang/reflect/Field.setAccessible:(Z)V
+     233: aload_1
+     234: aconst_null
+     235: invokevirtual #229                // Method java/lang/reflect/Field.getLong:(Ljava/lang/Object;)J
+     238: ldc2_w        #233                // long 200000000l
+     241: lcmp
+     242: ifne          249
+     245: iconst_1
+     246: goto          250
+     249: iconst_0
+     250: ldc           #235                // String runtime uses the production 200ms default
+     252: invokestatic  #136                // Method require:(ZLjava/lang/String;)V
+     255: aload_0
+     256: ldc           #237                // String duration_nanos=
+     258: invokevirtual #140                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     261: aload_1
+     262: aconst_null
+     263: invokevirtual #229                // Method java/lang/reflect/Field.getLong:(Ljava/lang/Object;)J
+     266: invokevirtual #53                 // Method java/lang/StringBuilder.append:(J)Ljava/lang/StringBuilder;
+     269: ldc           #200                // String \n
+     271: invokevirtual #140                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     274: pop
+     275: getstatic     #78                 // Field RESULTS:Ljava/nio/file/Path;
+     278: ldc           #239                // String runtime-classes.txt
+     280: invokeinterface #84,  2           // InterfaceMethod java/nio/file/Path.resolve:(Ljava/lang/String;)Ljava/nio/file/Path;
+     285: aload_0
+     286: iconst_0
+     287: anewarray     #90                 // class java/nio/file/OpenOption
+     290: invokestatic  #92                 // Method java/nio/file/Files.writeString:(Ljava/nio/file/Path;Ljava/lang/CharSequence;[Ljava/nio/file/OpenOption;)Ljava/nio/file/Path;
+     293: pop
+     294: return
+    Exception table:
+       from    to  target type
+          66   157   170   Class java/lang/Throwable
+         177   182   185   Class java/lang/Throwable
+
+  public static void rendered(net.minecraftforge.event.TickEvent$RenderTickEvent);
+    Code:
+       0: aload_0
+       1: getfield      #241                // Field net/minecraftforge/event/TickEvent$RenderTickEvent.phase:Lnet/minecraftforge/event/TickEvent$Phase;
+       4: getstatic     #246                // Field net/minecraftforge/event/TickEvent$Phase.END:Lnet/minecraftforge/event/TickEvent$Phase;
+       7: if_acmpne     22
+      10: getstatic     #251                // Field failed:Z
+      13: ifne          22
+      16: getstatic     #217                // Field flashDeadline:Ljava/lang/reflect/Field;
+      19: ifnonnull     23
+      22: return
+      23: invokestatic  #107                // Method java/lang/System.nanoTime:()J
+      26: invokestatic  #254                // Method observeWarmupFrame:(J)V
+      29: getstatic     #258                // Field timingSaved:Z
+      32: ifeq          36
+      35: return
+      36: getstatic     #217                // Field flashDeadline:Ljava/lang/reflect/Field;
+      39: aconst_null
+      40: invokevirtual #229                // Method java/lang/reflect/Field.getLong:(Ljava/lang/Object;)J
+      43: lstore_1
+      44: lload_1
+      45: lconst_0
+      46: lcmp
+      47: ifne          51
+      50: return
+      51: getstatic     #261                // Field observedDeadline:J
+      54: lconst_0
+      55: lcmp
+      56: ifeq          67
+      59: getstatic     #261                // Field observedDeadline:J
+      62: lload_1
+      63: lcmp
+      64: ifne          71
+      67: iconst_1
+      68: goto          72
+      71: iconst_0
+      72: ldc_w         #264                // String one native shutter action only
+      75: invokestatic  #136                // Method require:(ZLjava/lang/String;)V
+      78: lload_1
+      79: invokestatic  #107                // Method java/lang/System.nanoTime:()J
+      82: lsub
+      83: l2d
+      84: ldc2_w        #62                 // double 1000000.0d
+      87: ddiv
+      88: dstore_3
+      89: ldc2_w        #266                // double 200.0d
+      92: dload_3
+      93: dsub
+      94: dstore        5
+      96: getstatic     #261                // Field observedDeadline:J
+      99: lconst_0
+     100: lcmp
+     101: ifne          132
+     104: getstatic     #13                 // Field phase:Ljava/lang/String;
+     107: ldc           #25                 // String shoot
+     109: invokevirtual #19                 // Method java/lang/String.equals:(Ljava/lang/Object;)Z
+     112: ifeq          125
+     115: invokestatic  #268                // Method inPhotoWorld:()Z
+     118: ifne          125
+     121: iconst_1
+     122: goto          126
+     125: iconst_0
+     126: ldc_w         #272                // String flash precedes the photo frame
+     129: invokestatic  #136                // Method require:(ZLjava/lang/String;)V
+     132: lload_1
+     133: putstatic     #261                // Field observedDeadline:J
+     136: getstatic     #274                // Field frameTimes:Ljava/lang/StringBuilder;
+     139: invokestatic  #47                 // Method java/lang/System.currentTimeMillis:()J
+     142: invokevirtual #53                 // Method java/lang/StringBuilder.append:(J)Ljava/lang/StringBuilder;
+     145: bipush        44
+     147: invokevirtual #59                 // Method java/lang/StringBuilder.append:(C)Ljava/lang/StringBuilder;
+     150: dload         5
+     152: invokevirtual #64                 // Method java/lang/StringBuilder.append:(D)Ljava/lang/StringBuilder;
+     155: bipush        44
+     157: invokevirtual #59                 // Method java/lang/StringBuilder.append:(C)Ljava/lang/StringBuilder;
+     160: dload_3
+     161: invokevirtual #64                 // Method java/lang/StringBuilder.append:(D)Ljava/lang/StringBuilder;
+     164: bipush        44
+     166: invokevirtual #59                 // Method java/lang/StringBuilder.append:(C)Ljava/lang/StringBuilder;
+     169: getstatic     #13                 // Field phase:Ljava/lang/String;
+     172: invokevirtual #140                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     175: bipush        44
+     177: invokevirtual #59                 // Method java/lang/StringBuilder.append:(C)Ljava/lang/StringBuilder;
+     180: invokestatic  #268                // Method inPhotoWorld:()Z
+     183: invokevirtual #73                 // Method java/lang/StringBuilder.append:(Z)Ljava/lang/StringBuilder;
+     186: bipush        10
+     188: invokevirtual #59                 // Method java/lang/StringBuilder.append:(C)Ljava/lang/StringBuilder;
+     191: pop
+     192: dload_3
+     193: dconst_0
+     194: dcmpl
+     195: ifle          227
+     198: getstatic     #277                // Field positiveFrames:I
+     201: iconst_1
+     202: iadd
+     203: putstatic     #277                // Field positiveFrames:I
+     206: getstatic     #280                // Field firstPositive:D
+     209: dconst_0
+     210: dcmpg
+     211: ifge          219
+     214: dload         5
+     216: putstatic     #280                // Field firstPositive:D
+     219: dload         5
+     221: putstatic     #284                // Field lastPositive:D
+     224: goto          240
+     227: getstatic     #287                // Field firstClear:D
+     230: dconst_0
+     231: dcmpg
+     232: ifge          240
+     235: dload         5
+     237: putstatic     #287                // Field firstClear:D
+     240: dload         5
+     242: ldc2_w        #290                // double 650.0d
+     245: dcmpl
+     246: iflt          463
+     249: ldc_w         #292                // String flash-deadline.txt
+     252: getstatic     #261                // Field observedDeadline:J
+     255: invokestatic  #294                // Method java/lang/Long.toString:(J)Ljava/lang/String;
+     258: invokestatic  #300                // Method atomicSignal:(Ljava/lang/String;Ljava/lang/String;)V
+     261: getstatic     #78                 // Field RESULTS:Ljava/nio/file/Path;
+     264: ldc_w         #304                // String flash-frame-times.csv
+     267: invokeinterface #84,  2           // InterfaceMethod java/nio/file/Path.resolve:(Ljava/lang/String;)Ljava/nio/file/Path;
+     272: getstatic     #274                // Field frameTimes:Ljava/lang/StringBuilder;
+     275: iconst_0
+     276: anewarray     #90                 // class java/nio/file/OpenOption
+     279: invokestatic  #92                 // Method java/nio/file/Files.writeString:(Ljava/nio/file/Path;Ljava/lang/CharSequence;[Ljava/nio/file/OpenOption;)Ljava/nio/file/Path;
+     282: pop
+     283: getstatic     #78                 // Field RESULTS:Ljava/nio/file/Path;
+     286: ldc_w         #306                // String shutter-input.txt
+     289: invokeinterface #84,  2           // InterfaceMethod java/nio/file/Path.resolve:(Ljava/lang/String;)Ljava/nio/file/Path;
+     294: getstatic     #308                // Field shutterClickNs:J
+     297: invokedynamic #311,  0            // InvokeDynamic #2:makeConcatWithConstants:(J)Ljava/lang/String;
+     302: iconst_0
+     303: anewarray     #90                 // class java/nio/file/OpenOption
+     306: invokestatic  #92                 // Method java/nio/file/Files.writeString:(Ljava/nio/file/Path;Ljava/lang/CharSequence;[Ljava/nio/file/OpenOption;)Ljava/nio/file/Path;
+     309: pop
+     310: getstatic     #78                 // Field RESULTS:Ljava/nio/file/Path;
+     313: ldc           #82                 // String render-warmup.csv
+     315: invokeinterface #84,  2           // InterfaceMethod java/nio/file/Path.resolve:(Ljava/lang/String;)Ljava/nio/file/Path;
+     320: getstatic     #43                 // Field warmupFrames:Ljava/lang/StringBuilder;
+     323: iconst_0
+     324: anewarray     #90                 // class java/nio/file/OpenOption
+     327: invokestatic  #92                 // Method java/nio/file/Files.writeString:(Ljava/nio/file/Path;Ljava/lang/CharSequence;[Ljava/nio/file/OpenOption;)Ljava/nio/file/Path;
+     330: pop
+     331: getstatic     #78                 // Field RESULTS:Ljava/nio/file/Path;
+     334: ldc_w         #313                // String render-ready.txt
+     337: invokeinterface #84,  2           // InterfaceMethod java/nio/file/Path.resolve:(Ljava/lang/String;)Ljava/nio/file/Path;
+     342: getstatic     #315                // Field shutterStableFrames:I
+     345: getstatic     #318                // Field shutterStableNanos:J
+     348: l2d
+     349: ldc2_w        #62                 // double 1000000.0d
+     352: ddiv
+     353: invokedynamic #321,  0            // InvokeDynamic #3:makeConcatWithConstants:(ID)Ljava/lang/String;
+     358: iconst_0
+     359: anewarray     #90                 // class java/nio/file/OpenOption
+     362: invokestatic  #92                 // Method java/nio/file/Files.writeString:(Ljava/nio/file/Path;Ljava/lang/CharSequence;[Ljava/nio/file/OpenOption;)Ljava/nio/file/Path;
+     365: pop
+     366: getstatic     #277                // Field positiveFrames:I
+     369: iconst_2
+     370: if_icmplt     405
+     373: getstatic     #280                // Field firstPositive:D
+     376: ldc2_w        #324                // double 100.0d
+     379: dcmpg
+     380: ifgt          405
+     383: getstatic     #287                // Field firstClear:D
+     386: dconst_0
+     387: dcmpl
+     388: iflt          405
+     391: getstatic     #287                // Field firstClear:D
+     394: ldc2_w        #326                // double 250.0d
+     397: dcmpg
+     398: ifgt          405
+     401: iconst_1
+     402: goto          406
+     405: iconst_0
+     406: getstatic     #280                // Field firstPositive:D
+     409: getstatic     #284                // Field lastPositive:D
+     412: getstatic     #287                // Field firstClear:D
+     415: invokedynamic #328,  0            // InvokeDynamic #4:makeConcatWithConstants:(DDD)Ljava/lang/String;
+     420: invokestatic  #136                // Method require:(ZLjava/lang/String;)V
+     423: getstatic     #78                 // Field RESULTS:Ljava/nio/file/Path;
+     426: ldc_w         #331                // String flash-observed.txt
+     429: invokeinterface #84,  2           // InterfaceMethod java/nio/file/Path.resolve:(Ljava/lang/String;)Ljava/nio/file/Path;
+     434: getstatic     #280                // Field firstPositive:D
+     437: getstatic     #284                // Field lastPositive:D
+     440: getstatic     #287                // Field firstClear:D
+     443: getstatic     #277                // Field positiveFrames:I
+     446: invokedynamic #333,  0            // InvokeDynamic #5:makeConcatWithConstants:(DDDI)Ljava/lang/String;
+     451: iconst_0
+     452: anewarray     #90                 // class java/nio/file/OpenOption
+     455: invokestatic  #92                 // Method java/nio/file/Files.writeString:(Ljava/nio/file/Path;Ljava/lang/CharSequence;[Ljava/nio/file/OpenOption;)Ljava/nio/file/Path;
+     458: pop
+     459: iconst_1
+     460: putstatic     #258                // Field timingSaved:Z
+     463: goto          498
+     466: astore_1
+     467: getstatic     #78                 // Field RESULTS:Ljava/nio/file/Path;
+     470: ldc_w         #336                // String client.failed
+     473: invokeinterface #84,  2           // InterfaceMethod java/nio/file/Path.resolve:(Ljava/lang/String;)Ljava/nio/file/Path;
+     478: aload_1
+     479: invokevirtual #338                // Method java/lang/Throwable.toString:()Ljava/lang/String;
+     482: iconst_0
+     483: anewarray     #90                 // class java/nio/file/OpenOption
+     486: invokestatic  #92                 // Method java/nio/file/Files.writeString:(Ljava/nio/file/Path;Ljava/lang/CharSequence;[Ljava/nio/file/OpenOption;)Ljava/nio/file/Path;
+     489: pop
+     490: goto          494
+     493: astore_2
+     494: iconst_1
+     495: putstatic     #251                // Field failed:Z
+     498: return
+    Exception table:
+       from    to  target type
+          23    35   466   Class java/lang/Throwable
+          36    50   466   Class java/lang/Throwable
+          51   463   466   Class java/lang/Throwable
+         467   490   493   Class java/lang/Exception
+
+  public static void message(net.minecraftforge.client.event.ClientChatReceivedEvent);
+    Code:
+       0: aload_0
+       1: invokevirtual #342                // Method net/minecraftforge/client/event/ClientChatReceivedEvent.getMessage:()Lnet/minecraft/network/chat/Component;
+       4: invokeinterface #348,  1          // InterfaceMethod net/minecraft/network/chat/Component.getString:()Ljava/lang/String;
+       9: astore_1
+      10: aload_1
+      11: ldc_w         #353                // String KEEPER_QA:
+      14: invokevirtual #355                // Method java/lang/String.startsWith:(Ljava/lang/String;)Z
+      17: ifeq          38
+      20: aload_1
+      21: bipush        10
+      23: invokevirtual #359                // Method java/lang/String.substring:(I)Ljava/lang/String;
+      26: putstatic     #13                 // Field phase:Ljava/lang/String;
+      29: iconst_0
+      30: putstatic     #362                // Field ticks:I
+      33: aload_0
+      34: iconst_1
+      35: invokevirtual #365                // Method net/minecraftforge/client/event/ClientChatReceivedEvent.setCanceled:(Z)V
+      38: return
+
+  private static void input(java.lang.String...) throws java.lang.Exception;
+    Code:
+       0: new           #368                // class java/util/ArrayList
+       3: dup
+       4: invokespecial #370                // Method java/util/ArrayList."<init>":()V
+       7: astore_1
+       8: aload_1
+       9: ldc_w         #371                // String xdotool
+      12: invokevirtual #373                // Method java/util/ArrayList.add:(Ljava/lang/Object;)Z
+      15: pop
+      16: aload_1
+      17: aload_0
+      18: invokestatic  #376                // InterfaceMethod java/util/List.of:([Ljava/lang/Object;)Ljava/util/List;
+      21: invokevirtual #381                // Method java/util/ArrayList.addAll:(Ljava/util/Collection;)Z
+      24: pop
+      25: new           #385                // class java/lang/ProcessBuilder
+      28: dup
+      29: aload_1
+      30: invokespecial #387                // Method java/lang/ProcessBuilder."<init>":(Ljava/util/List;)V
+      33: invokevirtual #390                // Method java/lang/ProcessBuilder.start:()Ljava/lang/Process;
+      36: invokevirtual #394                // Method java/lang/Process.waitFor:()I
+      39: ifeq          62
+      42: new           #98                 // class java/lang/AssertionError
+      45: dup
+      46: ldc_w         #400                // String
+      49: aload_0
+      50: invokestatic  #402                // Method java/lang/String.join:(Ljava/lang/CharSequence;[Ljava/lang/CharSequence;)Ljava/lang/String;
+      53: invokedynamic #406,  0            // InvokeDynamic #6:makeConcatWithConstants:(Ljava/lang/String;)Ljava/lang/String;
+      58: invokespecial #104                // Method java/lang/AssertionError."<init>":(Ljava/lang/Object;)V
+      61: athrow
+      62: return
+
+  private static void require(boolean, java.lang.String);
+    Code:
+       0: iload_0
+       1: ifne          13
+       4: new           #98                 // class java/lang/AssertionError
+       7: dup
+       8: aload_1
+       9: invokespecial #104                // Method java/lang/AssertionError."<init>":(Ljava/lang/Object;)V
+      12: athrow
+      13: return
+
+  private static int[] rgb(int);
+    Code:
+       0: iconst_3
+       1: newarray       int
+       3: dup
+       4: iconst_0
+       5: iload_0
+       6: bipush        16
+       8: ishr
+       9: sipush        255
+      12: iand
+      13: iastore
+      14: dup
+      15: iconst_1
+      16: iload_0
+      17: bipush        8
+      19: ishr
+      20: sipush        255
+      23: iand
+      24: iastore
+      25: dup
+      26: iconst_2
+      27: iload_0
+      28: sipush        255
+      31: iand
+      32: iastore
+      33: areturn
+
+  private static java.awt.image.BufferedImage grab(java.lang.String) throws java.lang.Exception;
+    Code:
+       0: getstatic     #78                 // Field RESULTS:Ljava/nio/file/Path;
+       3: aload_0
+       4: invokeinterface #84,  2           // InterfaceMethod java/nio/file/Path.resolve:(Ljava/lang/String;)Ljava/nio/file/Path;
+       9: astore_1
+      10: new           #368                // class java/util/ArrayList
+      13: dup
+      14: invokespecial #370                // Method java/util/ArrayList."<init>":()V
+      17: astore_2
+      18: aload_2
+      19: ldc_w         #407                // String /usr/bin/import
+      22: invokevirtual #373                // Method java/util/ArrayList.add:(Ljava/lang/Object;)Z
+      25: pop
+      26: ldc_w         #409                // String DISPLAY
+      29: invokestatic  #411                // Method java/lang/System.getenv:(Ljava/lang/String;)Ljava/lang/String;
+      32: astore_3
+      33: aload_3
+      34: ifnull        58
+      37: aload_3
+      38: invokevirtual #414                // Method java/lang/String.isEmpty:()Z
+      41: ifne          58
+      44: aload_2
+      45: ldc_w         #417                // String -display
+      48: invokevirtual #373                // Method java/util/ArrayList.add:(Ljava/lang/Object;)Z
+      51: pop
+      52: aload_2
+      53: aload_3
+      54: invokevirtual #373                // Method java/util/ArrayList.add:(Ljava/lang/Object;)Z
+      57: pop
+      58: aload_2
+      59: ldc_w         #419                // String -silent
+      62: invokevirtual #373                // Method java/util/ArrayList.add:(Ljava/lang/Object;)Z
+      65: pop
+      66: aload_2
+      67: ldc_w         #421                // String -window
+      70: invokevirtual #373                // Method java/util/ArrayList.add:(Ljava/lang/Object;)Z
+      73: pop
+      74: aload_2
+      75: ldc_w         #423                // String root
+      78: invokevirtual #373                // Method java/util/ArrayList.add:(Ljava/lang/Object;)Z
+      81: pop
+      82: aload_2
+      83: aload_1
+      84: invokeinterface #425,  1          // InterfaceMethod java/nio/file/Path.toAbsolutePath:()Ljava/nio/file/Path;
+      89: invokeinterface #429,  1          // InterfaceMethod java/nio/file/Path.toString:()Ljava/lang/String;
+      94: invokevirtual #373                // Method java/util/ArrayList.add:(Ljava/lang/Object;)Z
+      97: pop
+      98: new           #385                // class java/lang/ProcessBuilder
+     101: dup
+     102: aload_2
+     103: invokespecial #387                // Method java/lang/ProcessBuilder."<init>":(Ljava/util/List;)V
+     106: invokevirtual #390                // Method java/lang/ProcessBuilder.start:()Ljava/lang/Process;
+     109: invokevirtual #394                // Method java/lang/Process.waitFor:()I
+     112: istore        4
+     114: iload         4
+     116: ifne          123
+     119: iconst_1
+     120: goto          124
+     123: iconst_0
+     124: aload_0
+     125: iload         4
+     127: invokedynamic #430,  0            // InvokeDynamic #7:makeConcatWithConstants:(Ljava/lang/String;I)Ljava/lang/String;
+     132: invokestatic  #136                // Method require:(ZLjava/lang/String;)V
+     135: aload_1
+     136: invokeinterface #433,  1          // InterfaceMethod java/nio/file/Path.toFile:()Ljava/io/File;
+     141: invokestatic  #437                // Method javax/imageio/ImageIO.read:(Ljava/io/File;)Ljava/awt/image/BufferedImage;
+     144: astore        5
+     146: aload         5
+     148: ifnull        155
+     151: iconst_1
+     152: goto          156
+     155: iconst_0
+     156: aload_0
+     157: invokedynamic #443,  0            // InvokeDynamic #8:makeConcatWithConstants:(Ljava/lang/String;)Ljava/lang/String;
+     162: invokestatic  #136                // Method require:(ZLjava/lang/String;)V
+     165: aload         5
+     167: areturn
+
+  private static int countWhite(java.awt.image.BufferedImage, int);
+    Code:
+       0: iconst_0
+       1: istore_2
+       2: iconst_0
+       3: istore_3
+       4: iload_3
+       5: aload_0
+       6: invokevirtual #444                // Method java/awt/image/BufferedImage.getHeight:()I
+       9: if_icmpge     75
+      12: iconst_0
+      13: istore        4
+      15: iload         4
+      17: aload_0
+      18: invokevirtual #449                // Method java/awt/image/BufferedImage.getWidth:()I
+      21: if_icmpge     69
+      24: aload_0
+      25: iload         4
+      27: iload_3
+      28: invokevirtual #452                // Method java/awt/image/BufferedImage.getRGB:(II)I
+      31: invokestatic  #456                // Method rgb:(I)[I
+      34: astore        5
+      36: aload         5
+      38: iconst_0
+      39: iaload
+      40: iload_1
+      41: if_icmplt     63
+      44: aload         5
+      46: iconst_1
+      47: iaload
+      48: iload_1
+      49: if_icmplt     63
+      52: aload         5
+      54: iconst_2
+      55: iaload
+      56: iload_1
+      57: if_icmplt     63
+      60: iinc          2, 1
+      63: iinc          4, 1
+      66: goto          15
+      69: iinc          3, 1
+      72: goto          4
+      75: iload_2
+      76: ireturn
+
+  private static int[] meanCenter(java.awt.image.BufferedImage);
+    Code:
+       0: aload_0
+       1: invokevirtual #449                // Method java/awt/image/BufferedImage.getWidth:()I
+       4: iconst_4
+       5: idiv
+       6: istore_1
+       7: aload_0
+       8: invokevirtual #449                // Method java/awt/image/BufferedImage.getWidth:()I
+      11: iconst_3
+      12: imul
+      13: iconst_4
+      14: idiv
+      15: istore_2
+      16: aload_0
+      17: invokevirtual #444                // Method java/awt/image/BufferedImage.getHeight:()I
+      20: iconst_4
+      21: idiv
+      22: istore_3
+      23: aload_0
+      24: invokevirtual #444                // Method java/awt/image/BufferedImage.getHeight:()I
+      27: iconst_3
+      28: imul
+      29: iconst_4
+      30: idiv
+      31: istore        4
+      33: lconst_0
+      34: lstore        5
+      36: lconst_0
+      37: lstore        7
+      39: lconst_0
+      40: lstore        9
+      42: lconst_0
+      43: lstore        11
+      45: iload_3
+      46: istore        13
+      48: iload         13
+      50: iload         4
+      52: if_icmpge     125
+      55: iload_1
+      56: istore        14
+      58: iload         14
+      60: iload_2
+      61: if_icmpge     119
+      64: aload_0
+      65: iload         14
+      67: iload         13
+      69: invokevirtual #452                // Method java/awt/image/BufferedImage.getRGB:(II)I
+      72: invokestatic  #456                // Method rgb:(I)[I
+      75: astore        15
+      77: lload         5
+      79: aload         15
+      81: iconst_0
+      82: iaload
+      83: i2l
+      84: ladd
+      85: lstore        5
+      87: lload         7
+      89: aload         15
+      91: iconst_1
+      92: iaload
+      93: i2l
+      94: ladd
+      95: lstore        7
+      97: lload         9
+      99: aload         15
+     101: iconst_2
+     102: iaload
+     103: i2l
+     104: ladd
+     105: lstore        9
+     107: lload         11
+     109: lconst_1
+     110: ladd
+     111: lstore        11
+     113: iinc          14, 1
+     116: goto          58
+     119: iinc          13, 1
+     122: goto          48
+     125: lconst_1
+     126: lload         11
+     128: invokestatic  #460                // Method java/lang/Math.max:(JJ)J
+     131: lstore        11
+     133: iconst_3
+     134: newarray       int
+     136: dup
+     137: iconst_0
+     138: lload         5
+     140: lload         11
+     142: ldiv
+     143: l2i
+     144: iastore
+     145: dup
+     146: iconst_1
+     147: lload         7
+     149: lload         11
+     151: ldiv
+     152: l2i
+     153: iastore
+     154: dup
+     155: iconst_2
+     156: lload         9
+     158: lload         11
+     160: ldiv
+     161: l2i
+     162: iastore
+     163: areturn
+
+  private static int countNear(java.awt.image.BufferedImage, int, int, int, int);
+    Code:
+       0: iload_1
+       1: invokestatic  #456                // Method rgb:(I)[I
+       4: astore        5
+       6: iconst_0
+       7: istore        6
+       9: aload_0
+      10: invokevirtual #449                // Method java/awt/image/BufferedImage.getWidth:()I
+      13: iconst_4
+      14: idiv
+      15: istore        7
+      17: aload_0
+      18: invokevirtual #449                // Method java/awt/image/BufferedImage.getWidth:()I
+      21: iconst_3
+      22: imul
+      23: iconst_4
+      24: idiv
+      25: istore        8
+      27: iconst_0
+      28: iload_3
+      29: invokestatic  #466                // Method java/lang/Math.max:(II)I
+      32: istore        9
+      34: iload         9
+      36: aload_0
+      37: invokevirtual #444                // Method java/awt/image/BufferedImage.getHeight:()I
+      40: iload         4
+      42: invokestatic  #468                // Method java/lang/Math.min:(II)I
+      45: if_icmpge     129
+      48: iload         7
+      50: istore        10
+      52: iload         10
+      54: iload         8
+      56: if_icmpge     123
+      59: aload_0
+      60: iload         10
+      62: iload         9
+      64: invokevirtual #452                // Method java/awt/image/BufferedImage.getRGB:(II)I
+      67: invokestatic  #456                // Method rgb:(I)[I
+      70: astore        11
+      72: aload         11
+      74: iconst_0
+      75: iaload
+      76: aload         5
+      78: iconst_0
+      79: iaload
+      80: isub
+      81: invokestatic  #471                // Method java/lang/Math.abs:(I)I
+      84: aload         11
+      86: iconst_1
+      87: iaload
+      88: aload         5
+      90: iconst_1
+      91: iaload
+      92: isub
+      93: invokestatic  #471                // Method java/lang/Math.abs:(I)I
+      96: iadd
+      97: aload         11
+      99: iconst_2
+     100: iaload
+     101: aload         5
+     103: iconst_2
+     104: iaload
+     105: isub
+     106: invokestatic  #471                // Method java/lang/Math.abs:(I)I
+     109: iadd
+     110: iload_2
+     111: if_icmpgt     117
+     114: iinc          6, 1
+     117: iinc          10, 1
+     120: goto          52
+     123: iinc          9, 1
+     126: goto          34
+     129: iload         6
+     131: ireturn
+
+  private static boolean inPhotoWorld();
+    Code:
+       0: invokestatic  #475                // Method net/minecraft/client/Minecraft.getInstance:()Lnet/minecraft/client/Minecraft;
+       3: getfield      #480                // Field net/minecraft/client/Minecraft.player:Lnet/minecraft/client/player/LocalPlayer;
+       6: astore_0
+       7: aload_0
+       8: ifnull        31
+      11: aload_0
+      12: getstatic     #484                // Field com/zeropointsix/eraser/registry/ModEffects.IN_PHOTO:Lnet/minecraftforge/registries/RegistryObject;
+      15: invokevirtual #490                // Method net/minecraftforge/registries/RegistryObject.get:()Ljava/lang/Object;
+      18: checkcast     #496                // class net/minecraft/world/effect/MobEffect
+      21: invokevirtual #498                // Method net/minecraft/client/player/LocalPlayer.hasEffect:(Lnet/minecraft/world/effect/MobEffect;)Z
+      24: ifeq          31
+      27: iconst_1
+      28: goto          32
+      31: iconst_0
+      32: ireturn
+
+  private static void atomicSignal(java.lang.String, java.lang.String) throws java.lang.Exception;
+    Code:
+       0: getstatic     #78                 // Field RESULTS:Ljava/nio/file/Path;
+       3: aload_0
+       4: invokedynamic #504,  0            // InvokeDynamic #9:makeConcatWithConstants:(Ljava/lang/String;)Ljava/lang/String;
+       9: invokeinterface #84,  2           // InterfaceMethod java/nio/file/Path.resolve:(Ljava/lang/String;)Ljava/nio/file/Path;
+      14: astore_2
+      15: aload_2
+      16: aload_1
+      17: iconst_0
+      18: anewarray     #90                 // class java/nio/file/OpenOption
+      21: invokestatic  #92                 // Method java/nio/file/Files.writeString:(Ljava/nio/file/Path;Ljava/lang/CharSequence;[Ljava/nio/file/OpenOption;)Ljava/nio/file/Path;
+      24: pop
+      25: aload_2
+      26: getstatic     #78                 // Field RESULTS:Ljava/nio/file/Path;
+      29: aload_0
+      30: invokeinterface #84,  2           // InterfaceMethod java/nio/file/Path.resolve:(Ljava/lang/String;)Ljava/nio/file/Path;
+      35: iconst_2
+      36: anewarray     #505                // class java/nio/file/CopyOption
+      39: dup
+      40: iconst_0
+      41: getstatic     #507                // Field java/nio/file/StandardCopyOption.ATOMIC_MOVE:Ljava/nio/file/StandardCopyOption;
+      44: aastore
+      45: dup
+      46: iconst_1
+      47: getstatic     #513                // Field java/nio/file/StandardCopyOption.REPLACE_EXISTING:Ljava/nio/file/StandardCopyOption;
+      50: aastore
+      51: invokestatic  #516                // Method java/nio/file/Files.move:(Ljava/nio/file/Path;Ljava/nio/file/Path;[Ljava/nio/file/CopyOption;)Ljava/nio/file/Path;
+      54: pop
+      55: return
+
+  private static void startFlashGrabber();
+    Code:
+       0: getstatic     #520                // Field grabberStarted:Z
+       3: ifeq          7
+       6: return
+       7: iconst_1
+       8: putstatic     #520                // Field grabberStarted:Z
+      11: new           #523                // class java/lang/Thread
+      14: dup
+      15: invokedynamic #525,  0            // InvokeDynamic #10:run:()Ljava/lang/Runnable;
+      20: ldc_w         #529                // String keeper-qa-clock-check
+      23: invokespecial #531                // Method java/lang/Thread."<init>":(Ljava/lang/Runnable;Ljava/lang/String;)V
+      26: astore_0
+      27: aload_0
+      28: iconst_1
+      29: invokevirtual #534                // Method java/lang/Thread.setDaemon:(Z)V
+      32: aload_0
+      33: invokevirtual #537                // Method java/lang/Thread.start:()V
+      36: return
+
+  private static void captureBaseline(java.lang.String) throws java.lang.Exception;
+    Code:
+       0: getstatic     #70                 // Field baselineSaved:Z
+       3: ifeq          7
+       6: return
+       7: ldc_w         #539                // String baseline.png
+      10: invokestatic  #541                // Method grab:(Ljava/lang/String;)Ljava/awt/image/BufferedImage;
+      13: astore_1
+      14: aload_1
+      15: sipush        200
+      18: invokestatic  #545                // Method countWhite:(Ljava/awt/image/BufferedImage;I)I
+      21: putstatic     #549                // Field baselineWhite:I
+      24: aload_1
+      25: invokestatic  #552                // Method meanCenter:(Ljava/awt/image/BufferedImage;)[I
+      28: putstatic     #556                // Field baselineRgb:[I
+      31: getstatic     #78                 // Field RESULTS:Ljava/nio/file/Path;
+      34: ldc_w         #560                // String baseline-stats.txt
+      37: invokeinterface #84,  2           // InterfaceMethod java/nio/file/Path.resolve:(Ljava/lang/String;)Ljava/nio/file/Path;
+      42: aload_0
+      43: getstatic     #549                // Field baselineWhite:I
+      46: getstatic     #556                // Field baselineRgb:[I
+      49: iconst_0
+      50: iaload
+      51: getstatic     #556                // Field baselineRgb:[I
+      54: iconst_1
+      55: iaload
+      56: getstatic     #556                // Field baselineRgb:[I
+      59: iconst_2
+      60: iaload
+      61: aload_1
+      62: invokevirtual #449                // Method java/awt/image/BufferedImage.getWidth:()I
+      65: aload_1
+      66: invokevirtual #444                // Method java/awt/image/BufferedImage.getHeight:()I
+      69: invokestatic  #562                // Method java/lang/System.lineSeparator:()Ljava/lang/String;
+      72: invokedynamic #565,  0            // InvokeDynamic #11:makeConcatWithConstants:(Ljava/lang/String;IIIIIILjava/lang/String;)Ljava/lang/String;
+      77: iconst_0
+      78: anewarray     #90                 // class java/nio/file/OpenOption
+      81: invokestatic  #92                 // Method java/nio/file/Files.writeString:(Ljava/nio/file/Path;Ljava/lang/CharSequence;[Ljava/nio/file/OpenOption;)Ljava/nio/file/Path;
+      84: pop
+      85: iconst_1
+      86: putstatic     #70                 // Field baselineSaved:Z
+      89: return
+
+  private static void prepare(net.minecraft.client.Minecraft);
+    Code:
+       0: aload_0
+       1: aconst_null
+       2: invokevirtual #568                // Method net/minecraft/client/Minecraft.setScreen:(Lnet/minecraft/client/gui/screens/Screen;)V
+       5: aload_0
+       6: invokevirtual #572                // Method net/minecraft/client/Minecraft.getWindow:()Lcom/mojang/blaze3d/platform/Window;
+       9: invokevirtual #576                // Method com/mojang/blaze3d/platform/Window.getWindow:()J
+      12: invokestatic  #580                // Method org/lwjgl/glfw/GLFW.glfwFocusWindow:(J)V
+      15: aload_0
+      16: getfield      #585                // Field net/minecraft/client/Minecraft.mouseHandler:Lnet/minecraft/client/MouseHandler;
+      19: invokevirtual #589                // Method net/minecraft/client/MouseHandler.grabMouse:()V
+      22: return
+
+  public static void tick(net.minecraftforge.event.TickEvent$ClientTickEvent);
+    Code:
+       0: aload_0
+       1: getfield      #594                // Field net/minecraftforge/event/TickEvent$ClientTickEvent.phase:Lnet/minecraftforge/event/TickEvent$Phase;
+       4: getstatic     #246                // Field net/minecraftforge/event/TickEvent$Phase.END:Lnet/minecraftforge/event/TickEvent$Phase;
+       7: if_acmpne     16
+      10: getstatic     #251                // Field failed:Z
+      13: ifeq          17
+      16: return
+      17: invokestatic  #475                // Method net/minecraft/client/Minecraft.getInstance:()Lnet/minecraft/client/Minecraft;
+      20: astore_1
+      21: getstatic     #13                 // Field phase:Ljava/lang/String;
+      24: invokevirtual #414                // Method java/lang/String.isEmpty:()Z
+      27: ifeq          252
+      30: aload_1
+      31: getfield      #480                // Field net/minecraft/client/Minecraft.player:Lnet/minecraft/client/player/LocalPlayer;
+      34: ifnull        49
+      37: aload_1
+      38: getfield      #597                // Field net/minecraft/client/Minecraft.level:Lnet/minecraft/client/multiplayer/ClientLevel;
+      41: ifnull        49
+      44: iconst_1
+      45: putstatic     #601                // Field joinedWorld:Z
+      48: return
+      49: aload_1
+      50: getfield      #604                // Field net/minecraft/client/Minecraft.screen:Lnet/minecraft/client/gui/screens/Screen;
+      53: instanceof    #608                // class net/minecraft/client/gui/screens/ConnectScreen
+      56: ifeq          60
+      59: return
+      60: aload_1
+      61: getfield      #604                // Field net/minecraft/client/Minecraft.screen:Lnet/minecraft/client/gui/screens/Screen;
+      64: instanceof    #610                // class net/minecraft/client/gui/screens/DisconnectedScreen
+      67: ifeq          251
+      70: getstatic     #601                // Field joinedWorld:Z
+      73: ifeq          87
+      76: new           #98                 // class java/lang/AssertionError
+      79: dup
+      80: ldc_w         #612                // String disconnected after world join; see server.log Timed out
+      83: invokespecial #104                // Method java/lang/AssertionError."<init>":(Ljava/lang/Object;)V
+      86: athrow
+      87: getstatic     #614                // Field connectionRetries:I
+      90: iconst_5
+      91: if_icmpge     98
+      94: iconst_1
+      95: goto          99
+      98: iconst_0
+      99: ldc_w         #617                // String isolated server connection failed after five retries
+     102: invokestatic  #136                // Method require:(ZLjava/lang/String;)V
+     105: getstatic     #614                // Field connectionRetries:I
+     108: iconst_1
+     109: iadd
+     110: putstatic     #614                // Field connectionRetries:I
+     113: getstatic     #614                // Field connectionRetries:I
+     116: invokedynamic #619,  0            // InvokeDynamic #12:makeConcatWithConstants:(I)Ljava/lang/String;
+     121: invokestatic  #541                // Method grab:(Ljava/lang/String;)Ljava/awt/image/BufferedImage;
+     124: pop
+     125: invokestatic  #620                // Method java/lang/System.getenv:()Ljava/util/Map;
+     128: ldc_w         #623                // String KEEPER_QA_PORT
+     131: ldc_w         #625                // String 25578
+     134: invokeinterface #627,  3          // InterfaceMethod java/util/Map.getOrDefault:(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
+     139: checkcast     #20                 // class java/lang/String
+     142: invokedynamic #633,  0            // InvokeDynamic #13:makeConcatWithConstants:(Ljava/lang/String;)Ljava/lang/String;
+     147: astore_2
+     148: getstatic     #78                 // Field RESULTS:Ljava/nio/file/Path;
+     151: ldc_w         #634                // String connection-retries.txt
+     154: invokeinterface #84,  2           // InterfaceMethod java/nio/file/Path.resolve:(Ljava/lang/String;)Ljava/nio/file/Path;
+     159: getstatic     #614                // Field connectionRetries:I
+     162: invokestatic  #107                // Method java/lang/System.nanoTime:()J
+     165: aload_2
+     166: invokedynamic #636,  0            // InvokeDynamic #14:makeConcatWithConstants:(IJLjava/lang/String;)Ljava/lang/String;
+     171: iconst_2
+     172: anewarray     #90                 // class java/nio/file/OpenOption
+     175: dup
+     176: iconst_0
+     177: getstatic     #639                // Field java/nio/file/StandardOpenOption.CREATE:Ljava/nio/file/StandardOpenOption;
+     180: aastore
+     181: dup
+     182: iconst_1
+     183: getstatic     #645                // Field java/nio/file/StandardOpenOption.APPEND:Ljava/nio/file/StandardOpenOption;
+     186: aastore
+     187: invokestatic  #92                 // Method java/nio/file/Files.writeString:(Ljava/nio/file/Path;Ljava/lang/CharSequence;[Ljava/nio/file/OpenOption;)Ljava/nio/file/Path;
+     190: pop
+     191: aload_1
+     192: getfield      #604                // Field net/minecraft/client/Minecraft.screen:Lnet/minecraft/client/gui/screens/Screen;
+     195: aload_1
+     196: aload_2
+     197: invokestatic  #648                // Method net/minecraft/client/multiplayer/resolver/ServerAddress.parseString:(Ljava/lang/String;)Lnet/minecraft/client/multiplayer/resolver/ServerAddress;
+     200: new           #654                // class net/minecraft/client/multiplayer/ServerData
+     203: dup
+     204: ldc_w         #656                // String Keeper isolated QA
+     207: aload_2
+     208: iconst_0
+     209: invokespecial #658                // Method net/minecraft/client/multiplayer/ServerData."<init>":(Ljava/lang/String;Ljava/lang/String;Z)V
+     212: iconst_0
+     213: invokestatic  #661                // Method net/minecraft/client/gui/screens/ConnectScreen.startConnecting:(Lnet/minecraft/client/gui/screens/Screen;Lnet/minecraft/client/Minecraft;Lnet/minecraft/client/multiplayer/resolver/ServerAddress;Lnet/minecraft/client/multiplayer/ServerData;Z)V
+     216: goto          251
+     219: astore_2
+     220: getstatic     #78                 // Field RESULTS:Ljava/nio/file/Path;
+     223: ldc_w         #336                // String client.failed
+     226: invokeinterface #84,  2           // InterfaceMethod java/nio/file/Path.resolve:(Ljava/lang/String;)Ljava/nio/file/Path;
+     231: aload_2
+     232: invokevirtual #338                // Method java/lang/Throwable.toString:()Ljava/lang/String;
+     235: iconst_0
+     236: anewarray     #90                 // class java/nio/file/OpenOption
+     239: invokestatic  #92                 // Method java/nio/file/Files.writeString:(Ljava/nio/file/Path;Ljava/lang/CharSequence;[Ljava/nio/file/OpenOption;)Ljava/nio/file/Path;
+     242: pop
+     243: goto          247
+     246: astore_3
+     247: iconst_1
+     248: putstatic     #251                // Field failed:Z
+     251: return
+     252: aload_1
+     253: getfield      #480                // Field net/minecraft/client/Minecraft.player:Lnet/minecraft/client/player/LocalPlayer;
+     256: ifnull        266
+     259: aload_1
+     260: getfield      #597                // Field net/minecraft/client/Minecraft.level:Lnet/minecraft/client/multiplayer/ClientLevel;
+     263: ifnonnull     267
+     266: return
+     267: getstatic     #362                // Field ticks:I
+     270: iconst_1
+     271: iadd
+     272: putstatic     #362                // Field ticks:I
+     275: getstatic     #217                // Field flashDeadline:Ljava/lang/reflect/Field;
+     278: ifnonnull     284
+     281: invokestatic  #665                // Method provenance:()V
+     284: getstatic     #362                // Field ticks:I
+     287: bipush        8
+     289: if_icmpgt     296
+     292: aload_1
+     293: invokestatic  #668                // Method prepare:(Lnet/minecraft/client/Minecraft;)V
+     296: getstatic     #70                 // Field baselineSaved:Z
+     299: ifne          364
+     302: getstatic     #362                // Field ticks:I
+     305: bipush        12
+     307: if_icmplt     364
+     310: invokestatic  #672                // Method renderReady:()Z
+     313: ifeq          364
+     316: getstatic     #13                 // Field phase:Ljava/lang/String;
+     319: ldc           #17                 // String baseline
+     321: invokevirtual #19                 // Method java/lang/String.equals:(Ljava/lang/Object;)Z
+     324: ifne          338
+     327: getstatic     #13                 // Field phase:Ljava/lang/String;
+     330: ldc           #25                 // String shoot
+     332: invokevirtual #19                 // Method java/lang/String.equals:(Ljava/lang/Object;)Z
+     335: ifeq          364
+     338: getstatic     #13                 // Field phase:Ljava/lang/String;
+     341: getstatic     #362                // Field ticks:I
+     344: invokedynamic #675,  0            // InvokeDynamic #15:makeConcatWithConstants:(Ljava/lang/String;I)Ljava/lang/String;
+     349: invokestatic  #676                // Method captureBaseline:(Ljava/lang/String;)V
+     352: lconst_0
+     353: dup2
+     354: putstatic     #36                 // Field stableSince:J
+     357: putstatic     #31                 // Field lastWarmupFrame:J
+     360: iconst_0
+     361: putstatic     #39                 // Field stableFrames:I
+     364: getstatic     #13                 // Field phase:Ljava/lang/String;
+     367: ldc           #25                 // String shoot
+     369: invokevirtual #19                 // Method java/lang/String.equals:(Ljava/lang/Object;)Z
+     372: ifeq          515
+     375: getstatic     #362                // Field ticks:I
+     378: bipush        8
+     380: if_icmpne     402
+     383: iconst_2
+     384: anewarray     #20                 // class java/lang/String
+     387: dup
+     388: iconst_0
+     389: ldc_w         #680                // String key
+     392: aastore
+     393: dup
+     394: iconst_1
+     395: ldc_w         #682                // String 1
+     398: aastore
+     399: invokestatic  #684                // Method input:([Ljava/lang/String;)V
+     402: getstatic     #70                 // Field baselineSaved:Z
+     405: ifeq          417
+     408: invokestatic  #672                // Method renderReady:()Z
+     411: ifeq          417
+     414: invokestatic  #688                // Method startFlashGrabber:()V
+     417: getstatic     #362                // Field ticks:I
+     420: bipush        20
+     422: if_icmplt     515
+     425: getstatic     #7                  // Field shutterSent:Z
+     428: ifne          515
+     431: getstatic     #70                 // Field baselineSaved:Z
+     434: ifeq          515
+     437: invokestatic  #672                // Method renderReady:()Z
+     440: ifeq          515
+     443: getstatic     #691                // Field samplerReady:Z
+     446: ifeq          515
+     449: getstatic     #78                 // Field RESULTS:Ljava/nio/file/Path;
+     452: ldc_w         #694                // String capture.ready
+     455: invokeinterface #84,  2           // InterfaceMethod java/nio/file/Path.resolve:(Ljava/lang/String;)Ljava/nio/file/Path;
+     460: iconst_0
+     461: anewarray     #696                // class java/nio/file/LinkOption
+     464: invokestatic  #698                // Method java/nio/file/Files.exists:(Ljava/nio/file/Path;[Ljava/nio/file/LinkOption;)Z
+     467: ifeq          515
+     470: invokestatic  #107                // Method java/lang/System.nanoTime:()J
+     473: putstatic     #308                // Field shutterClickNs:J
+     476: getstatic     #308                // Field shutterClickNs:J
+     479: getstatic     #36                 // Field stableSince:J
+     482: lsub
+     483: putstatic     #318                // Field shutterStableNanos:J
+     486: getstatic     #39                 // Field stableFrames:I
+     489: putstatic     #315                // Field shutterStableFrames:I
+     492: iconst_1
+     493: putstatic     #7                  // Field shutterSent:Z
+     496: iconst_2
+     497: anewarray     #20                 // class java/lang/String
+     500: dup
+     501: iconst_0
+     502: ldc_w         #702                // String click
+     505: aastore
+     506: dup
+     507: iconst_1
+     508: ldc_w         #704                // String 3
+     511: aastore
+     512: invokestatic  #684                // Method input:([Ljava/lang/String;)V
+     515: getstatic     #13                 // Field phase:Ljava/lang/String;
+     518: ldc_w         #706                // String enter
+     521: invokevirtual #19                 // Method java/lang/String.equals:(Ljava/lang/Object;)Z
+     524: ifeq          705
+     527: getstatic     #362                // Field ticks:I
+     530: bipush        8
+     532: if_icmpne     554
+     535: iconst_2
+     536: anewarray     #20                 // class java/lang/String
+     539: dup
+     540: iconst_0
+     541: ldc_w         #680                // String key
+     544: aastore
+     545: dup
+     546: iconst_1
+     547: ldc_w         #708                // String 2
+     550: aastore
+     551: invokestatic  #684                // Method input:([Ljava/lang/String;)V
+     554: getstatic     #362                // Field ticks:I
+     557: bipush        16
+     559: if_icmplt     631
+     562: getstatic     #710                // Field enterPressed:Z
+     565: ifne          631
+     568: invokestatic  #268                // Method inPhotoWorld:()Z
+     571: ifne          631
+     574: aload_1
+     575: getfield      #480                // Field net/minecraft/client/Minecraft.player:Lnet/minecraft/client/player/LocalPlayer;
+     578: invokevirtual #713                // Method net/minecraft/client/player/LocalPlayer.getInventory:()Lnet/minecraft/world/entity/player/Inventory;
+     581: invokevirtual #717                // Method net/minecraft/world/entity/player/Inventory.getSelected:()Lnet/minecraft/world/item/ItemStack;
+     584: getstatic     #723                // Field com/zeropointsix/eraser/registry/ModItems.KEEPER_PHOTO:Lnet/minecraftforge/registries/RegistryObject;
+     587: invokevirtual #490                // Method net/minecraftforge/registries/RegistryObject.get:()Ljava/lang/Object;
+     590: checkcast     #728                // class net/minecraft/world/item/Item
+     593: invokevirtual #730                // Method net/minecraft/world/item/ItemStack.is:(Lnet/minecraft/world/item/Item;)Z
+     596: ldc_w         #736                // String native photo entry selects the captured photo
+     599: invokestatic  #136                // Method require:(ZLjava/lang/String;)V
+     602: invokestatic  #107                // Method java/lang/System.nanoTime:()J
+     605: putstatic     #738                // Field enterBegan:J
+     608: iconst_2
+     609: anewarray     #20                 // class java/lang/String
+     612: dup
+     613: iconst_0
+     614: ldc_w         #741                // String mousedown
+     617: aastore
+     618: dup
+     619: iconst_1
+     620: ldc_w         #704                // String 3
+     623: aastore
+     624: invokestatic  #684                // Method input:([Ljava/lang/String;)V
+     627: iconst_1
+     628: putstatic     #710                // Field enterPressed:Z
+     631: getstatic     #710                // Field enterPressed:Z
+     634: ifeq          666
+     637: invokestatic  #268                // Method inPhotoWorld:()Z
+     640: ifeq          666
+     643: iconst_2
+     644: anewarray     #20                 // class java/lang/String
+     647: dup
+     648: iconst_0
+     649: ldc_w         #743                // String mouseup
+     652: aastore
+     653: dup
+     654: iconst_1
+     655: ldc_w         #704                // String 3
+     658: aastore
+     659: invokestatic  #684                // Method input:([Ljava/lang/String;)V
+     662: iconst_0
+     663: putstatic     #710                // Field enterPressed:Z
+     666: getstatic     #738                // Field enterBegan:J
+     669: lconst_0
+     670: lcmp
+     671: ifeq          694
+     674: invokestatic  #268                // Method inPhotoWorld:()Z
+     677: ifne          694
+     680: invokestatic  #107                // Method java/lang/System.nanoTime:()J
+     683: getstatic     #738                // Field enterBegan:J
+     686: lsub
+     687: ldc2_w        #745                // long 30000000000l
+     690: lcmp
+     691: ifge          698
+     694: iconst_1
+     695: goto          699
+     698: iconst_0
+     699: ldc_w         #747                // String native held photo use received no server entry acknowledgement within 30s
+     702: invokestatic  #136                // Method require:(ZLjava/lang/String;)V
+     705: getstatic     #13                 // Field phase:Ljava/lang/String;
+     708: ldc_w         #749                // String photo
+     711: invokevirtual #19                 // Method java/lang/String.equals:(Ljava/lang/Object;)Z
+     714: ifeq          776
+     717: getstatic     #710                // Field enterPressed:Z
+     720: ifeq          776
+     723: iconst_2
+     724: anewarray     #20                 // class java/lang/String
+     727: dup
+     728: iconst_0
+     729: ldc_w         #743                // String mouseup
+     732: aastore
+     733: dup
+     734: iconst_1
+     735: ldc_w         #704                // String 3
+     738: aastore
+     739: invokestatic  #684                // Method input:([Ljava/lang/String;)V
+     742: iconst_0
+     743: putstatic     #710                // Field enterPressed:Z
+     746: getstatic     #78                 // Field RESULTS:Ljava/nio/file/Path;
+     749: ldc_w         #751                // String entry-input.txt
+     752: invokeinterface #84,  2           // InterfaceMethod java/nio/file/Path.resolve:(Ljava/lang/String;)Ljava/nio/file/Path;
+     757: getstatic     #738                // Field enterBegan:J
+     760: invokestatic  #107                // Method java/lang/System.nanoTime:()J
+     763: invokedynamic #753,  0            // InvokeDynamic #16:makeConcatWithConstants:(JJ)Ljava/lang/String;
+     768: iconst_0
+     769: anewarray     #90                 // class java/nio/file/OpenOption
+     772: invokestatic  #92                 // Method java/nio/file/Files.writeString:(Ljava/nio/file/Path;Ljava/lang/CharSequence;[Ljava/nio/file/OpenOption;)Ljava/nio/file/Path;
+     775: pop
+     776: getstatic     #13                 // Field phase:Ljava/lang/String;
+     779: ldc_w         #749                // String photo
+     782: invokevirtual #19                 // Method java/lang/String.equals:(Ljava/lang/Object;)Z
+     785: ifeq          1336
+     788: getstatic     #362                // Field ticks:I
+     791: bipush        16
+     793: if_icmpne     1336
+     796: getstatic     #756                // Field photoSaved:Z
+     799: ifne          1336
+     802: aload_1
+     803: getfield      #480                // Field net/minecraft/client/Minecraft.player:Lnet/minecraft/client/player/LocalPlayer;
+     806: getstatic     #484                // Field com/zeropointsix/eraser/registry/ModEffects.IN_PHOTO:Lnet/minecraftforge/registries/RegistryObject;
+     809: invokevirtual #490                // Method net/minecraftforge/registries/RegistryObject.get:()Ljava/lang/Object;
+     812: checkcast     #496                // class net/minecraft/world/effect/MobEffect
+     815: invokevirtual #498                // Method net/minecraft/client/player/LocalPlayer.hasEffect:(Lnet/minecraft/world/effect/MobEffect;)Z
+     818: ldc_w         #759                // String client has the in-photo effect
+     821: invokestatic  #136                // Method require:(ZLjava/lang/String;)V
+     824: ldc_w         #761                // String photo.png
+     827: invokestatic  #541                // Method grab:(Ljava/lang/String;)Ljava/awt/image/BufferedImage;
+     830: astore_2
+     831: aload_2
+     832: ldc_w         #763                // String png
+     835: getstatic     #78                 // Field RESULTS:Ljava/nio/file/Path;
+     838: ldc_w         #765                // String hud.png
+     841: invokeinterface #84,  2           // InterfaceMethod java/nio/file/Path.resolve:(Ljava/lang/String;)Ljava/nio/file/Path;
+     846: invokeinterface #433,  1          // InterfaceMethod java/nio/file/Path.toFile:()Ljava/io/File;
+     851: invokestatic  #767                // Method javax/imageio/ImageIO.write:(Ljava/awt/image/RenderedImage;Ljava/lang/String;Ljava/io/File;)Z
+     854: pop
+     855: aload_2
+     856: invokestatic  #552                // Method meanCenter:(Ljava/awt/image/BufferedImage;)[I
+     859: astore_3
+     860: aload_2
+     861: invokevirtual #444                // Method java/awt/image/BufferedImage.getHeight:()I
+     864: istore        4
+     866: aload_2
+     867: ldc_w         #771                // int 5916210
+     870: bipush        48
+     872: iload         4
+     874: sipush        200
+     877: imul
+     878: sipush        256
+     881: idiv
+     882: iload         4
+     884: invokestatic  #772                // Method countNear:(Ljava/awt/image/BufferedImage;IIII)I
+     887: istore        5
+     889: iconst_0
+     890: istore        6
+     892: aload_2
+     893: invokevirtual #449                // Method java/awt/image/BufferedImage.getWidth:()I
+     896: iconst_4
+     897: idiv
+     898: istore        7
+     900: aload_2
+     901: invokevirtual #449                // Method java/awt/image/BufferedImage.getWidth:()I
+     904: iconst_3
+     905: imul
+     906: iconst_4
+     907: idiv
+     908: istore        8
+     910: aload_2
+     911: invokevirtual #444                // Method java/awt/image/BufferedImage.getHeight:()I
+     914: iconst_4
+     915: idiv
+     916: istore        9
+     918: aload_2
+     919: invokevirtual #444                // Method java/awt/image/BufferedImage.getHeight:()I
+     922: iconst_3
+     923: imul
+     924: iconst_4
+     925: idiv
+     926: istore        10
+     928: iconst_1
+     929: iload         8
+     931: iload         7
+     933: isub
+     934: iload         10
+     936: iload         9
+     938: isub
+     939: imul
+     940: invokestatic  #466                // Method java/lang/Math.max:(II)I
+     943: istore        11
+     945: iload         9
+     947: istore        12
+     949: iload         12
+     951: iload         10
+     953: if_icmpge     1023
+     956: iload         7
+     958: istore        13
+     960: iload         13
+     962: iload         8
+     964: if_icmpge     1017
+     967: aload_2
+     968: iload         13
+     970: iload         12
+     972: invokevirtual #452                // Method java/awt/image/BufferedImage.getRGB:(II)I
+     975: invokestatic  #456                // Method rgb:(I)[I
+     978: astore        14
+     980: aload         14
+     982: iconst_0
+     983: iaload
+     984: aload         14
+     986: iconst_2
+     987: iaload
+     988: bipush        8
+     990: iadd
+     991: if_icmple     1011
+     994: aload         14
+     996: iconst_0
+     997: iaload
+     998: aload         14
+    1000: iconst_1
+    1001: iaload
+    1002: bipush        6
+    1004: isub
+    1005: if_icmplt     1011
+    1008: iinc          6, 1
+    1011: iinc          13, 1
+    1014: goto          960
+    1017: iinc          12, 1
+    1020: goto          949
+    1023: getstatic     #78                 // Field RESULTS:Ljava/nio/file/Path;
+    1026: ldc_w         #776                // String photo-stats.txt
+    1029: invokeinterface #84,  2           // InterfaceMethod java/nio/file/Path.resolve:(Ljava/lang/String;)Ljava/nio/file/Path;
+    1034: aload_3
+    1035: iconst_0
+    1036: iaload
+    1037: aload_3
+    1038: iconst_1
+    1039: iaload
+    1040: aload_3
+    1041: iconst_2
+    1042: iaload
+    1043: getstatic     #556                // Field baselineRgb:[I
+    1046: iconst_0
+    1047: iaload
+    1048: getstatic     #556                // Field baselineRgb:[I
+    1051: iconst_1
+    1052: iaload
+    1053: getstatic     #556                // Field baselineRgb:[I
+    1056: iconst_2
+    1057: iaload
+    1058: iload         5
+    1060: iload         6
+    1062: iload         11
+    1064: aload_1
+    1065: getfield      #480                // Field net/minecraft/client/Minecraft.player:Lnet/minecraft/client/player/LocalPlayer;
+    1068: invokevirtual #713                // Method net/minecraft/client/player/LocalPlayer.getInventory:()Lnet/minecraft/world/entity/player/Inventory;
+    1071: invokevirtual #717                // Method net/minecraft/world/entity/player/Inventory.getSelected:()Lnet/minecraft/world/item/ItemStack;
+    1074: getstatic     #723                // Field com/zeropointsix/eraser/registry/ModItems.KEEPER_PHOTO:Lnet/minecraftforge/registries/RegistryObject;
+    1077: invokevirtual #490                // Method net/minecraftforge/registries/RegistryObject.get:()Ljava/lang/Object;
+    1080: checkcast     #728                // class net/minecraft/world/item/Item
+    1083: invokevirtual #730                // Method net/minecraft/world/item/ItemStack.is:(Lnet/minecraft/world/item/Item;)Z
+    1086: invokestatic  #562                // Method java/lang/System.lineSeparator:()Ljava/lang/String;
+    1089: invokedynamic #778,  0            // InvokeDynamic #17:makeConcatWithConstants:(IIIIIIIIIZLjava/lang/String;)Ljava/lang/String;
+    1094: iconst_0
+    1095: anewarray     #90                 // class java/nio/file/OpenOption
+    1098: invokestatic  #92                 // Method java/nio/file/Files.writeString:(Ljava/nio/file/Path;Ljava/lang/CharSequence;[Ljava/nio/file/OpenOption;)Ljava/nio/file/Path;
+    1101: pop
+    1102: aload_3
+    1103: iconst_0
+    1104: iaload
+    1105: aload_3
+    1106: iconst_2
+    1107: iaload
+    1108: bipush        8
+    1110: iadd
+    1111: if_icmple     1126
+    1114: aload_3
+    1115: iconst_0
+    1116: iaload
+    1117: aload_3
+    1118: iconst_1
+    1119: iaload
+    1120: bipush        8
+    1122: isub
+    1123: if_icmpge     1168
+    1126: iload         6
+    1128: iconst_3
+    1129: imul
+    1130: iload         11
+    1132: if_icmpgt     1168
+    1135: getstatic     #70                 // Field baselineSaved:Z
+    1138: ifeq          1172
+    1141: aload_3
+    1142: iconst_0
+    1143: iaload
+    1144: getstatic     #556                // Field baselineRgb:[I
+    1147: iconst_0
+    1148: iaload
+    1149: isub
+    1150: bipush        8
+    1152: if_icmplt     1172
+    1155: aload_3
+    1156: iconst_2
+    1157: iaload
+    1158: getstatic     #556                // Field baselineRgb:[I
+    1161: iconst_2
+    1162: iaload
+    1163: iconst_4
+    1164: iadd
+    1165: if_icmpgt     1172
+    1168: iconst_1
+    1169: goto          1173
+    1172: iconst_0
+    1173: istore        12
+    1175: iload         12
+    1177: aload_3
+    1178: iconst_0
+    1179: iaload
+    1180: aload_3
+    1181: iconst_1
+    1182: iaload
+    1183: aload_3
+    1184: iconst_2
+    1185: iaload
+    1186: invokedynamic #781,  0            // InvokeDynamic #18:makeConcatWithConstants:(III)Ljava/lang/String;
+    1191: invokestatic  #136                // Method require:(ZLjava/lang/String;)V
+    1194: getstatic     #78                 // Field RESULTS:Ljava/nio/file/Path;
+    1197: ldc_w         #784                // String sepia.pass
+    1200: invokeinterface #84,  2           // InterfaceMethod java/nio/file/Path.resolve:(Ljava/lang/String;)Ljava/nio/file/Path;
+    1205: aload_3
+    1206: iconst_0
+    1207: iaload
+    1208: aload_3
+    1209: iconst_1
+    1210: iaload
+    1211: aload_3
+    1212: iconst_2
+    1213: iaload
+    1214: invokestatic  #562                // Method java/lang/System.lineSeparator:()Ljava/lang/String;
+    1217: invokedynamic #786,  0            // InvokeDynamic #19:makeConcatWithConstants:(IIILjava/lang/String;)Ljava/lang/String;
+    1222: iconst_0
+    1223: anewarray     #90                 // class java/nio/file/OpenOption
+    1226: invokestatic  #92                 // Method java/nio/file/Files.writeString:(Ljava/nio/file/Path;Ljava/lang/CharSequence;[Ljava/nio/file/OpenOption;)Ljava/nio/file/Path;
+    1229: pop
+    1230: iload         5
+    1232: bipush        20
+    1234: if_icmple     1241
+    1237: iconst_1
+    1238: goto          1242
+    1241: iconst_0
+    1242: ldc_w         #789                // String polaroid HUD remaining-time color 0x5A4632 was not rendered
+    1245: invokestatic  #136                // Method require:(ZLjava/lang/String;)V
+    1248: getstatic     #78                 // Field RESULTS:Ljava/nio/file/Path;
+    1251: ldc_w         #791                // String hud.pass
+    1254: invokeinterface #84,  2           // InterfaceMethod java/nio/file/Path.resolve:(Ljava/lang/String;)Ljava/nio/file/Path;
+    1259: iload         5
+    1261: invokestatic  #562                // Method java/lang/System.lineSeparator:()Ljava/lang/String;
+    1264: invokedynamic #793,  0            // InvokeDynamic #20:makeConcatWithConstants:(ILjava/lang/String;)Ljava/lang/String;
+    1269: iconst_0
+    1270: anewarray     #90                 // class java/nio/file/OpenOption
+    1273: invokestatic  #92                 // Method java/nio/file/Files.writeString:(Ljava/nio/file/Path;Ljava/lang/CharSequence;[Ljava/nio/file/OpenOption;)Ljava/nio/file/Path;
+    1276: pop
+    1277: iconst_1
+    1278: putstatic     #756                // Field photoSaved:Z
+    1281: aload_1
+    1282: getfield      #480                // Field net/minecraft/client/Minecraft.player:Lnet/minecraft/client/player/LocalPlayer;
+    1285: getstatic     #484                // Field com/zeropointsix/eraser/registry/ModEffects.IN_PHOTO:Lnet/minecraftforge/registries/RegistryObject;
+    1288: invokevirtual #490                // Method net/minecraftforge/registries/RegistryObject.get:()Ljava/lang/Object;
+    1291: checkcast     #496                // class net/minecraft/world/effect/MobEffect
+    1294: invokevirtual #796                // Method net/minecraft/client/player/LocalPlayer.getEffect:(Lnet/minecraft/world/effect/MobEffect;)Lnet/minecraft/world/effect/MobEffectInstance;
+    1297: invokevirtual #800                // Method net/minecraft/world/effect/MobEffectInstance.getDuration:()I
+    1300: bipush        19
+    1302: iadd
+    1303: bipush        20
+    1305: idiv
+    1306: putstatic     #805                // Field photoSeconds:I
+    1309: getstatic     #78                 // Field RESULTS:Ljava/nio/file/Path;
+    1312: ldc_w         #808                // String hud-seconds.txt
+    1315: invokeinterface #84,  2           // InterfaceMethod java/nio/file/Path.resolve:(Ljava/lang/String;)Ljava/nio/file/Path;
+    1320: getstatic     #805                // Field photoSeconds:I
+    1323: invokedynamic #810,  0            // InvokeDynamic #21:makeConcatWithConstants:(I)Ljava/lang/String;
+    1328: iconst_0
+    1329: anewarray     #90                 // class java/nio/file/OpenOption
+    1332: invokestatic  #92                 // Method java/nio/file/Files.writeString:(Ljava/nio/file/Path;Ljava/lang/CharSequence;[Ljava/nio/file/OpenOption;)Ljava/nio/file/Path;
+    1335: pop
+    1336: getstatic     #13                 // Field phase:Ljava/lang/String;
+    1339: ldc_w         #749                // String photo
+    1342: invokevirtual #19                 // Method java/lang/String.equals:(Ljava/lang/Object;)Z
+    1345: ifeq          1526
+    1348: getstatic     #362                // Field ticks:I
+    1351: bipush        65
+    1353: if_icmpne     1526
+    1356: getstatic     #756                // Field photoSaved:Z
+    1359: ifeq          1526
+    1362: invokestatic  #268                // Method inPhotoWorld:()Z
+    1365: ldc_w         #811                // String photo remains active for countdown regression
+    1368: invokestatic  #136                // Method require:(ZLjava/lang/String;)V
+    1371: aload_1
+    1372: getfield      #480                // Field net/minecraft/client/Minecraft.player:Lnet/minecraft/client/player/LocalPlayer;
+    1375: getstatic     #484                // Field com/zeropointsix/eraser/registry/ModEffects.IN_PHOTO:Lnet/minecraftforge/registries/RegistryObject;
+    1378: invokevirtual #490                // Method net/minecraftforge/registries/RegistryObject.get:()Ljava/lang/Object;
+    1381: checkcast     #496                // class net/minecraft/world/effect/MobEffect
+    1384: invokevirtual #796                // Method net/minecraft/client/player/LocalPlayer.getEffect:(Lnet/minecraft/world/effect/MobEffect;)Lnet/minecraft/world/effect/MobEffectInstance;
+    1387: invokevirtual #800                // Method net/minecraft/world/effect/MobEffectInstance.getDuration:()I
+    1390: bipush        19
+    1392: iadd
+    1393: bipush        20
+    1395: idiv
+    1396: istore_2
+    1397: ldc_w         #813                // String hud-later.png
+    1400: invokestatic  #541                // Method grab:(Ljava/lang/String;)Ljava/awt/image/BufferedImage;
+    1403: astore_3
+    1404: iload_2
+    1405: getstatic     #805                // Field photoSeconds:I
+    1408: if_icmpge     1419
+    1411: iload_2
+    1412: ifle          1419
+    1415: iconst_1
+    1416: goto          1420
+    1419: iconst_0
+    1420: ldc_w         #815                // String remaining seconds decrease
+    1423: invokestatic  #136                // Method require:(ZLjava/lang/String;)V
+    1426: aload_3
+    1427: ldc_w         #771                // int 5916210
+    1430: bipush        48
+    1432: aload_3
+    1433: invokevirtual #444                // Method java/awt/image/BufferedImage.getHeight:()I
+    1436: sipush        200
+    1439: imul
+    1440: sipush        256
+    1443: idiv
+    1444: aload_3
+    1445: invokevirtual #444                // Method java/awt/image/BufferedImage.getHeight:()I
+    1448: invokestatic  #772                // Method countNear:(Ljava/awt/image/BufferedImage;IIII)I
+    1451: bipush        20
+    1453: if_icmple     1460
+    1456: iconst_1
+    1457: goto          1461
+    1460: iconst_0
+    1461: ldc_w         #817                // String later HUD still rendered
+    1464: invokestatic  #136                // Method require:(ZLjava/lang/String;)V
+    1467: getstatic     #78                 // Field RESULTS:Ljava/nio/file/Path;
+    1470: ldc_w         #808                // String hud-seconds.txt
+    1473: invokeinterface #84,  2           // InterfaceMethod java/nio/file/Path.resolve:(Ljava/lang/String;)Ljava/nio/file/Path;
+    1478: iload_2
+    1479: invokedynamic #819,  0            // InvokeDynamic #22:makeConcatWithConstants:(I)Ljava/lang/String;
+    1484: iconst_1
+    1485: anewarray     #90                 // class java/nio/file/OpenOption
+    1488: dup
+    1489: iconst_0
+    1490: getstatic     #645                // Field java/nio/file/StandardOpenOption.APPEND:Ljava/nio/file/StandardOpenOption;
+    1493: aastore
+    1494: invokestatic  #92                 // Method java/nio/file/Files.writeString:(Ljava/nio/file/Path;Ljava/lang/CharSequence;[Ljava/nio/file/OpenOption;)Ljava/nio/file/Path;
+    1497: pop
+    1498: getstatic     #78                 // Field RESULTS:Ljava/nio/file/Path;
+    1501: ldc_w         #820                // String countdown.pass
+    1504: invokeinterface #84,  2           // InterfaceMethod java/nio/file/Path.resolve:(Ljava/lang/String;)Ljava/nio/file/Path;
+    1509: getstatic     #805                // Field photoSeconds:I
+    1512: iload_2
+    1513: invokedynamic #822,  0            // InvokeDynamic #23:makeConcatWithConstants:(II)Ljava/lang/String;
+    1518: iconst_0
+    1519: anewarray     #90                 // class java/nio/file/OpenOption
+    1522: invokestatic  #92                 // Method java/nio/file/Files.writeString:(Ljava/nio/file/Path;Ljava/lang/CharSequence;[Ljava/nio/file/OpenOption;)Ljava/nio/file/Path;
+    1525: pop
+    1526: getstatic     #13                 // Field phase:Ljava/lang/String;
+    1529: ldc_w         #825                // String exit
+    1532: invokevirtual #19                 // Method java/lang/String.equals:(Ljava/lang/Object;)Z
+    1535: ifeq          1591
+    1538: getstatic     #362                // Field ticks:I
+    1541: iconst_4
+    1542: if_icmpne     1564
+    1545: iconst_2
+    1546: anewarray     #20                 // class java/lang/String
+    1549: dup
+    1550: iconst_0
+    1551: ldc_w         #743                // String mouseup
+    1554: aastore
+    1555: dup
+    1556: iconst_1
+    1557: ldc_w         #704                // String 3
+    1560: aastore
+    1561: invokestatic  #684                // Method input:([Ljava/lang/String;)V
+    1564: getstatic     #362                // Field ticks:I
+    1567: bipush        12
+    1569: if_icmpne     1591
+    1572: iconst_2
+    1573: anewarray     #20                 // class java/lang/String
+    1576: dup
+    1577: iconst_0
+    1578: ldc_w         #702                // String click
+    1581: aastore
+    1582: dup
+    1583: iconst_1
+    1584: ldc_w         #704                // String 3
+    1587: aastore
+    1588: invokestatic  #684                // Method input:([Ljava/lang/String;)V
+    1591: getstatic     #13                 // Field phase:Ljava/lang/String;
+    1594: ldc_w         #827                // String clear
+    1597: invokevirtual #19                 // Method java/lang/String.equals:(Ljava/lang/Object;)Z
+    1600: ifeq          1768
+    1603: getstatic     #362                // Field ticks:I
+    1606: bipush        12
+    1608: if_icmpne     1768
+    1611: invokestatic  #268                // Method inPhotoWorld:()Z
+    1614: ifne          1621
+    1617: iconst_1
+    1618: goto          1622
+    1621: iconst_0
+    1622: ldc_w         #829                // String server exit clears client session effect
+    1625: invokestatic  #136                // Method require:(ZLjava/lang/String;)V
+    1628: getstatic     #217                // Field flashDeadline:Ljava/lang/reflect/Field;
+    1631: aconst_null
+    1632: invokevirtual #229                // Method java/lang/reflect/Field.getLong:(Ljava/lang/Object;)J
+    1635: invokestatic  #107                // Method java/lang/System.nanoTime:()J
+    1638: lcmp
+    1639: ifgt          1646
+    1642: iconst_1
+    1643: goto          1647
+    1646: iconst_0
+    1647: ldc_w         #831                // String exit has no active shutter
+    1650: invokestatic  #136                // Method require:(ZLjava/lang/String;)V
+    1653: ldc_w         #833                // String exit.png
+    1656: invokestatic  #541                // Method grab:(Ljava/lang/String;)Ljava/awt/image/BufferedImage;
+    1659: astore_2
+    1660: aload_2
+    1661: invokestatic  #552                // Method meanCenter:(Ljava/awt/image/BufferedImage;)[I
+    1664: astore_3
+    1665: aload_2
+    1666: ldc_w         #771                // int 5916210
+    1669: bipush        48
+    1671: aload_2
+    1672: invokevirtual #444                // Method java/awt/image/BufferedImage.getHeight:()I
+    1675: sipush        200
+    1678: imul
+    1679: sipush        256
+    1682: idiv
+    1683: aload_2
+    1684: invokevirtual #444                // Method java/awt/image/BufferedImage.getHeight:()I
+    1687: invokestatic  #772                // Method countNear:(Ljava/awt/image/BufferedImage;IIII)I
+    1690: istore        4
+    1692: iload         4
+    1694: bipush        20
+    1696: if_icmpge     1703
+    1699: iconst_1
+    1700: goto          1704
+    1703: iconst_0
+    1704: ldc_w         #835                // String exit removes countdown HUD
+    1707: invokestatic  #136                // Method require:(ZLjava/lang/String;)V
+    1710: aload_3
+    1711: iconst_2
+    1712: iaload
+    1713: aload_3
+    1714: iconst_0
+    1715: iaload
+    1716: bipush        10
+    1718: iadd
+    1719: if_icmple     1726
+    1722: iconst_1
+    1723: goto          1727
+    1726: iconst_0
+    1727: ldc_w         #837                // String exit removes sepia filter in the blue-sky fixture
+    1730: invokestatic  #136                // Method require:(ZLjava/lang/String;)V
+    1733: getstatic     #78                 // Field RESULTS:Ljava/nio/file/Path;
+    1736: ldc_w         #839                // String exit.pass
+    1739: invokeinterface #84,  2           // InterfaceMethod java/nio/file/Path.resolve:(Ljava/lang/String;)Ljava/nio/file/Path;
+    1744: iload         4
+    1746: aload_3
+    1747: iconst_0
+    1748: iaload
+    1749: aload_3
+    1750: iconst_1
+    1751: iaload
+    1752: aload_3
+    1753: iconst_2
+    1754: iaload
+    1755: invokedynamic #841,  0            // InvokeDynamic #24:makeConcatWithConstants:(IIII)Ljava/lang/String;
+    1760: iconst_0
+    1761: anewarray     #90                 // class java/nio/file/OpenOption
+    1764: invokestatic  #92                 // Method java/nio/file/Files.writeString:(Ljava/nio/file/Path;Ljava/lang/CharSequence;[Ljava/nio/file/OpenOption;)Ljava/nio/file/Path;
+    1767: pop
+    1768: goto          1807
+    1771: astore_2
+    1772: aload_2
+    1773: invokevirtual #844                // Method java/lang/Throwable.printStackTrace:()V
+    1776: getstatic     #78                 // Field RESULTS:Ljava/nio/file/Path;
+    1779: ldc_w         #336                // String client.failed
+    1782: invokeinterface #84,  2           // InterfaceMethod java/nio/file/Path.resolve:(Ljava/lang/String;)Ljava/nio/file/Path;
+    1787: aload_2
+    1788: invokevirtual #338                // Method java/lang/Throwable.toString:()Ljava/lang/String;
+    1791: iconst_0
+    1792: anewarray     #90                 // class java/nio/file/OpenOption
+    1795: invokestatic  #92                 // Method java/nio/file/Files.writeString:(Ljava/nio/file/Path;Ljava/lang/CharSequence;[Ljava/nio/file/OpenOption;)Ljava/nio/file/Path;
+    1798: pop
+    1799: goto          1803
+    1802: astore_3
+    1803: iconst_1
+    1804: putstatic     #251                // Field failed:Z
+    1807: return
+    Exception table:
+       from    to  target type
+          70   216   219   Class java/lang/Throwable
+         220   243   246   Class java/lang/Exception
+         267  1768  1771   Class java/lang/Throwable
+        1776  1799  1802   Class java/lang/Exception
+
+  private static void lambda$startFlashGrabber$0();
+    Code:
+       0: invokestatic  #107                // Method java/lang/System.nanoTime:()J
+       3: ldc2_w        #847                // long 10000000000l
+       6: ladd
+       7: lstore_0
+       8: getstatic     #78                 // Field RESULTS:Ljava/nio/file/Path;
+      11: ldc_w         #849                // String sampler.ready
+      14: invokeinterface #84,  2           // InterfaceMethod java/nio/file/Path.resolve:(Ljava/lang/String;)Ljava/nio/file/Path;
+      19: iconst_0
+      20: anewarray     #696                // class java/nio/file/LinkOption
+      23: invokestatic  #698                // Method java/nio/file/Files.exists:(Ljava/nio/file/Path;[Ljava/nio/file/LinkOption;)Z
+      26: ifne          44
+      29: invokestatic  #107                // Method java/lang/System.nanoTime:()J
+      32: lload_0
+      33: lcmp
+      34: ifge          44
+      37: lconst_1
+      38: invokestatic  #851                // Method java/lang/Thread.sleep:(J)V
+      41: goto          8
+      44: getstatic     #78                 // Field RESULTS:Ljava/nio/file/Path;
+      47: ldc_w         #849                // String sampler.ready
+      50: invokeinterface #84,  2           // InterfaceMethod java/nio/file/Path.resolve:(Ljava/lang/String;)Ljava/nio/file/Path;
+      55: iconst_0
+      56: anewarray     #696                // class java/nio/file/LinkOption
+      59: invokestatic  #698                // Method java/nio/file/Files.exists:(Ljava/nio/file/Path;[Ljava/nio/file/LinkOption;)Z
+      62: ldc_w         #854                // String external X11 sampler ready
+      65: invokestatic  #136                // Method require:(ZLjava/lang/String;)V
+      68: iconst_1
+      69: istore_2
+      70: iload_2
+      71: bipush        30
+      73: if_icmpgt     325
+      76: invokestatic  #107                // Method java/lang/System.nanoTime:()J
+      79: lstore_3
+      80: ldc_w         #856                // String clock-request.txt
+      83: iload_2
+      84: lload_3
+      85: invokedynamic #858,  0            // InvokeDynamic #25:makeConcatWithConstants:(IJ)Ljava/lang/String;
+      90: invokestatic  #300                // Method atomicSignal:(Ljava/lang/String;Ljava/lang/String;)V
+      93: lconst_0
+      94: lstore        5
+      96: invokestatic  #107                // Method java/lang/System.nanoTime:()J
+      99: lload_3
+     100: lsub
+     101: ldc2_w        #861                // long 1000000000l
+     104: lcmp
+     105: ifge          191
+     108: getstatic     #78                 // Field RESULTS:Ljava/nio/file/Path;
+     111: ldc_w         #863                // String clock-response.txt
+     114: invokeinterface #84,  2           // InterfaceMethod java/nio/file/Path.resolve:(Ljava/lang/String;)Ljava/nio/file/Path;
+     119: iconst_0
+     120: anewarray     #696                // class java/nio/file/LinkOption
+     123: invokestatic  #698                // Method java/nio/file/Files.exists:(Ljava/nio/file/Path;[Ljava/nio/file/LinkOption;)Z
+     126: ifeq          184
+     129: getstatic     #78                 // Field RESULTS:Ljava/nio/file/Path;
+     132: ldc_w         #863                // String clock-response.txt
+     135: invokeinterface #84,  2           // InterfaceMethod java/nio/file/Path.resolve:(Ljava/lang/String;)Ljava/nio/file/Path;
+     140: invokestatic  #865                // Method java/nio/file/Files.readString:(Ljava/nio/file/Path;)Ljava/lang/String;
+     143: invokevirtual #869                // Method java/lang/String.trim:()Ljava/lang/String;
+     146: ldc_w         #872                // String ,
+     149: invokevirtual #874                // Method java/lang/String.split:(Ljava/lang/String;)[Ljava/lang/String;
+     152: astore        7
+     154: aload         7
+     156: arraylength
+     157: iconst_2
+     158: if_icmpne     184
+     161: aload         7
+     163: iconst_0
+     164: aaload
+     165: invokestatic  #878                // Method java/lang/Integer.parseInt:(Ljava/lang/String;)I
+     168: iload_2
+     169: if_icmpne     184
+     172: aload         7
+     174: iconst_1
+     175: aaload
+     176: invokestatic  #884                // Method java/lang/Long.parseLong:(Ljava/lang/String;)J
+     179: lstore        5
+     181: goto          191
+     184: lconst_1
+     185: invokestatic  #851                // Method java/lang/Thread.sleep:(J)V
+     188: goto          96
+     191: invokestatic  #107                // Method java/lang/System.nanoTime:()J
+     194: lstore        7
+     196: iload_2
+     197: lload_3
+     198: lload         5
+     200: lload         7
+     202: lload         7
+     204: lload_3
+     205: lsub
+     206: l2d
+     207: ldc2_w        #62                 // double 1000000.0d
+     210: ddiv
+     211: invokedynamic #888,  0            // InvokeDynamic #26:makeConcatWithConstants:(IJJJD)Ljava/lang/String;
+     216: astore        9
+     218: getstatic     #78                 // Field RESULTS:Ljava/nio/file/Path;
+     221: ldc_w         #891                // String sampler-clock-attempts.txt
+     224: invokeinterface #84,  2           // InterfaceMethod java/nio/file/Path.resolve:(Ljava/lang/String;)Ljava/nio/file/Path;
+     229: aload         9
+     231: iconst_2
+     232: anewarray     #90                 // class java/nio/file/OpenOption
+     235: dup
+     236: iconst_0
+     237: getstatic     #639                // Field java/nio/file/StandardOpenOption.CREATE:Ljava/nio/file/StandardOpenOption;
+     240: aastore
+     241: dup
+     242: iconst_1
+     243: getstatic     #645                // Field java/nio/file/StandardOpenOption.APPEND:Ljava/nio/file/StandardOpenOption;
+     246: aastore
+     247: invokestatic  #92                 // Method java/nio/file/Files.writeString:(Ljava/nio/file/Path;Ljava/lang/CharSequence;[Ljava/nio/file/OpenOption;)Ljava/nio/file/Path;
+     250: pop
+     251: lload         5
+     253: lload_3
+     254: lcmp
+     255: iflt          313
+     258: lload         5
+     260: lload         7
+     262: lcmp
+     263: ifgt          313
+     266: lload         7
+     268: lload_3
+     269: lsub
+     270: ldc2_w        #893                // long 50000000l
+     273: lcmp
+     274: ifge          313
+     277: getstatic     #78                 // Field RESULTS:Ljava/nio/file/Path;
+     280: ldc_w         #895                // String sampler-clock-check.txt
+     283: invokeinterface #84,  2           // InterfaceMethod java/nio/file/Path.resolve:(Ljava/lang/String;)Ljava/nio/file/Path;
+     288: aload         9
+     290: iconst_0
+     291: anewarray     #90                 // class java/nio/file/OpenOption
+     294: invokestatic  #92                 // Method java/nio/file/Files.writeString:(Ljava/nio/file/Path;Ljava/lang/CharSequence;[Ljava/nio/file/OpenOption;)Ljava/nio/file/Path;
+     297: pop
+     298: ldc_w         #897                // String clock-accepted.txt
+     301: iload_2
+     302: invokestatic  #899                // Method java/lang/Integer.toString:(I)Ljava/lang/String;
+     305: invokestatic  #300                // Method atomicSignal:(Ljava/lang/String;Ljava/lang/String;)V
+     308: iconst_1
+     309: putstatic     #691                // Field samplerReady:Z
+     312: return
+     313: ldc2_w        #901                // long 25l
+     316: invokestatic  #851                // Method java/lang/Thread.sleep:(J)V
+     319: iinc          2, 1
+     322: goto          70
+     325: new           #98                 // class java/lang/AssertionError
+     328: dup
+     329: ldc_w         #903                // String No clock handshake under 50ms in 30 attempts; see sampler-clock-attempts.txt
+     332: invokespecial #104                // Method java/lang/AssertionError."<init>":(Ljava/lang/Object;)V
+     335: athrow
+     336: astore_0
+     337: getstatic     #78                 // Field RESULTS:Ljava/nio/file/Path;
+     340: ldc_w         #336                // String client.failed
+     343: invokeinterface #84,  2           // InterfaceMethod java/nio/file/Path.resolve:(Ljava/lang/String;)Ljava/nio/file/Path;
+     348: aload_0
+     349: invokevirtual #338                // Method java/lang/Throwable.toString:()Ljava/lang/String;
+     352: iconst_0
+     353: anewarray     #90                 // class java/nio/file/OpenOption
+     356: invokestatic  #92                 // Method java/nio/file/Files.writeString:(Ljava/nio/file/Path;Ljava/lang/CharSequence;[Ljava/nio/file/OpenOption;)Ljava/nio/file/Path;
+     359: pop
+     360: goto          364
+     363: astore_1
+     364: iconst_1
+     365: putstatic     #251                // Field failed:Z
+     368: return
+    Exception table:
+       from    to  target type
+           0   312   336   Class java/lang/Throwable
+         313   336   336   Class java/lang/Throwable
+         337   360   363   Class java/lang/Exception
+
+  static {};
+    Code:
+       0: ldc_w         #905                // String keeper.qa.results
+       3: invokestatic  #907                // Method java/lang/System.getProperty:(Ljava/lang/String;)Ljava/lang/String;
+       6: iconst_0
+       7: anewarray     #20                 // class java/lang/String
+      10: invokestatic  #910                // InterfaceMethod java/nio/file/Path.of:(Ljava/lang/String;[Ljava/lang/String;)Ljava/nio/file/Path;
+      13: putstatic     #78                 // Field RESULTS:Ljava/nio/file/Path;
+      16: ldc_w         #913                // String
+      19: putstatic     #13                 // Field phase:Ljava/lang/String;
+      22: iconst_3
+      23: newarray       int
+      25: putstatic     #556                // Field baselineRgb:[I
+      28: new           #54                 // class java/lang/StringBuilder
+      31: dup
+      32: ldc_w         #915                // String epoch_ms,elapsed_ms,left_ms,phase,in_photo\n
+      35: invokespecial #917                // Method java/lang/StringBuilder."<init>":(Ljava/lang/String;)V
+      38: putstatic     #274                // Field frameTimes:Ljava/lang/StringBuilder;
+      41: ldc2_w        #919                // double -1.0d
+      44: putstatic     #280                // Field firstPositive:D
+      47: ldc2_w        #919                // double -1.0d
+      50: putstatic     #284                // Field lastPositive:D
+      53: ldc2_w        #919                // double -1.0d
+      56: putstatic     #287                // Field firstClear:D
+      59: new           #54                 // class java/lang/StringBuilder
+      62: dup
+      63: ldc_w         #921                // String epoch_ms,monotonic_ns,gap_ms,stable_frames,baseline_saved\n
+      66: invokespecial #917                // Method java/lang/StringBuilder."<init>":(Ljava/lang/String;)V
+      69: putstatic     #43                 // Field warmupFrames:Ljava/lang/StringBuilder;
+      72: return
+}
