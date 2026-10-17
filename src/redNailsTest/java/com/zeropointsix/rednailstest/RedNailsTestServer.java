@@ -59,6 +59,7 @@ public final class RedNailsTestServer {
         try { Files.writeString(RESULTS.resolve("server.failed"), error.toString()); } catch (Exception ignored) { }
     }
     @SubscribeEvent public static void prepare(ServerStartedEvent event) {
+        if (Boolean.getBoolean("rednails.qa.acceptance")) return;
         var level = event.getServer().overworld();
         level.setDayTime(6000); level.setWeatherParameters(6000, 0, false, false);
         level.getGameRules().getRule(GameRules.RULE_DOMOBSPAWNING).set(false, event.getServer());
@@ -78,6 +79,7 @@ public final class RedNailsTestServer {
         }
     }
     @SubscribeEvent public static void login(PlayerEvent.PlayerLoggedInEvent event) {
+        if (Boolean.getBoolean("rednails.qa.acceptance")) return;
         if (!(event.getEntity() instanceof ServerPlayer p) || !p.getGameProfile().getName().equals("NailsTester")) return;
         player = p; ticks = 0; stageNanos = System.nanoTime();
         p.setGameMode(GameType.SURVIVAL);

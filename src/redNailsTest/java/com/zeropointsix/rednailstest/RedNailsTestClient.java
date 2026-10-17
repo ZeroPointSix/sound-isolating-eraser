@@ -68,6 +68,7 @@ public final class RedNailsTestClient {
         }
     }
     @SubscribeEvent(priority = EventPriority.HIGH) public static void tick(TickEvent.ClientTickEvent event) {
+        if (Boolean.getBoolean("rednails.qa.acceptance")) return;
         if (event.phase != TickEvent.Phase.END || failed) return;
         var mc = Minecraft.getInstance();
         if (mc.level == null || mc.player == null) {

@@ -5,6 +5,7 @@ from pathlib import Path
 import shlex
 import socket
 import subprocess
+import sys
 import time
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -15,6 +16,7 @@ CLASSPATH = (ROOT / "build/red-nails-test-classpath.txt").read_text().strip()
 PORT = int(os.environ.get("RED_NAILS_QA_PORT", "25587"))
 TIMEOUT = int(os.environ.get("RED_NAILS_QA_TIMEOUT", "900"))
 PURSUIT = os.environ.get("RED_NAILS_QA_PURSUIT") == "1"
+ACCEPTANCE = os.environ.get("RED_NAILS_QA_ACCEPTANCE") == "1"
 processes, logs = [], []
 
 
@@ -59,6 +61,8 @@ def launch(role):
                "-Xmx1024M" if server else "-Xmx1536M", f"-Drednails.qa.results={RESULTS}"]
     if PURSUIT:
         command += ["-Drednails.qa.pursuit=true"]
+    if ACCEPTANCE:
+        command += ["-Drednails.qa.acceptance=true"]
     command += shlex.split(expand(config["vmArgs"]))
     if server:
         # Allow registry synchronization during a software-rendered client join.
@@ -132,6 +136,15 @@ try:
     server = launch("server")
     ready(server)
     client = launch("client")
+    if ACCEPTANCE:
+        required = ["acceptance-boat", "acceptance-bottom", "acceptance-damage",
+                    "acceptance-coexist", "acceptance-recall", "acceptance-recall-watch",
+                    "acceptance-unequip", "acceptance-client"]
+        wait_for(required, [server, client])
+        stop(client)
+        save_stop(server)
+        print("RED_NAILS_NATIVE_ACCEPTANCE_PASSED", flush=True)
+        sys.exit(0)
     required = ["server-input", "client-guard", "server-backlash", "client-backlash", "server-recall", "client-recalled"]
     required += (["server-shore", "client-shore-complete", "server-wild-started", "server-wild", "client-wild-complete"]
                  if PURSUIT else ["server-water", "client-water"])
