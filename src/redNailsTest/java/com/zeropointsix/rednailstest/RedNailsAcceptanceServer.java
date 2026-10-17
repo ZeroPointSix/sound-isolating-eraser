@@ -249,9 +249,10 @@ public final class RedNailsAcceptanceServer {
         } else {
             for (var p : BlockPos.betweenClosed(-18, 71, -18, 18, 71, 24)) level.setBlock(p, Blocks.WATER.defaultBlockState(), 2);
         }
-        player.teleportTo(level, 0.5, 75.1, -8.5, 0, 0);
+        float approachYaw = frontal() ? 45 : 0;
+        player.teleportTo(level, 0.5, 75.1, -8.5, approachYaw, 0);
         boat = new Boat(level, 0.5, 74.5, -8.5);
-        boat.setYRot(0); level.addFreshEntity(boat);
+        boat.setYRot(approachYaw); level.addFreshEntity(boat);
         check(player.startRiding(boat, true), "fixture player mounts a real vanilla boat");
         boatStart = boat.position(); boatDistance = 0;
         previousBoatPosition = boatStart; boatMovedAt = -1;
@@ -294,12 +295,12 @@ public final class RedNailsAcceptanceServer {
                 if (boatDistance >= 2 && ghost == null) {
                     ghost = ModEntities.WATER_GHOST.get().create(player.serverLevel());
                     check(ghost != null, "registered ghost creates");
-                    // Put head-on cases at the real hull's contact boundary without overlap;
-                    // a positive gap can be captured before the next native boat move arrives.
-                    double spawnZ = frontal() ? boat.getBoundingBox().maxZ
-                            + Math.max(ghost.getBbWidth(), WaterGhostBody.SWIMMING.width) * 0.5
-                            : player.getZ() + 4.5;
-                    ghost.moveTo(player.getX() + (frontal() ? 0 : 1.4), 73.5, spawnZ, 180, 0);
+                    // Approach the real hull diagonally with positive clearance on both axes.
+                    // Unlike an axial near-start, this begins outside the unchanged grab radius.
+                    double halfWidth = Math.max(ghost.getBbWidth(), WaterGhostBody.SWIMMING.width) * 0.5;
+                    double spawnX = frontal() ? boat.getBoundingBox().minX - halfWidth - 0.25 : player.getX() + 1.4;
+                    double spawnZ = frontal() ? boat.getBoundingBox().maxZ + halfWidth + 0.25 : player.getZ() + 4.5;
+                    ghost.moveTo(spawnX, 73.5, spawnZ, frontal() ? 225 : 180, 0);
                     player.serverLevel().addFreshEntity(ghost);
                     check(!ghost.isNoAi() && ghost.getTarget() == null, "normal ghost AI starts without forced target");
                     check(frontal() || ghost.getBoundingBox().minX > boat.getBoundingBox().maxX,
