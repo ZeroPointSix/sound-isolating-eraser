@@ -1,17 +1,28 @@
 package com.zeropointsix.rednailstest;
 
 import com.google.gson.JsonObject;
+import com.mojang.blaze3d.platform.InputConstants;
+import com.zeropointsix.eraser.ModMain;
 import com.zeropointsix.eraser.client.RedNailsClient;
+import com.zeropointsix.eraser.rednails.RedNailsItem;
 import com.zeropointsix.eraser.rednails.WaterGhostEntity;
+import com.zeropointsix.eraser.rednails.WaterGhostSummonEntity;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Screenshot;
 import net.minecraft.client.gui.screens.DisconnectedScreen;
+import net.minecraft.client.gui.screens.TitleScreen;
+import net.minecraft.client.gui.screens.inventory.InventoryScreen;
+import net.minecraft.nbt.Tag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ServerboundPlayerCommandPacket;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.vehicle.Boat;
+import net.minecraft.world.item.TooltipFlag;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.ClientChatReceivedEvent;
 import net.minecraftforge.event.TickEvent;
@@ -29,11 +40,18 @@ public final class RedNailsAcceptanceClient {
     private static AcceptanceObservations.BoatHistory boatHistory = new AcceptanceObservations.BoatHistory();
     private static String captureCase = "";
     private static boolean motionRecorded;
+    private static final InputConstants.Key LIFECYCLE_KEY = InputConstants.Type.KEYSYM.getOrCreate(GLFW.GLFW_KEY_O);
+    private static InputConstants.Key originalKey;
+    private static int rebindTicks, oldKeyHeldTicks;
     private static void reset() {
         var mc = Minecraft.getInstance();
         mc.options.keyUp.setDown(false); mc.options.keyJump.setDown(false); mc.options.keySprint.setDown(false);
         mc.options.keyShift.setDown(false);
         RedNailsClient.KEY.setDown(false);
+        if (originalKey != null) {
+            KeyMapping.set(originalKey, false);
+            KeyMapping.set(LIFECYCLE_KEY, false);
+        }
         if (mc.player != null && mc.player.isShiftKeyDown()) {
             mc.player.setShiftKeyDown(false);
             mc.player.connection.send(new ServerboundPlayerCommandPacket(mc.player, ServerboundPlayerCommandPacket.Action.RELEASE_SHIFT_KEY));
@@ -46,7 +64,9 @@ public final class RedNailsAcceptanceClient {
             String next = text.substring("RED_NAILS_ACCEPTANCE:".length());
             String nextCase = captureCase(next);
             // A server phase notification must not release native boat input mid-capture.
-            if (nextCase.isEmpty() || !nextCase.equals(captureCase)) reset();
+            boolean keepLifecycleKey = phase.equals("lifecycle-gui-start") && next.equals("lifecycle-gui-open")
+                    || phase.equals("lifecycle-gui-open") && next.equals("lifecycle-gui-closed");
+            if (!keepLifecycleKey && (nextCase.isEmpty() || !nextCase.equals(captureCase))) reset();
             if (next.endsWith("-ready")) {
                 captureCase = nextCase;
                 boatHistory = new AcceptanceObservations.BoatHistory();
@@ -99,9 +119,16 @@ public final class RedNailsAcceptanceClient {
         var mc = Minecraft.getInstance();
         try {
             clientTicks++;
+            if (phase.equals("lifecycle-disconnected")) return;
             if (mc.screen instanceof DisconnectedScreen) throw new AssertionError("native acceptance disconnected phase=" + phase);
             if (mc.level == null || mc.player == null || mc.getOverlay() != null) return;
             GLFW.glfwFocusWindow(mc.getWindow().getWindow());
+            if (phase.startsWith("lifecycle-")) {
+                if (!mc.isWindowActive()) return;
+                ticks++;
+                lifecycleTick(mc);
+                return;
+            }
             mc.setScreen(null); mc.mouseHandler.grabMouse();
             if (!mc.isWindowActive()) return;
             ticks++;
@@ -174,15 +201,138 @@ public final class RedNailsAcceptanceClient {
             } else if (phase.equals("watch-recall")) {
                 if (ticks == 10) mc.gameMode.useItem(mc.player, InteractionHand.MAIN_HAND);
             } else if (phase.equals("complete") && ticks == 5) {
-                reset(); screenshot("complete");
+                reset(); restoreLifecycleKey(); screenshot("complete");
                 Files.writeString(RESULTS.resolve("acceptance-client.pass"), "Real input, native world and OpenGL frames completed.\n");
             }
         } catch (Throwable error) {
-            failed = true; reset(); error.printStackTrace();
+            failed = true; reset(); restoreLifecycleKey(); error.printStackTrace();
             try { Files.writeString(RESULTS.resolve("acceptance-client.failed"), error.toString()); }
             catch (Exception ignored) { }
             try { screenshot("failure"); }
             catch (Exception ignored) { }
+        }
+    }
+    private static void require(boolean ok, String why) { if (!ok) throw new AssertionError(why); }
+    private static boolean bindLifecycleKey(Minecraft mc) throws Exception {
+        if (originalKey != null) return true;
+        var ring = RedNailsItem.findWorn(mc.player);
+        if (ring.isEmpty()) return false;
+        originalKey = RedNailsClient.KEY.getKey();
+        require(originalKey.getValue() == GLFW.GLFW_KEY_V, "isolated native lifecycle starts from default V binding");
+        // Use the same in-memory remapping and dispatch table as the controls screen.
+        // Do not save options or inject the production activation packet directly.
+        RedNailsClient.KEY.setKey(LIFECYCLE_KEY);
+        KeyMapping.resetMapping();
+        var lines = ring.getTooltipLines(mc.player, TooltipFlag.NORMAL).stream().map(Component::getString).toList();
+        var key = RedNailsClient.KEY.getTranslatedKeyMessage();
+        String tip = "tooltip." + ModMain.MOD_ID + ".red_nails.";
+        String usage = Component.translatable(tip + "usage", key).getString();
+        String recall = Component.translatable(tip + "recall", key).getString();
+        String oldUsage = Component.translatable(tip + "usage", originalKey.getDisplayName()).getString();
+        require(lines.contains(usage) && lines.contains(recall) && !usage.equals(oldUsage) && !lines.contains(oldUsage)
+                        && lines.stream().noneMatch(line -> line.contains(tip)),
+                "real synchronized item tooltip resolves both remapped activation and recall keys");
+        JsonObject proof = new JsonObject();
+        proof.addProperty("original", originalKey.getName());
+        proof.addProperty("binding", LIFECYCLE_KEY.getName());
+        proof.addProperty("tooltip", String.join("\n", lines));
+        signal(phase.equals("lifecycle-rejoin") ? "lifecycle-tooltip-rejoin" : "lifecycle-tooltip", proof.toString());
+        return true;
+    }
+    private static void restoreLifecycleKey() {
+        if (originalKey == null) return;
+        KeyMapping.set(LIFECYCLE_KEY, false);
+        RedNailsClient.KEY.setKey(originalKey);
+        KeyMapping.resetMapping();
+        originalKey = null;
+    }
+    private static void mappedKey(boolean down) { KeyMapping.set(LIFECYCLE_KEY, down); }
+    private static JsonObject lifecycleInput(Minecraft mc) {
+        JsonObject proof = new JsonObject();
+        proof.addProperty("clientTick", clientTicks);
+        proof.addProperty("phaseTicks", ticks);
+        proof.addProperty("binding", RedNailsClient.KEY.getKey().getName());
+        proof.addProperty("mappedDown", RedNailsClient.KEY.isDown());
+        proof.addProperty("screenOpen", mc.screen instanceof InventoryScreen);
+        return proof;
+    }
+    private static boolean recordLifecycleState(Minecraft mc, String name, int expected, String dimension) throws Exception {
+        var ring = RedNailsItem.findWorn(mc.player);
+        if (ring.isEmpty() || !ring.hasTag() || !ring.getTag().hasUUID("ItemId") || !ring.getTag().hasUUID("Owner")) return false;
+        var out = ring.getTag().getList("NailOut", Tag.TAG_COMPOUND);
+        int active = 0, worldSummons = 0;
+        String ghost = "";
+        for (int i = 0; i < out.size(); i++) if (out.getCompound(i).hasUUID("Ghost")) active++;
+        for (var entity : mc.level.entitiesForRendering()) {
+            if (entity instanceof WaterGhostSummonEntity summon && !summon.isRemoved()
+                    && mc.player.getUUID().equals(summon.getOwnerUUID())) {
+                worldSummons++;
+                ghost = summon.getUUID().toString();
+            }
+        }
+        if (active != expected || worldSummons != expected || !mc.level.dimension().location().toString().equals(dimension)
+                || !mc.level.hasChunkAt(mc.player.blockPosition())) return false;
+        JsonObject proof = lifecycleInput(mc);
+        proof.addProperty("itemId", ring.getTag().getUUID("ItemId").toString());
+        proof.addProperty("owner", ring.getTag().getUUID("Owner").toString());
+        proof.addProperty("dimension", mc.level.dimension().location().toString());
+        proof.addProperty("active", active);
+        proof.addProperty("worldSummons", worldSummons);
+        proof.addProperty("ghost", ghost);
+        proof.addProperty("health", mc.player.getHealth());
+        proof.addProperty("cooling", RedNailsItem.coolingCount(ring));
+        proof.addProperty("backlash", mc.player.hasEffect(MobEffects.DARKNESS)
+                || mc.player.hasEffect(MobEffects.CONFUSION) || mc.player.hasEffect(MobEffects.MOVEMENT_SLOWDOWN));
+        if (!Files.exists(RESULTS.resolve("acceptance-client-" + name + ".signal"))) screenshot(name);
+        signal(name, proof.toString());
+        return true;
+    }
+    private static void lifecycleTick(Minecraft mc) throws Exception {
+        if (!bindLifecycleKey(mc)) return;
+        if (!phase.equals("lifecycle-gui-open")) {
+            mc.setScreen(null);
+            mc.mouseHandler.grabMouse();
+        }
+        if (phase.equals("lifecycle-rebind")) {
+            rebindTicks++;
+            boolean oldHeld = rebindTicks > 5 && rebindTicks <= 40;
+            KeyMapping.set(originalKey, oldHeld);
+            if (oldHeld) oldKeyHeldTicks++;
+            require(!RedNailsClient.KEY.isDown(), "dispatching original V cannot press the remapped O action");
+            JsonObject proof = lifecycleInput(mc);
+            proof.addProperty("oldHeldTicks", oldKeyHeldTicks);
+            proof.addProperty("complete", rebindTicks >= 45);
+            signal("lifecycle-rebind", proof.toString());
+        } else if (phase.equals("lifecycle-gui-start")) {
+            mappedKey(ticks > 5);
+        } else if (phase.equals("lifecycle-gui-open")) {
+            if (!(mc.screen instanceof InventoryScreen)) mc.setScreen(new InventoryScreen(mc.player));
+            mappedKey(true);
+            signal("lifecycle-gui-open", lifecycleInput(mc).toString());
+            if (ticks == 10) screenshot("lifecycle-gui-open");
+        } else if (phase.equals("lifecycle-gui-closed")) {
+            mappedKey(true);
+            signal("lifecycle-gui-closed", lifecycleInput(mc).toString());
+        } else if (phase.equals("lifecycle-summon") || phase.equals("lifecycle-logout-summon")
+                || phase.equals("lifecycle-resummon")) {
+            mappedKey(ticks > 5);
+            if (phase.equals("lifecycle-resummon")) recordLifecycleState(mc, "lifecycle-resummon-active", 1, "minecraft:the_nether");
+        } else if (phase.equals("lifecycle-dimension-ready")) {
+            recordLifecycleState(mc, phase, 1, "minecraft:overworld");
+        } else if (phase.equals("lifecycle-dimension-observe") || phase.equals("lifecycle-rejoin")) {
+            recordLifecycleState(mc, phase, 0, "minecraft:the_nether");
+        } else if (phase.equals("lifecycle-logout")) {
+            if (!recordLifecycleState(mc, "lifecycle-logout-active", 1, "minecraft:the_nether")) return;
+            reset(); restoreLifecycleKey();
+            // A genuine disconnect lets the dedicated server perform its ordinary
+            // logout/save path. The runner launches a second client for rejoin.
+            mc.level.disconnect(); mc.clearLevel(); mc.setScreen(new TitleScreen());
+            phase = "lifecycle-disconnected";
+            Files.writeString(RESULTS.resolve("acceptance-client-lifecycle-logout.pass"),
+                    "Actual client disconnected from the live server with an active red-nails summon; title screen reached.\n");
+        } else if (phase.equals("lifecycle-final-recall")) {
+            mc.options.keyShift.setDown(true);
+            mappedKey(ticks > 5);
         }
     }
     private static void screenshot(String name) throws Exception {

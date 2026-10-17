@@ -44,6 +44,7 @@ public final class RedNailsTestClient {
     private static void fail(Throwable error) {
         failed = true; error.printStackTrace();
         Minecraft.getInstance().options.keyUp.setDown(false);
+        Minecraft.getInstance().options.keySprint.setDown(false);
         RedNailsClient.KEY.setDown(false);
         try (var image = Screenshot.takeScreenshot(Minecraft.getInstance().getMainRenderTarget())) {
             image.writeToFile(RESULTS.resolve("client-failure.png"));
@@ -62,6 +63,7 @@ public final class RedNailsTestClient {
             }
             phase = text.substring("RED_NAILS_QA:".length()); ticks = 0; captured = false; shortAcked = false;
             Minecraft.getInstance().options.keyUp.setDown(false);
+            Minecraft.getInstance().options.keySprint.setDown(false);
             walkStart = null; shoreAttackSent = false;
             longPresses = 0; longPhase = 0; longPhaseTicks = 0;
             rendered.clear(); poses.clear(); RedNailsClient.KEY.setDown(false); event.setCanceled(true);
@@ -103,7 +105,7 @@ public final class RedNailsTestClient {
             ticks++;
             mc.options.hideGui = phase.equals("guard") || phase.equals("water");
             if (phase.equals("input") || phase.equals("recall") || phase.equals("shore")
-                    || phase.equals("wild-ready") || phase.equals("wild")) {
+                    || phase.startsWith("wild")) {
                 GLFW.glfwFocusWindow(mc.getWindow().getWindow());
                 mc.setScreen(null);
                 mc.mouseHandler.grabMouse();
@@ -180,6 +182,50 @@ public final class RedNailsTestClient {
                 if (!Files.exists(RESULTS.resolve("client-wild-ready.signal"))) {
                     Files.writeString(RESULTS.resolve("client-wild-ready.signal"),
                             "Real client holds position pending natural pursuit; player=" + mc.player.position() + "\n");
+                }
+                return;
+            }
+            if (PURSUIT && phase.equals("wild-watch")) {
+                mc.setCameraEntity(mc.player);
+                mc.player.setYRot(14); mc.player.setYHeadRot(14); mc.player.setXRot(15);
+                mc.options.keyUp.setDown(false);
+                if (ticks >= 60 && !Files.exists(RESULTS.resolve("client-wild-watch.pass"))) {
+                    boolean seen = false;
+                    for (var entity : mc.level.entitiesForRendering()) {
+                        if (entity instanceof WaterGhostEntity ghost) {
+                            require(ghost.waterGhostGrabAmount(1) < 0.01F, "watching ghost is not grabbing on the actual client");
+                            seen = true;
+                        }
+                    }
+                    require(seen, "watching wild ghost is present in the actual client world");
+                    Files.writeString(RESULTS.resolve("client-wild-watch.pass"),
+                            "Real connected client observed watching ghost without grab for " + ticks + " client ticks.\n");
+                }
+                return;
+            }
+            if (PURSUIT && (phase.equals("wild-escape") || phase.equals("wild-return"))) {
+                mc.setCameraEntity(mc.player);
+                double targetZ = mc.player.getZ() > -6 ? -6 : -16;
+                double dx = 0.5 - mc.player.getX(), dz = targetZ - mc.player.getZ();
+                float yaw = (float) Math.toDegrees(Math.atan2(-dx, dz));
+                mc.player.setYRot(yaw); mc.player.setYHeadRot(yaw); mc.player.setXRot(0);
+                boolean moving = phase.equals("wild-escape") && mc.player.getZ() > -15.5;
+                mc.options.keyUp.setDown(moving); mc.options.keySprint.setDown(moving);
+                if (ticks % 10 == 0) System.out.println("RED_NAILS_NATIVE_ESCAPE phase=" + phase
+                        + " tick=" + ticks + " moving=" + moving + " player=" + mc.player.position());
+                return;
+            }
+            if (PURSUIT && phase.equals("wild-lurk")) {
+                mc.setCameraEntity(mc.player);
+                for (var entity : mc.level.entitiesForRendering()) if (entity instanceof WaterGhostEntity ghost) {
+                    Vec3 delta = ghost.position().subtract(mc.player.getEyePosition());
+                    float yaw = (float) Math.toDegrees(Math.atan2(-delta.x, delta.z));
+                    mc.player.setYRot(yaw); mc.player.setYHeadRot(yaw);
+                    mc.player.setXRot((float) -Math.toDegrees(Math.atan2(delta.y, delta.horizontalDistance())));
+                    if (ticks >= 40 && ghost.waterGhostSwimAmount(1) > 0.9F && ghost.waterGhostGrabAmount(1) < 0.01F) {
+                        Files.writeString(RESULTS.resolve("client-wild-lurk.pass"),
+                                "Actual client sees returned ghost swimming without grab; ticks=" + ticks + "\n");
+                    }
                 }
                 return;
             }

@@ -58,6 +58,17 @@ public final class SuxiaTestServer {
         System.out.println("SUXIA_QA_PASS=" + phase + " " + evidence);
     }
     private static CompoundTag state(SuxiaEntity mob) { return mob.saveWithoutId(new CompoundTag()); }
+    private static void observeHostile(double distance) {
+        double x = hostile.getX(), y = hostile.getY(), z = hostile.getZ() - distance;
+        var floor = BlockPos.containing(x, y - 1, z);
+        // The live mob can wander near the original gallery edge before saving.
+        // Keep the observer on real ground without moving or restraining that mob.
+        for (var pos : BlockPos.betweenClosed(floor.offset(-2, 0, -2), floor.offset(2, 0, 2))) {
+            player.serverLevel().setBlockAndUpdate(pos, Blocks.SMOOTH_QUARTZ.defaultBlockState());
+        }
+        player.teleportTo(player.serverLevel(), x, y, z, 0, 5);
+        System.out.println("SUXIA_QA_OBSERVER_GROUND position=" + player.position() + " floor=" + floor);
+    }
     private static void fail(Throwable error) {
         failed = true; error.printStackTrace();
         try { Files.writeString(RESULTS.resolve("server.failed"), error.toString()); } catch (Exception ignored) { }
@@ -267,7 +278,7 @@ public final class SuxiaTestServer {
                 require(hostile.isPersistenceRequired(), "empty-NBT command persistent");
                 ticks = 0; stage = 10;
             } else if (stage == 10 && hostile.isPlayingDead()) {
-                player.teleportTo(player.serverLevel(), hostile.getX(), hostile.getY(), hostile.getZ() - 9, 0, 5);
+                observeHostile(9);
                 pass("sleep", "Live hostile naturally entered play-dead after 600 quiet ticks.");
                 signal("hostile-sleep"); stage = 11;
             } else if (stage == 11 && Files.exists(RESULTS.resolve("client-hostile-sleep.pass"))) {
@@ -283,7 +294,7 @@ public final class SuxiaTestServer {
                 player.getAttribute(Attributes.MAX_HEALTH).setBaseValue(1000);
                 player.setHealth(1000);
                 player.setGameMode(GameType.SURVIVAL);
-                player.teleportTo(player.serverLevel(), hostile.getX(), hostile.getY(), hostile.getZ() - 2.8, 0, 5);
+                observeHostile(2.8);
                 ticks = 0; stage = 13;
             } else if (stage == 13 && !hostile.isPlayingDead()) {
                 require(hostile.getTarget() == player, "normal survival proximity wakes and acquires player");
@@ -293,7 +304,7 @@ public final class SuxiaTestServer {
                 signal("hostile-awake"); stage = 14;
             } else if (stage == 14 && Files.exists(RESULTS.resolve("client-hostile-awake.pass"))) {
                 player.setGameMode(GameType.CREATIVE);
-                player.teleportTo(player.serverLevel(), hostile.getX(), hostile.getY(), hostile.getZ() - 9, 0, 5);
+                observeHostile(9);
                 hostile.setPlayingDead(true);
                 SuxiaPocketWatchItem.syncInventory(player);
                 var chunk = hostile.chunkPosition();
@@ -305,13 +316,13 @@ public final class SuxiaTestServer {
                 require(hostile != null && hostile.isPlayingDead() && hostile.isPersistenceRequired(), "hostile identity, sleep and persistence survive actual server restart");
                 var entry = ledger.find(secondWatch);
                 require(entry != null && !entry.active() && entry.cooldown == secondCooldown, "exact world ledger deadline survives actual process restart");
-                player.teleportTo(player.serverLevel(), hostile.getX(), hostile.getY(), hostile.getZ() - 9, 0, 5);
+                observeHostile(9);
                 pass("restart", "Actual dedicated-server JVM restart restored same hostile UUID/sleep/persistence and watch ledger cooldown.");
                 signal("restored"); stage = 21;
             } else if (stage == 21 && Files.exists(RESULTS.resolve("client-restored.pass"))) {
                 player.setGameMode(GameType.SURVIVAL);
                 player.setHealth(player.getMaxHealth());
-                player.teleportTo(player.serverLevel(), hostile.getX(), hostile.getY(), hostile.getZ() - 2.8, 0, 5);
+                observeHostile(2.8);
                 ticks = 0; stage = 22;
             } else if (stage == 22 && !hostile.isPlayingDead()) {
                 require(hostile.getUUID().equals(hostileId) && hostile.getTarget() == player,

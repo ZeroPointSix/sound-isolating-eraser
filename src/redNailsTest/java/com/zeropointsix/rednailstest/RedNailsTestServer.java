@@ -42,6 +42,14 @@ public final class RedNailsTestServer {
     private static double wildPlayerMoveBeforeGrab, wildGhostMoveBeforeGrab;
     private static int airTicks, extraAirTicks, previousAir = -1;
     private static net.minecraft.world.phys.Vec3 wildPlayerStart;
+    private static net.minecraft.world.phys.Vec3 watchStart, escapeStart, returnStart;
+    private static int watchedTicks, escapeTicks, lurkStableTicks;
+    private static long gaveUpAt = -1;
+    private static long lastContact() throws Exception {
+        var field = WaterGhostEntity.class.getDeclaredField("lastContact");
+        field.setAccessible(true);
+        return field.getLong(swimmer);
+    }
     private static void require(boolean condition, String message) { if (!condition) throw new AssertionError(message); }
     private static void pass(String name, String evidence) throws Exception {
         Files.writeString(RESULTS.resolve("server-" + name + ".pass"), evidence + "\n");
@@ -314,7 +322,40 @@ public final class RedNailsTestServer {
             return true;
         }
         if (stage == 5 && captured("recalled")) {
-            signal("wild-ready"); stage = 34;
+            player.teleportTo(level, -1.5, 70, -1.5, 0, 0);
+            player.setHealth(player.getMaxHealth());
+            player.getFoodData().setFoodLevel(20);
+            swimmer = ModEntities.WATER_GHOST.get().create(level);
+            require(swimmer != null, "wild watch fixture exists");
+            swimmer.moveTo(-2.5, 68.5, 2.5, 180, 0);
+            level.addFreshEntity(swimmer);
+            watchStart = swimmer.position();
+            signal("wild-watch"); stage = 35;
+            return true;
+        }
+        if (stage == 35) {
+            require(swimmer.isAlive() && !swimmer.isNoAi() && !player.isInWater()
+                            && !swimmer.nearWater(player, 2) && swimmer.distanceToSqr(player) < 36,
+                    "real dry passer remains within six blocks but outside the two-block water boundary");
+            require(!swimmer.mayPursue() && swimmer.ghostBody().grab.held() == null,
+                    "normal wild AI must not chase or grab a dry distant passer");
+            require(swimmer.position().subtract(watchStart).horizontalDistance() < 0.1,
+                    "watching does not become horizontal pursuit");
+            if (swimmer.getTarget() == player) watchedTicks++;
+            if (ticks >= 100 && captured("wild-watch")) {
+                require(watchedTicks >= 40, "normal wild AI visibly selects the passer for watching");
+                pass("wild-watch", "Real client dry passer, within6/outsidewater2; watchedTicks=" + watchedTicks
+                        + " horizontalMovement=" + swimmer.position().subtract(watchStart).horizontalDistance()
+                        + "; no target injection, no pursuit, no grab");
+                swimmer.discard();
+                player.teleportTo(level, 0.5, 70, 0.5, 180, 0);
+                // A one-block gap admits the real player but not the 1.2-block ghost.
+                // This natural obstacle keeps the abandoned chase within the 24-block return search.
+                for (int x = -16; x <= 16; x++) for (int y = 70; y <= 73; y++) {
+                    if (x != 0) level.setBlockAndUpdate(new BlockPos(x, y, -8), Blocks.STONE.defaultBlockState());
+                }
+                signal("wild-ready"); stage = 34;
+            }
             return true;
         }
         if (stage == 34 && Files.exists(RESULTS.resolve("client-wild-ready.signal"))) {
@@ -374,6 +415,63 @@ public final class RedNailsTestServer {
                 require(dt >= 59 && dt <= 61, "wild dry grab retains 60-tick duration: " + dt);
                 pass("wild", "Normal wild AI pursued a real keyboard-moving player and naturally released; dt=" + dt + " health=" + player.getHealth()
                         + " ghostMoveBeforeGrab=" + wildGhostMoveBeforeGrab + " playerMoveBeforeGrab=" + wildPlayerMoveBeforeGrab);
+                escapeStart = player.position();
+                signal("wild-escape"); stage = 36;
+            }
+            return true;
+        }
+        if (stage == 36) {
+            require(swimmer.isAlive() && player.isAlive() && !swimmer.isNoAi(), "escape retains both real normal-AI participants");
+            require(swimmer.ghostBody().grab.held() == null, "escaping player is not recaptured");
+            long quiet = level.getGameTime() - lastContact();
+            boolean far = !swimmer.nearWater(player, 8);
+            if (far) escapeTicks++;
+            if (ticks % 10 == 0) System.out.println("NATIVE_WILD_ESCAPE t=" + level.getGameTime()
+                    + " quiet=" + quiet + " farWater=" + far + " selected=" + (swimmer.getTarget() == player)
+                    + " ghost=" + swimmer.position() + " player=" + player.position());
+            if (far && quiet < 200) require(swimmer.getTarget() == player && swimmer.mayPursue(),
+                    "leaving water does not shorten the unchanged 200-tick no-contact window");
+            if (swimmer.getTarget() == null && far) {
+                require(quiet >= 200 && quiet <= 209 && escapeTicks >= 40,
+                        "natural target release follows the 200-tick deadline at its ten-tick check: " + quiet);
+                require(player.position().subtract(escapeStart).horizontalDistance() >= 8,
+                        "real native sprint traversed the dry escape route");
+                require(!swimmer.isInWater(), "give-up is observed on dry ground before the return");
+                gaveUpAt = level.getGameTime(); returnStart = swimmer.position();
+                pass("wild-give-up", "Normal AI, actual no-contact ticks=" + quiet + " dryEscapeTicks=" + escapeTicks
+                        + " nativePlayerDistance=" + player.position().subtract(escapeStart).horizontalDistance()
+                        + " ghost=" + swimmer.position() + "; production lastContact read only");
+                signal("wild-return"); stage = 37;
+            }
+            return true;
+        }
+        if (stage == 37) {
+            require(swimmer.isAlive() && player.isAlive() && !swimmer.isNoAi(), "natural return participants remain alive");
+            require(swimmer.getTarget() == null && swimmer.ghostBody().grab.held() == null,
+                    "dry distant player is not reacquired during natural return");
+            if (ticks % 20 == 0) System.out.println("NATIVE_WILD_RETURN t=" + level.getGameTime()
+                    + " water=" + swimmer.isInWater() + " ghost=" + swimmer.position());
+            if (swimmer.isInWater()) {
+                double returned = swimmer.position().subtract(returnStart).horizontalDistance();
+                require(returned >= 4 && returned <= 24, "normal navigation returned to existing water within24: " + returned);
+                pass("wild-return", "Normal AI returned without teleport/target/movement injection; ticks="
+                        + (level.getGameTime() - gaveUpAt) + " distance=" + returned + " ghost=" + swimmer.position());
+                signal("wild-lurk"); stage = 38;
+            }
+            return true;
+        }
+        if (stage == 38) {
+            require(swimmer.isAlive() && !swimmer.isNoAi() && swimmer.getTarget() == null
+                            && swimmer.ghostBody().grab.held() == null, "returned ghost naturally resumes passive water behavior");
+            var surface = swimmer.blockPosition().mutable();
+            for (int i = 0; i < 32 && WaterGhostBody.waterAt(swimmer, surface.above()); i++) surface.move(0, 1, 0);
+            double depth = surface.getY() + 1 - swimmer.getY();
+            boolean stable = swimmer.isInWater() && swimmer.ghostBody().swimming() && depth >= 1 && depth <= 2
+                    && Math.abs(swimmer.getDeltaMovement().y) < 0.05;
+            lurkStableTicks = stable ? lurkStableTicks + 1 : 0;
+            if (lurkStableTicks >= 20 && ticks >= 40 && captured("wild-lurk")) {
+                pass("wild-lurk", "Natural returned ghost stable underwater for " + lurkStableTicks
+                        + " ticks at depth=" + depth + "; no target, no grab; actual client swimming state observed");
                 swimmer.discard();
                 Files.writeString(RESULTS.resolve("expected-state"), itemId + "\n" + deadline + "\n");
                 signal("wild-complete"); stage = 7;

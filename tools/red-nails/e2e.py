@@ -18,7 +18,7 @@ TIMEOUT = int(os.environ.get("RED_NAILS_QA_TIMEOUT", "900"))
 PURSUIT = os.environ.get("RED_NAILS_QA_PURSUIT") == "1"
 ACCEPTANCE = os.environ.get("RED_NAILS_QA_ACCEPTANCE") == "1"
 CASE = os.environ.get("RED_NAILS_QA_CASE", "all")
-if CASE not in {"all", "boat", "bottom", "front", "front-bottom", "damage", "items"}:
+if CASE not in {"all", "boat", "bottom", "front", "front-bottom", "damage", "items", "lifecycle"}:
     raise ValueError(f"Unknown native acceptance case: {CASE}")
 processes, logs = [], []
 
@@ -139,6 +139,18 @@ try:
     server = launch("server")
     ready(server)
     client = launch("client")
+    if ACCEPTANCE and CASE == "lifecycle":
+        wait_for(["acceptance-lifecycle-rebind", "acceptance-lifecycle-gui-cancel",
+                  "acceptance-lifecycle-dimension", "acceptance-lifecycle-logout",
+                  "acceptance-client-lifecycle-logout"], [server, client])
+        stop(client)
+        client = launch("client-rejoin")
+        wait_for(["acceptance-lifecycle-rejoin", "acceptance-lifecycle-resummon",
+                  "acceptance-lifecycle-cleanup", "acceptance-client"], [server, client])
+        stop(client)
+        save_stop(server)
+        print("RED_NAILS_NATIVE_LIFECYCLE_PASSED", flush=True)
+        sys.exit(0)
     if ACCEPTANCE:
         capture = ["boat", "bottom", "front", "front-bottom", "damage"] if CASE == "all" else ([CASE] if CASE != "items" else [])
         items = ["coexist", "recall", "recall-watch", "unequip"] if CASE in {"all", "items"} else []
@@ -151,7 +163,9 @@ try:
         print("RED_NAILS_NATIVE_ACCEPTANCE_PASSED", flush=True)
         sys.exit(0)
     required = ["server-input", "client-guard", "server-backlash", "client-backlash", "server-recall", "client-recalled"]
-    required += (["server-shore", "client-shore-complete", "server-wild-started", "server-wild", "client-wild-complete"]
+    required += (["server-shore", "client-shore-complete", "client-wild-watch", "server-wild-watch",
+                  "server-wild-started", "server-wild", "server-wild-give-up", "server-wild-return",
+                  "server-wild-lurk", "client-wild-lurk", "client-wild-complete"]
                  if PURSUIT else ["server-water", "client-water"])
     wait_for(required, [server, client])
     stop(client)
