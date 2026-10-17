@@ -1,0 +1,314 @@
+package com.zeropointsix.flareguntest;
+
+import com.zeropointsix.eraser.yuji.flare.FlareContent;
+import com.zeropointsix.eraser.yuji.flare.FlareGunItem;
+import com.zeropointsix.eraser.yuji.flare.FlareGunPose;
+import com.zeropointsix.eraser.yuji.flare.client.FlareGunMuzzleClient;
+import com.zeropointsix.eraser.yuji.flare.client.FlareGunRenderer;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInboundHandlerAdapter;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.util.HashSet;
+import java.util.Set;
+import net.minecraft.client.CameraType;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.Screenshot;
+import net.minecraft.client.gui.screens.ConnectScreen;
+import net.minecraft.client.gui.screens.AccessibilityOnboardingScreen;
+import net.minecraft.client.gui.screens.DisconnectedScreen;
+import net.minecraft.client.gui.screens.TitleScreen;
+import net.minecraft.client.multiplayer.ServerData;
+import net.minecraft.client.multiplayer.resolver.ServerAddress;
+import net.minecraft.client.particle.Particle;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.RenderType;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.network.protocol.game.ClientboundLevelParticlesPacket;
+import net.minecraft.network.protocol.game.ServerboundUseItemPacket;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.HumanoidArm;
+import net.minecraft.world.item.ItemDisplayContext;
+import net.minecraft.world.phys.Vec3;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.client.event.ClientChatReceivedEvent;
+import net.minecraftforge.client.event.RenderLevelStageEvent;
+import net.minecraftforge.client.event.sound.PlaySoundEvent;
+import net.minecraftforge.client.extensions.common.IClientItemExtensions;
+import net.minecraftforge.client.gui.LoadingErrorScreen;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
+import org.joml.Matrix4f;
+import org.joml.Vector3f;
+import software.bernie.geckolib.cache.object.GeoBone;
+import software.bernie.geckolib.event.GeoRenderEvent;
+import software.bernie.geckolib.renderer.layer.GeoRenderLayer;
+
+@Mod.EventBusSubscriber(modid = "flare_gun_qa", value = Dist.CLIENT)
+public final class FlareGunTestClient {
+    private static final Path RESULTS = Path.of(System.getProperty("flare.gun.qa.results"));
+    private static final String ROLE = System.getProperty("flare.gun.qa.role", "client");
+    private static final boolean OBSERVER = ROLE.equals("observer");
+    private static final Set<String> animated = new HashSet<>();
+    private static String phase = "";
+    private static int ticks, lastFrame = -1, reports, launches, clicks, flashes, flames, smoke;
+    private static int completedFires, completedEmpty, completedRefills, samples, bootTicks;
+    private static boolean failed, connecting;
+    private static final Matrix4f worldFromView = new Matrix4f();
+    private static Vec3 camera = Vec3.ZERO, renderedMuzzle;
+    private static int muzzleChecks;
+
+    private static Path file(String name) { return RESULTS.resolve(ROLE + "-" + name); }
+
+    private static float pitchOf(String name) {
+        if (name.contains("-up-")) return -80;
+        if (name.contains("-down-")) return 80;
+        return -5;
+    }
+
+    private static void require(boolean condition, String message) {
+        if (!condition) throw new AssertionError(ROLE + ": " + phase + ": " + message);
+    }
+
+    private static void fail(Throwable failure) {
+        failed = true;
+        failure.printStackTrace();
+        try { Files.writeString(RESULTS.resolve(ROLE + ".failed"), failure.toString()); } catch (Exception ignored) { }
+    }
+
+    private static void finishPhase() throws Exception {
+        if (phase.isEmpty() || phase.equals("ready")) return;
+        require(samples > 8, "Insufficient rendered samples: " + samples);
+        if (phase.endsWith("fire")) {
+            require(reports == 1 && launches == 1, "Expected exactly one of each firing sound");
+            require(flashes == 1 && flames == 4 && smoke == 2, "Missing or duplicate actual muzzle particles");
+            require(muzzleChecks == 1, "Missing rendered-geometry muzzle check");
+            require(animated.contains(phase), "Missing rendered recoil");
+            completedFires++;
+        } else {
+            require(reports == 0 && launches == 0, "Rejected/load phase emitted firing audio");
+            require(flashes == 0 && flames == 0 && smoke == 0, "Rejected/load phase emitted muzzle particles");
+            if (phase.endsWith("empty")) {
+                require(!animated.contains(phase), "Empty gun animated");
+                require(clicks == 1, "Expected one permitted empty-gun click, got " + clicks);
+                completedEmpty++;
+            } else {
+                require(animated.contains(phase), "Missing rendered break-open loading");
+                if (phase.endsWith("refill")) completedRefills++;
+            }
+        }
+        Files.writeString(file("assertions.log"), "PASS " + phase + " samples=" + samples
+                + " blast=" + reports + " launch=" + launches + " emptyClick=" + clicks
+                + " flash=" + flashes + " flame=" + flames + " smoke=" + smoke + "\n",
+                StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+    }
+
+    @SubscribeEvent public static void message(ClientChatReceivedEvent event) {
+        String message = event.getMessage().getString();
+        if (!message.startsWith("FLARE_GUN_QA:")) return;
+        event.setCanceled(true);
+        if (failed) return;
+        try {
+            finishPhase();
+            phase = message.substring("FLARE_GUN_QA:".length());
+            ticks = reports = launches = clicks = flashes = flames = smoke = samples = muzzleChecks = 0;
+            renderedMuzzle = null;
+            lastFrame = -1;
+            var mc = Minecraft.getInstance();
+            mc.options.setCameraType(!OBSERVER && phase.contains("third") ? CameraType.THIRD_PERSON_FRONT : CameraType.FIRST_PERSON);
+            if (!OBSERVER) {
+                mc.options.mainHand().set(phase.startsWith("left") ? HumanoidArm.LEFT : HumanoidArm.RIGHT);
+                mc.options.broadcastOptions();
+                if (mc.player != null) {
+                    mc.player.setYRot(0);
+                    mc.player.setXRot(pitchOf(phase));
+                }
+            }
+            if (phase.equals("ready")) {
+                mc.setScreen(null);
+                mc.mouseHandler.grabMouse();
+                // Observe decoded packets before vanilla consumes them; never alter the packets.
+                mc.getConnection().getConnection().channel().pipeline().addBefore("packet_handler", "flare-gun-qa",
+                        new ChannelInboundHandlerAdapter() {
+                            @Override public void channelRead(ChannelHandlerContext ctx, Object message) throws Exception {
+                                if (message instanceof ClientboundLevelParticlesPacket packet) mc.execute(() -> particle(packet));
+                                super.channelRead(ctx, message);
+                            }
+                        });
+                mc.getConnection().sendChat("flare_gun_qa_ready");
+                Files.writeString(RESULTS.resolve(ROLE + ".ready"), "real client connected\n");
+            }
+            if (phase.equals("done")) {
+                require(completedFires == 8 && completedEmpty == 2 && completedRefills == 2,
+                        "Missing complete right/left, first/third, pitch, empty or cooldown-refill cases");
+                Files.writeString(RESULTS.resolve(ROLE + ".pass"), "PASS 8 rendered shots including left/right third-person down shots, 2 empty cases, 2 cooldown refills; recoil direction excludes break-open; actual particles checked against rendered barrel vertices.\n");
+            }
+        } catch (Throwable failure) { fail(failure); }
+    }
+
+    private static void particle(ClientboundLevelParticlesPacket packet) {
+        if (failed || phase.isEmpty() || phase.equals("ready")) return;
+        var type = packet.getParticle().getType();
+        if (type != ParticleTypes.FLASH && type != ParticleTypes.SMALL_FLAME && type != ParticleTypes.SMOKE) return;
+        fail(new AssertionError("Legacy world-coordinate muzzle packet bypassed rendered attachment: " + type));
+    }
+
+    @SubscribeEvent public static void world(RenderLevelStageEvent event) {
+        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_SKY) return;
+        worldFromView.set(event.getPoseStack().last().pose()).invert();
+        camera = event.getCamera().getPosition();
+    }
+
+    @SubscribeEvent public static void modelProbe(GeoRenderEvent.Item.CompileRenderLayers event) {
+        if (!(event.getRenderer() instanceof FlareGunRenderer flareRenderer)) return;
+        event.addLayer(new GeoRenderLayer<FlareGunItem>(flareRenderer) {
+            @Override public void renderForBone(PoseStack pose, FlareGunItem item, GeoBone bone, RenderType type,
+                    MultiBufferSource buffers, VertexConsumer buffer, float partial, int light, int overlay) {
+                if (!bone.getName().equals("barrel")) return;
+                ItemDisplayContext view = flareRenderer.perspective();
+                if (view != ItemDisplayContext.THIRD_PERSON_LEFT_HAND && view != ItemDisplayContext.THIRD_PERSON_RIGHT_HAND) return;
+                // Independent oracle: the actual baked front-face vertices in the renderer's already-transformed pose.
+                float front = Float.POSITIVE_INFINITY;
+                for (var cube : bone.getCubes()) for (var quad : cube.quads()) if (quad != null)
+                    for (var vertex : quad.vertices()) front = Math.min(front, vertex.position().z());
+                float minX = Float.POSITIVE_INFINITY, minY = Float.POSITIVE_INFINITY;
+                float maxX = Float.NEGATIVE_INFINITY, maxY = Float.NEGATIVE_INFINITY;
+                for (var cube : bone.getCubes()) for (var quad : cube.quads()) if (quad != null)
+                    for (var vertex : quad.vertices()) if (Math.abs(vertex.position().z() - front) < .0001F) {
+                        minX = Math.min(minX, vertex.position().x()); maxX = Math.max(maxX, vertex.position().x());
+                        minY = Math.min(minY, vertex.position().y()); maxY = Math.max(maxY, vertex.position().y());
+                    }
+                Vector3f center = pose.last().pose().transformPosition(new Vector3f((minX + maxX) / 2, (minY + maxY) / 2, front));
+                worldFromView.transformPosition(center);
+                renderedMuzzle = camera.add(center.x(), center.y(), center.z());
+            }
+        });
+    }
+
+    private static Vec3 position(Particle particle) {
+        require(particle != null && particle.isAlive(), "Muzzle particle was not created");
+        var box = particle.getBoundingBox();
+        return new Vec3((box.minX + box.maxX) / 2, box.minY, (box.minZ + box.maxZ) / 2);
+    }
+
+    @SubscribeEvent public static void emitted(FlareGunMuzzleClient.Emitted event) {
+        if (failed) return;
+        try {
+            require(phase.endsWith("fire"), "Actual muzzle particles in rejected/load phase");
+            var mc = Minecraft.getInstance();
+            var actor = mc.level.players().stream().filter(p -> p.getGameProfile().getName().equals("FlareTester")).findFirst().orElseThrow();
+            require(event.owner == actor.getId(), "Muzzle belongs to wrong player");
+            boolean first = event.view == ItemDisplayContext.FIRST_PERSON_LEFT_HAND || event.view == ItemDisplayContext.FIRST_PERSON_RIGHT_HAND;
+            require(first == (!OBSERVER && !phase.contains("third")), "Incorrect muzzle render perspective");
+            Vec3 actual = position(event.flash);
+            Vec3 expected = renderedMuzzle;
+            if (first) {
+                Vec3 look = actor.getLookAngle();
+                Vec3 right = look.cross(new Vec3(0, 1, 0)).normalize();
+                Vec3 down = look.cross(right).normalize();
+                int side = phase.startsWith("left") ? -1 : 1;
+                expected = actor.getEyePosition().add(look.scale(.7)).add(right.scale(side * .22)).add(down.scale(.18));
+            }
+            require(expected != null, "No rendered barrel vertices before muzzle emission");
+            double error = actual.distanceTo(expected);
+            require(error < .025, "Flash detached from rendered muzzle by " + error + ": " + actual + " vs " + expected);
+            for (Particle particle : event.flames) require(position(particle).distanceTo(expected) < .025, "Flame detached from muzzle");
+            for (Particle particle : event.smoke) require(position(particle).distanceTo(expected) < .025, "Smoke detached from muzzle");
+            double oldError = FlareGunPose.muzzle(actor).distanceTo(expected);
+            if (!first && phase.contains("down"))
+                require(oldError > .1, "Down-shot oracle cannot distinguish the old eye-offset regression");
+            flashes++; flames += event.flames.size(); smoke += event.smoke.size(); muzzleChecks++;
+            Files.writeString(file("muzzle.csv"), phase + "," + event.view + "," + actor.getXRot() + "," + actual.x + "," + actual.y + "," + actual.z
+                    + "," + expected.x + "," + expected.y + "," + expected.z + ",error=" + error + ",oldEyeError=" + oldError + "\n",
+                    StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+        } catch (Throwable failure) { fail(failure); }
+    }
+
+    @SubscribeEvent public static void sound(PlaySoundEvent event) {
+        if (event.getSound() == null || failed) return;
+        String sound = event.getSound().getLocation().toString();
+        if (sound.equals("minecraft:entity.firework_rocket.blast")) reports++;
+        if (sound.equals("minecraft:entity.firework_rocket.launch")) launches++;
+        if (sound.equals("minecraft:block.dispenser.fail")) clicks++;
+        if (!phase.endsWith("fire") && (reports > 0 || launches > 0))
+            fail(new AssertionError(phase + ": Unexpected firing sound " + sound));
+    }
+
+    @SubscribeEvent public static void tick(TickEvent.ClientTickEvent event) {
+        if (event.phase != TickEvent.Phase.END || failed) return;
+        var mc = Minecraft.getInstance();
+        if (phase.isEmpty()) {
+            bootTicks++;
+            try {
+                if (bootTicks % 100 == 0 && mc.getOverlay() == null) {
+                    System.out.println("FLARE_GUN_BOOT screen=" + mc.screen);
+                    try (var image = Screenshot.takeScreenshot(mc.getMainRenderTarget())) {
+                        image.writeToFile(file("bootstrap.png"));
+                    }
+                }
+                if (mc.screen instanceof LoadingErrorScreen)
+                    throw new AssertionError("Forge loading error/warning screen: " + mc.screen.getNarrationMessage().getString());
+                if (mc.screen instanceof DisconnectedScreen)
+                    throw new AssertionError(mc.screen.getNarrationMessage().getString());
+                if (!connecting && (mc.screen instanceof TitleScreen || mc.screen instanceof AccessibilityOnboardingScreen)
+                        && mc.getOverlay() == null) {
+                    connecting = true;
+                    String address = "127.0.0.1:" + System.getProperty("flare.gun.qa.port", "25594");
+                    ConnectScreen.startConnecting(mc.screen, mc, ServerAddress.parseString(address),
+                            new ServerData("Flare QA", address, false), false);
+                }
+            } catch (Throwable failure) { fail(failure); }
+            return;
+        }
+        if (mc.player == null || mc.gameMode == null) return;
+        ticks++;
+        if (!OBSERVER) {
+            mc.player.setYRot(0);
+            mc.player.setXRot(pitchOf(phase));
+        }
+        if (!OBSERVER && ticks == 10) {
+            if (phase.endsWith("refill"))
+                mc.getConnection().send(new ServerboundUseItemPacket(InteractionHand.MAIN_HAND, 0));
+            else if (phase.endsWith("fire") || phase.endsWith("empty"))
+                mc.gameMode.useItem(mc.player, InteractionHand.MAIN_HAND);
+        }
+    }
+
+    @SubscribeEvent public static void render(TickEvent.RenderTickEvent event) {
+        if (event.phase != TickEvent.Phase.END || failed || ticks == lastFrame || ticks > 95
+                || phase.isEmpty() || phase.equals("ready") || phase.equals("done")) return;
+        var mc = Minecraft.getInstance();
+        if (mc.player == null || mc.level == null) return;
+        try {
+            lastFrame = ticks;
+            samples++;
+            var renderer = (FlareGunRenderer) IClientItemExtensions.of(FlareContent.GUN.get()).getCustomRenderer();
+            var root = renderer.getGeoModel().getBone("root").orElseThrow();
+            var barrel = renderer.getGeoModel().getBone("barrel").orElseThrow();
+            float rootX = root.getRotX(), barrelX = barrel.getRotX();
+            boolean kickUp = rootX > .08F && Math.abs(barrelX) < .08F;
+            boolean breakOpen = barrelX < -.08F && rootX <= .02F;
+            if (phase.endsWith("fire") && kickUp) animated.add(phase);
+            if ((phase.endsWith("load") || phase.endsWith("refill")) && breakOpen) animated.add(phase);
+            // Kick-up recoil is positive root X; break-open loading is negative barrel X.
+            if (phase.endsWith("fire"))
+                require(barrelX > -.08F, "Firing played break-open barrel: " + barrelX);
+            if (phase.endsWith("load") || phase.endsWith("refill"))
+                require(rootX <= .02F, "Loading/refill played firing recoil: " + rootX);
+            if (phase.endsWith("empty") || (phase.endsWith("refill") && ticks <= 18))
+                require(Math.abs(rootX) < .02F && Math.abs(barrelX) < .02F,
+                        "Rejected shot/early cooldown refill animated: " + rootX + "," + barrelX);
+            Files.writeString(file("poses.csv"), phase + "," + ticks + "," + rootX + "," + barrelX + "," + kickUp + "," + breakOpen + "\n",
+                    StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+            if (Set.of(0, 5, 10, 12, 14, 18, 22, 28, 35, 45, 55).contains(ticks)) {
+                try (var image = Screenshot.takeScreenshot(mc.getMainRenderTarget())) {
+                    image.writeToFile(file(String.format("%s-%03d.png", phase, ticks)));
+                }
+            }
+        } catch (Throwable failure) { fail(failure); }
+    }
+}

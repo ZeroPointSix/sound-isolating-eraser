@@ -1,0 +1,136 @@
+{
+  "format_version": "1.8.0",
+  "animations": {
+    "animation.flare_gun.idle": {
+      "loop": true,
+      "animation_length": 1,
+      "bones": {
+        "root": {
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        "barrel": {
+          "rotation": [
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    "animation.flare_gun.fire": {
+      "loop": false,
+      "animation_length": 0.3,
+      "bones": {
+        "root": {
+          "rotation": {
+            "0.0": [
+              0,
+              0,
+              0
+            ],
+            "0.045": [
+              -15,
+              0,
+              1.2
+            ],
+            "0.12": [
+              -7,
+              0,
+              0
+            ],
+            "0.30": [
+              0,
+              0,
+              0
+            ]
+          },
+          "position": {
+            "0.0": [
+              0,
+              0,
+              0
+            ],
+            "0.045": [
+              0,
+              0.2,
+              1.6
+            ],
+            "0.12": [
+              0,
+              0.1,
+              0.65
+            ],
+            "0.30": [
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      }
+    },
+    "animation.flare_gun.load": {
+      "loop": false,
+      "animation_length": 0.65,
+      "bones": {
+        "root": {
+          "rotation": {
+            "0.0": [
+              0,
+              0,
+              0
+            ],
+            "0.12": [
+              10,
+              0,
+              -9
+            ],
+            "0.48": [
+              10,
+              0,
+              -9
+            ],
+            "0.65": [
+              0,
+              0,
+              0
+            ]
+          }
+        },
+        "barrel": {
+          "rotation": {
+            "0.0": [
+              0,
+              0,
+              0
+            ],
+            "0.18": [
+              38,
+              0,
+              0
+            ],
+            "0.40": [
+              38,
+              0,
+              0
+            ],
+            "0.56": [
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      }
+    }
+  }
+}
