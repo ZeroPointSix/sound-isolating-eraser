@@ -6,6 +6,7 @@ import com.google.gson.JsonParser;
 import com.zeropointsix.eraser.rednails.RedNailsItem;
 import com.zeropointsix.eraser.rednails.RedNailsInput;
 import com.zeropointsix.eraser.rednails.RedNailsState;
+import com.zeropointsix.eraser.rednails.WaterGhostBody;
 import com.zeropointsix.eraser.rednails.WaterGhostEntity;
 import com.zeropointsix.eraser.registry.ModEntities;
 import com.zeropointsix.eraser.registry.ModItems;
@@ -293,8 +294,12 @@ public final class RedNailsAcceptanceServer {
                 if (boatDistance >= 2 && ghost == null) {
                     ghost = ModEntities.WATER_GHOST.get().create(player.serverLevel());
                     check(ghost != null, "registered ghost creates");
-                    // Separate regressions preserve the original head-on geometry and the moving-boat case.
-                    ghost.moveTo(player.getX() + (frontal() ? 0 : 1.4), 73.5, player.getZ() + 4.5, 180, 0);
+                    // Start head-on cases just ahead of the real bow, without overlapping
+                    // either posture, so native forward input reaches the contact boundary.
+                    double spawnZ = frontal() ? boat.getBoundingBox().maxZ
+                            + Math.max(ghost.getBbWidth(), WaterGhostBody.SWIMMING.width) * 0.5 + 0.25
+                            : player.getZ() + 4.5;
+                    ghost.moveTo(player.getX() + (frontal() ? 0 : 1.4), 73.5, spawnZ, 180, 0);
                     player.serverLevel().addFreshEntity(ghost);
                     check(!ghost.isNoAi() && ghost.getTarget() == null, "normal ghost AI starts without forced target");
                     check(frontal() || ghost.getBoundingBox().minX > boat.getBoundingBox().maxX,
