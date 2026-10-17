@@ -181,7 +181,10 @@ public final class SuxiaTestClient {
             }
             return;
         }
-        if (failed || !(phase.equals("gallery") || phase.startsWith("hostile-") || phase.startsWith("restored"))
+        // Pose assertions belong to the current phase's observation window. Once that phase's evidence is
+        // captured, the server may legitimately start the next transition (e.g. stage 14 puts the woken
+        // hostile back to play-dead before restart); its 30-tick lie-down must not be judged as hostile-awake.
+        if (failed || captured || !(phase.equals("gallery") || phase.startsWith("hostile-") || phase.startsWith("restored"))
                 || !(event.getEntity() instanceof SuxiaEntity mob)
                 || !(event.getRenderer().getModel() instanceof SuxiaModel<?> model)) return;
         try {
@@ -192,7 +195,10 @@ public final class SuxiaTestClient {
             renderedFrames.put(mob.getId(), renderFrame);
             if (!hasRenderedPose(mob)) return;
             if (mob.isCrawling()) require(body.xRot > 1.3F, "rendered crawl body leans forward");
-            if (mob.isPlayingDead()) require(model.root().xRot > 1.5F, "rendered play-dead body lies flat");
+            if (mob.isPlayingDead()) require(model.root().xRot > 1.5F, "rendered play-dead body lies flat: phase=" + phase
+                    + " id=" + mob.getId() + " type=" + mob.getClass().getSimpleName() + " rootX=" + model.root().xRot
+                    + " deadAmount=" + mob.suxiaPlayDeadAmount(1F) + " tick=" + mob.tickCount + " firstRenderTick=" + range[3]
+                    + " frames=" + range[2] + " crawling=" + mob.isCrawling());
             if (phase.endsWith("awake")) require(model.root().xRot < .1F, "rendered wake pose rises from the ground");
         } catch (Throwable error) { fail(error); }
     }
@@ -283,7 +289,11 @@ public final class SuxiaTestClient {
             try (var screenshot = Screenshot.takeScreenshot(mc.getMainRenderTarget())) {
                 var colors = new HashSet<Integer>();
                 for (int x = 0; x < screenshot.getWidth(); x += 4) for (int y = 0; y < screenshot.getHeight(); y += 4) colors.add(screenshot.getPixelRGBA(x, y));
-                require(colors.size() > 100, "nonblank actual Minecraft framebuffer");
+                // The hostile-* camera tracks a live creature that can attack at point-blank range; a frame fully
+                // occluded by its flat-shaded model is not a blank framebuffer. Retry within the phase window
+                // (same 600-tick budget as the render checks above); the >100-colour threshold is unchanged.
+                if (colors.size() <= 100 && ticks < 600) return;
+                require(colors.size() > 100, "nonblank actual Minecraft framebuffer: colors=" + colors.size() + " phase=" + phase);
                 screenshot.writeToFile(RESULTS.resolve(phase + ".png"));
             }
             Files.writeString(RESULTS.resolve(phase + "-camera.txt"), "phase=" + phase + " player=" + mc.player.position()
