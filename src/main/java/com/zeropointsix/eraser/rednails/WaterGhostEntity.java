@@ -118,6 +118,10 @@ public final class WaterGhostEntity extends Monster implements WaterGhostPoseSou
                                 .thenComparingDouble(this::distanceToSqr)).orElse(null);
                 // A dry passer-by is watched, but never initiates a chase.
                 setTarget(nearest);
+                if (nearest != null && distanceToSqr(nearest) <= 36 && nearWater(nearest, 2)) {
+                    // The melee goal may not poll again before a moving boat leaves range.
+                    pursuit = true; contact();
+                }
             }
         }
     }
@@ -130,6 +134,12 @@ public final class WaterGhostEntity extends Monster implements WaterGhostPoseSou
     private final class WaterGoal extends Goal {
         private BlockPos destination;
         WaterGoal() { setFlags(EnumSet.of(Flag.MOVE)); }
+        private boolean clearWaterEntry(BlockPos pos) {
+            var column = getDimensions(getPose()).makeBoundingBox(Vec3.atBottomCenterOf(pos))
+                    .expandTowards(0, Math.max(0, getY() - pos.getY()), 0);
+            return WaterGhostBody.waterAt(WaterGhostEntity.this, pos)
+                    && level().noCollision(WaterGhostEntity.this, column);
+        }
         @Override public boolean canUse() { return !pursuit && (isInWater() || dryTicks >= 200); }
         @Override public boolean requiresUpdateEveryTick() { return true; }
         @Override public void start() { destination = null; body.stopMoving(); }
@@ -143,22 +153,29 @@ public final class WaterGhostEntity extends Monster implements WaterGhostPoseSou
                 else body.stopMoving();
             } else {
                 var navigation = getNavigation();
-                if (destination != null && (navigation.isDone()
-                        || !WaterGhostBody.waterAt(WaterGhostEntity.this, destination))) {
+                if (destination != null && !clearWaterEntry(destination)) {
                     destination = null; body.stopMoving();
+                }
+                if (destination != null && navigation.isDone()) {
+                    Vec3 entry = Vec3.atBottomCenterOf(destination);
+                    Vec3 step = entry.subtract(position()).multiply(1, 0, 1);
+                    // A completed path can leave a wide body supported by the bank.
+                    // Finish the collision-free horizontal entry; gravity supplies the drop.
+                    if (level().noCollision(WaterGhostEntity.this, getBoundingBox().expandTowards(step))) {
+                        moveControl.setWantedPosition(entry.x, getY(), entry.z, 1);
+                    } else { destination = null; body.stopMoving(); }
                 }
                 if (destination == null && tickCount % 40 == 0) {
                     var water = new java.util.HashSet<BlockPos>();
                     for (var pos : BlockPos.withinManhattan(blockPosition(), 24, 8, 24)) {
-                        if (pos.distSqr(blockPosition()) <= 24 * 24 && WaterGhostBody.waterAt(WaterGhostEntity.this, pos)) {
+                        if (pos.distSqr(blockPosition()) <= 24 * 24 && clearWaterEntry(pos)) {
                             water.add(pos.immutable());
                         }
                     }
-                    // Coordinate moveTo accepts a node one block short of the water.
-                    // Require a reachable water endpoint, not a dry-bank partial path.
-                    var path = navigation.createPath(water, 0);
+                    // Retain vanilla's original approach accuracy, then verify the
+                    // remaining entry against the actual body instead of assuming it is wet.
+                    var path = navigation.createPath(water, 1);
                     if (path != null && path.canReach() && path.getEndNode() != null
-                            && WaterGhostBody.waterAt(WaterGhostEntity.this, path.getEndNode().asBlockPos())
                             && navigation.moveTo(path, 1)) destination = path.getTarget();
                 }
             }
