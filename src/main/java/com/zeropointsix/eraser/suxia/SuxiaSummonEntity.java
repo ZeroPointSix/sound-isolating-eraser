@@ -1,5 +1,8 @@
 package com.zeropointsix.eraser.suxia;
 
+import com.zeropointsix.eraser.memory.SummonCombatConfig;
+import com.zeropointsix.eraser.memory.SummonGuardGoal;
+import com.zeropointsix.eraser.memory.SummonMeleeAttackGoal;
 import java.util.EnumSet;
 import java.util.UUID;
 import javax.annotation.Nullable;
@@ -30,10 +33,6 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.FloatGoal;
 import net.minecraft.world.entity.ai.goal.FollowOwnerGoal;
 import net.minecraft.world.entity.ai.goal.Goal;
-import net.minecraft.world.entity.ai.goal.MeleeAttackGoal;
-import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
-import net.minecraft.world.entity.ai.goal.target.OwnerHurtByTargetGoal;
-import net.minecraft.world.entity.ai.goal.target.OwnerHurtTargetGoal;
 import net.minecraft.world.entity.ai.navigation.PathNavigation;
 import net.minecraft.world.entity.ai.navigation.WallClimberNavigation;
 import net.minecraft.world.entity.animal.IronGolem;
@@ -54,6 +53,7 @@ public class SuxiaSummonEntity extends TamableAnimal implements SuxiaPoseSource 
 
     public SuxiaSummonEntity(EntityType<? extends TamableAnimal> type, Level level) {
         super(type, level);
+        SuxiaMotion.configureSummon(this);
         setPersistenceRequired();
         xpReward = 0;
     }
@@ -68,14 +68,11 @@ public class SuxiaSummonEntity extends TamableAnimal implements SuxiaPoseSource 
 
     @Override protected void registerGoals() {
         goalSelector.addGoal(1, new FloatGoal(this));
-        goalSelector.addGoal(2, new MeleeAttackGoal(this, 1.2, true));
+        goalSelector.addGoal(2, new SummonMeleeAttackGoal(this, 1.2,
+                () -> SummonCombatConfig.value(SummonCombatConfig.SUXIA_ATTACK_TICKS)));
         goalSelector.addGoal(3, new FollowOwnerGoal(this, 1.1, 10, 2, false));
         goalSelector.addGoal(4, new IdleBehindOwnerGoal());
-        targetSelector.addGoal(1, new OwnerHurtByTargetGoal(this));
-        targetSelector.addGoal(2, new OwnerHurtTargetGoal(this));
-        targetSelector.addGoal(3, new NearestAttackableTargetGoal<>(this, Mob.class, 5, false, false,
-                e -> e instanceof Mob mob && getOwner() != null && mob.getTarget() == getOwner()
-                        && mob.distanceToSqr(getOwner()) <= 256 && wantsToAttack(mob, getOwner())));
+        targetSelector.addGoal(1, new SummonGuardGoal(this));
     }
 
     @Nullable private Vec3 idlePosition;
@@ -171,6 +168,7 @@ public class SuxiaSummonEntity extends TamableAnimal implements SuxiaPoseSource 
     @Override public boolean onClimbable() { return entityData.get(CLIMB); }
 
     @Override public void tick() {
+        if (!level().isClientSide && tickCount % 20 == 0) SuxiaMotion.configureSummon(this);
         super.tick();
         motion.tick(isCrawling(), false);
         if (level().isClientSide || !isAlive()) return;
@@ -247,6 +245,7 @@ public class SuxiaSummonEntity extends TamableAnimal implements SuxiaPoseSource 
 
     @Override public void readAdditionalSaveData(CompoundTag tag) {
         super.readAdditionalSaveData(tag);
+        SuxiaMotion.configureSummon(this);
         watch = tag.hasUUID("SuxiaWatch") ? tag.getUUID("SuxiaWatch") : null;
         setCrawling(tag.getBoolean("SuxiaCrawling"));
     }

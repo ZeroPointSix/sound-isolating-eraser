@@ -167,8 +167,13 @@ public final class SuxiaPocketWatchItem extends Item {
     @Override public int getBarColor(ItemStack stack) { return 0xA8141C; }
 
     @Override public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> lines, TooltipFlag flag) {
-        for (String key : List.of("flavor1", "flavor2", "usage", "recall", "cooldown")) {
+        for (String key : List.of("flavor1", "flavor2", "usage", "recall", "cooldown", "backlash", "profile")) {
             lines.add(Component.translatable(TOOLTIP + key).withStyle(ChatFormatting.GRAY));
+        }
+        lines.add(Component.translatable("tooltip.sound_isolating_eraser.summon_guard.range",
+                com.zeropointsix.eraser.memory.SummonCombatConfig.guardRadius()).withStyle(ChatFormatting.GRAY));
+        for (String key : List.of("priority", "protected", "pvp")) {
+            lines.add(Component.translatable("tooltip.sound_isolating_eraser.summon_guard." + key).withStyle(ChatFormatting.GRAY));
         }
         var tag = stack.getTag();
         lines.add(tag != null && tag.hasUUID("Owner")
