@@ -53,11 +53,12 @@ jobs:
           git ls-files -z src/main/java src/main/resources src/suxiaTest tools/suxia gradle/suxia-e2e.gradle build.gradle gradle.properties | xargs -0 sha256sum > build/suxia-tested-sources.sha256
       - name: Verify evidence summary rejects incomplete runs
         run: python3 -m unittest discover -s tools/suxia -p 'test_*.py'
-      - name: Run all 33 Suxia Forge regressions and prepare native driver
+      - name: Run all 34 Suxia Forge regressions and prepare native driver
         id: prepare
         run: |
           bash ./gradlew --no-daemon --max-workers=2 -PsuxiaOnly -PsuxiaE2E -PflareQaRunDir=run-suxia-ci verifySuxiaAssets writeSuxiaTestClasspath runGameTestServer | tee build/suxia-forge.log
-          grep -F 'All 33 required tests passed' build/suxia-forge.log
+          grep -F 'All 34 required tests passed' build/suxia-forge.log
+          grep -F 'SUXIA_FIXTURE_FALLING_TERRAIN_ISOLATED_PASS' build/suxia-forge.log
           grep -F 'SUXIA_ACCEPT_SAFE_TELEPORT_PASS fallbackOnly=false' build/suxia-forge.log
           grep -F 'SUXIA_ACCEPT_SAFE_TELEPORT_PASS fallbackOnly=true' build/suxia-forge.log
           grep -F 'SUXIA_ACCEPT_PVP_OFF_PASS' build/suxia-forge.log
