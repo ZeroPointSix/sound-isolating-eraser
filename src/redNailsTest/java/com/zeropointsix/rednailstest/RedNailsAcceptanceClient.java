@@ -1,9 +1,11 @@
 package com.zeropointsix.rednailstest;
 
+import com.google.gson.JsonObject;
 import com.zeropointsix.eraser.client.RedNailsClient;
 import com.zeropointsix.eraser.rednails.WaterGhostEntity;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
 import net.minecraft.client.gui.screens.DisconnectedScreen;
@@ -22,8 +24,11 @@ public final class RedNailsAcceptanceClient {
     private static final boolean ENABLED = Boolean.getBoolean("rednails.qa.acceptance");
     private static final Path RESULTS = Path.of(System.getProperty("rednails.qa.results"));
     private static String phase = "";
-    private static int ticks, attacks;
+    private static int ticks, attacks, clientTicks, vHeldTicks;
     private static boolean failed;
+    private static AcceptanceObservations.BoatHistory boatHistory = new AcceptanceObservations.BoatHistory();
+    private static String captureCase = "";
+    private static boolean motionRecorded;
     private static void reset() {
         var mc = Minecraft.getInstance();
         mc.options.keyUp.setDown(false); mc.options.keyJump.setDown(false); mc.options.keySprint.setDown(false);
@@ -38,8 +43,48 @@ public final class RedNailsAcceptanceClient {
         if (!ENABLED) return;
         String text = event.getMessage().getString();
         if (text.startsWith("RED_NAILS_ACCEPTANCE:")) {
-            reset(); phase = text.substring("RED_NAILS_ACCEPTANCE:".length()); ticks = 0; attacks = 0;
+            String next = text.substring("RED_NAILS_ACCEPTANCE:".length());
+            String nextCase = captureCase(next);
+            // A server phase notification must not release native boat input mid-capture.
+            if (nextCase.isEmpty() || !nextCase.equals(captureCase)) reset();
+            if (next.endsWith("-ready")) {
+                captureCase = nextCase;
+                boatHistory = new AcceptanceObservations.BoatHistory();
+                motionRecorded = false;
+            }
+            phase = next; ticks = 0; attacks = 0; vHeldTicks = 0;
             event.setCanceled(true);
+        }
+    }
+    private static String captureCase(String value) {
+        for (String name : new String[] {"boat", "bottom", "damage"}) {
+            if (value.startsWith(name + "-")) return name;
+        }
+        return "";
+    }
+    private static void observeBoat(Minecraft mc) throws Exception {
+        if (captureCase.isEmpty() || motionRecorded) return;
+        if (mc.player.getVehicle() instanceof Boat nativeBoat) {
+            boatHistory.observe(nativeBoat.getUUID().toString(), clientTicks, nativeBoat.getX(), nativeBoat.getY(),
+                    nativeBoat.getZ(), mc.options.keyUp.isDown() && mc.player.input.forwardImpulse > 0);
+            Files.writeString(RESULTS.resolve("acceptance-" + captureCase + "-client-motion.csv"),
+                    clientTicks + "," + boatHistory.uuid + "," + nativeBoat.getX() + "," + nativeBoat.getY()
+                            + "," + nativeBoat.getZ() + "," + boatHistory.lastStep + "," + boatHistory.forward
+                            + "," + boatHistory.movingTicks + "," + phase + "\n",
+                    StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+        } else if (boatHistory.lastTick >= 0) {
+            JsonObject proof = new JsonObject();
+            proof.addProperty("boatUuid", boatHistory.uuid);
+            proof.addProperty("lastMountedClientTick", boatHistory.lastTick);
+            proof.addProperty("dismountedClientTick", clientTicks);
+            proof.addProperty("consecutiveMovingTicks", boatHistory.movingTicks);
+            proof.addProperty("lastStep", boatHistory.lastStep);
+            proof.addProperty("forwardInput", boatHistory.forward);
+            proof.addProperty("movingAtDismount", boatHistory.movingAtDismount(clientTicks));
+            proof.addProperty("lastMountedPosition", boatHistory.x + "," + boatHistory.y + "," + boatHistory.z);
+            proof.addProperty("dismountedPosition", mc.player.position().toString());
+            signal(captureCase + "-capture-motion", proof.toString());
+            motionRecorded = true;
         }
     }
     private static void signal(String name, String body) throws Exception {
@@ -53,12 +98,14 @@ public final class RedNailsAcceptanceClient {
         if (!ENABLED || failed || event.phase != TickEvent.Phase.END) return;
         var mc = Minecraft.getInstance();
         try {
+            clientTicks++;
             if (mc.screen instanceof DisconnectedScreen) throw new AssertionError("native acceptance disconnected phase=" + phase);
             if (mc.level == null || mc.player == null || mc.getOverlay() != null) return;
             GLFW.glfwFocusWindow(mc.getWindow().getWindow());
             mc.setScreen(null); mc.mouseHandler.grabMouse();
             if (!mc.isWindowActive()) return;
             ticks++;
+            observeBoat(mc);
             if (phase.isEmpty()) {
                 signal("ready", "real client loaded, active window, real world");
                 return;
@@ -68,7 +115,9 @@ public final class RedNailsAcceptanceClient {
                 return;
             }
             if (phase.endsWith("-held")) {
+                if (ticks == 20) screenshot(phase);
                 if (phase.startsWith("damage")) {
+                    if (!mc.player.isPassenger()) mc.options.keyUp.setDown(false);
                     for (var entity : mc.level.entitiesForRendering()) {
                         if (entity instanceof WaterGhostEntity ghost && ghost.waterGhostGrabAmount(1) > 0.5
                                 && ghost.distanceToSqr(mc.player) < 16 && ticks >= 10 + attacks * 22
@@ -80,8 +129,14 @@ public final class RedNailsAcceptanceClient {
                     }
                 } else {
                     mc.options.keyUp.setDown(true); mc.options.keyJump.setDown(true); mc.options.keySprint.setDown(true);
-                    signal(phase.replace("-held", "-resist"), ticks + "\n" + "native movement+jump+sprint held; clientTick=" + ticks
-                            + " position=" + mc.player.position() + " passenger=" + mc.player.isPassenger());
+                    JsonObject input = new JsonObject();
+                    input.addProperty("clientTick", clientTicks);
+                    input.addProperty("forwardImpulse", mc.player.input.forwardImpulse);
+                    input.addProperty("jumping", mc.player.input.jumping);
+                    input.addProperty("sprintKey", mc.options.keySprint.isDown());
+                    input.addProperty("passenger", mc.player.isPassenger());
+                    input.addProperty("position", mc.player.position().toString());
+                    signal(phase.replace("-held", "-resist"), input.toString());
                 }
                 return;
             }
@@ -96,6 +151,8 @@ public final class RedNailsAcceptanceClient {
             }
             if (phase.equals("coexist")) {
                 RedNailsClient.KEY.setDown(ticks > 5);
+                vHeldTicks = RedNailsClient.KEY.isDown() ? vHeldTicks + 1 : 0;
+                signal("coexist-input", Integer.toString(vHeldTicks));
                 if (ticks == 20) mc.gameMode.useItem(mc.player, InteractionHand.MAIN_HAND);
             } else if (phase.equals("item-recall")) {
                 mc.options.keyShift.setDown(true);

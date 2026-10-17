@@ -17,6 +17,9 @@ PORT = int(os.environ.get("RED_NAILS_QA_PORT", "25587"))
 TIMEOUT = int(os.environ.get("RED_NAILS_QA_TIMEOUT", "900"))
 PURSUIT = os.environ.get("RED_NAILS_QA_PURSUIT") == "1"
 ACCEPTANCE = os.environ.get("RED_NAILS_QA_ACCEPTANCE") == "1"
+CASE = os.environ.get("RED_NAILS_QA_CASE", "all")
+if CASE not in {"all", "boat", "bottom", "damage", "items"}:
+    raise ValueError(f"Unknown native acceptance case: {CASE}")
 processes, logs = [], []
 
 
@@ -62,7 +65,7 @@ def launch(role):
     if PURSUIT:
         command += ["-Drednails.qa.pursuit=true"]
     if ACCEPTANCE:
-        command += ["-Drednails.qa.acceptance=true"]
+        command += ["-Drednails.qa.acceptance=true", f"-Drednails.qa.case={CASE}"]
     command += shlex.split(expand(config["vmArgs"]))
     if server:
         # Allow registry synchronization during a software-rendered client join.
@@ -137,9 +140,10 @@ try:
     ready(server)
     client = launch("client")
     if ACCEPTANCE:
-        required = ["acceptance-boat", "acceptance-bottom", "acceptance-damage",
-                    "acceptance-coexist", "acceptance-recall", "acceptance-recall-watch",
-                    "acceptance-unequip", "acceptance-client"]
+        capture = ["boat", "bottom", "damage"] if CASE == "all" else ([CASE] if CASE != "items" else [])
+        items = ["coexist", "recall", "recall-watch", "unequip"] if CASE in {"all", "items"} else []
+        required = [f"acceptance-{name}" for name in [*capture, *items, "client"]]
+        print(f"RED_NAILS_QA_CASE={CASE} REQUIRED={required}", flush=True)
         wait_for(required, [server, client])
         stop(client)
         save_stop(server)

@@ -1,5 +1,6 @@
 package com.zeropointsix.rednailstest;
 
+import com.google.gson.JsonParser;
 import com.zeropointsix.eraser.rednails.RedNailsItem;
 import com.zeropointsix.eraser.rednails.RedNailsState;
 import com.zeropointsix.eraser.rednails.WaterGhostEntity;
@@ -35,6 +36,7 @@ import top.theillusivec4.curios.api.CuriosApi;
 @Mod.EventBusSubscriber(modid = "red_nails_qa")
 public final class RedNailsAcceptanceServer {
     private static final boolean ENABLED = Boolean.getBoolean("rednails.qa.acceptance");
+    private static final String CASE = System.getProperty("rednails.qa.case", "all");
     private static final Path RESULTS = Path.of(System.getProperty("rednails.qa.results"));
     private static ServerPlayer player;
     private static WaterGhostEntity ghost;
@@ -42,19 +44,30 @@ public final class RedNailsAcceptanceServer {
     private static ItemStack ring;
     private static net.minecraft.world.entity.Entity redSummon, watchSummon;
     private static String scenario = "boat";
-    private static int stage, ticks, samples, airSamples, resistedTicks, belowDamageTicks;
+    private static int stage, ticks, samples, airSamples, resistedTicks, convergedTicks, belowDamageTicks;
     private static long stageNanos, grabbedAt = -1;
+    private static long releasedAt = -1, releaseCooldown, coexistAt = -1;
+    private static boolean releasedLease, releasedOnFloor, lastHeldOnFloor;
     private static Vec3 boatStart;
     private static Vec3 previousBoatPosition;
     private static long boatMovedAt;
     private static long damageAt;
     private static int firstResistanceTick, lastResistanceTick;
+    private static int distinctResistanceTicks, lastValidResistanceTick;
     private static double boatDistance, startY, minY, maxDistance;
+    private static double playerStartY, playerMinY;
+    private static String sampleFailure;
     private static float damage;
     private static boolean failed, beforeHeld, beforeWet;
     private static int beforeAir;
 
     private static void check(boolean ok, String why) { if (!ok) throw new AssertionError(why); }
+    private static void sampleCheck(boolean ok, String why) {
+        if (!ok) {
+            if (sampleFailure == null) sampleFailure = why;
+            System.out.println("RED_NAILS_ACCEPTANCE_SAMPLE_FAILURE " + why);
+        }
+    }
     private static void mark(String name, String detail) throws Exception {
         Files.writeString(RESULTS.resolve("acceptance-" + name + ".pass"), detail + "\n");
         System.out.println("RED_NAILS_ACCEPTANCE_PASS " + name + " " + detail);
@@ -66,6 +79,7 @@ public final class RedNailsAcceptanceServer {
     }
     @SubscribeEvent public static void prepare(ServerStartedEvent event) {
         if (!ENABLED) return;
+        check(java.util.Set.of("all", "boat", "bottom", "damage", "items").contains(CASE), "unknown acceptance case " + CASE);
         var level = event.getServer().overworld();
         level.setDayTime(6000);
         level.setWeatherParameters(6000, 0, false, false);
@@ -115,7 +129,10 @@ public final class RedNailsAcceptanceServer {
         boatStart = boat.position(); boatDistance = 0;
         previousBoatPosition = boatStart; boatMovedAt = -1;
         grabbedAt = -1; ghost = null; samples = 0; airSamples = 0; resistedTicks = 0;
+        releasedAt = -1;
         damage = 0; belowDamageTicks = 0; maxDistance = 0;
+        convergedTicks = 0; sampleFailure = null;
+        distinctResistanceTicks = 0; lastValidResistanceTick = -1; lastHeldOnFloor = false;
         firstResistanceTick = -1; lastResistanceTick = -1;
         stage = 1; phase(name + "-ready");
     }
@@ -131,7 +148,10 @@ public final class RedNailsAcceptanceServer {
             ticks++;
             check(System.nanoTime() - stageNanos < 300_000_000_000L, "native acceptance stage timeout " + stage + " " + scenario);
             check(player.isAlive(), "real player survives the acceptance case");
-            if (stage == 0 && Files.exists(RESULTS.resolve("acceptance-client-ready.signal"))) setupCapture("boat");
+            if (stage == 0 && Files.exists(RESULTS.resolve("acceptance-client-ready.signal"))) {
+                if (CASE.equals("items")) setupItems();
+                else setupCapture(CASE.equals("all") ? "boat" : CASE);
+            }
             else if (stage == 1) {
                 boatDistance = Math.max(boatDistance, boat.position().subtract(boatStart).horizontalDistance());
                 if (boatDistance >= 2 && ghost == null) {
@@ -150,7 +170,8 @@ public final class RedNailsAcceptanceServer {
                 captureTick();
             }
             else if (stage == 4 && Files.exists(RESULTS.resolve("acceptance-client-" + scenario + ".signal"))) {
-                if (scenario.equals("boat")) setupCapture("bottom");
+                if (!CASE.equals("all")) { stage = 99; phase("complete"); }
+                else if (scenario.equals("boat")) setupCapture("bottom");
                 else if (scenario.equals("bottom")) setupCapture("damage");
                 else setupItems();
             } else if (stage >= 20) itemTick();
@@ -160,72 +181,135 @@ public final class RedNailsAcceptanceServer {
             catch (Exception ignored) { }
         }
     }
+    private static boolean onFixtureFloor() {
+        return ghost.level().getBlockCollisions(ghost, ghost.getBoundingBox().move(0, -0.08, 0)).iterator().hasNext()
+                && ghost.getBoundingBox().minY >= 72 && ghost.getBoundingBox().minY <= 72.08001
+                && ghost.level().getBlockState(BlockPos.containing(ghost.getX(), 71, ghost.getZ())).is(Blocks.STONE);
+    }
     private static void captureTick() throws Exception {
         long now = player.level().getGameTime();
         boolean held = ghost.ghostBody().grab.held() == player;
         if (held && grabbedAt < 0) {
+            // Record the natural capture before any assertion; client motion proof arrives asynchronously.
+            grabbedAt = now; startY = ghost.getY(); minY = startY;
+            playerStartY = player.getY(); playerMinY = playerStartY;
+            System.out.println("RED_NAILS_ACCEPTANCE_CAPTURE tick=" + now + " boat=" + boat.getUUID()
+                    + " boatPosition=" + boat.position() + " lastServerMovementTick=" + boatMovedAt
+                    + " player=" + player.position() + " ghost=" + ghost.position());
             check(ghost.getTarget() == player && !ghost.isNoAi(), "normal AI naturally selected real player");
             check(!player.isPassenger(), "moving boat passenger was naturally dismounted");
             check(boatDistance >= 2, "boat moved under native client input before capture");
-            check(now - boatMovedAt <= 2, "boat was still moving at capture; last movement tick=" + boatMovedAt);
             check(ghost.ghostBody().swimming(), "boat capture starts in swimming posture");
-            grabbedAt = now; startY = ghost.getY(); minY = startY;
             stage = 3; phase(scenario + "-held");
         }
         if (grabbedAt < 0) return;
         if (held) {
             samples++; minY = Math.min(minY, ghost.getY());
+            lastHeldOnFloor = onFixtureFloor();
+            playerMinY = Math.min(playerMinY, player.getY());
             maxDistance = Math.max(maxDistance, ghost.distanceTo(player));
-            check(ghost.distanceToSqr(player) <= 2.2 * 2.2, "resisting player remains inside original capture reach");
+            // Initial capture reach is not the ongoing leash limit; real player velocity packets converge asynchronously.
+            sampleCheck(ghost.distanceToSqr(player) <= 16, "original four-block ongoing hold limit tick=" + now);
             var resist = RESULTS.resolve("acceptance-client-" + scenario + "-resist.signal");
             if (!scenario.equals("damage") && Files.exists(resist)) {
-                int clientTick = Integer.parseInt(Files.readAllLines(resist).get(0));
-                if (firstResistanceTick < 0) firstResistanceTick = clientTick;
-                lastResistanceTick = Math.max(lastResistanceTick, clientTick);
-                resistedTicks++;
+                var input = JsonParser.parseString(Files.readString(resist)).getAsJsonObject();
+                int clientTick = input.get("clientTick").getAsInt();
+                if (!input.get("passenger").getAsBoolean() && input.get("forwardImpulse").getAsFloat() > 0
+                        && input.get("jumping").getAsBoolean() && input.get("sprintKey").getAsBoolean()) {
+                    if (firstResistanceTick < 0) firstResistanceTick = clientTick;
+                    lastResistanceTick = Math.max(lastResistanceTick, clientTick);
+                    if (clientTick > lastValidResistanceTick) distinctResistanceTicks++;
+                    lastValidResistanceTick = Math.max(lastValidResistanceTick, clientTick);
+                    resistedTicks++;
+                    if (ghost.distanceToSqr(player) <= 2.2 * 2.2) convergedTicks++;
+                }
             }
             if (damage > 0 && damage < 8) belowDamageTicks++;
             boolean wet = ghost.ghostBody().swimming() && player.isEyeInFluid(FluidTags.WATER);
             int after = player.getAirSupply();
             if (beforeHeld && beforeWet && wet) {
-                int expected = beforeAir - 4;
-                if (expected <= -20) expected = 0;
-                check(after == expected, "per-tick oxygen expected=" + expected + " actual=" + after + " tick=" + now);
+                sampleCheck(AcceptanceObservations.validAirChange(beforeAir, after),
+                        "per-tick oxygen before=" + beforeAir + " actual=" + after + " tick=" + now);
                 airSamples++;
             }
             Files.writeString(RESULTS.resolve("acceptance-" + scenario + "-ticks.csv"),
-                    now + "," + (now - grabbedAt) + "," + player.position() + "," + ghost.position()
-                            + "," + beforeAir + "," + after + "," + beforeWet + "," + wet + "," + damage + "\n",
+                    now + "," + (now - grabbedAt) + "," + player.getX() + "," + player.getY() + "," + player.getZ()
+                            + "," + ghost.getX() + "," + ghost.getY() + "," + ghost.getZ()
+                            + "," + beforeAir + "," + after + "," + beforeWet + "," + wet + "," + damage
+                            + "," + ghost.distanceTo(player) + "," + lastResistanceTick + ",true\n",
                     StandardOpenOption.CREATE, StandardOpenOption.APPEND);
-            check(startY - minY <= 6.00001, "unchanged maximum six-block descent");
+            if (samples % 5 == 0) System.out.println("RED_NAILS_ACCEPTANCE_PHYSICS tick=" + now
+                    + " player=" + player.position() + " ghost=" + ghost.position() + " boat=" + boat.position()
+                    + " ghostBox=" + ghost.getBoundingBox() + " boatBox=" + boat.getBoundingBox()
+                    + " below=" + ghost.verticalCollisionBelow
+                    + " stepClear=" + ghost.level().noCollision(ghost, ghost.getBoundingBox().move(0, -0.08, 0))
+                    + " stepBlock=" + ghost.level().getBlockCollisions(ghost, ghost.getBoundingBox().move(0, -0.08, 0)).iterator().hasNext()
+                    + " nearbyColliders=" + ghost.level().getEntities(ghost, ghost.getBoundingBox().move(0, -0.08, 0),
+                            entity -> entity.canBeCollidedWith()).stream().map(entity -> entity.getType() + "#" + entity.getId()
+                                    + ":" + entity.getBoundingBox()).toList());
+            sampleCheck(startY - minY <= 6.00001, "unchanged maximum six-block descent tick=" + now);
         } else {
-            long duration = now - grabbedAt;
-            long cooldown = ghost.ghostBody().grab.cooldownUntil() - now;
-            check(ghost.ghostBody().grab.cooldownUntil() == (scenario.equals("damage") ? damageAt : now) + 160,
+            if (releasedAt < 0) {
+                releasedAt = now;
+                releaseCooldown = ghost.ghostBody().grab.cooldownUntil();
+                releasedLease = !player.getPersistentData().hasUUID("sound_isolating_eraser_grabbed_by");
+                releasedOnFloor = lastHeldOnFloor || onFixtureFloor();
+            }
+            Files.writeString(RESULTS.resolve("acceptance-" + scenario + "-ticks.csv"),
+                    now + "," + (now - grabbedAt) + "," + player.getX() + "," + player.getY() + "," + player.getZ()
+                            + "," + ghost.getX() + "," + ghost.getY() + "," + ghost.getZ()
+                            + "," + beforeAir + "," + player.getAirSupply() + "," + beforeWet + ",false," + damage
+                            + "," + ghost.distanceTo(player) + "," + lastResistanceTick + ",false\n",
+                    StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+            // Preserve the full observation window even when a real player escapes early.
+            if (!scenario.equals("damage") && now < grabbedAt + 100) return;
+            long duration = releasedAt - grabbedAt;
+            long cooldown = releaseCooldown - releasedAt;
+            System.out.println("RED_NAILS_ACCEPTANCE_RELEASE scenario=" + scenario + " duration=" + duration
+                    + " samples=" + samples + " resisted=" + resistedTicks + " converged=" + convergedTicks
+                    + " distinctResistanceClientTicks=" + distinctResistanceTicks
+                    + " oxygen=" + airSamples + " ghostDescent=" + (startY - minY)
+                    + " playerDescent=" + (playerStartY - playerMinY) + " maxDistance=" + maxDistance + " damage=" + damage);
+            check(sampleFailure == null, "per-tick sample failure: " + sampleFailure);
+            check(releaseCooldown == (scenario.equals("damage") ? damageAt : releasedAt) + 160,
                     "release starts exact 160-tick cooldown from its actual release tick: " + cooldown);
-            check(!player.getPersistentData().hasUUID("sound_isolating_eraser_grabbed_by"), "release clears holder lease");
+            check(releasedLease, "release clears holder lease");
+            var motion = JsonParser.parseString(Files.readString(RESULTS.resolve("acceptance-client-" + scenario
+                    + "-capture-motion.signal"))).getAsJsonObject();
+            check(motion.get("boatUuid").getAsString().equals(boat.getUUID().toString())
+                            && motion.get("movingAtDismount").getAsBoolean(),
+                    "same real boat moves under continuous native input through the client dismount boundary: " + motion);
             if (scenario.equals("damage")) {
                 check(damage >= 8 && belowDamageTicks > 0 && duration < 99, "real attacks cross eight damage after a retained subthreshold hold");
             } else {
                 check(duration >= 99 && duration <= 101, "unchanged 100-tick water hold despite movement/jump: " + duration);
                 check(resistedTicks >= 40, "native movement/jump resistance sampled for >=40 server ticks: " + resistedTicks);
+                check(convergedTicks >= 40, "resisting player converges inside capture reach in >=40 real samples: " + convergedTicks);
                 check(lastResistanceTick - firstResistanceTick >= 20, "native resistance input continues across real client ticks");
+                check(distinctResistanceTicks >= 20, "at least 20 distinct native input samples, not repeated stale signals: " + distinctResistanceTicks);
                 check(airSamples >= 40, "full consecutive submerged interval has >=40 oxygen comparisons: " + airSamples);
-                if (scenario.equals("boat")) check(startY - minY >= 5.9, "deep-water case reaches six-block descent");
+                if (scenario.equals("boat")) {
+                    check(startY - minY >= 5.9, "deep-water case reaches six-block descent");
+                    check(playerStartY - playerMinY >= 5.5, "actual resisting player is pulled down, with half-block synchronization tolerance");
+                }
                 if (scenario.equals("bottom")) {
                     check(startY - minY > 0 && startY - minY < 6, "shallow-water descent stops before six blocks");
-                    check(!ghost.level().noCollision(ghost, ghost.getBoundingBox().move(0, -0.08, 0)), "descent stopped at actual floor collision");
+                    check(releasedOnFloor, "descent stopped at fixture stone floor, not at an entity collider");
                 }
             }
             mark(scenario, "boatDistance=" + boatDistance + " duration=" + duration + " heldSamples=" + samples
-                    + " resistedTicks=" + resistedTicks + " oxygenComparisons=" + airSamples + " descent=" + (startY - minY)
+                    + " resistedTicks=" + resistedTicks + " convergedTicks=" + convergedTicks
+                    + " distinctResistanceClientTicks=" + distinctResistanceTicks
+                    + " oxygenComparisons=" + airSamples + " descent=" + (startY - minY) + " playerDescent=" + (playerStartY - playerMinY)
                     + " maxPlayerDistance=" + maxDistance + " damage=" + damage + " subthresholdHeldTicks=" + belowDamageTicks
                     + " cooldown=" + cooldown + "; normal AI, real client, no forced target/grab");
             stage = 4; phase(scenario + "-complete");
         }
     }
     private static void setupItems() {
-        ghost.discard(); boat.discard(); player.stopRiding();
+        if (ghost != null) ghost.discard();
+        if (boat != null) boat.discard();
+        player.stopRiding();
         player.teleportTo(player.serverLevel(), 29.5, 75, 0.5, 0, 0);
         player.setHealth(player.getMaxHealth()); player.setAirSupply(player.getMaxAirSupply());
         ring = new ItemStack(ModItems.RED_NAILS.get());
@@ -238,6 +322,7 @@ public final class RedNailsAcceptanceServer {
     private static void itemTick() throws Exception {
         var entry = RedNailsState.get(player.getServer()).read(ring);
         var suxia = SuxiaSummons.get(player.getServer()).active(player.getUUID());
+        if (stage == 20 && entry != null) check(entry.active() <= 1, "one sustained V hold must never produce a second summon");
         if (stage == 20 && entry != null && entry.active() == 1 && suxia != null) {
             var guardian = RedNailsItem.resolve(player.getServer(), entry.ghosts[1]);
             var summon = SuxiaPocketWatchItem.resolve(player.getServer(), suxia);
@@ -245,7 +330,11 @@ public final class RedNailsAcceptanceServer {
             redSummon = guardian; watchSummon = summon;
             check(!guardian.wantsToAttack(summon, player), "red nails excludes owner's Suxia");
             check(!summon.wantsToAttack(guardian, player), "Suxia excludes owner's red nails");
-            if (ticks < 100) return;
+            check(guardian.getTarget() != summon && summon.getTarget() != guardian, "coexisting summons never target each other");
+            if (coexistAt < 0) coexistAt = player.level().getGameTime();
+            var vInput = RESULTS.resolve("acceptance-client-coexist-input.signal");
+            if (player.level().getGameTime() - coexistAt < 100 || !Files.exists(vInput)
+                    || Integer.parseInt(Files.readString(vInput).trim()) < 60) return;
             check(entry.active() == 1, "holding V does not repeat summons");
             mark("coexist", "normal production summons coexist; reciprocal friendly exclusions; one sustained V hold yields one ring-finger ghost");
             stage = 21; phase("item-recall");
