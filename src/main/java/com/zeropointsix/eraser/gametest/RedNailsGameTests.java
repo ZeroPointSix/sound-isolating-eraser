@@ -258,6 +258,64 @@ public final class RedNailsGameTests {
         check(h, ghosts.get(0).guardPosition(p).z == p.getZ() + 2.5, "Ring finger guards in front");
         check(h, ghosts.stream().map(g -> g.guardPosition(p)).distinct().count() == 4, "Four distinct guard positions"); h.succeed();
     }
+    @AfterBatch(batch = "red_nails_natural_targets")
+    public static void cleanupNaturalTargets(ServerLevel level) { cleanup(level); }
+    @GameTest(template = "empty", batch = "red_nails_natural_targets", timeoutTicks = 200)
+    public static void natural_targets_owner_attacker_both_scheduler_phases(GameTestHelper h) {
+        naturalTargets(h, 0);
+    }
+    @GameTest(template = "empty", batch = "red_nails_natural_targets", timeoutTicks = 200)
+    public static void natural_targets_owner_victim_both_scheduler_phases(GameTestHelper h) {
+        naturalTargets(h, 1);
+    }
+    @GameTest(template = "empty", batch = "red_nails_natural_targets", timeoutTicks = 200)
+    public static void natural_targets_threat_both_scheduler_phases(GameTestHelper h) {
+        naturalTargets(h, 2);
+    }
+    private static void naturalTargets(GameTestHelper h, int source) {
+        var f = new Fixture(h);
+        h.startSequence().thenWaitUntil(() -> check(h, f.level.isPositionEntityTicking(f.center),
+                "Natural-target fixture is entity-ticking")).thenIdle(10).thenExecute(() -> {
+            var owner = f.player(0, 0);
+            var stack = f.wear(owner);
+            var first = f.summon(owner, stack);
+            var second = f.summon(owner, stack);
+            check(h, (first.getId() & 1) != (second.getId() & 1), "Both entity-ID phases are present");
+            var ghosts = List.of(first, second);
+            ghosts.forEach(g -> g.setNoAi(false));
+            var victim = f.add(EntityType.ZOMBIE.create(f.level), 8, 0);
+            victim.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.IRON_HELMET));
+            victim.getAttribute(Attributes.MAX_HEALTH).setBaseValue(200);
+            victim.setHealth(200);
+            // Wait out the player's 60-tick spawn protection and the initial AI
+            // phase; never assign a guardian's target or invoke its target goal.
+            h.startSequence().thenWaitUntil(() -> check(h, first.tickCount >= 65 && second.tickCount >= 65,
+                    "Both guardians passed spawn protection and reached the alternating selector schedule"))
+                    .thenExecute(() -> {
+                        check(h, first.tickCount == second.tickCount, "Both ID phases have the same natural age");
+                        check(h, ghosts.stream().allMatch(g -> g.getTarget() == null), "No target before hostility");
+                        if (source == 0) {
+                            check(h, owner.hurt(owner.damageSources().mobAttack(victim), 1), "Actual owner damage accepted");
+                            check(h, owner.getLastHurtByMob() == victim, "Damage records owner attacker");
+                        } else if (source == 1) {
+                            owner.attack(victim);
+                            check(h, owner.getLastHurtMob() == victim, "Actual owner attack records victim");
+                        } else {
+                            victim.setTarget(owner);
+                        }
+                        System.out.println("RED_NAILS_NATURAL_TARGET_START source=" + source
+                                + " serverTick=" + f.level.getServer().getTickCount()
+                                + " ids=" + first.getId() + "," + second.getId()
+                                + " age=" + first.tickCount);
+                    }).thenWaitUntil(() -> check(h,
+                            ghosts.stream().allMatch(g -> g.isAlive() && g.getTarget() == victim),
+                            "Both natural selector phases acquire source=" + source + " targets="
+                                    + (first.getTarget() == victim) + "," + (second.getTarget() == victim)))
+                    .thenExecute(() -> System.out.println("RED_NAILS_NATURAL_TARGET_PASSED source=" + source
+                            + " age=" + first.tickCount + " ids=" + first.getId() + "," + second.getId()))
+                    .thenSucceed();
+        });
+    }
     @GameTest(template = "empty", batch = BATCH) public static void friendly_fire_and_pvp_policy(GameTestHelper h) {
         var f = new Fixture(h); var p = f.player(0, 0); var stack = f.wear(p); var g = f.summon(p, stack);
         var wolf = f.add(EntityType.WOLF.create(f.level), 3, 0); wolf.setTame(true); wolf.setOwnerUUID(p.getUUID());

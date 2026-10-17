@@ -133,9 +133,12 @@ public final class WaterGhostSummonEntity extends TamableAnimal implements Water
                 || distanceToSqr(owner) > 1024)) setTarget(null);
     }
     private final class TargetsGoal extends Goal {
-        @Override public boolean canUse() { return tickCount % 10 == 0 && getOwner() != null; }
+        private int nextScanTick;
+        // Mob runs the full selector on alternating ticks; an exact modulo gate
+        // can permanently miss one spawn/ID phase. Keep an overdue scan eligible.
+        @Override public boolean canUse() { return tickCount >= nextScanTick && getOwner() != null; }
         @Override public boolean canContinueToUse() { return false; }
-        @Override public void start() { chooseTarget(); }
+        @Override public void start() { nextScanTick = tickCount + 10; chooseTarget(); }
     }
     private final class GuardGoal extends Goal {
         GuardGoal() { setFlags(EnumSet.of(Flag.MOVE, Flag.LOOK)); }

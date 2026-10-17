@@ -26,6 +26,9 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.Connection;
 import net.minecraft.network.ConnectionProtocol;
 import net.minecraft.network.protocol.PacketFlow;
+import net.minecraft.network.protocol.game.ClientboundMoveEntityPacket;
+import net.minecraft.network.protocol.game.ClientboundTeleportEntityPacket;
+import net.minecraft.server.level.ServerEntity;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.level.TicketType;
@@ -407,6 +410,47 @@ public final class SuxiaGameTests {
                                 + " vertical=" + Math.abs(summon.getY() - owner.getY())
                                 + " summon=" + summon.position() + " owner=" + owner.position());
                     })
+                    .thenSucceed();
+        });
+    }
+
+    @AfterBatch(batch = "suxia_pitch_packet")
+    public static void cleanupPitchPacket(ServerLevel level) { cleanup(level); }
+
+    @GameTest(template = "empty", batch = "suxia_pitch_packet", timeoutTicks = 400)
+    public static void summon_idle_pitch_reaches_vanilla_packet_construction(GameTestHelper h) {
+        ready(h, f -> {
+            f.prepareFlatArena();
+            var owner = f.player(0, 0); look(owner, 0, -20); f.watch(owner);
+            var summon = f.summon(owner);
+            float[] wirePitch = {Float.NaN};
+            int[] rotations = {0};
+            // Exercise vanilla packet construction, not a mock packet or a claim
+            // that a headless GameTest has verified client rendering.
+            var tracker = new ServerEntity(f.level, summon, summon.getType().updateInterval(), true, packet -> {
+                if (packet instanceof ClientboundMoveEntityPacket move && move.hasRotation()) {
+                    wirePitch[0] = move.getxRot() * 360F / 256F;
+                    rotations[0]++;
+                } else if (packet instanceof ClientboundTeleportEntityPacket teleport) {
+                    wirePitch[0] = teleport.getxRot() * 360F / 256F;
+                    rotations[0]++;
+                }
+            });
+            h.onEachTick(() -> { if (!summon.isRemoved()) tracker.sendChanges(); });
+            Runnable packetMatches = () -> {
+                idleBehind(h, summon, owner);
+                h.assertTrue(rotations[0] > 0 && Math.abs(wirePitch[0] - owner.getXRot()) < 5,
+                        "Vanilla tracking packet carries owner pitch: " + wirePitch[0] + " vs " + owner.getXRot());
+            };
+            h.startSequence().thenWaitUntil(packetMatches)
+                    .thenExecute(() -> {
+                        System.out.println("SUXIA_PITCH_PACKET negative=" + wirePitch[0] + " count=" + rotations[0]);
+                        look(owner, 0, 35);
+                        wirePitch[0] = Float.NaN;
+                        rotations[0] = 0;
+                    }).thenWaitUntil(packetMatches)
+                    .thenExecute(() -> System.out.println("SUXIA_PITCH_PACKET_PASSED positive=" + wirePitch[0]
+                            + " count=" + rotations[0] + " clientRenderVerified=false"))
                     .thenSucceed();
         });
     }
