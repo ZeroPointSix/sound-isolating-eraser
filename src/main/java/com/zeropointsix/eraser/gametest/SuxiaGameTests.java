@@ -146,6 +146,8 @@ public final class SuxiaGameTests {
     @AfterBatch(batch = BATCH + "_live_summon_ai_attacks_idle_z") public static void cleanup_live_summon_ai_attacks_idle_z(ServerLevel level) { cleanup(level); }
     @AfterBatch(batch = BATCH + "_live_acceptance_owner_combat_") public static void cleanup_live_acceptance_owner_combat_(ServerLevel level) { cleanup(level); }
     @AfterBatch(batch = BATCH + "_live_summon_idle_ignores_othe") public static void cleanup_live_summon_idle_ignores_othe(ServerLevel level) { cleanup(level); }
+    @AfterBatch(batch = BATCH + "_live_acceptance_survival_pvp_") public static void cleanup_live_acceptance_survival_pvp_(ServerLevel level) { cleanup(level); }
+    @AfterBatch(batch = BATCH + "_live_shared_melee_uses_real_c") public static void cleanup_live_shared_melee_uses_real_c(ServerLevel level) { cleanup(level); }
     @AfterBatch(batch = BATCH) public static void cleanup(ServerLevel level) {
         FIXTURES.forEach(Fixture::close);
         FIXTURES.clear();
@@ -432,7 +434,7 @@ public final class SuxiaGameTests {
         });
     }
 
-    @GameTest(template = "empty", batch = BATCH, timeoutTicks = 300)
+    @GameTest(template = "empty", batch = BATCH + "_live_acceptance_survival_pvp_", timeoutTicks = 300)
     public static void acceptance_survival_pvp_gate_and_owner_only_triggers(GameTestHelper h) {
         ready(h, f -> {
             var server = f.level.getServer();
@@ -894,7 +896,7 @@ public final class SuxiaGameTests {
         });
     }
 
-    @GameTest(template = "empty", batch = BATCH, timeoutTicks = 160)
+    @GameTest(template = "empty", batch = BATCH + "_live_shared_melee_uses_real_c", timeoutTicks = 160)
     public static void shared_melee_uses_real_configured_attack_ticks(GameTestHelper h) {
         ready(h, f -> {
             var p = f.player(0, 0); f.watch(p); var summon = f.summon(p); summon.setNoAi(true);

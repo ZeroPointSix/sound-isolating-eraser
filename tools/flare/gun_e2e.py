@@ -43,7 +43,10 @@ def launch(role, display):
             "lang:en_us\nrenderDistance:3\nsimulationDistance:5\nguiScale:2\nmaxFps:30\n"
             "enableVsync:false\npauseOnLostFocus:false\nonboardAccessibility:false\n"
             "showAutosaveIndicator:false\nrenderClouds:false\nnarrator:0\ntutorialStep:none\n"
-            "gamma:1.0\nfov:0.0\nmusic:0.0\n")
+            "gamma:1.0\nfov:0.0\nmusic:0.0\n"
+            # Cheaper chunk re-meshing on software GL: flight-light block updates from the merged T5 trail
+            # otherwise stall frames across the short recoil window. Assertions are unchanged.
+            "ao:false\ngraphicsMode:0\nentityShadows:false\nbiomeBlendRadius:0\n")
     env = os.environ.copy()
     env.update({key: expand(value) for key, value in config["env"].items()})
     env.update(LIBGL_ALWAYS_SOFTWARE="1", ALSOFT_DRIVERS="null", DISPLAY=display)

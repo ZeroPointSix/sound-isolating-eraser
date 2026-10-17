@@ -126,6 +126,7 @@ public final class RedNailsGameTests {
         // Live-AI guard tests run in their own batches: a 16-block guard radius otherwise reaches entities of
     // concurrently running neighbour tests, which made friendly-fire/target assertions order-dependent.
     @AfterBatch(batch = BATCH + "_live_guardian_ai_attacks_idle") public static void cleanup_live_guardian_ai_attacks_idle(ServerLevel level) { cleanup(level); }
+    @AfterBatch(batch = BATCH + "_live_guardian_ai_prioritizes_") public static void cleanup_live_guardian_ai_prioritizes_(ServerLevel level) { cleanup(level); }
     @AfterBatch(batch = BATCH) public static void cleanup(ServerLevel level) {
         FIXTURES.forEach(Fixture::close); FIXTURES.clear(); RedNailsInput.clear();
     }
@@ -416,7 +417,7 @@ public final class RedNailsGameTests {
         });
     }
 
-    @GameTest(template = "empty", batch = BATCH, timeoutTicks = 160)
+    @GameTest(template = "empty", batch = BATCH + "_live_guardian_ai_prioritizes_", timeoutTicks = 160)
     public static void guardian_ai_prioritizes_owner_and_interrupts_ambient_grab(GameTestHelper h) {
         var f = new Fixture(h);
         h.startSequence().thenWaitUntil(() -> check(h, f.level.isPositionEntityTicking(f.center), "Arena is ticking"))
