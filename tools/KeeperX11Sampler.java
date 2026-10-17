@@ -74,8 +74,26 @@ public final class KeeperX11Sampler {
         return numerator / denominator;
     }
 
+    static void writeFailureEvidence(Path results, Iterable<Capture> captures,
+                                     CharSequence warmup) throws Exception {
+        Files.writeString(results.resolve("sampler-warmup.csv"), warmup);
+        Path frames = results.resolve("sampler-failure-frames");
+        Files.createDirectory(frames);
+        StringBuilder csv = new StringBuilder("frame,start_ns,end_ns\n");
+        int index = 0;
+        for (Capture capture : captures) {
+            String name = String.format("%03d.png", index++);
+            ImageIO.write(capture.image(), "png", frames.resolve(name).toFile());
+            csv.append(name).append(',').append(capture.before()).append(',')
+                    .append(capture.after()).append('\n');
+        }
+        Files.writeString(results.resolve("sampler-failure-captures.csv"), csv);
+    }
+
     public static void main(String[] args) throws Exception {
         Path results = Path.of(args[0]);
+        ArrayDeque<Capture> captures = new ArrayDeque<>();
+        StringBuilder warmup = new StringBuilder("epoch_ms,start_ns,end_ns,gap_ms,stable_captures\n");
         try {
             Robot robot = new Robot();
             Rectangle roi = new Rectangle(480, 270, 320, 180);
@@ -102,7 +120,6 @@ public final class KeeperX11Sampler {
                 }
                 Thread.sleep(1);
             }
-            ArrayDeque<Capture> captures = new ArrayDeque<>();
             timeout = System.nanoTime() + 60_000_000_000L;
             long deadline = 0;
             long deadlineReadAt = 0;
@@ -112,7 +129,6 @@ public final class KeeperX11Sampler {
             boolean captureReady = false;
             long lastCaptureStart = 0, stableSince = 0;
             int stableCaptures = 0;
-            StringBuilder warmup = new StringBuilder("epoch_ms,start_ns,end_ns,gap_ms,stable_captures\n");
             while (System.nanoTime() < timeout) {
                 long before = System.nanoTime();
                 BufferedImage screen = robot.createScreenCapture(roi);
@@ -226,6 +242,13 @@ public final class KeeperX11Sampler {
                     "X11 center=480,270,320,180 best_white80=" + bestWhite + "\n");
         } catch (Throwable failure) {
             Files.writeString(results.resolve("sampler.failed"), failure.toString());
+            // A failed pixel gate must not discard the real frames or readiness trace.
+            // Keep absolute timestamps because the client may not have published its deadline yet.
+            try {
+                writeFailureEvidence(results, captures, warmup);
+            } catch (Exception evidenceError) {
+                failure.addSuppressed(evidenceError);
+            }
             throw failure;
         }
     }

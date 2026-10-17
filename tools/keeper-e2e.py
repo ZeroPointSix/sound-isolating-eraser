@@ -88,6 +88,7 @@ def launch(role):
                  "--quickPlayMultiplayer", f"127.0.0.1:{PORT}"]
     command = ["java", "-XX:ActiveProcessorCount=2", "-Xmx1536M" if role != "server" else "-Xmx768M",
                f"-Dkeeper.qa.results={RESULTS}", f"-Dkeeper.qa.role={role}"]
+    command.append(f"-Xlog:gc*,safepoint:file={RESULTS / (role + '-gc.log')}:time,uptime,level,tags")
     if role != "server" and os.environ.get("KEEPER_QA_PROFILE") == "1":
         command.append("-XX:StartFlightRecording=name=keeper_qa,settings=profile,disk=true,"
                        + f"maxsize=64m,filename={RESULTS / 'client.jfr'},dumponexit=true")
