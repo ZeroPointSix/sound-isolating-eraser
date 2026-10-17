@@ -46,3 +46,36 @@ jobs:
             build/libs/*.jar
             run/logs/
           if-no-files-found: warn
+
+  real-client-combat:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Install headless OpenGL and recording support
+        run: sudo apt-get update && sudo apt-get install -y xvfb libgl1-mesa-dri libopenal1 ffmpeg
+      - name: Compile opt-in client validation fixtures
+        run: bash ./gradlew --no-daemon -PredNailsE2E writeRedNailsTestClasspath
+      - name: Record both guardians clearing idle zombies
+        env:
+          SUMMON_GUARD_QA: '1'
+          RED_NAILS_QA_TIMEOUT: '600'
+        run: python3 tools/red-nails/e2e.py
+      - name: Preserve actual client screenshots, video and server assertions
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: summon-guard-real-client
+          path: |
+            build/red-nails-e2e-*/*.png
+            build/red-nails-e2e-*/*.mp4
+            build/red-nails-e2e-*/*.pass
+            build/red-nails-e2e-*/*.failed
+            build/red-nails-e2e-*/*.log
+            build/red-nails-e2e-*/client/crash-reports/*.txt
+          if-no-files-found: warn

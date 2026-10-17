@@ -1,5 +1,6 @@
 package com.zeropointsix.eraser.rednails;
 
+import com.zeropointsix.eraser.memory.SummonCombatConfig;
 import java.util.EnumSet;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
@@ -142,8 +143,11 @@ public final class WaterGhostGrab extends Goal {
                 else target.setAirSupply(air);
             }
         }
-        if (++ticks % 20 == 0) {
-            target.hurt(mob.damageSources().mobAttack(mob), 2);
+        boolean summoned = mob instanceof WaterGhostSummonEntity;
+        int interval = summoned ? SummonCombatConfig.value(SummonCombatConfig.WATER_GHOST_GRAB_TICKS) : 20;
+        if (++ticks % interval == 0) {
+            float amount = summoned ? (float) SummonCombatConfig.value(SummonCombatConfig.WATER_GHOST_GRAB_DAMAGE) : 2;
+            target.hurt(mob.damageSources().mobAttack(mob), amount);
             if (mob instanceof WaterGhostEntity hostile) hostile.contact();
         }
     }
