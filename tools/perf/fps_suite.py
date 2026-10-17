@@ -81,7 +81,7 @@ def measure(label, dimension):
             row = {"utc": p.utc(), "elapsedSeconds": time.monotonic() - began, "load1": os.getloadavg()[0]}
             for name, dimension_id in suite.DIMENSIONS.items():
                 row[name] = suite.count(name, "", dimension_id)
-            row["parents"] = suite.count("parents", "type=sound_isolating_eraser:yuji_qiyu,tag=t2_parent", dimension)
+            row["parents"] = suite.count("parents", "type=qihai:qiyu,tag=t2_parent", dimension)
             suite.server.send("scoreboard players set ownedChildren t2_perf 0")
             suite.server.send(f"execute in {dimension} as @e[distance=0..] if data entity @s YujiSummoner run scoreboard players add ownedChildren t2_perf 1")
             mark = suite.server.send("scoreboard players get ownedChildren t2_perf")
