@@ -1,5 +1,6 @@
 package com.zeropointsix.eraser.suxia;
 
+import com.zeropointsix.eraser.memory.SummonCombatConfig;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
@@ -25,6 +26,11 @@ public final class SuxiaMotion {
         return Mob.createMobAttributes().add(Attributes.MAX_HEALTH, 100)
                 .add(Attributes.MOVEMENT_SPEED, 0.25).add(Attributes.KNOCKBACK_RESISTANCE, 1)
                 .add(Attributes.ATTACK_DAMAGE, 15).add(Attributes.FOLLOW_RANGE, 32);
+    }
+
+    public static void configureSummon(SuxiaSummonEntity summon) {
+        summon.getAttribute(Attributes.ATTACK_DAMAGE).setBaseValue(SummonCombatConfig.value(SummonCombatConfig.SUXIA_DAMAGE));
+        summon.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(SummonCombatConfig.value(SummonCombatConfig.SUXIA_SPEED));
     }
 
     public static long clock(Level level) {

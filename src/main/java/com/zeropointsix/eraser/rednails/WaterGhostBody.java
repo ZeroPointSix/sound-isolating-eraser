@@ -1,5 +1,6 @@
 package com.zeropointsix.eraser.rednails;
 
+import com.zeropointsix.eraser.memory.SummonCombatConfig;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.syncher.EntityDataAccessor;
@@ -42,6 +43,10 @@ public final class WaterGhostBody {
                 .add(Attributes.MOVEMENT_SPEED, 0.23).add(Attributes.KNOCKBACK_RESISTANCE, 0)
                 .add(Attributes.FOLLOW_RANGE, followRange);
     }
+    public static void configureSummon(WaterGhostSummonEntity summon) {
+        summon.getAttribute(Attributes.ATTACK_DAMAGE).setBaseValue(SummonCombatConfig.value(SummonCombatConfig.WATER_GHOST_DAMAGE));
+        summon.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(SummonCombatConfig.value(SummonCombatConfig.WATER_GHOST_SPEED));
+    }
     public boolean swimming() { return mob.getEntityData().get(swimData); }
     public void swimming(boolean value) { mob.getEntityData().set(swimData, value); }
     public boolean grabbing() { return mob.getEntityData().get(grabData); }
@@ -60,7 +65,9 @@ public final class WaterGhostBody {
         grabbing = Mth.approach(grabbing, grabbing() ? 1 : 0, 0.25F);
         if (mob.level().isClientSide || !mob.isAlive()) return;
         if (mob.tickCount % 100 == 0 || !mob.hasEffect(MobEffects.REGENERATION)) {
-            mob.addEffect(new MobEffectInstance(MobEffects.REGENERATION, 200, 1, false, false));
+            int amplifier = mob instanceof WaterGhostSummonEntity
+                    ? SummonCombatConfig.value(SummonCombatConfig.WATER_GHOST_REGENERATION) : 1;
+            mob.addEffect(new MobEffectInstance(MobEffects.REGENERATION, 200, amplifier, false, false));
         }
         boolean deep = mob.isInWater() && (mob.getFluidHeight(FluidTags.WATER) > 1
                 || mob.isEyeInFluid(FluidTags.WATER));
@@ -118,7 +125,9 @@ public final class WaterGhostBody {
                 float yaw = (float) (Mth.atan2(direction.z, direction.x) * Mth.RAD_TO_DEG) - 90;
                 mob.setYRot(rotlerp(mob.getYRot(), yaw, 30));
                 mob.yBodyRot = mob.getYRot();
-                double speed = Math.min(distance, SWIM_SPEED * Mth.clamp(speedModifier, 0, 1));
+                double swimSpeed = mob instanceof WaterGhostSummonEntity
+                        ? SummonCombatConfig.value(SummonCombatConfig.WATER_GHOST_SWIM_SPEED) : SWIM_SPEED;
+                double speed = Math.min(distance, swimSpeed * Mth.clamp(speedModifier, 0, 1));
                 mob.setDeltaMovement(mob.getDeltaMovement().lerp(direction.scale(speed), 0.25));
             } else {
                 mob.setDeltaMovement(mob.getDeltaMovement().scale(0.8));
