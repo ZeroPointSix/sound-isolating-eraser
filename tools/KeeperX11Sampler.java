@@ -24,6 +24,32 @@ public final class KeeperX11Sampler {
                 StandardCopyOption.REPLACE_EXISTING);
     }
 
+    private static double[] centerRgb(BufferedImage image) {
+        double[] rgb = new double[3];
+        int count = 0;
+        for (int y = 45; y < 135; y += 3) {
+            for (int x = 80; x < 240; x += 3) {
+                int pixel = image.getRGB(x, y);
+                rgb[0] += (pixel >> 16) & 255;
+                rgb[1] += (pixel >> 8) & 255;
+                rgb[2] += pixel & 255;
+                count++;
+            }
+        }
+        for (int i = 0; i < 3; i++) rgb[i] /= count;
+        return rgb;
+    }
+
+    private static double whiteAlpha(double[] rgb, double[] baseline) {
+        double numerator = 0, denominator = 0;
+        for (int i = 0; i < 3; i++) {
+            numerator += (rgb[i] - baseline[i]) * (255 - baseline[i]);
+            denominator += (255 - baseline[i]) * (255 - baseline[i]);
+        }
+        if (denominator <= 1000) throw new AssertionError("Pre-shutter scene too white to measure");
+        return numerator / denominator;
+    }
+
     public static void main(String[] args) throws Exception {
         Path results = Path.of(args[0]);
         try {
@@ -52,11 +78,26 @@ public final class KeeperX11Sampler {
             ArrayDeque<Capture> captures = new ArrayDeque<>();
             timeout = System.nanoTime() + 60_000_000_000L;
             long deadline = 0;
+            long firstBright = 0;
+            double[] baseline = null;
             while (System.nanoTime() < timeout) {
                 long before = System.nanoTime();
                 BufferedImage image = robot.createScreenCapture(roi);
                 long after = System.nanoTime();
                 captures.add(new Capture(before, after, image));
+                double[] rgb = centerRgb(image);
+                if (baseline == null) baseline = rgb;
+                double alpha = whiteAlpha(rgb, baseline);
+                if (firstBright == 0 && alpha >= .25) firstBright = before;
+                // This guard reads real screen pixels, not the tautology elapsed=200-left.
+                if (firstBright != 0 && before - firstBright > 250_000_000L && alpha >= .08) {
+                    ImageIO.write(image, "png", results.resolve("flash-overrun.png").toFile());
+                    Files.writeString(results.resolve("flash-overrun.txt"),
+                            "first_bright_ns=" + firstBright + " capture_before_ns=" + before
+                                    + " capture_after_ns=" + after + " elapsed_ms="
+                                    + (before - firstBright) / 1_000_000.0 + " alpha=" + alpha + "\n");
+                    throw new AssertionError("Real X11 shutter pixels still bright beyond 250ms");
+                }
                 if (captures.size() == 1) atomicSignal(results, "capture.ready", Long.toString(after));
                 if (deadline == 0) deadline = readLong(results.resolve("flash-deadline.txt"));
                 // Retain a short pre-shutter window while the real client is still scheduling input.

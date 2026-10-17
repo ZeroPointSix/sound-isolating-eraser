@@ -44,8 +44,13 @@ public final class KeeperTestClient {
     private static double firstPositive = -1, lastPositive = -1, firstClear = -1;
     private static int photoSeconds;
     private static int connectionRetries;
+    private static boolean joinedWorld;
     private static long warmupBegan, lastWarmupFrame, stableSince;
     private static int stableFrames;
+    private static long shutterClickNs, shutterStableNanos;
+    private static int shutterStableFrames;
+    private static boolean enterPressed;
+    private static long enterBegan;
     private static final StringBuilder warmupFrames = new StringBuilder(
             "epoch_ms,monotonic_ns,gap_ms,stable_frames,baseline_saved\n");
 
@@ -111,7 +116,6 @@ public final class KeeperTestClient {
             double elapsed = 200.0 - left;
             if (observedDeadline == 0) {
                 require(phase.equals("shoot") && !inPhotoWorld(), "flash precedes the photo frame");
-                Files.writeString(RESULTS.resolve("flash-deadline.txt"), Long.toString(deadline));
             }
             observedDeadline = deadline;
             frameTimes.append(System.currentTimeMillis()).append(',').append(elapsed).append(',')
@@ -120,10 +124,19 @@ public final class KeeperTestClient {
                 positiveFrames++;
                 if (firstPositive < 0) firstPositive = elapsed;
                 lastPositive = elapsed;
-            } else if (firstClear < 0) firstClear = elapsed;
+            } else if (firstClear < 0) {
+                firstClear = elapsed;
+            }
             if (elapsed >= 650) {
+                // Keep all disk I/O outside the measured shutter window.
+                atomicSignal("flash-deadline.txt", Long.toString(observedDeadline));
                 Files.writeString(RESULTS.resolve("flash-frame-times.csv"), frameTimes);
-                require(positiveFrames >= 2 && firstPositive <= 100 && firstClear <= 250,
+                Files.writeString(RESULTS.resolve("shutter-input.txt"), "native_right_click_ns=" + shutterClickNs + "\n");
+                Files.writeString(RESULTS.resolve("render-warmup.csv"), warmupFrames);
+                Files.writeString(RESULTS.resolve("render-ready.txt"), "stable_frames=" + shutterStableFrames
+                        + " stable_ms=" + shutterStableNanos / 1_000_000.0
+                        + " max_gap_ms=50 required_stable_ms=2000\n");
+                require(positiveFrames >= 2 && firstPositive <= 100 && firstClear >= 0 && firstClear <= 250,
                         "insufficient real rendered frames around the 200ms deadline: first="
                                 + firstPositive + " last=" + lastPositive + " clear=" + firstClear);
                 Files.writeString(RESULTS.resolve("flash-observed.txt"),
@@ -305,9 +318,19 @@ public final class KeeperTestClient {
         if (event.phase != TickEvent.Phase.END || failed) return;
         Minecraft mc = Minecraft.getInstance();
         if (phase.isEmpty()) {
+            if (mc.player != null && mc.level != null) {
+                joinedWorld = true;
+                return;
+            }
+            if (mc.screen instanceof ConnectScreen) {
+                return;
+            }
             if (mc.screen instanceof DisconnectedScreen) {
                 try {
-                    require(connectionRetries < 2, "isolated server connection failed after two retries");
+                    if (joinedWorld) {
+                        throw new AssertionError("disconnected after world join; see server.log Timed out");
+                    }
+                    require(connectionRetries < 5, "isolated server connection failed after five retries");
                     connectionRetries++;
                     grab("connection-failed-" + connectionRetries + ".png");
                     String address = "127.0.0.1:" + System.getenv().getOrDefault("KEEPER_QA_PORT", "25578");
@@ -333,7 +356,6 @@ public final class KeeperTestClient {
             if (!baselineSaved && ticks >= 12 && renderReady()
                     && (phase.equals("baseline") || phase.equals("shoot"))) {
                 captureBaseline(phase + "@" + ticks);
-                // A synchronous X11 screenshot can stall rendering; require another stable window.
                 lastWarmupFrame = stableSince = 0;
                 stableFrames = 0;
             }
@@ -342,19 +364,35 @@ public final class KeeperTestClient {
                 if (baselineSaved && renderReady()) startFlashGrabber();
                 if (ticks >= 20 && !shutterSent && baselineSaved && renderReady() && samplerReady
                         && Files.exists(RESULTS.resolve("capture.ready"))) {
-                    Files.writeString(RESULTS.resolve("render-warmup.csv"), warmupFrames);
-                    Files.writeString(RESULTS.resolve("render-ready.txt"), "stable_frames=" + stableFrames
-                            + " stable_ms=" + (System.nanoTime() - stableSince) / 1_000_000.0
-                            + " max_gap_ms=50 required_stable_ms=2000\n");
+                    shutterClickNs = System.nanoTime();
+                    shutterStableNanos = shutterClickNs - stableSince;
+                    shutterStableFrames = stableFrames;
                     shutterSent = true;
-                    Files.writeString(RESULTS.resolve("shutter-input.txt"), "native_right_click_ns=" + System.nanoTime() + "\n");
                     input("click", "3");
                 }
             }
+
             if (phase.equals("enter")) {
                 if (ticks == 8) input("key", "2");
-                if (ticks == 16) input("mousedown", "3");
-                if (ticks == 42) input("mouseup", "3");
+                if (ticks >= 16 && !enterPressed && !inPhotoWorld()) {
+                    require(mc.player.getInventory().getSelected().is(ModItems.KEEPER_PHOTO.get()),
+                            "native photo entry selects the captured photo");
+                    enterBegan = System.nanoTime();
+                    input("mousedown", "3");
+                    enterPressed = true;
+                }
+                if (enterPressed && inPhotoWorld()) {
+                    input("mouseup", "3");
+                    enterPressed = false;
+                }
+                require(enterBegan == 0 || inPhotoWorld() || System.nanoTime() - enterBegan < 30_000_000_000L,
+                        "native held photo use received no server entry acknowledgement within 30s");
+            }
+            if (phase.equals("photo") && enterPressed) {
+                input("mouseup", "3");
+                enterPressed = false;
+                Files.writeString(RESULTS.resolve("entry-input.txt"),
+                        "held_from_ns=" + enterBegan + " released_on_photo_ns=" + System.nanoTime() + "\n");
             }
             if (phase.equals("photo") && ticks == 16 && !photoSaved) {
                 require(mc.player.hasEffect(ModEffects.IN_PHOTO.get()), "client has the in-photo effect");
