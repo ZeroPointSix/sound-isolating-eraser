@@ -294,10 +294,10 @@ public final class RedNailsAcceptanceServer {
                 if (boatDistance >= 2 && ghost == null) {
                     ghost = ModEntities.WATER_GHOST.get().create(player.serverLevel());
                     check(ghost != null, "registered ghost creates");
-                    // Start head-on cases just ahead of the real bow, without overlapping
-                    // either posture, so native forward input reaches the contact boundary.
+                    // Put head-on cases at the real hull's contact boundary without overlap;
+                    // a positive gap can be captured before the next native boat move arrives.
                     double spawnZ = frontal() ? boat.getBoundingBox().maxZ
-                            + Math.max(ghost.getBbWidth(), WaterGhostBody.SWIMMING.width) * 0.5 + 0.25
+                            + Math.max(ghost.getBbWidth(), WaterGhostBody.SWIMMING.width) * 0.5
                             : player.getZ() + 4.5;
                     ghost.moveTo(player.getX() + (frontal() ? 0 : 1.4), 73.5, spawnZ, 180, 0);
                     player.serverLevel().addFreshEntity(ghost);
