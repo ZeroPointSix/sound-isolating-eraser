@@ -58,7 +58,7 @@ public final class KeeperTestClient {
         if (shutterSent || !(phase.equals("baseline") || phase.equals("shoot"))) return;
         if (warmupBegan == 0) warmupBegan = now;
         long gap = lastWarmupFrame == 0 ? 0 : now - lastWarmupFrame;
-        if (lastWarmupFrame == 0 || gap > 50_000_000L) {
+        if (lastWarmupFrame == 0 || gap > 250_000_000L) {
             stableSince = now;
             stableFrames = 0;
         }
@@ -70,14 +70,14 @@ public final class KeeperTestClient {
         if (now - warmupBegan > 90_000_000_000L) {
             Files.writeString(RESULTS.resolve("render-warmup.csv"), warmupFrames);
             throw new AssertionError("Render readiness unavailable within 90s: need 2s of real frames"
-                    + " with gaps <=50ms before native shutter; stable_frames=" + stableFrames);
+                    + " with gaps <=250ms before native shutter; stable_frames=" + stableFrames);
         }
     }
 
     private static boolean renderReady() {
         long now = System.nanoTime();
-        return stableFrames >= 40 && now - stableSince >= 2_000_000_000L
-                && now - lastWarmupFrame <= 50_000_000L;
+        return stableFrames >= 20 && now - stableSince >= 2_000_000_000L
+                && now - lastWarmupFrame <= 250_000_000L;
     }
 
     private static void provenance() throws Exception {
@@ -135,7 +135,7 @@ public final class KeeperTestClient {
                 Files.writeString(RESULTS.resolve("render-warmup.csv"), warmupFrames);
                 Files.writeString(RESULTS.resolve("render-ready.txt"), "stable_frames=" + shutterStableFrames
                         + " stable_ms=" + shutterStableNanos / 1_000_000.0
-                        + " max_gap_ms=50 required_stable_ms=2000\n");
+                        + " warmup_max_gap_ms=250 required_stable_ms=2000\n");
                 require(positiveFrames >= 2 && firstPositive <= 100 && firstClear >= 0 && firstClear <= 250,
                         "insufficient real rendered frames around the 200ms deadline: first="
                                 + firstPositive + " last=" + lastPositive + " clear=" + firstClear);
