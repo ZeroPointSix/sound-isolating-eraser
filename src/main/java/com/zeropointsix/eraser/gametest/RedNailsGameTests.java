@@ -435,23 +435,33 @@ public final class RedNailsGameTests {
     }
     @GameTest(template = "empty", batch = BATCH, timeoutTicks = 100) public static void orphan_and_owner_teleport_cleanup(GameTestHelper h) {
         var f = new Fixture(h); var p = f.player(0, 0); var stack = f.wear(p);
-        check(h, RedNailsItem.activate(p), "Normal item activation accepts the summon");
-        var id = f.entry(stack).ghosts[RedNailsState.ORDER[0]];
-        var orphan = f.add(ModEntities.WATER_GHOST_SUMMON.get().create(f.level), -6, 0);
-        orphan.bind(p, UUID.randomUUID(), 0);
-        h.runAfterDelay(1, () -> {
-            // Entities spawned during the server tick enter the UUID lookup at its end.
-            var g = RedNailsItem.resolve(f.level.getServer(), id);
-            check(h, g != null, "New summon becomes visible in the real entity index");
+        var id = new UUID[1];
+        var orphan = new WaterGhostSummonEntity[1];
+        h.startSequence().thenWaitUntil(() -> {
+            check(h, f.level.isPositionEntityTicking(f.center), "Cleanup fixture chunk is entity-ticking");
+            check(h, f.level.getEntity(p.getUUID()) == p, "Cleanup owner is visible in the real entity index");
+        }).thenExecute(() -> {
+            check(h, RedNailsItem.activate(p), "Normal item activation accepts the summon");
+            id[0] = f.entry(stack).ghosts[RedNailsState.ORDER[0]];
+        }).thenWaitUntil(() -> check(h, RedNailsItem.resolve(f.level.getServer(), id[0]) != null,
+                "New summon becomes visible in the real entity index")).thenExecute(() -> {
+            // Establish readiness before the original 12-tick orphan/11-tick teleport observation windows.
+            var g = RedNailsItem.resolve(f.level.getServer(), id[0]);
             f.entities.add(g); g.setNoAi(true);
+            orphan[0] = f.add(ModEntities.WATER_GHOST_SUMMON.get().create(f.level), -6, 0);
+            orphan[0].bind(p, UUID.randomUUID(), 0);
+            System.out.println("RED_NAILS_CLEANUP_FIXTURE_READY tick=" + f.level.getGameTime()
+                    + " summon=" + id[0] + " orphan=" + orphan[0].getUUID());
+        }).thenIdle(1).thenExecute(() -> {
+            var g = RedNailsItem.resolve(f.level.getServer(), id[0]);
+            check(h, g != null, "New summon remains visible in the real entity index");
             g.setPos(p.position().add(15, 0, 0));
-        });
-        h.runAfterDelay(12, () -> {
-            var g = RedNailsItem.resolve(f.level.getServer(), id);
-            check(h, orphan.isRemoved(), "Reloaded orphan without an authoritative ledger is discarded");
+        }).thenIdle(11).thenExecute(() -> {
+            var g = RedNailsItem.resolve(f.level.getServer(), id[0]);
+            check(h, orphan[0].isRemoved(), "Reloaded orphan without an authoritative ledger is discarded");
             check(h, g != null && g.isAlive() && g.distanceToSqr(p) <= 18, "Guardian teleports safely beyond twelve blocks");
-            check(h, f.entry(stack).active() == 1, "Teleport preserves the active finger"); h.succeed();
-        });
+            check(h, f.entry(stack).active() == 1, "Teleport preserves the active finger");
+        }).thenSucceed();
     }
     @GameTest(template = "empty", batch = BATCH) public static void summon_spawn_prefers_safe_water_over_clear_ground(GameTestHelper h) {
         var f = new Fixture(h);
