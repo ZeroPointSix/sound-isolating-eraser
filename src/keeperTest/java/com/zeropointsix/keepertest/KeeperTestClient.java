@@ -34,6 +34,7 @@ public final class KeeperTestClient {
     private static boolean baselineSaved;
     private static int[] baselineRgb = new int[3];
     private static BufferedImage baselineImage;
+    private static BufferedImage photoEntryBaseline;
     private static int baselineWhite;
     private static boolean photoSaved;
     private static boolean grabberStarted;
@@ -252,9 +253,9 @@ public final class KeeperTestClient {
                 + (int) ((window.getGuiScaledHeight() * 238 / 256 - mc.font.lineHeight / 2) * scale) - 2;
         int x1 = x0 + (int) (mc.font.width(text) * scale) + 4;
         int y1 = y0 + (int) (mc.font.lineHeight * scale) + 4;
-        require(baselineImage != null, "HUD regression has a pre-shutter baseline");
+        require(photoEntryBaseline != null, "HUD regression has a same-item pre-entry baseline");
         int pixels = countNear(image, 0x5A4632, 48, x0, y0, x1, y1);
-        int background = countNear(baselineImage, 0x5A4632, 48, x0, y0, x1, y1);
+        int background = countNear(photoEntryBaseline, 0x5A4632, 48, x0, y0, x1, y1);
         int excess = Math.max(0, pixels - background);
         Files.writeString(RESULTS.resolve("hud-region.tsv"), System.nanoTime() + "\t" + phase
                 + "\t" + x0 + "\t" + y0 + "\t" + x1 + "\t" + y1 + "\t" + pixels
@@ -410,6 +411,17 @@ public final class KeeperTestClient {
 
             if (phase.equals("enter")) {
                 if (ticks == 8) input("key", "2");
+                if (ticks >= 16 && photoEntryBaseline == null && !inPhotoWorld()) {
+                    require(mc.player.getInventory().getSelected().is(ModItems.KEEPER_PHOTO.get()),
+                            "HUD baseline selects the actual captured photo");
+                    photoEntryBaseline = grab("photo-entry-baseline.png");
+                    require(countFrameWhite(photoEntryBaseline) < 20, "pre-entry has no photo frame");
+                    Files.writeString(RESULTS.resolve("photo-entry-baseline.txt"),
+                            "epoch_ms=" + System.currentTimeMillis() + " monotonic_ns=" + System.nanoTime()
+                                    + " selected_photo=true in_photo=false frame_white_pixels="
+                                    + countFrameWhite(photoEntryBaseline) + "\n");
+                    return;
+                }
                 if (ticks >= 16 && !enterPressed && !inPhotoWorld()) {
                     require(mc.player.getInventory().getSelected().is(ModItems.KEEPER_PHOTO.get()),
                             "native photo entry selects the captured photo");
