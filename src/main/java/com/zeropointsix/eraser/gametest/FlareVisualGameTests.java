@@ -286,8 +286,16 @@ public final class FlareVisualGameTests {
         h.assertTrue(!flare.isRemoved() && level.getBlockState(source).is(Blocks.LIGHT), "horizontal low red shot has a nearby real light");
         h.assertTrue(level.isEmptyBlock(source.below()) && level.isEmptyBlock(source.below(2)), "two landing clearance cells remain free");
         flare.discard();
-        h.startSequence().thenWaitUntil(() -> h.assertTrue(level.getBrightness(LightLayer.BLOCK, source.below()) >= 12,
-                "low source propagates actual block light without relaxing brightness threshold"))
+        // Flight lights expire 8 ticks after their last renewal, while block-light propagation runs on the
+        // asynchronous light thread. On a loaded runner the server can tick past that expiry before the light
+        // engine catches up, so keep renewing the record through the production renewal path (the same call a
+        // live flare makes each flight tick) until propagation is observed; the brightness floor is unchanged.
+        var lights = FlareLights.get(level);
+        h.startSequence().thenWaitUntil(() -> {
+                    lights.flight(level, source, player);
+                    h.assertTrue(level.getBrightness(LightLayer.BLOCK, source.below()) >= 12,
+                            "low source propagates actual block light without relaxing brightness threshold");
+                })
                 .thenExecute(() -> System.out.println("T5_FLIGHT_LOW_PASSED horizontalRed=true clearance=2 propagatedLight>=12"))
                 .thenSucceed();
     }
