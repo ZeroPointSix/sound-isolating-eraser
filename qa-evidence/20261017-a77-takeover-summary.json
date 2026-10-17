@@ -1,0 +1,79 @@
+{
+  "issue": "https://linear.app/zerodotsix/issue/ZER-1522",
+  "attempt": "A77 takeover of the single A76 client job",
+  "product_commit": "acc9fdf195d6b5007f61563253c36288a43da3ce",
+  "previous_head": "7cc217f88e4947fc18dba5bbb17024e8f6a70675",
+  "branch": "feat/keeper-camera-20261016",
+  "workspace": "/data2/keeper-camera-20261016",
+  "product_change": "Start the unchanged 200000000 ns interval only after the first white frame is drawn and Window.updateDisplay returns from presentation.",
+  "artifacts": {
+    "locked_delivery": {
+      "path": "qa-evidence/20261016-200ms-rebuild-a3/prebuild/delivery.jar",
+      "sha256": "6e5250ceec0abf5bbd0a013308d768e41fc3028be2204ee4e52597823b32ee52"
+    },
+    "locked_runtime": {
+      "path": "qa-evidence/20261016-200ms-rebuild-a3/prebuild/runtime.jar",
+      "sha256": "5ba9520754e5cfbde43030a99d235950637423cd268e86283711d559ac27c5f9"
+    },
+    "test_delivery": {
+      "path": "qa-evidence/20261017-a69-presented-frame/artifacts/delivery.jar",
+      "sha256": "1d2bb3b70a9e56779936c2d984fcdbefe62d58df394e7cb8ee8bc1b765e99035"
+    },
+    "test_runtime": {
+      "path": "qa-evidence/20261017-a69-presented-frame/artifacts/keeper-runtime.jar",
+      "sha256": "92d9bbc5376cfb67d237fbb2e7b00bd77e4bc48878c1e2a50be858f6c9cba581"
+    }
+  },
+  "real_client_run": {
+    "job_id": "job-9_oLoomNv4fXJ7H1",
+    "evidence": "qa-evidence/20261017-a76-fast-graphics",
+    "guard_passed_utc": "2026-10-17T14:58:32Z",
+    "terminal_utc": "2026-10-17T15:16:38Z",
+    "disk_exit_code": 1,
+    "client_launched": true,
+    "mock_or_stub": false,
+    "flash": "NOT_VERIFIED",
+    "sepia": "NOT_VERIFIED",
+    "hud_countdown": "NOT_VERIFIED",
+    "exit_cleanup": "NOT_VERIFIED",
+    "reason": "The unchanged pre-shutter readiness gate failed; no shutter was sent and no acceptance images or flash timeline exist for this run. Old passes are not reused.",
+    "failure_screenshot": "e2e/xvfb-exit.png",
+    "warmup": {
+      "csv": "e2e/render-warmup.csv",
+      "first_frame_utc": "2026-10-17T15:13:44.233Z",
+      "last_frame_utc": "2026-10-17T15:15:14.341Z",
+      "frames": 80,
+      "max_gap_ms": 6055.599698,
+      "gaps_over_250_ms": 33,
+      "longest_stable_ms": 1910.63009,
+      "longest_stable_frames": 21,
+      "required_stable_ms": 2000,
+      "required_max_gap_ms": 250,
+      "timeout_seconds": 90
+    }
+  },
+  "artifact_verification": {
+    "result": "PASS",
+    "keeper_classes_matched": 14,
+    "loaded_runtime_verified": true,
+    "evidence": "qa-evidence/20261017-a76-fast-graphics/loaded-provenance/artifact-provenance.json",
+    "not_a_visual_acceptance": true
+  },
+  "contention_evidence": {
+    "path": "qa-evidence/20261017-a76-fast-graphics/host-observations.jsonl",
+    "other_workspace": "/data2/ouyang-wound-20261016",
+    "other_gradle_started_utc": "2026-10-17T15:00:48Z",
+    "other_gametest_started_utc": "2026-10-17T15:06:31Z",
+    "cpu_idle_percent_at_150842_utc": 0.48,
+    "interpretation": "Observed resource contention during the run; not a claim of perpetual occupancy or proof that the product timer passes."
+  },
+  "repeatable_non_client_check": "python3 tools/verify_keeper_build.py qa-evidence/<fresh-run>/provenance --runtime-evidence qa-evidence/20261017-a76-fast-graphics/e2e",
+  "real_client_reproduction": {
+    "environment_file": "qa-evidence/20261017-a76-fast-graphics/reproduction.json",
+    "command": "python3 -u tools/keeper-e2e.py",
+    "conditions": "Reuse the same workspace and explicit hashed test JARs. Set KEEPER_QA_RESULTS to a fresh directory. Hold the original camera lock and recheck host availability. Never start while another Keeper job/client is active."
+  },
+  "ci_policy": "Skip automatic pull_request workflows that start extra clients. The existing build-jar.yml may be dispatched only on this feature branch: unit tests, server GameTests and build; its release step requires refs/heads/main and must remain skipped.",
+  "next_gate": "Obtain a verified uninterrupted test window, rerun the same real client without changing acceptance thresholds, and collect all four current-run visual results before independent review.",
+  "prohibited_actions_performed": []
+}
