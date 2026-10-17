@@ -135,10 +135,9 @@ public final class WaterGhostEntity extends Monster implements WaterGhostPoseSou
         private BlockPos destination;
         WaterGoal() { setFlags(EnumSet.of(Flag.MOVE)); }
         private boolean clearWaterEntry(BlockPos pos) {
-            var column = getDimensions(getPose()).makeBoundingBox(Vec3.atBottomCenterOf(pos))
-                    .expandTowards(0, Math.max(0, getY() - pos.getY()), 0);
+            var box = getDimensions(getPose()).makeBoundingBox(Vec3.atBottomCenterOf(pos));
             return WaterGhostBody.waterAt(WaterGhostEntity.this, pos)
-                    && level().noCollision(WaterGhostEntity.this, column);
+                    && level().noCollision(WaterGhostEntity.this, box);
         }
         @Override public boolean canUse() { return !pursuit && (isInWater() || dryTicks >= 200); }
         @Override public boolean requiresUpdateEveryTick() { return true; }
@@ -159,9 +158,12 @@ public final class WaterGhostEntity extends Monster implements WaterGhostPoseSou
                 if (destination != null && navigation.isDone()) {
                     Vec3 entry = Vec3.atBottomCenterOf(destination);
                     Vec3 step = entry.subtract(position()).multiply(1, 0, 1);
+                    var descent = getDimensions(getPose()).makeBoundingBox(entry)
+                            .expandTowards(0, Math.max(0, getY() - entry.y), 0);
                     // A completed path can leave a wide body supported by the bank.
                     // Finish the collision-free horizontal entry; gravity supplies the drop.
-                    if (level().noCollision(WaterGhostEntity.this, getBoundingBox().expandTowards(step))) {
+                    if (level().noCollision(WaterGhostEntity.this, descent)
+                            && level().noCollision(WaterGhostEntity.this, getBoundingBox().expandTowards(step))) {
                         moveControl.setWantedPosition(entry.x, getY(), entry.z, 1);
                     } else { destination = null; body.stopMoving(); }
                 }
