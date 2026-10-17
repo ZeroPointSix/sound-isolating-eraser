@@ -167,6 +167,7 @@ public final class SuxiaPocketWatchItem extends Item {
     @Override public int getBarColor(ItemStack stack) { return 0xA8141C; }
 
     @Override public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> lines, TooltipFlag flag) {
+        if (!com.zeropointsix.eraser.item.ItemGuideTooltips.showDetails()) return;
         for (String key : List.of("flavor1", "flavor2", "usage", "recall", "cooldown", "backlash", "profile")) {
             lines.add(Component.translatable(TOOLTIP + key).withStyle(ChatFormatting.GRAY));
         }

@@ -20,7 +20,15 @@ import net.minecraftforge.server.ServerLifecycleHooks;
 @Mod.EventBusSubscriber(modid = "gravity_qa")
 public final class ItemCategoryServerProbe {
     private static final String[] PHASES = {"baseline", "daoju", "both", "restored"};
+    static final java.util.List<ResourceLocation> GUIDE_ITEMS = java.util.List.of(
+            "sound_isolating_eraser:super_fertilizer_bag", "sound_isolating_eraser:gravity_jade_pendant",
+            "sound_isolating_eraser:shaxiadao", "sound_isolating_eraser:sound_isolating_eraser",
+            "sound_isolating_eraser:enhancement_pill_pack", "sound_isolating_eraser:red_nails",
+            "sound_isolating_eraser:suxia_pocket_watch", "sound_isolating_eraser:wind_thunder_wings",
+            "qihai:flare_gun", "qihai:karma_mark_yuchi", "qihai:holy_light_source", "qihai:yuchi_spawn_egg")
+            .stream().map(ResourceLocation::new).toList();
     private static int phase;
+    private static int round;
     private static volatile boolean reloading;
     private static volatile boolean tagsReloaded;
     private static boolean supplied;
@@ -41,16 +49,25 @@ public final class ItemCategoryServerProbe {
                     var player = server.getPlayerList().getPlayerByName(name);
                     if (player == null) return;
                     player.setGameMode(GameType.SURVIVAL);
-                    String[] ids = {"super_fertilizer_bag", "gravity_jade_pendant", "shaxiadao", "sound_isolating_eraser"};
-                    for (int i = 0; i < ids.length; i++) {
-                        player.getInventory().setItem(i, ForgeRegistries.ITEMS.getValue(
-                                new ResourceLocation("sound_isolating_eraser", ids[i])).getDefaultInstance());
-                    }
-                    player.getInventory().setItem(4, Items.STICK.getDefaultInstance());
-                    player.inventoryMenu.broadcastChanges();
+                    supply(player, ItemGuideProbeCases.cases().get(0));
                 }
                 Files.writeString(results.resolve("server-category-baseline.pass"), "server inventory fixture supplied\n");
+                Files.writeString(results.resolve("server-category-baseline-samples.pass"), "first inventory batch supplied\n");
                 supplied = true;
+            }
+            if (phase == 0 && round + 1 < ItemGuideProbeCases.cases().size()) {
+                var current = ItemGuideProbeCases.cases().get(round);
+                for (String role : new String[]{"wearer", "observer"}) {
+                    if (!Files.exists(results.resolve(role + "-category-" + current.name() + ".pass"))) return;
+                }
+                var next = ItemGuideProbeCases.cases().get(++round);
+                for (String name : new String[]{GravityTestServer.WEARER, GravityTestServer.OBSERVER}) {
+                    var player = server.getPlayerList().getPlayerByName(name);
+                    if (player == null) throw new AssertionError("Client disconnected between inventory batches");
+                    supply(player, next);
+                }
+                Files.writeString(results.resolve("server-category-" + next.name() + ".pass"), "inventory batch supplied\n");
+                return;
             }
             if (reloading) {
                 if (!tagsReloaded) return;
@@ -71,7 +88,7 @@ public final class ItemCategoryServerProbe {
                 for (String name : new String[]{GravityTestServer.WEARER, GravityTestServer.OBSERVER}) {
                     var player = server.getPlayerList().getPlayerByName(name);
                     if (player == null) throw new AssertionError("Client disconnected before fixture cleanup");
-                    for (int i = 0; i < 5; i++) player.getInventory().setItem(i, ItemStack.EMPTY);
+                    for (int i = 0; i < 36; i++) player.getInventory().setItem(i, ItemStack.EMPTY);
                     player.setGameMode(GameType.CREATIVE);
                     player.inventoryMenu.broadcastChanges();
                 }
@@ -109,6 +126,15 @@ public final class ItemCategoryServerProbe {
     private static void writeTag(Path directory, String name, boolean includeStick) throws Exception {
         Files.writeString(directory.resolve(name + ".json"),
                 "{\"replace\":false,\"values\":" + (includeStick ? "[\"minecraft:stick\"]" : "[]") + "}");
+    }
+
+    private static void supply(net.minecraft.server.level.ServerPlayer player, ItemGuideProbeCases.Case sample) {
+        for (int i = 0; i < 36; i++) player.getInventory().setItem(i, ItemStack.EMPTY);
+        for (int i = 0; i < sample.items().size(); i++) {
+            player.getInventory().setItem(i, ForgeRegistries.ITEMS.getValue(sample.items().get(i)).getDefaultInstance());
+        }
+        player.getInventory().setItem(35, Items.STICK.getDefaultInstance());
+        player.inventoryMenu.sendAllDataToRemote();
     }
 
     private ItemCategoryServerProbe() { }

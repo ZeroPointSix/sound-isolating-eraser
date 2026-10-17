@@ -2,7 +2,7 @@ name: Enhancement Pill Validation
 
 on:
   pull_request:
-    branches: [main, feature/eraser-gravity-round2]
+    branches: [main, feature/eraser-gravity-round2, feat/t3-item-guide-framework]
   workflow_dispatch:
 
 permissions:

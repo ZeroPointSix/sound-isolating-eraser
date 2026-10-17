@@ -91,6 +91,7 @@ public final class FlareIntegrationGameTests {
         BlockPos center = lightArea.center;
         h.assertTrue(FlareConfig.LIGHT_RADIUS.get() == 24 && FlareConfig.YELLOW_LIFETIME.get() == 1200, "default radius and lifetime");
         h.startSequence().thenWaitUntil(() -> h.assertTrue(lightArea.ticking(), "full light field ticking")).thenExecute(() -> {
+        System.out.println("FLARE_LIGHT_READY testTick=" + h.getTick() + " cleanupDue=" + (h.getTick() + 1215));
         Player player = player(h, center);
         var flare = new FlareProjectile(FlareContent.FLARE.get(), level);
         flare.setColor(1); flare.setOwner(player); flare.setPos(Vec3.atCenterOf(center)); level.addFreshEntity(flare);

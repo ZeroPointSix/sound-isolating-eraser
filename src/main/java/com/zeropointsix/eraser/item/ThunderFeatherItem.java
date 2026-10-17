@@ -25,10 +25,4 @@ public class ThunderFeatherItem extends Item {
                 && super.canBeHurtBy(source);
     }
 
-    @Override
-    public void appendHoverText(ItemStack stack, Level level,
-                                List<Component> lines, TooltipFlag flag) {
-        lines.add(Component.translatable("item.sound_isolating_eraser.thunder_feather.desc")
-                .withStyle(ChatFormatting.GRAY));
-    }
 }

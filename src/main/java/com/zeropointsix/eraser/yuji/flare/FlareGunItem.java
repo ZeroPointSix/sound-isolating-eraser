@@ -104,7 +104,4 @@ public final class FlareGunItem extends Item implements GeoItem {
         return InteractionResultHolder.sidedSuccess(gun, level.isClientSide);
     }
 
-    @Override public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> lines, TooltipFlag flag) {
-        lines.add(Component.translatable("tooltip.qihai.flare_gun"));
-    }
 }

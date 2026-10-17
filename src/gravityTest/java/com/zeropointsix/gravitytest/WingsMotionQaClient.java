@@ -114,7 +114,10 @@ final class WingsMotionQaClient {
             mc.options.keyUp.setDown(false);
             mc.options.keyJump.setDown(false);
             step = 4;
-            if (scenario == 11) Files.writeString(results.resolve("wings-motion-" + role + ".pass"), "PASS actual travel and remote simultaneous flight, 12 scenarios\n");
+            if (scenario == 11) {
+                WingsMotionQaServer.restoreConfig();
+                Files.writeString(results.resolve("wings-motion-" + role + ".pass"), "PASS actual travel and remote simultaneous flight, 12 scenarios\n");
+            }
             else if (leader) command(mc, "motionSetup" + (scenario + 1));
         }
     }

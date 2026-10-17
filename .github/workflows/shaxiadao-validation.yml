@@ -2,7 +2,7 @@ name: Shaxiadao Validation
 
 on:
   pull_request:
-    branches: [main, feature/enhancement-pill-pack]
+    branches: [main, feature/enhancement-pill-pack, feat/t3-item-guide-framework]
   workflow_dispatch:
 
 permissions:

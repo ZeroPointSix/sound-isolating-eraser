@@ -22,7 +22,7 @@ public final class ItemCategoryTooltips {
             return;
         }
 
-        MutableComponent label;
+        MutableComponent label = null;
         if (stack.is(ModItemTags.PRECIOUS_MEMORY)) {
             label = Component.translatable("tooltip.sound_isolating_eraser.suxia_pocket_watch.category")
                     .withStyle(ChatFormatting.GOLD);
@@ -32,10 +32,9 @@ public final class ItemCategoryTooltips {
         } else if (stack.is(ModItemTags.DAOJU)) {
             label = Component.translatable("tooltip.sound_isolating_eraser.daoju")
                     .withStyle(style -> style.withColor(0x8FAAC4));
-        } else {
-            return;
         }
-        // Run after ordinary tooltip additions, preserving the name and all existing lines.
-        tooltip.add(1, label);
+        // Preserve vanilla/third-party lines, rarity and NBT; only insert our own description.
+        if (label != null) tooltip.add(1, label);
+        ItemGuideTooltips.append(stack, tooltip, label == null ? 1 : 2);
     }
 }

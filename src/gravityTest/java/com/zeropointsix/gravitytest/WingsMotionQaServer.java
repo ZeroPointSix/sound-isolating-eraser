@@ -1,5 +1,6 @@
 package com.zeropointsix.gravitytest;
 
+import com.zeropointsix.eraser.gametest.GameTestConfigs;
 import com.zeropointsix.eraser.registry.ModItems;
 import com.zeropointsix.eraser.wings.FlightEvents;
 import com.zeropointsix.eraser.wings.WingsConfig;
@@ -21,6 +22,7 @@ import net.minecraft.world.phys.Vec3;
 final class WingsMotionQaServer {
     private static int scenario = -1;
     private static boolean running;
+    private static GameTestConfigs.LiveConfig liveConfig;
     private static final Set<String> ready = new HashSet<>();
     private static final Set<String> prepared = new HashSet<>();
     private static final Map<String, Sample> starts = new HashMap<>();
@@ -100,7 +102,10 @@ final class WingsMotionQaServer {
             if (ended.size() == 2) {
                 running = false;
                 announce(server, "motionDone" + scenario);
-                if (scenario == 11) Files.writeString(results.resolve("wings-motion-server.pass"), "PASS 12 scenarios, two actual survival players\n");
+                if (scenario == 11) {
+                    restoreConfig();
+                    Files.writeString(results.resolve("wings-motion-server.pass"), "PASS 12 scenarios, two actual survival players\n");
+                }
             }
         }
     }
@@ -118,11 +123,19 @@ final class WingsMotionQaServer {
     }
 
     static void configure(boolean custom) {
+        // ConfigValue.set autosaves live TOML; its watcher can race the four speed changes.
+        if (liveConfig == null) liveConfig = GameTestConfigs.sandbox(WingsConfig.SERVER_SPEC);
         var c = WingsConfig.SERVER;
         c.hoverMaxSpeed.set(custom ? 8.0 : 5.0);
         c.cruiseSpeed.set(custom ? 24.0 : 30.0);
         c.boostSpeed.set(custom ? 48.0 : 60.0);
         c.stormSpeed.set(custom ? 96.0 : 120.0);
+    }
+
+    static void restoreConfig() {
+        if (liveConfig == null) return;
+        liveConfig.close();
+        liveConfig = null;
     }
 
     private static void write(Path results) throws Exception {
