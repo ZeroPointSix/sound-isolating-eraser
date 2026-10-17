@@ -14,6 +14,7 @@ import net.minecraft.client.model.geom.builders.MeshDefinition;
 import net.minecraft.client.model.geom.PartPose;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.entity.LivingEntityRenderer;
@@ -21,8 +22,10 @@ import net.minecraft.client.renderer.entity.ThrownItemRenderer;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.EntityRenderersEvent;
+import net.minecraftforge.client.event.RegisterParticleProvidersEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
@@ -32,6 +35,11 @@ public final class FlareClient {
     private static final ModelLayerLocation PARACHUTE = new ModelLayerLocation(YujiContent.id("flare_parachute"), "main");
     private static final ResourceLocation RED_TEXTURE = YujiContent.id("textures/entity/flare_decoy.png");
     private static final ResourceLocation PARACHUTE_TEXTURE = YujiContent.id("textures/entity/flare_parachute.png");
+    @SubscribeEvent public static void particles(RegisterParticleProvidersEvent event) {
+        event.registerSpriteSet(FlareContent.RED_SPARK.get(), sprites -> new FlareSparkParticle.Provider(sprites, 0));
+        event.registerSpriteSet(FlareContent.YELLOW_SPARK.get(), sprites -> new FlareSparkParticle.Provider(sprites, 1));
+        event.registerSpriteSet(FlareContent.GREEN_SPARK.get(), sprites -> new FlareSparkParticle.Provider(sprites, 2));
+    }
     @SubscribeEvent public static void renderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerEntityRenderer(FlareContent.FLARE.get(), context -> new ThrownItemRenderer<>(context, .8F, true));
         event.registerEntityRenderer(FlareContent.DECOY.get(), DecoyRenderer::new);
@@ -65,6 +73,33 @@ public final class FlareClient {
         private DecoyRenderer(EntityRendererProvider.Context context) { super(context, new DecoyModel(context.bakeLayer(DECOY)), .15F); }
         @Override public ResourceLocation getTextureLocation(FlareDecoy entity) { return RED_TEXTURE; }
         @Override protected int getBlockLightLevel(FlareDecoy entity, BlockPos pos) { return 15; }
+        @Override public boolean shouldRender(FlareDecoy entity, Frustum frustum, double x, double y, double z) {
+            double distance = entity.tauntRadius() + 64;
+            return super.shouldRender(entity, frustum, x, y, z)
+                    || entity.distanceToSqr(x, y, z) <= distance * distance
+                    && frustum.isVisible(FlareRangeRing.bounds(entity.position(), entity.tauntRadius()));
+        }
+        @Override public void render(FlareDecoy entity, float yaw, float partial, PoseStack pose, MultiBufferSource buffers, int light) {
+            if (entity.isAlive() && !entity.isInvisible()) {
+                // A depth-tested, unlit ribbon stays visible at night and at minimum particles.
+                // Keep the bright core exactly on the gameplay radius; only opacity pulses.
+                VertexConsumer vertices = buffers.getBuffer(RenderType.lightning());
+                float pulse = .7F + .12F * (float) Math.sin((entity.tickCount + partial) * .12);
+                ring(pose, vertices, entity.tauntRadius(), FlareRangeRing.HALF_WIDTH, 0, 1, .04F, .02F, pulse);
+                ring(pose, vertices, entity.tauntRadius(), .07, .004, 1, .38F, .24F, .95F);
+            }
+            super.render(entity, yaw, partial, pose, buffers, light);
+        }
+        private static void ring(PoseStack pose, VertexConsumer vertices, double radius, double halfWidth,
+                                 double lift, float red, float green, float blue, float alpha) {
+            for (int i = 0; i < FlareRangeRing.SEGMENTS; i++) {
+                for (int corner = 0; corner < 4; corner++) {
+                    Vec3 point = FlareRangeRing.vertex(radius, halfWidth, i, corner);
+                    vertices.vertex(pose.last().pose(), (float) point.x, (float) (point.y + lift), (float) point.z)
+                            .color(red, green, blue, alpha).endVertex();
+                }
+            }
+        }
     }
     private static final class CrateRenderer extends EntityRenderer<FallingSupplyCrate> {
         private final net.minecraft.client.renderer.block.BlockRenderDispatcher blocks;
