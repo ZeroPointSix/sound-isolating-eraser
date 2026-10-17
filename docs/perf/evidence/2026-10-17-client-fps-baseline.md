@@ -17,7 +17,7 @@
 
 ## FPS 结果
 
-每场景 1 个生存客户端 PerfUser，预热至少 120 秒后录制。均值与 1% low 均来自单调时钟逐帧间隔，不取配置值或 F3 瞬时值。以下均为优化前；无前后改善百分比。
+每场景 1 个生存客户端 `T2Perf`，预热至少 120 秒后录制。该实际用户名由四份 `server-console.log` 的登录记录及[采集器 PLAYER 定义](https://github.com/ZeroPointSix/sound-isolating-eraser/blob/37fdce8d31f099c60d2c9a2c547db1439f1c3c92/tools/perf/full_suite.py#L18)核验；runbook 中的 `PerfUser` 仅为命令占位符。均值与 1% low 均来自单调时钟逐帧间隔，不取配置值或 F3 瞬时值。以下均为优化前；无前后改善百分比。
 
 | 场景 | 单调时钟秒数 | 帧端点 / 间隔数 | 平均 FPS | 1% low FPS | P95 / P99 帧时 ms |
 | --- | ---: | ---: | ---: | ---: | ---: |

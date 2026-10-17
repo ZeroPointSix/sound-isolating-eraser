@@ -52,7 +52,7 @@ enable-rcon=false
 
 如果 Gradle 终端未转发 stdin，用已授权 OP 玩家执行下述带 `/` 命令；不要把“进程启动”当成控制台可用。进入采样前必须确认日志中 Forge、模组、spark 加载成功，客户端确实登录，并能执行 `/spark profiler info`。只创建 GameTest 假玩家不等于复现 `ServerLevel.players()` 驱动的雨寂刷怪。
 
-开发客户端可在另一个终端用 `bash ./gradlew --no-daemon --console=plain runClient` 启动，再连接 `127.0.0.1:25592`。下文 `PerfUser` 为玩家名占位符，须替换为该客户端的实际名字并在前后运行保持同一身份。仅有无 GPU 的软件渲染环境时，可以验证流程，但 FPS 验收仍标“待真实客户端采集”。
+开发客户端可在另一个终端用 `bash ./gradlew --no-daemon --console=plain runClient` 启动，再连接 `127.0.0.1:25592`。下文 `PerfUser` 为玩家名占位符，须替换为该客户端的实际名字并在前后运行保持同一身份。仅有无 GPU 的软件渲染环境时，可记录真实世界帧时间作为 PR1 诊断基线，但不能用于硬件 GPU 基准或优化收益验收。已取得的四窗口软件渲染 FPS 见[客户端报告](evidence/2026-10-17-client-fps-baseline.md)，不再标为未采集；硬件 GPU 基准仍待后续实测。
 
 ## 三类场景
 
