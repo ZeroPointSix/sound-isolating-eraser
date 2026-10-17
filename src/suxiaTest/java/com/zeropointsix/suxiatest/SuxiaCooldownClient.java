@@ -19,6 +19,7 @@ import net.minecraftforge.event.TickEvent;
 /** Captures the unmodified item decoration from the actual OpenGL hotbar. */
 public final class SuxiaCooldownClient {
     static final boolean ENABLED = Boolean.getBoolean("suxia.qa.cooldownOnly");
+    private static final int EXPECTED_DURATION = Boolean.getBoolean("suxia.qa.deathCooldown") ? 12000 : 3600;
     private static final Path OUT = Path.of(System.getProperty("suxia.qa.results"));
     private static String phase = "", pending = "";
     private static int ticks, initialRemaining, samples;
@@ -91,10 +92,10 @@ public final class SuxiaCooldownClient {
             if (watchId == null) { watchId = tag.getUUID("WatchUUID"); deadline = tag.getLong("CooldownUntil"); }
             require(tag.getUUID("WatchUUID").equals(watchId) && tag.getLong("CooldownUntil") == deadline,
                     "same watch and exact deadline across all boundaries");
-            require(tag.getInt("CooldownDuration") == 3600 && !tag.getBoolean("Open"), "normal cooldown, closed item");
+            require(tag.getInt("CooldownDuration") == EXPECTED_DURATION && !tag.getBoolean("Open"), "expected cooldown, closed item");
             int remaining = tag.getInt("CooldownRemaining");
             float fraction = SuxiaClient.cooldownFraction(stack);
-            require(remaining > 0 && fraction > 0 && Math.abs(fraction - remaining / 3600F) < .00001,
+            require(remaining > 0 && fraction > 0 && Math.abs(fraction - remaining / (float) EXPECTED_DURATION) < .00001,
                     "positive per-watch mask after " + phase);
             require(!mc.player.getCooldowns().isOnCooldown(stack.getItem()), "no global cooldown mask");
             var control = mc.player.getInventory().getItem(1);
@@ -124,7 +125,7 @@ public final class SuxiaCooldownClient {
                     tested++;
                 }
                 record = "phase=" + phase + " sample=" + samples + " watch=" + watchId + " until=" + deadline
-                        + " remaining=" + remaining + " duration=3600 fraction=" + fraction
+                        + " remaining=" + remaining + " duration=" + EXPECTED_DURATION + " fraction=" + fraction
                         + " controlFraction=0 maskPixels=" + matches + "/" + tested + " hudVisible=" + !mc.options.hideGui;
                 shot.writeToFile(OUT.resolve(phase + "-" + samples + ".png"));
                 Files.writeString(OUT.resolve(phase + "-" + samples + ".txt"), record + "\n");
