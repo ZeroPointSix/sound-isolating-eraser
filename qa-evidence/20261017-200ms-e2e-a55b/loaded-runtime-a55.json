@@ -1,0 +1,5 @@
+{
+  "loaded_classes_match_unchanged_runtime_jar": true,
+  "default_duration_nanos": 200000000,
+  "note": "Loaded-byte verification only; actual visual timing is a separate gate."
+}

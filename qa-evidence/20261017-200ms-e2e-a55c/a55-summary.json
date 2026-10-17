@@ -1,0 +1,49 @@
+{
+  "collected_utc": "2026-10-17T01:54:07Z",
+  "head": "656d97ead2acf6b1d5942a46dd68683a2d8a2407",
+  "tested_head": "656d97ead2acf6b1d5942a46dd68683a2d8a2407",
+  "harness_exit": 1,
+  "runner_exit": 1,
+  "same_mapping_classes": "PASS: 13/13 unchanged classes, archived remap bytes equal delivery",
+  "loaded_runtime": {
+    "status": "NOT_VERIFIED",
+    "reason": "No current-run loaded class record"
+  },
+  "jar_hashes": {
+    "build/libs/sound_isolating_eraser-0.13.0-keeper.2.jar": "2dc4f746ebeea31eed48cc6040d15f9c5ad31bfc675adeeec69edb42aa6d36c0",
+    "build/keeper-runtime/keeper-runtime.jar": "5d39ee45df3ce5977419407b7593df13c83106a356ad35cc4756b25e54fc8fe6"
+  },
+  "four_visual_gates": {
+    "flash_200ms": {
+      "status": "NOT_VERIFIED",
+      "evidence": {}
+    },
+    "sepia": {
+      "status": "NOT_VERIFIED",
+      "evidence": {}
+    },
+    "hud_countdown": {
+      "status": "NOT_VERIFIED",
+      "evidence": {}
+    },
+    "exit_cleanup": {
+      "status": "NOT_VERIFIED",
+      "evidence": {}
+    }
+  },
+  "failures": {
+    "harness_startup": "Keeper dedicated server did not become ready within 900s; no current-run client started."
+  },
+  "failure_stage": "server_startup_timeout",
+  "earlier_attempt": {
+    "directory": "qa-evidence/20261017-200ms-e2e-a55b",
+    "result": "NOT_VERIFIED: 90s pre-shutter render readiness failed; no shutter sent.",
+    "loaded_runtime_evidence": "qa-evidence/20261017-200ms-e2e-a55b/loaded-runtime-a55.json",
+    "timing_evidence": "qa-evidence/20261017-200ms-e2e-a55b/readiness-failure-analysis.json"
+  },
+  "next_step": "Reserve an uncontended window: no other forgeclientuserdev/forgeserveruserdev test workloads, not just GameTest. Reuse the unchanged JAR and this QA fix for one serial run. Do not relax visual timing limits or kill unrelated services.",
+  "evidence_path": "/data2/keeper-camera-20261016/qa-evidence/20261017-200ms-e2e-a55c",
+  "reproduce": "python3 -u /data2/keeper-camera-20261016/qa-evidence/20261017-run-a55.py a55c",
+  "rerun_note": "The recorded evidence directory is immutable. Inspect existing job before choosing a fresh attempt. Never launch a second client.",
+  "limits": "No product JAR rebuilt. No push, PR, merge, deployment, watch changes, or independent review."
+}

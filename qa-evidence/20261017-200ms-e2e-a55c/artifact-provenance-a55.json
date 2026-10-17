@@ -1,0 +1,74 @@
+{
+  "utc": "2026-10-17T01:54:07Z",
+  "runtime_sha256": "5d39ee45df3ce5977419407b7593df13c83106a356ad35cc4756b25e54fc8fe6",
+  "delivery_sha256": "2dc4f746ebeea31eed48cc6040d15f9c5ad31bfc675adeeec69edb42aa6d36c0",
+  "method": "Rehash unchanged runtime/delivery class bytes and compare archived same-mapping runtime check against delivery. No JAR rebuilt.",
+  "mapping_evidence_source": "qa-evidence/20261016-a39-final-provenance",
+  "classes": {
+    "com/zeropointsix/eraser/keeper/KeeperEvents.class": {
+      "runtime_sha256": "0ff75f1db427c8edf996a3f61f33aab0baa0b2c272a73813745e185b0e6de776",
+      "delivery_sha256": "60bd5d34610cc12bbb8c3e34ee65bc646074493d316e84d954cb421965909f5f",
+      "existing_remap_bytes_match": true
+    },
+    "com/zeropointsix/eraser/keeper/InPhotoEffect$1.class": {
+      "runtime_sha256": "af3f057ef843ff60574bf8a8ecfd6037646a4062959963a3e2ebba3e1ca52de6",
+      "delivery_sha256": "ac6a2b5426773ac9d0db6a541684a633bcc6c246fd8eb00277278a0b604e1cf9",
+      "existing_remap_bytes_match": true
+    },
+    "com/zeropointsix/eraser/keeper/KeeperNetwork$Visibility.class": {
+      "runtime_sha256": "05eb7044ccb9128264dadde30bd4284b49d479529e621d4028273a50d20e98be",
+      "delivery_sha256": "7973207b90ec3c616bd7c0689c1f6aea4725fc5e364373a03dc59952809f57c1",
+      "existing_remap_bytes_match": true
+    },
+    "com/zeropointsix/eraser/keeper/KeeperSessions$Destination.class": {
+      "runtime_sha256": "776e704ed47277f9d671fe000795d87327e2437526272c4d8067e992434221be",
+      "delivery_sha256": "b20d660acbea57f20d4575cd197942298df8aa397228c3e0aeae148cf35e5c57",
+      "existing_remap_bytes_match": true
+    },
+    "com/zeropointsix/eraser/keeper/KeeperSessions.class": {
+      "runtime_sha256": "d45cd44dd7a3201d8378a7017698c4ad7112bd4bbf2a89c2786f4586adf66ac6",
+      "delivery_sha256": "7968572b6f9a611ff1281c648a58c6a879a0cd4b7ae7b372c0f853adf764337d",
+      "existing_remap_bytes_match": true
+    },
+    "com/zeropointsix/eraser/keeper/KeeperNetwork$Flash.class": {
+      "runtime_sha256": "46aefaf8ffac04fdc4599555aea45f227cd6aac252eec081dc74b5f5dbf7fffd",
+      "delivery_sha256": "898f94df6b9ee2284bd797448b2dc3e342e53aa9b7e92bfb51d1b92e4279ab68",
+      "existing_remap_bytes_match": true
+    },
+    "com/zeropointsix/eraser/keeper/client/KeeperVisuals.class": {
+      "runtime_sha256": "27f1edd8f3f902b969c96e659923f2b7fe9ea131ec0bb9af09bccae3c3369965",
+      "delivery_sha256": "435f4e1da2562612241c08fd70158ed6df03bd31d437bec8e630ce72e606b3b8",
+      "existing_remap_bytes_match": true
+    },
+    "com/zeropointsix/eraser/keeper/client/KeeperVisuals$Registration.class": {
+      "runtime_sha256": "8cbd5cc6948655a1cc7da0930a65a5e19654de64ebeac62d95e9bd5c15700baf",
+      "delivery_sha256": "453131a436968c649bc2abbdd753dc457419d7ada9867e0f5e507380947b80ab",
+      "existing_remap_bytes_match": true
+    },
+    "com/zeropointsix/eraser/keeper/KeeperPhotoItem.class": {
+      "runtime_sha256": "3f9f1b8e778e401d0c6f5f5773536854107a2242feb4bc16cb52dfd12c928e9e",
+      "delivery_sha256": "cb3bd053a94e5d640c04b4a86d5c77f2ab32b1e024806f00f72041ee7379432e",
+      "existing_remap_bytes_match": true
+    },
+    "com/zeropointsix/eraser/keeper/InPhotoEffect.class": {
+      "runtime_sha256": "4c751ccf24761be023003bae2a4835bc9b80307b659c64f2f75f91b8534faca9",
+      "delivery_sha256": "436ae7971c3a19963529c396d907155730b93ce7c087056c6eea40e3118c5e10",
+      "existing_remap_bytes_match": true
+    },
+    "com/zeropointsix/eraser/keeper/KeeperNetwork.class": {
+      "runtime_sha256": "93e3d650b10a4a606d8f98f9d6c70c470ac51d96b582f52beb794fa4538ee49f",
+      "delivery_sha256": "a5348fb48ef0223510171a8584e0f11d133d79097ef396fdd37f4cac4a6e97ab",
+      "existing_remap_bytes_match": true
+    },
+    "com/zeropointsix/eraser/keeper/KeeperData.class": {
+      "runtime_sha256": "60601c63524ef15a4ec0ba48466e40075c5fffabf99ed0513d4a483bd2a0e299",
+      "delivery_sha256": "365cd827ea83698e06018f46836f663c444a8316d2dea45cf1a7cb41679bbed7",
+      "existing_remap_bytes_match": true
+    },
+    "com/zeropointsix/eraser/keeper/KeeperCameraItem.class": {
+      "runtime_sha256": "7848b15fc1cf658912c65940fb2a613c213fc176ce1246acab8b7fe2eefdd480",
+      "delivery_sha256": "c8cb6d034c3f0bf0548d064be01ba9c11a80a0a12b9e68c8b21c1acf0a862739",
+      "existing_remap_bytes_match": true
+    }
+  }
+}
