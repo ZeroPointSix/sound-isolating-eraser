@@ -1063,13 +1063,24 @@ public final class RedNailsGameTests {
         h.runAfterDelay(4, () -> {
             g.setPos(p.position().add(0, 0, -1));
             g.setTarget(p);
+            int sentBefore = f.channels.get(0).outboundMessages().size();
             g.ghostBody().grab.start();
             check(h, !p.isPassenger(), "Grab dismounts a moving boat player");
-            check(h, f.channels.get(0).outboundMessages().stream().anyMatch(message ->
-                    message instanceof net.minecraft.network.protocol.game.ClientboundTeleportEntityPacket packet
-                            && packet.getId() == boat.getId()
-                            && packet.getX() == boat.getX() && packet.getY() == boat.getY()
-                            && packet.getZ() == boat.getZ()),
+            boolean detached = false, hullSent = false;
+            for (var message : f.channels.get(0).outboundMessages().stream().skip(sentBefore).toList()) {
+                if (message instanceof net.minecraft.network.protocol.game.ClientboundSetPassengersPacket packet
+                        && packet.getVehicle() == boat.getId()
+                        && java.util.Arrays.stream(packet.getPassengers()).noneMatch(id -> id == p.getId())) {
+                    detached = true;
+                }
+                if (message instanceof net.minecraft.network.protocol.game.ClientboundTeleportEntityPacket packet
+                        && packet.getId() == boat.getId()) {
+                    check(h, detached, "Former driver receives dismount before the hull correction");
+                    hullSent = packet.getX() == boat.getX() && packet.getY() == boat.getY()
+                            && packet.getZ() == boat.getZ();
+                }
+            }
+            check(h, hullSent,
                     "Dismount sends the authoritative hull position to the former driver");
             check(h, g.ghostBody().grab.held() == p, "ServerPlayer velocity-correction branch holds the rider");
         });

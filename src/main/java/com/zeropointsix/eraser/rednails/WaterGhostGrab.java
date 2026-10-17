@@ -5,6 +5,7 @@ import java.util.EnumSet;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.protocol.game.ClientboundSetEntityMotionPacket;
+import net.minecraft.network.protocol.game.ClientboundSetPassengersPacket;
 import net.minecraft.network.protocol.game.ClientboundTeleportEntityPacket;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
@@ -79,7 +80,9 @@ public final class WaterGhostGrab extends Goal {
         target.stopRiding();
         if (vehicle != null && target instanceof ServerPlayer player && player.connection != null) {
             // The former driver may have predicted several boat ticks beyond the server.
-            // Send after the passenger update so both sides collide against the same hull.
+            // stopRiding's tracker update is deferred; detach first so the former driver
+            // does not process a hull correction while it still controls the boat.
+            player.connection.send(new ClientboundSetPassengersPacket(vehicle));
             player.connection.send(new ClientboundTeleportEntityPacket(vehicle));
             player.connection.send(new ClientboundSetEntityMotionPacket(vehicle));
         }
