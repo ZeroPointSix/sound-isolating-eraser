@@ -1,0 +1,33 @@
+{
+  "history_rejections": [
+    {
+      "attempt": "a63b",
+      "source_sha256": "7aed17cc7bce35873abd3a97a0229d536daf99b3286b5acef9c02f3d3624e096",
+      "report": {
+        "origin": "first_visible_interior_pixel_frame",
+        "product_origin": "native_packet_deadline_minus_200ms",
+        "first_visible_product_ms": null,
+        "visible_clear_ms": null,
+        "visible_result": "FAIL",
+        "acceptance": "original_gates_still_required",
+        "reason": "No real visible flash; no timing origin assigned"
+      }
+    },
+    {
+      "attempt": "a63c",
+      "source_sha256": "cd5e5ca753b7ffa749636af1b98c7b0d291a74f2d7ccf2450a62e314ff921a0e",
+      "report": {
+        "origin": "first_visible_interior_pixel_frame",
+        "product_origin": "native_packet_deadline_minus_200ms",
+        "first_visible_product_ms": null,
+        "visible_clear_ms": null,
+        "visible_result": "FAIL",
+        "acceptance": "original_gates_still_required",
+        "reason": "No real visible flash; no timing origin assigned"
+      }
+    }
+  ],
+  "original_harness_unchanged": true,
+  "result": "PASS",
+  "preflight_correction": "First check matched setAccessible; regex retry had an escaping typo. Literal value-setter check used; no acceptance threshold changed."
+}

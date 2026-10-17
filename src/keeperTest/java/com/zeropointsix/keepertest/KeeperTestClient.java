@@ -124,6 +124,15 @@ public final class KeeperTestClient {
             observeShutterStage("render_" + event.phase.name().toLowerCase(java.util.Locale.ROOT));
             if (event.phase != TickEvent.Phase.END) return;
             observeWarmupFrame(System.nanoTime());
+            if (phase.equals("shoot") && ticks >= 20 && !shutterSent && baselineSaved
+                    && renderReady() && samplerReady && Files.exists(RESULTS.resolve("capture.ready"))) {
+                // Schedule native input only after a real world frame has finished rendering.
+                shutterScheduledNs = System.nanoTime();
+                shutterStableNanos = shutterScheduledNs - stableSince;
+                shutterStableFrames = stableFrames;
+                shutterSent = true;
+                clickShutter();
+            }
             if (timingSaved) return;
             long deadline = flashDeadline.getLong(null);
             if (deadline == 0) return;
@@ -149,7 +158,8 @@ public final class KeeperTestClient {
                 Files.writeString(RESULTS.resolve("flash-frame-times.csv"), frameTimes);
                 Files.writeString(RESULTS.resolve("shutter-input.txt"),
                         "scheduled_ns=" + shutterScheduledNs + "\nnative_right_click_ns=" + shutterClickNs
-                                + "\ninput_finished_ns=" + shutterInputFinishedNs + "\nmode=async_native_xdotool\n");
+                                + "\ninput_finished_ns=" + shutterInputFinishedNs
+                                + "\nmode=async_native_xdotool_after_render_end\n");
                 Files.writeString(RESULTS.resolve("shutter-stages.csv"), shutterStages);
                 Files.writeString(RESULTS.resolve("render-warmup.csv"), warmupFrames);
                 Files.writeString(RESULTS.resolve("render-ready.txt"), "stable_frames=" + shutterStableFrames
@@ -438,14 +448,6 @@ public final class KeeperTestClient {
             if (phase.equals("shoot")) {
                 if (ticks == 8) input("key", "1");
                 if (baselineSaved && renderReady()) startFlashGrabber();
-                if (ticks >= 20 && !shutterSent && baselineSaved && renderReady() && samplerReady
-                        && Files.exists(RESULTS.resolve("capture.ready"))) {
-                    shutterScheduledNs = System.nanoTime();
-                    shutterStableNanos = shutterScheduledNs - stableSince;
-                    shutterStableFrames = stableFrames;
-                    shutterSent = true;
-                    clickShutter();
-                }
             }
 
             if (phase.equals("enter")) {
