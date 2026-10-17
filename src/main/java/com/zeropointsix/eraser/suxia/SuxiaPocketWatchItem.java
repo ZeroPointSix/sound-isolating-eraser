@@ -168,9 +168,6 @@ public final class SuxiaPocketWatchItem extends Item {
 
     @Override public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> lines, TooltipFlag flag) {
         if (!com.zeropointsix.eraser.item.ItemGuideTooltips.showDetails()) return;
-        for (String key : List.of("flavor1", "flavor2", "usage", "recall", "cooldown", "backlash", "profile")) {
-            lines.add(Component.translatable(TOOLTIP + key).withStyle(ChatFormatting.GRAY));
-        }
         lines.add(Component.translatable("tooltip.sound_isolating_eraser.summon_guard.range",
                 com.zeropointsix.eraser.memory.SummonCombatConfig.guardRadius()).withStyle(ChatFormatting.GRAY));
         for (String key : List.of("priority", "protected", "pvp")) {
