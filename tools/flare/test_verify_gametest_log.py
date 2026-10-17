@@ -64,7 +64,7 @@ class GameTestLogGateTests(unittest.TestCase):
 
     def test_incorrect_count(self):
         with self.assertRaises(SystemExit):
-            verify_log(self.batches.replace("(15 tests)", "(14 tests)") + "\n" + self.success)
+            verify_log(self.batches.replace("(16 tests)", "(15 tests)") + "\n" + self.success)
 
     def test_too_few_completed(self):
         with self.assertRaises(SystemExit):

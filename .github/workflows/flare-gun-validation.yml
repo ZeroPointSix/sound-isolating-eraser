@@ -1,0 +1,62 @@
+name: Flare gun validation
+
+on:
+  pull_request:
+    paths:
+      - 'src/main/**'
+      - 'src/flareGunTest/**'
+      - 'tools/flare/**'
+      - 'gradle/flare-gun-e2e.gradle'
+      - 'build.gradle'
+      - 'gradle.properties'
+      - '.github/workflows/flare-gun-validation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: flare-gun-validation-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  gun-client-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check model, animations and mixin targets
+        run: |
+          python tools/flare/verify_gun_assets.py
+          python tools/verify_mixin_targets.py
+      - name: Install recording tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg xvfb
+      - name: Prepare real Forge client and dedicated server
+        run: bash ./gradlew -PflareGunE2E writeFlareGunTestClasspath --no-daemon --max-workers=2
+      - name: Record first and third person loading and firing
+        env:
+          LP_NUM_THREADS: '2'
+        run: python tools/flare/gun_e2e.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: flare-gun-evidence
+          retention-days: 30
+          path: |
+            build/flare-gun-e2e-*/*.log
+            build/flare-gun-e2e-*/*.pass
+            build/flare-gun-e2e-*/*.failed
+            build/flare-gun-e2e-*/*.csv
+            build/flare-gun-e2e-*/*.png
+            build/flare-gun-e2e-*/*.mp4
+            build/flare-gun-e2e-*/*.wav
