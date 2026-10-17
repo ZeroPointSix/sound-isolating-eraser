@@ -139,6 +139,18 @@ public final class WaterGhostEntity extends Monster implements WaterGhostPoseSou
             return WaterGhostBody.waterAt(WaterGhostEntity.this, pos)
                     && level().noCollision(WaterGhostEntity.this, box);
         }
+        private boolean canWalkIntoWater(Vec3 from, BlockPos water) {
+            Vec3 entry = Vec3.atBottomCenterOf(water);
+            if (entry.y > from.y || !clearWaterEntry(water)) return false;
+            var size = getDimensions(getPose());
+            var across = size.makeBoundingBox(from)
+                    .expandTowards(entry.x - from.x, 0, entry.z - from.z);
+            var down = size.makeBoundingBox(entry).expandTowards(0, from.y - entry.y, 0);
+            return level().getWorldBorder().isWithinBounds(across)
+                    && level().getWorldBorder().isWithinBounds(down)
+                    && level().noCollision(WaterGhostEntity.this, across)
+                    && level().noCollision(WaterGhostEntity.this, down);
+        }
         @Override public boolean canUse() { return !pursuit && (isInWater() || dryTicks >= 200); }
         @Override public boolean requiresUpdateEveryTick() { return true; }
         @Override public void start() { destination = null; body.stopMoving(); }
@@ -157,13 +169,9 @@ public final class WaterGhostEntity extends Monster implements WaterGhostPoseSou
                 }
                 if (destination != null && navigation.isDone()) {
                     Vec3 entry = Vec3.atBottomCenterOf(destination);
-                    Vec3 step = entry.subtract(position()).multiply(1, 0, 1);
-                    var descent = getDimensions(getPose()).makeBoundingBox(entry)
-                            .expandTowards(0, Math.max(0, getY() - entry.y), 0);
                     // A completed path can leave a wide body supported by the bank.
                     // Finish the collision-free horizontal entry; gravity supplies the drop.
-                    if (level().noCollision(WaterGhostEntity.this, descent)
-                            && level().noCollision(WaterGhostEntity.this, getBoundingBox().expandTowards(step))) {
+                    if (canWalkIntoWater(position(), destination)) {
                         moveControl.setWantedPosition(entry.x, getY(), entry.z, 1);
                     } else { destination = null; body.stopMoving(); }
                 }
@@ -177,8 +185,18 @@ public final class WaterGhostEntity extends Monster implements WaterGhostPoseSou
                     // Retain vanilla's original approach accuracy, then verify the
                     // remaining entry against the actual body instead of assuming it is wet.
                     var path = navigation.createPath(water, 1);
-                    if (path != null && path.canReach() && path.getEndNode() != null
-                            && navigation.moveTo(path, 1)) destination = path.getTarget();
+                    if (path != null && path.getEndNode() != null) {
+                        Vec3 end = path.getEntityPosAtNode(WaterGhostEntity.this, path.getNodeCount() - 1);
+                        // Amphibious nodes can stop above WATER_BORDER. A partial path is
+                        // usable only when the full body can physically walk and drop in.
+                        boolean entryClear = canWalkIntoWater(end, path.getTarget());
+                        com.mojang.logging.LogUtils.getLogger().debug(
+                                "Water ghost return: canReach={} end={} water={} entryClear={}",
+                                path.canReach(), end, path.getTarget(), entryClear);
+                        if ((path.canReach() || entryClear) && navigation.moveTo(path, 1)) {
+                            destination = path.getTarget();
+                        }
+                    }
                 }
             }
         }
