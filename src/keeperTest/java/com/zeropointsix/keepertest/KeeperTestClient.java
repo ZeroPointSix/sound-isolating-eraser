@@ -50,12 +50,23 @@ public final class KeeperTestClient {
     private static boolean joinedWorld;
     private static long warmupBegan, lastWarmupFrame, stableSince;
     private static int stableFrames;
-    private static long shutterClickNs, shutterStableNanos;
+    private static volatile long shutterClickNs, shutterInputFinishedNs;
+    private static volatile Throwable shutterInputError;
+    private static long shutterScheduledNs, shutterStableNanos;
     private static int shutterStableFrames;
     private static boolean enterPressed;
     private static long enterBegan;
     private static final StringBuilder warmupFrames = new StringBuilder(
             "epoch_ms,monotonic_ns,gap_ms,stable_frames,baseline_saved\n");
+    private static final StringBuilder shutterStages = new StringBuilder(
+            "epoch_ms,monotonic_ns,stage,flash_deadline_ns,input_started_ns,input_finished_ns\n");
+
+    private static void observeShutterStage(String stage) throws Exception {
+        if (!shutterSent || timingSaved || flashDeadline == null) return;
+        shutterStages.append(System.currentTimeMillis()).append(',').append(System.nanoTime()).append(',')
+                .append(stage).append(',').append(flashDeadline.getLong(null)).append(',')
+                .append(shutterClickNs).append(',').append(shutterInputFinishedNs).append('\n');
+    }
 
     private static void observeWarmupFrame(long now) throws Exception {
         if (shutterSent || !(phase.equals("baseline") || phase.equals("shoot"))) return;
@@ -108,8 +119,10 @@ public final class KeeperTestClient {
 
     @SubscribeEvent
     public static void rendered(TickEvent.RenderTickEvent event) {
-        if (event.phase != TickEvent.Phase.END || failed || flashDeadline == null) return;
+        if (failed || flashDeadline == null) return;
         try {
+            observeShutterStage("render_" + event.phase.name().toLowerCase(java.util.Locale.ROOT));
+            if (event.phase != TickEvent.Phase.END) return;
             observeWarmupFrame(System.nanoTime());
             if (timingSaved) return;
             long deadline = flashDeadline.getLong(null);
@@ -134,7 +147,10 @@ public final class KeeperTestClient {
                 // Keep all disk I/O outside the measured shutter window.
                 atomicSignal("flash-deadline.txt", Long.toString(observedDeadline));
                 Files.writeString(RESULTS.resolve("flash-frame-times.csv"), frameTimes);
-                Files.writeString(RESULTS.resolve("shutter-input.txt"), "native_right_click_ns=" + shutterClickNs + "\n");
+                Files.writeString(RESULTS.resolve("shutter-input.txt"),
+                        "scheduled_ns=" + shutterScheduledNs + "\nnative_right_click_ns=" + shutterClickNs
+                                + "\ninput_finished_ns=" + shutterInputFinishedNs + "\nmode=async_native_xdotool\n");
+                Files.writeString(RESULTS.resolve("shutter-stages.csv"), shutterStages);
                 Files.writeString(RESULTS.resolve("render-warmup.csv"), warmupFrames);
                 Files.writeString(RESULTS.resolve("render-ready.txt"), "stable_frames=" + shutterStableFrames
                         + " stable_ms=" + shutterStableNanos / 1_000_000.0
@@ -174,6 +190,22 @@ public final class KeeperTestClient {
         if (new ProcessBuilder(command).start().waitFor() != 0) {
             throw new AssertionError("native input failed: " + String.join(" ", args));
         }
+    }
+
+    private static void clickShutter() {
+        // Native input must not block the game's tick/render thread during measurement.
+        Thread thread = new Thread(() -> {
+            try {
+                shutterClickNs = System.nanoTime();
+                input("click", "3");
+            } catch (Throwable error) {
+                shutterInputError = error;
+            } finally {
+                shutterInputFinishedNs = System.nanoTime();
+            }
+        }, "keeper-qa-native-shutter");
+        thread.setDaemon(true);
+        thread.start();
     }
 
     private static void require(boolean value, String message) {
@@ -352,7 +384,13 @@ public final class KeeperTestClient {
 
     @SubscribeEvent
     public static void tick(TickEvent.ClientTickEvent event) {
-        if (event.phase != TickEvent.Phase.END || failed) return;
+        if (failed) return;
+        try {
+            observeShutterStage("tick_" + event.phase.name().toLowerCase(java.util.Locale.ROOT));
+        } catch (Exception error) {
+            shutterInputError = error;
+        }
+        if (event.phase != TickEvent.Phase.END) return;
         Minecraft mc = Minecraft.getInstance();
         if (phase.isEmpty()) {
             if (mc.player != null && mc.level != null) {
@@ -387,6 +425,7 @@ public final class KeeperTestClient {
         }
         if (mc.player == null || mc.level == null) return;
         try {
+            if (shutterInputError != null) throw new AssertionError("Native shutter input/observation failed", shutterInputError);
             ticks++;
             if (flashDeadline == null) provenance();
             if (ticks <= 8) prepare(mc);
@@ -401,11 +440,11 @@ public final class KeeperTestClient {
                 if (baselineSaved && renderReady()) startFlashGrabber();
                 if (ticks >= 20 && !shutterSent && baselineSaved && renderReady() && samplerReady
                         && Files.exists(RESULTS.resolve("capture.ready"))) {
-                    shutterClickNs = System.nanoTime();
-                    shutterStableNanos = shutterClickNs - stableSince;
+                    shutterScheduledNs = System.nanoTime();
+                    shutterStableNanos = shutterScheduledNs - stableSince;
                     shutterStableFrames = stableFrames;
                     shutterSent = true;
-                    input("click", "3");
+                    clickShutter();
                 }
             }
 
