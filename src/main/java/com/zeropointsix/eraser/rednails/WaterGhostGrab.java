@@ -5,6 +5,7 @@ import java.util.EnumSet;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.protocol.game.ClientboundSetEntityMotionPacket;
+import net.minecraft.network.protocol.game.ClientboundTeleportEntityPacket;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
@@ -74,7 +75,14 @@ public final class WaterGhostGrab extends Goal {
         duration = body.swimming() ? 100 : 60;
         enteredWater = body.swimming();
         shoreWater = findShoreWater();
+        var vehicle = target.getVehicle();
         target.stopRiding();
+        if (vehicle != null && target instanceof ServerPlayer player && player.connection != null) {
+            // The former driver may have predicted several boat ticks beyond the server.
+            // Send after the passenger update so both sides collide against the same hull.
+            player.connection.send(new ClientboundTeleportEntityPacket(vehicle));
+            player.connection.send(new ClientboundSetEntityMotionPacket(vehicle));
+        }
         body.stopMoving();
         body.grabbing(true);
         lock();

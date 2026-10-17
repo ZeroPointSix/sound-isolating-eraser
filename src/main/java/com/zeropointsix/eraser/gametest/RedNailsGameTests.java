@@ -1065,6 +1065,12 @@ public final class RedNailsGameTests {
             g.setTarget(p);
             g.ghostBody().grab.start();
             check(h, !p.isPassenger(), "Grab dismounts a moving boat player");
+            check(h, f.channels.get(0).outboundMessages().stream().anyMatch(message ->
+                    message instanceof net.minecraft.network.protocol.game.ClientboundTeleportEntityPacket packet
+                            && packet.getId() == boat.getId()
+                            && packet.getX() == boat.getX() && packet.getY() == boat.getY()
+                            && packet.getZ() == boat.getZ()),
+                    "Dismount sends the authoritative hull position to the former driver");
             check(h, g.ghostBody().grab.held() == p, "ServerPlayer velocity-correction branch holds the rider");
         });
         h.onEachTick(() -> {
