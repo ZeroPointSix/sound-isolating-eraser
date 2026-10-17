@@ -220,7 +220,21 @@ public final class KeeperGameTests {
         var p = player(h); Vec3 origin = p.position();
         h.assertTrue(KeeperSessions.safeSpot(h.getLevel(), p, origin) != null, "standing space found");
         var airborne = origin.add(0.23, 40.1, 0.17);
-        h.assertTrue(airborne.equals(KeeperSessions.safeSpot(h.getLevel(), p, airborne)), "original airborne coordinate preserved without floor requirement");
+        // This point is outside the template; establish and restore its empty-air fixture.
+        var previous = new java.util.LinkedHashMap<BlockPos, net.minecraft.world.level.block.state.BlockState>();
+        BlockPos feet = BlockPos.containing(airborne);
+        try {
+            for (BlockPos pos : BlockPos.betweenClosed(feet.offset(-1, -1, -1), feet.offset(1, 2, 1))) {
+                BlockPos at = pos.immutable();
+                previous.put(at, h.getLevel().getBlockState(at));
+                h.getLevel().setBlockAndUpdate(at, Blocks.AIR.defaultBlockState());
+            }
+            h.assertTrue(h.getLevel().noCollision(p, p.getBoundingBox().move(airborne.subtract(origin))),
+                    "airborne fixture has clear player headroom");
+            h.assertTrue(airborne.equals(KeeperSessions.safeSpot(h.getLevel(), p, airborne)), "original airborne coordinate preserved without floor requirement");
+        } finally {
+            previous.forEach((pos, state) -> h.getLevel().setBlockAndUpdate(pos, state));
+        }
         h.setBlock(1, 2, 1, Blocks.WATER); h.setBlock(1, 3, 1, Blocks.WATER);
         var underwater = capture(p);
         h.assertTrue(KeeperSessions.enter(p, underwater) && p.position().equals(origin), "underwater photo enters at exact coordinate");
