@@ -125,9 +125,27 @@ public final class RedNailsTestClient {
                 require(RedNailsItem.coolingCount(stack) == 1, "Client receives one torn nail");
                 var predicate = ItemProperties.getProperty(stack.getItem(), new ResourceLocation(ModMain.MOD_ID, "fallen_nails"));
                 require(predicate != null && predicate.call(stack, mc.level, mc.player, 0) == 0.25F, "Item switches to three-nail texture");
-                String tooltip = stack.getTooltipLines(mc.player, TooltipFlag.NORMAL).toString();
-                require(!tooltip.contains("tooltip." + ModMain.MOD_ID), "Chinese tooltips resolve");
-                Files.writeString(RESULTS.resolve(phase + "-tooltip.txt"), tooltip);
+                // Component.toString() always prints translation keys, so judge the text the client actually
+                // resolved: every mod key must exist in the loaded (zh_cn) language and render as Chinese text.
+                var lines = stack.getTooltipLines(mc.player, TooltipFlag.NORMAL);
+                var language = net.minecraft.locale.Language.getInstance();
+                var resolved = new StringBuilder();
+                for (var line : lines) {
+                    String text = line.getString();
+                    resolved.append(text).append('\n');
+                    for (var part : line.toFlatList()) {
+                        if (part.getContents() instanceof net.minecraft.network.chat.contents.TranslatableContents translated
+                                && translated.getKey().contains(ModMain.MOD_ID)) {
+                            require(language.has(translated.getKey()), "Chinese tooltips resolve: missing " + translated.getKey());
+                        }
+                    }
+                    require(!text.contains("tooltip." + ModMain.MOD_ID) && !text.contains("guide." + ModMain.MOD_ID),
+                            "Chinese tooltips resolve: raw key rendered in '" + text + "'");
+                }
+                require(lines.size() > 1 && lines.stream().skip(1).allMatch(line -> line.getString().codePoints()
+                                .anyMatch(c -> Character.UnicodeScript.of(c) == Character.UnicodeScript.HAN)),
+                        "Chinese tooltips resolve: every tooltip line renders Chinese text: " + resolved);
+                Files.writeString(RESULTS.resolve(phase + "-tooltip.txt"), resolved.toString());
             }
             for (String asset : new String[]{"textures/entity/water_ghost/water_ghost.png", "textures/entity/water_ghost/water_ghost_eyes.png", "textures/item/red_nails.png"})
                 require(mc.getResourceManager().getResource(new ResourceLocation(ModMain.MOD_ID, asset)).isPresent(), "Runtime texture exists: " + asset);
