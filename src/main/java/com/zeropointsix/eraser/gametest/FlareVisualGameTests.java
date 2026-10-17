@@ -204,13 +204,21 @@ public final class FlareVisualGameTests {
         h.assertTrue(level.getBlockState(recreated).is(Blocks.LIGHT) && !quiet(data, recreated)
                         && deadline(data, recreated) >= level.getGameTime() + 40,
                 "replacing a stale short record with yellow clears its quiet marker");
+        // Block light is propagated on the asynchronous light thread, so the brightness floor is awaited (inside the
+        // yellow lifetime) instead of being sampled on the exact cleanup tick; the >= 12 threshold is unchanged.
+        boolean[] covered = {false};
         h.runAfterDelay(12, () -> {
             data.cleanup(level);
             h.assertTrue(level.getBlockState(pos).is(Blocks.LIGHT), "promoted source outlives short lease");
-            h.assertTrue(level.getBlockState(denied).isAir() && level.getBrightness(LightLayer.BLOCK, denied.east()) >= 12,
-                    "allowed neighbouring yellow sources fill coverage after rejected short source expires");
+            h.assertTrue(level.getBlockState(denied).isAir(), "rejected short source expires");
+            h.startSequence().thenWaitUntil(() -> {
+                h.assertTrue(level.getBlockState(denied).isAir() && level.getBrightness(LightLayer.BLOCK, denied.east()) >= 12,
+                        "allowed neighbouring yellow sources fill coverage after rejected short source expires");
+                covered[0] = true;
+            });
         });
         h.runAfterDelay(44, () -> {
+            h.assertTrue(covered[0], "allowed neighbouring yellow sources fill coverage after rejected short source expires");
             data.cleanup(level);
             h.assertTrue(data.size() == 0 && level.getBlockState(pos).isAir(), "persistent owned sources eventually expire");
             h.assertTrue(level.getBlockState(pos.above()).is(Blocks.LIGHT) && level.getBlockState(pos.east()).is(Blocks.DIAMOND_BLOCK)

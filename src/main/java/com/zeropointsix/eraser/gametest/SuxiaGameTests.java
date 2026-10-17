@@ -141,6 +141,11 @@ public final class SuxiaGameTests {
         }
     }
 
+        // Live-AI guard tests run in their own batches: a 16-block guard radius otherwise reaches entities of
+    // concurrently running neighbour tests, which made friendly-fire/target assertions order-dependent.
+    @AfterBatch(batch = BATCH + "_live_summon_ai_attacks_idle_z") public static void cleanup_live_summon_ai_attacks_idle_z(ServerLevel level) { cleanup(level); }
+    @AfterBatch(batch = BATCH + "_live_acceptance_owner_combat_") public static void cleanup_live_acceptance_owner_combat_(ServerLevel level) { cleanup(level); }
+    @AfterBatch(batch = BATCH + "_live_summon_idle_ignores_othe") public static void cleanup_live_summon_idle_ignores_othe(ServerLevel level) { cleanup(level); }
     @AfterBatch(batch = BATCH) public static void cleanup(ServerLevel level) {
         FIXTURES.forEach(Fixture::close);
         FIXTURES.clear();
@@ -493,7 +498,7 @@ public final class SuxiaGameTests {
         });
     }
 
-    @GameTest(template = "empty", batch = BATCH, timeoutTicks = 300)
+    @GameTest(template = "empty", batch = BATCH + "_live_acceptance_owner_combat_", timeoutTicks = 300)
     public static void acceptance_owner_combat_goal_priority(GameTestHelper h) {
         ready(h, f -> {
             var owner = f.player(0, 0); f.watch(owner); var summon = f.summon(owner);
@@ -597,7 +602,7 @@ public final class SuxiaGameTests {
         });
     }
 
-    @GameTest(template = "empty", batch = BATCH, timeoutTicks = 400)
+    @GameTest(template = "empty", batch = BATCH + "_live_summon_idle_ignores_othe", timeoutTicks = 400)
     public static void summon_idle_ignores_other_players_view(GameTestHelper h) {
         ready(h, f -> {
             var first = f.player(-4, 0); look(first, 90, 25); f.watch(first);
@@ -921,7 +926,7 @@ public final class SuxiaGameTests {
         });
     }
 
-    @GameTest(template = "empty", batch = BATCH, timeoutTicks = 240)
+    @GameTest(template = "empty", batch = BATCH + "_live_summon_ai_attacks_idle_z", timeoutTicks = 240)
     public static void summon_ai_attacks_idle_zombie_within_100_ticks_without_friendly_fire(GameTestHelper h) {
         ready(h, f -> {
             var p = f.player(0, 0); f.watch(p);

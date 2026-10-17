@@ -123,6 +123,9 @@ public final class RedNailsGameTests {
             channels.forEach(EmbeddedChannel::finishAndReleaseAll);
         }
     }
+        // Live-AI guard tests run in their own batches: a 16-block guard radius otherwise reaches entities of
+    // concurrently running neighbour tests, which made friendly-fire/target assertions order-dependent.
+    @AfterBatch(batch = BATCH + "_live_guardian_ai_attacks_idle") public static void cleanup_live_guardian_ai_attacks_idle(ServerLevel level) { cleanup(level); }
     @AfterBatch(batch = BATCH) public static void cleanup(ServerLevel level) {
         FIXTURES.forEach(Fixture::close); FIXTURES.clear(); RedNailsInput.clear();
     }
@@ -379,7 +382,7 @@ public final class RedNailsGameTests {
                     "Real unequip recalls survivors without clearing the dead finger cooldown"); h.succeed();
         });
     }
-    @GameTest(template = "empty", batch = BATCH, timeoutTicks = 240)
+    @GameTest(template = "empty", batch = BATCH + "_live_guardian_ai_attacks_idle", timeoutTicks = 240)
     public static void guardian_ai_attacks_idle_zombie_at_radius_edge_and_protects_friends(GameTestHelper h) {
         var f = new Fixture(h);
         h.startSequence().thenWaitUntil(() -> check(h, f.level.isPositionEntityTicking(f.center), "Arena is ticking"))
