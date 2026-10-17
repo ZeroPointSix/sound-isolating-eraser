@@ -29,16 +29,21 @@ import org.lwjgl.glfw.GLFW;
 
 @Mod.EventBusSubscriber(modid = "red_nails_qa", value = Dist.CLIENT)
 public final class RedNailsTestClient {
+    private static final boolean PURSUIT = Boolean.getBoolean("rednails.qa.pursuit");
     private static final Path RESULTS = Path.of(System.getProperty("rednails.qa.results"));
     private static String phase = "";
     private static int ticks, frame, longPresses, longPhase, longPhaseTicks;
     private static boolean failed, captured, shortAcked;
+    private static boolean shoreAttackSent, shoreClientGrabSeen, wildClientGrabSeen;
+    private static Vec3 walkStart;
     private static ArmorStand camera;
     private static final HashMap<Integer, Integer> rendered = new HashMap<>();
     private static final HashMap<Integer, float[]> poses = new HashMap<>();
     private static void require(boolean condition, String message) { if (!condition) throw new AssertionError(message); }
     private static void fail(Throwable error) {
         failed = true; error.printStackTrace();
+        Minecraft.getInstance().options.keyUp.setDown(false);
+        RedNailsClient.KEY.setDown(false);
         try (var image = Screenshot.takeScreenshot(Minecraft.getInstance().getMainRenderTarget())) {
             image.writeToFile(RESULTS.resolve("client-failure.png"));
         } catch (Exception ignored) { }
@@ -55,6 +60,8 @@ public final class RedNailsTestClient {
                 }
             }
             phase = text.substring("RED_NAILS_QA:".length()); ticks = 0; captured = false; shortAcked = false;
+            Minecraft.getInstance().options.keyUp.setDown(false);
+            walkStart = null; shoreAttackSent = false;
             longPresses = 0; longPhase = 0; longPhaseTicks = 0;
             rendered.clear(); poses.clear(); RedNailsClient.KEY.setDown(false); event.setCanceled(true);
         }
@@ -88,7 +95,8 @@ public final class RedNailsTestClient {
             }
             ticks++;
             mc.options.hideGui = phase.equals("guard") || phase.equals("water");
-            if (phase.equals("input") || phase.equals("recall")) {
+            if (phase.equals("input") || phase.equals("recall") || phase.equals("shore")
+                    || phase.equals("wild-ready") || phase.equals("wild")) {
                 GLFW.glfwFocusWindow(mc.getWindow().getWindow());
                 mc.setScreen(null);
                 mc.mouseHandler.grabMouse();
@@ -131,7 +139,9 @@ public final class RedNailsTestClient {
                         System.out.println("RED_NAILS_QA_LONG_PRESS=" + (longPresses + 1));
                     }
                     RedNailsClient.KEY.setDown(true);
-                    if (++longPhaseTicks >= 25) {
+                    // Client and server tick clocks can diverge under software-rendering load.
+                    if (++longPhaseTicks >= 25 && (!PURSUIT || Files.exists(RESULTS.resolve(
+                            "server-long-press-" + (longPresses + 1) + ".ack")))) {
                         RedNailsClient.KEY.setDown(false);
                         longPhase = 2;
                         longPhaseTicks = 0;
@@ -156,6 +166,47 @@ public final class RedNailsTestClient {
                     mc.player.connection.send(new ServerboundPlayerCommandPacket(mc.player, ServerboundPlayerCommandPacket.Action.RELEASE_SHIFT_KEY));
                 }
             }
+            if (PURSUIT && phase.equals("wild-ready")) {
+                mc.setCameraEntity(mc.player);
+                mc.player.setYRot(180); mc.player.setYHeadRot(180); mc.player.setXRot(0);
+                mc.options.keyUp.setDown(false);
+                if (!Files.exists(RESULTS.resolve("client-wild-ready.signal"))) {
+                    Files.writeString(RESULTS.resolve("client-wild-ready.signal"),
+                            "Real client holds position pending natural pursuit; player=" + mc.player.position() + "\n");
+                }
+                return;
+            }
+            if (PURSUIT && (phase.equals("shore") || phase.equals("wild"))) {
+                for (var entity : mc.level.entitiesForRendering()) {
+                    if (phase.equals("shore") && !shoreAttackSent
+                            && entity instanceof net.minecraft.world.entity.monster.Pillager victim
+                            && victim.distanceToSqr(mc.player) < 9) {
+                        mc.player.setYRot(90); mc.player.setYHeadRot(90); mc.player.setXRot(0);
+                        Files.writeString(RESULTS.resolve("client-shore-attack.signal"), "Actual game-mode attack packet target=" + victim.getUUID()
+                                + " player=" + mc.player.position() + " victim=" + victim.position() + "\n");
+                        mc.gameMode.attack(mc.player, victim);
+                        mc.player.swing(net.minecraft.world.InteractionHand.MAIN_HAND);
+                        shoreAttackSent = true;
+                    }
+                    if (entity instanceof WaterGhostPoseSource source) {
+                        if (phase.equals("shore") && source.waterGhostGrabAmount(1) > 0.9F
+                                && source.waterGhostSwimAmount(1) > 0.9F) shoreClientGrabSeen = true;
+                        if (phase.equals("wild") && source.waterGhostGrabAmount(1) > 0.9F) wildClientGrabSeen = true;
+                        if (ticks % 10 == 0) System.out.println("RED_NAILS_NATIVE_CLIENT_SAMPLE phase=" + phase + " frame=" + frame
+                                + " player=" + mc.player.position() + " entity=" + entity.getUUID() + " position=" + entity.position()
+                                + " grab=" + source.waterGhostGrabAmount(1) + " swim=" + source.waterGhostSwimAmount(1));
+                    }
+                }
+                if (phase.equals("wild")) {
+                    require(Files.exists(RESULTS.resolve("server-wild-started.pass")),
+                            "keyboard movement waits for natural server pursuit");
+                    mc.setCameraEntity(mc.player);
+                    mc.player.setYRot(180); mc.player.setYHeadRot(180); mc.player.setXRot(0);
+                    if (walkStart == null) walkStart = mc.player.position();
+                    mc.options.keyUp.setDown(!wildClientGrabSeen && mc.player.position().subtract(walkStart).horizontalDistance() < 3);
+                    return;
+                }
+            }
             Vec3 center = phase.equals("water") ? new Vec3(-1, 72, 6) : mc.player.position().add(0, 1.2, 0);
             Vec3 at = center.add(7, phase.equals("water") ? 5 : 7, -9);
             if (camera == null) camera = new ArmorStand(mc.level, at.x, at.y, at.z);
@@ -177,12 +228,15 @@ public final class RedNailsTestClient {
     @SubscribeEvent public static void render(TickEvent.RenderTickEvent event) {
         if (event.phase == TickEvent.Phase.START) { frame++; return; }
         if (failed || captured || ticks < 15 || !(phase.equals("guard") || phase.equals("backlash")
-                || phase.equals("recalled") || phase.equals("water") || phase.equals("restored"))) return;
+                || phase.equals("recalled") || phase.equals("water") || phase.equals("restored")
+                || phase.equals("shore-complete") || phase.equals("wild-complete"))) return;
         var mc = Minecraft.getInstance();
         if (mc.level == null || mc.player == null || mc.screen != null) return;
         try {
             var stack = RedNailsItem.findWorn(mc.player);
             require(!stack.isEmpty(), "Actual client sees functional Curios item");
+            if (phase.equals("shore-complete")) require(shoreClientGrabSeen, "real client observed synchronized normal-AI swimming grab");
+            if (phase.equals("wild-complete")) require(wildClientGrabSeen, "real client observed normal wild-AI player grab");
             if (phase.equals("guard") && rendered.values().stream().filter(f -> f == frame).count() < 4) {
                 if (ticks < 300) return;
                 throw new AssertionError("Four live guardians must render in current frame");
@@ -194,9 +248,9 @@ public final class RedNailsTestClient {
                 require(grab, "Current real frame shows synchronized swim and grab pose");
             }
             if (phase.equals("backlash") || phase.equals("restored")) {
-                require(RedNailsItem.coolingCount(stack) == 1, "Client receives one torn nail");
+                require(RedNailsItem.coolingCount(stack) == (PURSUIT ? 3 : 1), "Client receives actual torn-nail count");
                 var predicate = ItemProperties.getProperty(stack.getItem(), new ResourceLocation(ModMain.MOD_ID, "fallen_nails"));
-                require(predicate != null && predicate.call(stack, mc.level, mc.player, 0) == 0.25F, "Item switches to three-nail texture");
+                require(predicate != null && predicate.call(stack, mc.level, mc.player, 0) == (PURSUIT ? 0.75F : 0.25F), "Item texture reflects actual torn nails");
                 var lines = stack.getTooltipLines(mc.player, TooltipFlag.NORMAL).stream()
                         .map(Component::getString).toList();
                 String tooltip = String.join("\n", lines);

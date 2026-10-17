@@ -14,6 +14,7 @@ CONFIGS = {c["name"]: c for c in json.loads((ROOT / ".vscode/launch.json").read_
 CLASSPATH = (ROOT / "build/red-nails-test-classpath.txt").read_text().strip()
 PORT = int(os.environ.get("RED_NAILS_QA_PORT", "25587"))
 TIMEOUT = int(os.environ.get("RED_NAILS_QA_TIMEOUT", "900"))
+PURSUIT = os.environ.get("RED_NAILS_QA_PURSUIT") == "1"
 processes, logs = [], []
 
 
@@ -56,6 +57,8 @@ def launch(role):
                  "--quickPlayMultiplayer", f"127.0.0.1:{PORT}"]
     command = ["java", "-XX:ActiveProcessorCount=2",
                "-Xmx1024M" if server else "-Xmx1536M", f"-Drednails.qa.results={RESULTS}"]
+    if PURSUIT:
+        command += ["-Drednails.qa.pursuit=true"]
     command += shlex.split(expand(config["vmArgs"]))
     if not server:
         natives = directory / "lwjgl-natives"
@@ -68,6 +71,7 @@ def launch(role):
     process = subprocess.Popen(command, cwd=directory, env=env, stdin=subprocess.PIPE,
                                stdout=log, stderr=subprocess.STDOUT, text=True)
     processes.append(process)
+    print(f"RED_NAILS_QA_PROCESS role={role} pid={process.pid} cwd={directory}", flush=True)
     return process
 
 
@@ -124,8 +128,10 @@ try:
     server = launch("server")
     ready(server)
     client = launch("client")
-    wait_for(["server-input", "client-guard", "server-backlash", "client-backlash", "server-recall",
-              "client-recalled", "server-water", "client-water"], [server, client])
+    required = ["server-input", "client-guard", "server-backlash", "client-backlash", "server-recall", "client-recalled"]
+    required += (["server-shore", "client-shore-complete", "server-wild-started", "server-wild", "client-wild-complete"]
+                 if PURSUIT else ["server-water", "client-water"])
+    wait_for(required, [server, client])
     stop(client)
     save_stop(server)
     server = launch("server")
@@ -134,7 +140,8 @@ try:
     wait_for(["server-restart", "client-restored"], [server, client])
     stop(client)
     save_stop(server)
-    print("RED_NAILS_REAL_CLIENT_AND_RESTART_E2E_PASSED", flush=True)
+    print("RED_NAILS_PURSUIT_REAL_CLIENT_AND_RESTART_E2E_PASSED" if PURSUIT
+          else "RED_NAILS_REAL_CLIENT_AND_RESTART_E2E_PASSED", flush=True)
 finally:
     for process in reversed(processes):
         stop(process)
