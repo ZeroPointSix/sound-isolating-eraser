@@ -90,6 +90,10 @@ class Client:
             "enableVsync:false\npauseOnLostFocus:false\nonboardAccessibility:false\n"
             "skipMultiplayerWarning:true\nsoundCategory_master:0.0\nrenderClouds:false\n"
             "narrator:0\ntutorialStep:none\n")
+        if os.environ.get("T2_FPS_PROBE"):
+            options = self.directory / "options.txt"
+            options.write_text(options.read_text().replace("maxFps:20", "maxFps:260"))
+            shutil.copy2(options, p.OUT / (label + "-options.txt"))
         self.xvfb = subprocess.Popen(["Xvfb", "-displayfd", "1", "-screen", "0", "1280x720x24",
                                       "-nolisten", "tcp", "-noreset"],
                                      stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
@@ -99,6 +103,9 @@ class Client:
         env = os.environ.copy()
         env.update({key: expand(value) for key, value in config.get("env", {}).items() if value is not None})
         env.update(DISPLAY=self.display, LIBGL_ALWAYS_SOFTWARE="1", ALSOFT_DRIVERS="null", LP_NUM_THREADS="1")
+        if os.environ.get("T2_FPS_PROBE"):
+            probe_classes = (p.OUT / "probe-mod-classes.txt").read_text().strip()
+            env["MOD_CLASSES"] = env.get("MOD_CLASSES", "") + os.pathsep + probe_classes
         self.env = env
         arguments = words(config.get("args", ""))
         for key, value in {"--gameDir": str(self.directory), "--username": PLAYER,
@@ -109,6 +116,8 @@ class Client:
                 del arguments[offset:offset + 2]
             arguments.extend([key, value])
         vm = [v for v in words(config.get("vmArgs", "")) if not v.startswith(("-Xmx", "-Xms"))]
+        if os.environ.get("T2_FPS_PROBE"):
+            vm.append("-Dt2.fps.out=" + str(p.OUT))
         cp = (p.OUT / "client-classpath.txt").read_text().strip()
         command = ["java", "-Xms256M", "-Xmx1536M", "-XX:ActiveProcessorCount=1", *vm,
                    "-cp", cp, config["mainClass"], *arguments]

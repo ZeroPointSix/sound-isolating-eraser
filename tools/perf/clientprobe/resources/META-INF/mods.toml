@@ -1,0 +1,9 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="MIT"
+[[mods]]
+modId="t2_fps_probe"
+version="1.0"
+displayName="T2 read-only FPS probe"
+displayTest="IGNORE_ALL_VERSION"
+description="Validation-only render timestamp recorder, excluded from the production jar."

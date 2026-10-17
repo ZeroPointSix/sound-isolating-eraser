@@ -1,0 +1,19 @@
+gradle.projectsEvaluated {
+    def p = gradle.rootProject
+    def root = new File(System.getenv('T2_FPS_HARNESS'))
+    def probe = p.sourceSets.create('t2ClientProbe')
+    probe.java.srcDir(new File(root, 'tools/perf/clientprobe/java'))
+    probe.resources.srcDir(new File(root, 'tools/perf/clientprobe/resources'))
+    probe.compileClasspath += p.sourceSets.main.output + p.sourceSets.main.compileClasspath
+    probe.runtimeClasspath += p.sourceSets.main.output + p.sourceSets.main.runtimeClasspath
+    p.tasks.register('writeT2FpsClasspath') {
+        dependsOn p.tasks.named('classes'), p.tasks.named('t2ClientProbeClasses'), p.tasks.named('genVSCodeRuns')
+        doLast {
+            def target = p.layout.buildDirectory.dir('t2-perf').get().asFile
+            target.mkdirs()
+            new File(target, 'client-classpath.txt').text = probe.runtimeClasspath.asPath
+            new File(target, 'probe-mod-classes.txt').text =
+                probe.output.files.collect { 't2_fps_probe%%' + it.absolutePath }.join(File.pathSeparator)
+        }
+    }
+}

@@ -1,4 +1,4 @@
-name: T2 isolated spark baseline
+name: T2 isolated client FPS baseline
 
 on:
   push:
@@ -9,13 +9,14 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: t2-spark-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  dedicated-server:
+  client-fps:
     runs-on: ubuntu-24.04
     timeout-minutes: 75
     steps:
@@ -35,42 +36,50 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           cache-read-only: true
-      - name: Build the exact PR1 source
+      - name: Build exact PR1 runtime and a separate read-only client probe
         working-directory: source
+        env:
+          T2_FPS_HARNESS: ${{ github.workspace }}/harness
         run: |
           mkdir -p build/t2-perf
           git rev-parse HEAD | tee build/t2-perf/source-sha.txt
           python3 tools/verify_mixin_targets.py | tee build/t2-perf/mixin.log
           bash ./gradlew --no-daemon --max-workers=2 build 2>&1 | tee build/t2-perf/build.log
-          bash ./gradlew --no-daemon --max-workers=2 -I ../harness/tools/perf/launch.init.gradle writeT2ClientClasspath 2>&1 | tee build/t2-perf/client-prepare.log
+          bash ./gradlew --no-daemon --max-workers=2 -I ../harness/tools/perf/fps.init.gradle writeT2FpsClasspath 2>&1 | tee build/t2-perf/client-prepare.log
           python3 ../harness/tools/verify_mixin_targets.py | tee build/t2-perf/harness-mixin.log
+          python3 ../harness/tools/perf/test_fps_stats.py
           python3 ../harness/tools/perf/test_probe.py
+      - name: Fetch the immutable original world snapshots
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api repos/ZeroPointSix/sound-isolating-eraser/actions/artifacts/12077285827/zip > original-baseline.zip
+          echo "e0a5505f00f9fd0aeccf85dedf7c4c9990a0a201c2f33bf14bb6755ad718de88  original-baseline.zip" | sha256sum --check
       - name: Prepare real software-rendered client
         run: |
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y xdotool xvfb
-      - name: Record all four isolated server windows
+      - name: Record four 300-second client frame-time windows
         env:
           T2_SOURCE_DIR: ${{ github.workspace }}/source
           T2_HARNESS_SHA: ${{ github.sha }}
-        run: python3 harness/tools/perf/full_suite.py
-      - name: Preserve evidence, including failures
+          T2_SNAPSHOT_ZIP: ${{ github.workspace }}/original-baseline.zip
+        run: python3 harness/tools/perf/fps_suite.py
+      - name: Preserve evidence including failures
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: t2-spark-baseline-${{ github.run_id }}
+          name: t2-client-fps-${{ github.run_id }}
           path: |
             source/build/t2-perf/*.json
             source/build/t2-perf/*.jsonl
             source/build/t2-perf/*.csv
             source/build/t2-perf/*.log
             source/build/t2-perf/*.txt
-            source/build/t2-perf/*.tar.gz
-            source/build/t2-perf/*.sparkprofile
             source/build/t2-perf/fixtures/*.tar.gz
             source/build/t2-perf/client/screenshots/
+            source/build/t2-perf/client/crash-reports/
             source/build/t2-perf/server/logs/
-            source/build/t2-perf/server/config/spark/
             source/build/t2-perf/server/server.properties
             source/build/t2-perf/server/world/serverconfig/
           if-no-files-found: error
