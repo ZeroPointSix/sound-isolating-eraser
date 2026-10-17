@@ -78,6 +78,8 @@ public final class KeeperX11Sampler {
             ArrayDeque<Capture> captures = new ArrayDeque<>();
             timeout = System.nanoTime() + 60_000_000_000L;
             long deadline = 0;
+            long deadlineReadAt = 0;
+            int droppedCaptures = 0;
             long firstBright = 0;
             double[] baseline = null;
             while (System.nanoTime() < timeout) {
@@ -106,14 +108,27 @@ public final class KeeperX11Sampler {
                     throw overrun;
                 }
                 if (captures.size() == 1) atomicSignal(results, "capture.ready", Long.toString(after));
-                if (deadline == 0) deadline = readLong(results.resolve("flash-deadline.txt"));
-                // Retain a short pre-shutter window while the real client is still scheduling input.
-                while (deadline == 0 && captures.getFirst().after() < after - 1_000_000_000L)
+                if (deadline == 0) {
+                    deadline = readLong(results.resolve("flash-deadline.txt"));
+                    if (deadline != 0) deadlineReadAt = System.nanoTime();
+                }
+                // Deferred client I/O can announce the deadline after a slow render frame.
+                // Bound memory while preserving the original 200ms window for later analysis.
+                while (deadline == 0 && (captures.size() > 256
+                        || captures.getFirst().after() < after - 3_000_000_000L)) {
                     captures.removeFirst();
+                    droppedCaptures++;
+                }
                 if (deadline != 0 && after > deadline + 600_000_000L) break;
                 Thread.sleep(10);
             }
             if (deadline == 0) throw new AssertionError("No real shutter deadline observed");
+            Files.writeString(results.resolve("flash-buffer-stats.txt"),
+                    "max_captures=256 retention_ms=3000 dropped=" + droppedCaptures
+                            + " retained=" + captures.size() + " deadline_read_elapsed_ms="
+                            + (deadlineReadAt - deadline + 200_000_000L) / 1_000_000.0
+                            + " earliest_retained_elapsed_ms="
+                            + (captures.getFirst().before() - deadline + 200_000_000L) / 1_000_000.0 + "\n");
             Path frames = results.resolve("flash-frames");
             Files.createDirectories(frames);
             StringBuilder csv = new StringBuilder("frame,start_ms,end_ms,r,g,b,white80,phase\n");
