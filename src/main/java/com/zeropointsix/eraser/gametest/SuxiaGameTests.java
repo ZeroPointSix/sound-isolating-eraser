@@ -152,12 +152,20 @@ public final class SuxiaGameTests {
 
     private static void idleBehind(GameTestHelper h, SuxiaSummonEntity summon, ServerPlayer owner) {
         Vec3 behind = owner.position().subtract(Vec3.directionFromRotation(0, owner.getYRot()).scale(2));
+        BlockPos rear = BlockPos.containing(behind);
         double error = summon.position().subtract(behind).horizontalDistanceSqr();
         h.assertTrue(summon.getTarget() == null && !summon.isAggressive(), "idle summon is not fighting");
         h.assertTrue(error <= 0.75 * 0.75 && Math.abs(summon.getY() - owner.getY()) < 0.5,
                 "idle summon stands within 0.75 blocks of owner's two-block rear position: " + Math.sqrt(error)
                         + " summon=" + summon.position() + " owner=" + owner.position()
-                        + " yaw=" + owner.getYRot() + " navigationDone=" + summon.getNavigation().isDone());
+                        + " yaw=" + owner.getYRot() + " navigationDone=" + summon.getNavigation().isDone()
+                        + " rear=" + rear + " floor=" + owner.level().getBlockState(rear.below())
+                        + " feet=" + owner.level().getBlockState(rear)
+                        + " above=" + owner.level().getBlockState(rear.above())
+                        + " fluid=" + owner.level().getFluidState(rear)
+                        + " onGround=" + summon.onGround() + " noGravity=" + summon.isNoGravity()
+                        + " alive=" + summon.isAlive() + " removed=" + summon.isRemoved()
+                        + " motion=" + summon.getDeltaMovement());
         h.assertTrue(summon.getNavigation().isDone(), "idle summon stops navigation after arrival");
         h.assertTrue(Math.abs(Mth.wrapDegrees(summon.getYHeadRot() - owner.getYRot())) < 5,
                 "idle head follows only owner's view yaw: " + summon.getYHeadRot() + " vs " + owner.getYRot());
