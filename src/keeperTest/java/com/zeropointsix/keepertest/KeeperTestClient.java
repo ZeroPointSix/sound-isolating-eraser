@@ -17,6 +17,7 @@ import net.minecraft.client.gui.screens.ConnectScreen;
 import net.minecraft.client.gui.screens.DisconnectedScreen;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.multiplayer.resolver.ServerAddress;
+import net.minecraft.network.chat.Component;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.ClientChatReceivedEvent;
 import net.minecraftforge.event.TickEvent;
@@ -32,6 +33,7 @@ public final class KeeperTestClient {
     private static volatile boolean failed;
     private static boolean baselineSaved;
     private static int[] baselineRgb = new int[3];
+    private static BufferedImage baselineImage;
     private static int baselineWhite;
     private static boolean photoSaved;
     private static boolean grabberStarted;
@@ -226,17 +228,46 @@ public final class KeeperTestClient {
         return new int[] { (int) (r / n), (int) (g / n), (int) (b / n) };
     }
 
-    private static int countNear(BufferedImage image, int target, int tol, int y0, int y1) {
+    private static int countNear(BufferedImage image, int target, int tol, int x0, int y0, int x1, int y1) {
         int[] t = rgb(target);
         int n = 0;
-        int x0 = image.getWidth() / 4, x1 = image.getWidth() * 3 / 4;
         for (int y = Math.max(0, y0); y < Math.min(image.getHeight(), y1); y++) {
-            for (int x = x0; x < x1; x++) {
+            for (int x = Math.max(0, x0); x < Math.min(image.getWidth(), x1); x++) {
                 int[] c = rgb(image.getRGB(x, y));
                 if (Math.abs(c[0] - t[0]) + Math.abs(c[1] - t[1]) + Math.abs(c[2] - t[2]) <= tol) n++;
             }
         }
         return n;
+    }
+
+    private static int countHudText(BufferedImage image, int seconds) throws Exception {
+        var mc = Minecraft.getInstance();
+        var window = mc.getWindow();
+        var text = Component.translatable("hud.sound_isolating_eraser.keeper_photo.remaining", seconds);
+        double scale = window.getGuiScale();
+        // Match the production centered text rectangle, excluding the held photo and hotbar.
+        int x0 = (image.getWidth() - window.getWidth()) / 2
+                + (int) ((window.getGuiScaledWidth() / 2 - mc.font.width(text) / 2) * scale) - 2;
+        int y0 = (image.getHeight() - window.getHeight()) / 2
+                + (int) ((window.getGuiScaledHeight() * 238 / 256 - mc.font.lineHeight / 2) * scale) - 2;
+        int x1 = x0 + (int) (mc.font.width(text) * scale) + 4;
+        int y1 = y0 + (int) (mc.font.lineHeight * scale) + 4;
+        require(baselineImage != null, "HUD regression has a pre-shutter baseline");
+        int pixels = countNear(image, 0x5A4632, 48, x0, y0, x1, y1);
+        int background = countNear(baselineImage, 0x5A4632, 48, x0, y0, x1, y1);
+        int excess = Math.max(0, pixels - background);
+        Files.writeString(RESULTS.resolve("hud-region.tsv"), System.nanoTime() + "\t" + phase
+                + "\t" + x0 + "\t" + y0 + "\t" + x1 + "\t" + y1 + "\t" + pixels
+                + "\t" + background + "\t" + excess + "\n",
+                StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+        return excess;
+    }
+
+    private static int countFrameWhite(BufferedImage image) {
+        var window = Minecraft.getInstance().getWindow();
+        int x = (image.getWidth() - window.getWidth()) / 2;
+        int y = (image.getHeight() - window.getHeight()) / 2;
+        return countWhite(image.getSubimage(x, y, window.getWidth(), Math.max(1, window.getHeight() * 8 / 256)), 200);
     }
 
     private static boolean inPhotoWorld() {
@@ -303,6 +334,7 @@ public final class KeeperTestClient {
     private static void captureBaseline(String tag) throws Exception {
         if (baselineSaved) return;
         BufferedImage screenshot = grab("baseline.png");
+        baselineImage = screenshot;
         baselineWhite = countWhite(screenshot, 200);
         baselineRgb = meanCenter(screenshot);
         Files.writeString(RESULTS.resolve("baseline-stats.txt"),
@@ -403,8 +435,8 @@ public final class KeeperTestClient {
                 BufferedImage screenshot = grab("photo.png");
                 ImageIO.write(screenshot, "png", RESULTS.resolve("hud.png").toFile());
                 int[] mean = meanCenter(screenshot);
-                int h = screenshot.getHeight();
-                int hud = countNear(screenshot, 0x5A4632, 48, h * 200 / 256, h);
+                int currentSeconds = (mc.player.getEffect(ModEffects.IN_PHOTO.get()).getDuration() + 19) / 20;
+                int hud = countHudText(screenshot, currentSeconds);
                 int brown = 0;
                 int x0 = screenshot.getWidth() / 4, x1 = screenshot.getWidth() * 3 / 4;
                 int y0 = screenshot.getHeight() / 4, y1 = screenshot.getHeight() * 3 / 4;
@@ -428,8 +460,11 @@ public final class KeeperTestClient {
                 Files.writeString(RESULTS.resolve("sepia.pass"),
                         "Photo-world X11 pixels shifted brown/sepia. rgb=" + mean[0] + "," + mean[1] + "," + mean[2] + System.lineSeparator());
                 require(hud > 20, "polaroid HUD remaining-time color 0x5A4632 was not rendered");
+                int frameWhite = countFrameWhite(screenshot);
+                require(frameWhite > 20, "photo frame white border is present");
                 Files.writeString(RESULTS.resolve("hud.pass"),
-                        "Polaroid frame HUD timer color was present. pixels=" + hud + System.lineSeparator());
+                        "Polaroid frame HUD timer color was present. excess_pixels=" + hud
+                                + " frame_white_pixels=" + frameWhite + System.lineSeparator());
                 photoSaved = true;
                 photoSeconds = (mc.player.getEffect(ModEffects.IN_PHOTO.get()).getDuration() + 19) / 20;
                 Files.writeString(RESULTS.resolve("hud-seconds.txt"), "first=" + photoSeconds + "\n");
@@ -439,8 +474,7 @@ public final class KeeperTestClient {
                 int later = (mc.player.getEffect(ModEffects.IN_PHOTO.get()).getDuration() + 19) / 20;
                 BufferedImage screenshot = grab("hud-later.png");
                 require(later < photoSeconds && later > 0, "remaining seconds decrease");
-                require(countNear(screenshot, 0x5A4632, 48, screenshot.getHeight() * 200 / 256,
-                        screenshot.getHeight()) > 20, "later HUD still rendered");
+                require(countHudText(screenshot, later) > 20, "later HUD still rendered");
                 Files.writeString(RESULTS.resolve("hud-seconds.txt"), "later=" + later + "\n", StandardOpenOption.APPEND);
                 Files.writeString(RESULTS.resolve("countdown.pass"), "Real client countdown " + photoSeconds + " -> " + later + "\n");
             }
@@ -453,12 +487,16 @@ public final class KeeperTestClient {
                 require(flashDeadline.getLong(null) <= System.nanoTime(), "exit has no active shutter");
                 BufferedImage screenshot = grab("exit.png");
                 int[] mean = meanCenter(screenshot);
-                int hud = countNear(screenshot, 0x5A4632, 48, screenshot.getHeight() * 200 / 256, screenshot.getHeight());
-                Files.writeString(RESULTS.resolve("exit-stats.txt"), "HUD pixels=" + hud + " RGB="
+                int hud = countHudText(screenshot, photoSeconds);
+                int frameWhite = countFrameWhite(screenshot);
+                Files.writeString(RESULTS.resolve("exit-stats.txt"), "HUD excess_pixels=" + hud
+                        + " frame_white_pixels=" + frameWhite + " RGB="
                         + mean[0] + "," + mean[1] + "," + mean[2] + " monotonic_ns=" + System.nanoTime() + "\n");
                 require(hud < 20, "exit removes countdown HUD");
+                require(frameWhite < 20, "exit removes photo frame");
                 require(mean[2] > mean[0] + 10, "exit removes sepia filter in the blue-sky fixture");
-                Files.writeString(RESULTS.resolve("exit.pass"), "HUD pixels=" + hud + " RGB="
+                Files.writeString(RESULTS.resolve("exit.pass"), "HUD excess_pixels=" + hud
+                        + " frame_white_pixels=" + frameWhite + " RGB="
                         + mean[0] + "," + mean[1] + "," + mean[2] + "\n");
             }
         } catch (Throwable failure) {
