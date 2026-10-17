@@ -62,23 +62,35 @@ def launch(role):
             "enableVsync:false\npauseOnLostFocus:false\nonboardAccessibility:false\n"
             "showAutosaveIndicator:false\nrenderClouds:false\nnarrator:0\ntutorialStep:none\n"
             "skipMultiplayerWarning:true\njoinedFirstServer:true\n")
+        if os.environ.get("KEEPER_QA_FAST_GRAPHICS") == "1":
+            # Standard game options reduce software-rendering load, without changing test gates.
+            with (directory / "options.txt").open("a") as options:
+                options.write("graphicsMode:0\nao:false\nbiomeBlendRadius:0\n"
+                              "mipmapLevels:0\nparticles:2\nentityShadows:false\n")
     env = os.environ.copy()
     env.update({key: expand(value) for key, value in config["env"].items()})
     env["MOD_CLASSES"] = ":".join(entry for entry in env["MOD_CLASSES"].split(":")
                                  if not entry.startswith("sound_isolating_eraser%%")) + ":sound_isolating_eraser%%" + str(RUNTIME_JAR)
     env["LIBGL_ALWAYS_SOFTWARE"] = "1"
+    env["LP_NUM_THREADS"] = os.environ.get("KEEPER_QA_RENDER_THREADS", "2")
     if role != "server":
         env["DISPLAY"] = displays[0]
     args = shlex.split(expand(config["args"]))
     if role != "server":
+        args += ["--mixin.config", "keeper-qa.mixins.json"]
         for option in ("--username", "--uuid", "--width", "--height", "--quickPlayMultiplayer"):
             while option in args:
                 index = args.index(option)
                 del args[index:index + 2]
         args += ["--username", "KeeperUser", "--uuid", "11111111-1111-1111-1111-111111111111",
-                 "--width", "854", "--height", "480", "--quickPlayMultiplayer", f"127.0.0.1:{PORT}"]
+                 "--width", os.environ.get("KEEPER_QA_WIDTH", "854"),
+                 "--height", os.environ.get("KEEPER_QA_HEIGHT", "480"),
+                 "--quickPlayMultiplayer", f"127.0.0.1:{PORT}"]
     command = ["java", "-XX:ActiveProcessorCount=2", "-Xmx1536M" if role != "server" else "-Xmx768M",
                f"-Dkeeper.qa.results={RESULTS}", f"-Dkeeper.qa.role={role}"]
+    if role != "server" and os.environ.get("KEEPER_QA_PROFILE") == "1":
+        command.append("-XX:StartFlightRecording=name=keeper_qa,settings=profile,disk=true,"
+                       + f"maxsize=64m,filename={RESULTS / 'client.jfr'},dumponexit=true")
     vm = expand(config["vmArgs"]).replace("forge.logging.console.level=debug", "forge.logging.console.level=info")
     command += shlex.split(vm)
     # legacyClassPath also must not silently reintroduce loose main classes.

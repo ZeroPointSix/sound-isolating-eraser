@@ -36,7 +36,10 @@ def main():
     result = {"runtime_jar": str(named), "runtime_sha256": sha(named.read_bytes()),
               "delivery_jar": str(shipped), "delivery_sha256": sha(shipped.read_bytes()), "classes": {}}
     with zipfile.ZipFile(named) as development, zipfile.ZipFile(shipped) as delivery, zipfile.ZipFile(check) as mapped:
+        hook = "com/zeropointsix/eraser/mixin/client/KeeperWindowMixin.class"
         names = [n for n in development.namelist() if n.startswith("com/zeropointsix/eraser/keeper/") and n.endswith(".class")]
+        assert hook in development.namelist(), "Missing presentation hook"
+        names.append(hook)
         assert names, "No keeper classes in packaged runtime"
         for name in names:
             compiled = (root / "build/classes/java/main" / name).read_bytes()
@@ -48,6 +51,9 @@ def main():
             if name.startswith("assets/sound_isolating_eraser/") and ("keeper" in name or "photo" in name):
                 assert development.read(name) == delivery.read(name), "Visual resource mismatch: " + name
         assert not any(n.startswith("com/zeropointsix/keepertest/") for n in delivery.namelist()), "QA code shipped"
+        config = "sound_isolating_eraser.mixins.json"
+        assert development.read(config) == delivery.read(config), "Mixin configuration mismatch"
+        assert "client.KeeperWindowMixin" in json.loads(delivery.read(config))["client"]
     if options.runtime_evidence:
         text = (options.runtime_evidence / "runtime-classes.txt").read_text()
         for type_name in ("KeeperVisuals", "KeeperVisuals$Registration"):

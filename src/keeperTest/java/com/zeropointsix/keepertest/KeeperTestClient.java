@@ -133,6 +133,16 @@ public final class KeeperTestClient {
                 shutterSent = true;
                 clickShutter();
             }
+        } catch (Throwable error) {
+            try { Files.writeString(RESULTS.resolve("client.failed"), error.toString()); } catch (Exception ignored) { }
+            failed = true;
+        }
+    }
+
+    public static void presented() {
+        if (failed || flashDeadline == null) return;
+        try {
+            observeShutterStage("presented");
             if (timingSaved) return;
             long deadline = flashDeadline.getLong(null);
             if (deadline == 0) return;

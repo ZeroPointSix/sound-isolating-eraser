@@ -37,6 +37,7 @@ public final class KeeperVisuals {
     private static int width, height;
     private static long flashUntil;
     private static boolean flashPending;
+    private static boolean flashFrameDrawn;
     private static final Set<UUID> HIDDEN = new HashSet<>();
 
     private static boolean active() {
@@ -44,8 +45,17 @@ public final class KeeperVisuals {
         return player != null && player.hasEffect(ModEffects.IN_PHOTO.get());
     }
     public static void flash() {
-        // Start the 200ms display interval on the first overlay frame, not during tick catch-up.
+        flashUntil = 0;
         flashPending = true;
+        flashFrameDrawn = false;
+    }
+    public static void framePresented() {
+        if (flashPending && flashFrameDrawn) {
+            // Rendering may queue work; only start the interval after the first buffer swap.
+            flashUntil = System.nanoTime() + FLASH_NANOS;
+            flashPending = false;
+            flashFrameDrawn = false;
+        }
     }
     public static void visibility(UUID player, boolean hidden) {
         if (hidden) HIDDEN.add(player); else HIDDEN.remove(player);
@@ -67,7 +77,7 @@ public final class KeeperVisuals {
                 && mc.player.getUseItem().is(ModItems.KEEPER_PHOTO.get())
                 && mc.player.getUseItemRemainingTicks() <= 1) awaitRelease = true;
         if (!active()) close();
-        if (Minecraft.getInstance().player == null) { flashUntil = 0; flashPending = false; failed = false; awaitRelease = false; HIDDEN.clear(); }
+        if (Minecraft.getInstance().player == null) { flashUntil = 0; flashPending = false; flashFrameDrawn = false; failed = false; awaitRelease = false; HIDDEN.clear(); }
     }
     @SubscribeEvent public static void hidePlayer(RenderPlayerEvent.Pre event) {
         if (HIDDEN.contains(event.getEntity().getUUID())
@@ -109,15 +119,13 @@ public final class KeeperVisuals {
                     gui.drawCenteredString(mc.font, text, w / 2, h * 238 / 256 - mc.font.lineHeight / 2, 0x5A4632);
                     RenderSystem.disableBlend();
                 }
-                if (flashPending) {
-                    flashUntil = System.nanoTime() + FLASH_NANOS;
-                    flashPending = false;
-                }
-                long left = flashUntil == 0 ? 0 : flashUntil - System.nanoTime();
+                long now = System.nanoTime();
+                long left = flashPending ? FLASH_NANOS : flashUntil == 0 ? 0 : flashUntil - now;
                 if (left > 0) {
                     RenderSystem.enableBlend();
                     RenderSystem.defaultBlendFunc();
                     gui.fill(0, 0, w, h, (Math.round(255F * Math.min(1F, left / (float) FLASH_NANOS)) << 24) | 0xFFFFFF);
+                    if (flashPending) flashFrameDrawn = true;
                     RenderSystem.disableBlend();
                 }
             });
