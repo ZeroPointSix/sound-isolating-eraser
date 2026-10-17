@@ -132,23 +132,35 @@ public final class WaterGhostEntity extends Monster implements WaterGhostPoseSou
         WaterGoal() { setFlags(EnumSet.of(Flag.MOVE)); }
         @Override public boolean canUse() { return !pursuit && (isInWater() || dryTicks >= 200); }
         @Override public boolean requiresUpdateEveryTick() { return true; }
-        @Override public void start() { destination = null; }
+        @Override public void start() { destination = null; body.stopMoving(); }
         @Override public void tick() {
             if (isInWater()) {
+                if (destination != null) { destination = null; body.stopMoving(); }
                 var surface = blockPosition().mutable();
                 for (int i = 0; i < 32 && WaterGhostBody.waterAt(WaterGhostEntity.this, surface.above()); i++) surface.move(0, 1, 0);
                 double y = surface.getY() - 0.5;
                 if (Math.abs(getY() - y) > 0.15) moveControl.setWantedPosition(getX(), y, getZ(), 0.2);
                 else body.stopMoving();
             } else {
+                var navigation = getNavigation();
+                if (destination != null && (navigation.isDone()
+                        || !WaterGhostBody.waterAt(WaterGhostEntity.this, destination))) {
+                    destination = null; body.stopMoving();
+                }
                 if (destination == null && tickCount % 40 == 0) {
+                    var water = new java.util.HashSet<BlockPos>();
                     for (var pos : BlockPos.withinManhattan(blockPosition(), 24, 8, 24)) {
                         if (pos.distSqr(blockPosition()) <= 24 * 24 && WaterGhostBody.waterAt(WaterGhostEntity.this, pos)) {
-                            destination = pos.immutable(); break;
+                            water.add(pos.immutable());
                         }
                     }
+                    // Coordinate moveTo accepts a node one block short of the water.
+                    // Require a reachable water endpoint, not a dry-bank partial path.
+                    var path = navigation.createPath(water, 0);
+                    if (path != null && path.canReach() && path.getEndNode() != null
+                            && WaterGhostBody.waterAt(WaterGhostEntity.this, path.getEndNode().asBlockPos())
+                            && navigation.moveTo(path, 1)) destination = path.getTarget();
                 }
-                if (destination != null) getNavigation().moveTo(destination.getX() + 0.5, destination.getY(), destination.getZ() + 0.5, 1);
             }
         }
         @Override public void stop() { body.stopMoving(); }

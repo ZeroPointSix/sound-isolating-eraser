@@ -3,6 +3,7 @@ package com.zeropointsix.eraser.rednails;
 import java.util.EnumSet;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.network.protocol.game.ClientboundSetEntityMotionPacket;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
@@ -162,8 +163,15 @@ public final class WaterGhostGrab extends Goal {
         if (blocked(hold)) hold = mob.position().add(0, body.swimming() ? 0 : 0.6, 0);
         if (!blocked(hold)) {
             if (target instanceof ServerPlayer player) {
-                player.setDeltaMovement(hold.subtract(player.position()).scale(0.5));
-                player.hurtMarked = true;
+                Vec3 pull = hold.subtract(player.position()).scale(0.5);
+                player.setDeltaMovement(pull);
+                if (player.connection != null) {
+                    // Snapshot the pull now: a later movement packet can replace delta
+                    // with jump velocity before the tracker consumes hurtMarked.
+                    player.serverLevel().getChunkSource().broadcastAndSend(player,
+                            new ClientboundSetEntityMotionPacket(player.getId(), pull));
+                    player.hurtMarked = false;
+                } else player.hurtMarked = true;
             } else {
                 target.setPos(hold);
                 target.setDeltaMovement(Vec3.ZERO);
