@@ -79,8 +79,13 @@ jobs:
       - name: Verify visible cooldown after pickup, reconnect and new server JVM
         if: ${{ !cancelled() && steps.prepare.outcome == 'success' && steps.rendering.outcome == 'success' }}
         run: |
-          env -u SUXIA_QA_WORLD_SOURCE -u SUXIA_QA_IDLE_ONLY SUXIA_QA_COOLDOWN_ONLY=1 SUXIA_QA_TIMEOUT_SECONDS=600 python3 -u tools/suxia/e2e.py | tee build/suxia-cooldown.log
+          env -u SUXIA_QA_WORLD_SOURCE -u SUXIA_QA_IDLE_ONLY -u SUXIA_QA_DEATH_COOLDOWN SUXIA_QA_COOLDOWN_ONLY=1 SUXIA_QA_TIMEOUT_SECONDS=600 python3 -u tools/suxia/e2e.py | tee build/suxia-cooldown.log
           grep -F 'SUXIA_COOLDOWN_BOUNDARIES_REAL_CLIENT_PASSED' build/suxia-cooldown.log
+      - name: Verify death cooldown matrix and pre-login SavedData recovery
+        if: ${{ !cancelled() && steps.prepare.outcome == 'success' && steps.rendering.outcome == 'success' }}
+        run: |
+          env -u SUXIA_QA_WORLD_SOURCE -u SUXIA_QA_IDLE_ONLY SUXIA_QA_COOLDOWN_ONLY=1 SUXIA_QA_DEATH_COOLDOWN=1 SUXIA_QA_TIMEOUT_SECONDS=600 python3 -u tools/suxia/e2e.py | tee build/suxia-death-cooldown.log
+          grep -F 'SUXIA_COOLDOWN_BOUNDARIES_REAL_CLIENT_PASSED' build/suxia-death-cooldown.log
       - name: Verify immutable tested sources and summarize native evidence
         if: ${{ !cancelled() }}
         run: |

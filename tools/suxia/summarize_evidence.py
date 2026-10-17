@@ -24,13 +24,16 @@ REQUIRED = {
         "server-cool-rejoined-rejected", "server-ready-restart", "client-ready-restart",
         "server-cool-restarted", "server-cool-complete", "client-cool-before",
         "client-cool-picked", "client-cool-rejoined", "client-cool-restarted",
+        "server-teleport-12-64", "server-ledger-prelogin",
     },
 }
-PNG_COUNTS = {"idle": 2, "full": 11, "cooldown": 8}
+REQUIRED["death-cooldown"] = REQUIRED["cooldown"] | {"server-death-stimulus"}
+PNG_COUNTS = {"idle": 2, "full": 11, "cooldown": 8, "death-cooldown": 8}
 MARKERS = {
     "idle": "SUXIA_IDLE_REAL_CLIENT_PASSED",
     "full": "SUXIA_REAL_CLIENT_AND_DEDICATED_SERVER_E2E_PASSED",
     "cooldown": "SUXIA_COOLDOWN_BOUNDARIES_REAL_CLIENT_PASSED",
+    "death-cooldown": "SUXIA_COOLDOWN_BOUNDARIES_REAL_CLIENT_PASSED",
 }
 
 
@@ -58,6 +61,8 @@ def summarize(root):
         summary["modes"][mode] = {
             "checkpoints": sorted(passes), "missing": missing, "failures": failures,
             "png_count": len(images), "driver_success": MARKERS[mode] in log,
+            "boundary_measurements": {path.stem: path.read_text() for path in sorted(directory.glob("server-*.pass"))
+                                      if path.stem in {"server-teleport-12-64", "server-ledger-prelogin", "server-death-stimulus"}},
             "measurements": {path.name: path.read_text() for path in sorted(directory.glob("*.txt"))
                              if path.name.endswith("-camera.txt") or path.name.startswith("cool-")},
             "image_sha256": {path.name: hashlib.sha256(path.read_bytes()).hexdigest() for path in images},
