@@ -824,7 +824,7 @@ public final class RedNailsGameTests {
         WaterGhostEntity[] spawned = { null };
         h.startSequence().thenWaitUntil(() -> {
             check(h, f.level.isPositionEntityTicking(f.center) && victim.isInWater()
-                            && f.level.getEntities(null, victim.getBoundingBox().inflate(1), entity -> entity == victim).contains(victim),
+                            && f.level.getEntities((Entity) null, victim.getBoundingBox().inflate(1), entity -> entity == victim).contains(victim),
                     "The real water prey is ticking and visible before the hostile ghost is born");
         }).thenExecute(() -> {
             var ghost = ModEntities.WATER_GHOST.get().create(f.level);
