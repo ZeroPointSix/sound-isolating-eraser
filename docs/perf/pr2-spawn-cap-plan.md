@@ -1,5 +1,7 @@
 # PR2 刷怪 cap：待实施清单与开工门禁
 
+> 历史计划：本页保留 PR1 当时的候选方案与门禁，不代表 PR2 当前实现状态。PR2 的实际口径、有限默认值、测试与风险见[实施说明](pr2-spawn-caps.md)及[独立 PR53](https://github.com/ZeroPointSix/sound-isolating-eraser/pull/53)。PR1 分支保持不变。
+
 关联 [PR #43](https://github.com/ZeroPointSix/sound-isolating-eraser/pull/43) / [ZER-1542](https://linear.app/zerodotsix/issue/ZER-1542)。本文件只做 PR1 的续办准备，不包含运行时代码。源码核对基准为 `3a213afeb5ef71412560b5a90259f2b620cd1326`；后续 `da45d57` 仅修改文档，未改变下述源码。
 
 ## 开工门禁：已有硬数据，默认策略尚未冻结

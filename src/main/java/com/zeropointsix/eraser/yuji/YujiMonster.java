@@ -1,5 +1,7 @@
 package com.zeropointsix.eraser.yuji;
 
+import com.zeropointsix.eraser.spawn.SpawnCaps;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -398,12 +400,16 @@ public final class YujiMonster extends Monster implements GeoEntity {
             double angle = random.nextDouble() * Math.PI * 2, radius = 2 + random.nextDouble() * 2;
             mob.moveTo(getX() + Math.cos(angle) * radius, Math.floor(getY()), getZ() + Math.sin(angle) * radius, random.nextFloat() * 360, 0);
             if (!server.noCollision(mob) || !server.getBlockState(mob.blockPosition().below()).isSolid()) { mob.discard(); continue; }
-            mob.finalizeSpawn(server, server.getCurrentDifficultyAt(mob.blockPosition()), MobSpawnType.MOB_SUMMONED, null, null);
-            mob.summoner = getUUID();
-            if (getTarget() != null) mob.setTarget(getTarget());
-            server.addFreshEntityWithPassengers(mob);
-            server.sendParticles(net.minecraft.core.particles.ParticleTypes.SOUL, mob.getX(), mob.getY() + .5, mob.getZ(), 16, .4, .6, .4, .02);
-            made++;
+            try (var reservation = SpawnCaps.tryReserve(server, mob.getType(), mob.blockPosition())) {
+                if (reservation == null) { mob.discard(); continue; }
+                mob.finalizeSpawn(server, server.getCurrentDifficultyAt(mob.blockPosition()), MobSpawnType.MOB_SUMMONED, null, null);
+                mob.summoner = getUUID();
+                if (getTarget() != null) mob.setTarget(getTarget());
+                server.addFreshEntityWithPassengers(mob);
+                if (!reservation.commit(mob)) { mob.discard(); continue; }
+                server.sendParticles(net.minecraft.core.particles.ParticleTypes.SOUL, mob.getX(), mob.getY() + .5, mob.getZ(), 16, .4, .6, .4, .02);
+                made++;
+            }
         }
         return made;
     }
