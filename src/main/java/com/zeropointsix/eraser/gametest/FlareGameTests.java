@@ -16,6 +16,7 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -287,6 +288,44 @@ public final class FlareGameTests {
     }
     private FlareGameTests() { }
 
+    @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "flare")
+    public static void flareMuzzleFollowsCameraAtPitch(GameTestHelper h) {
+        Player p = player(h);
+        p.setYRot(0);
+        for (HumanoidArm arm : new HumanoidArm[]{HumanoidArm.RIGHT, HumanoidArm.LEFT}) {
+            p.setMainArm(arm);
+            for (float pitch : new float[]{-80, -5, 80}) {
+                p.setXRot(pitch);
+                Vec3 look = p.getLookAngle();
+                Vec3 right = look.cross(new Vec3(0, 1, 0));
+                if (right.lengthSqr() < 1.0E-6) {
+                    double yaw = Math.toRadians(p.getYRot());
+                    right = new Vec3(-Math.cos(yaw), 0, -Math.sin(yaw));
+                } else {
+                    right = right.normalize();
+                }
+                Vec3 down = look.cross(right);
+                if (down.lengthSqr() > 1.0E-12) down = down.normalize();
+                Vec3 muzzle = FlareGunPose.muzzle(p);
+                Vec3 local = muzzle.subtract(p.getEyePosition());
+                int side = arm == HumanoidArm.RIGHT ? 1 : -1;
+                h.assertTrue(Math.abs(local.dot(look) - FlareGunPose.MUZZLE_FORWARD) < 1.0E-4,
+                        "forward " + arm + " pitch " + pitch + " " + local.dot(look));
+                h.assertTrue(Math.abs(local.dot(right) - side * FlareGunPose.MUZZLE_SIDE) < 1.0E-4,
+                        "hand " + arm + " pitch " + pitch + " " + local.dot(right));
+                h.assertTrue(Math.abs(local.dot(down) - FlareGunPose.MUZZLE_DOWN) < 1.0E-4,
+                        "camera-down " + arm + " pitch " + pitch + " " + local.dot(down));
+                if (Math.abs(pitch) > 50) {
+                    double yaw = Math.toRadians(p.getYRot());
+                    Vec3 worldDown = p.getEyePosition().add(look.scale(.7))
+                            .add(new Vec3(-Math.cos(yaw), 0, -Math.sin(yaw)).scale(side * .22)).add(0, -.18, 0);
+                    h.assertTrue(muzzle.distanceTo(worldDown) > .08,
+                            "steep pitch still used world-down muzzle at " + pitch);
+                }
+            }
+        }
+        h.succeed();
+    }
     @GameTest(templateNamespace = "yuji_tests", template = "empty", batch = "flare")
     public static void flareLandingProbeNeverPulsesObservers(GameTestHelper h) {
         Player p = player(h); BlockPos pos = h.absolutePos(new BlockPos(3, 3, 3));

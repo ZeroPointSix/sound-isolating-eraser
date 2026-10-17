@@ -120,7 +120,9 @@ public final class RedNailsItem extends Item implements ICurioItem {
         if (ghost == null) return false;
         ghost.bind(player, entry.item, nail);
         spawnPosition(ghost, player);
-        ghost.addEffect(new MobEffectInstance(MobEffects.REGENERATION, 200, 1, false, false));
+        ghost.addEffect(new MobEffectInstance(MobEffects.REGENERATION, 200,
+                com.zeropointsix.eraser.memory.SummonCombatConfig.value(
+                        com.zeropointsix.eraser.memory.SummonCombatConfig.WATER_GHOST_REGENERATION), false, false));
         if (!player.serverLevel().addFreshEntity(ghost)) return false;
         ledger.begin(entry, nail, ghost.getUUID());
         PreciousMemories.bind(stack, player, entry.owner);
@@ -130,7 +132,7 @@ public final class RedNailsItem extends Item implements ICurioItem {
         ghost.playSound(SoundEvents.GENERIC_SPLASH, 1, 0.7F);
         ghost.playSound(SoundEvents.DROWNED_AMBIENT_WATER, 1, 0.6F);
         message(player, "summon", entry.active());
-        PreciousMemories.firstUse(stack, player, MESSAGE, 4);
+        PreciousMemories.firstUse(stack, player, MESSAGE, 6);
         return true;
     }
     private static void spawnPosition(WaterGhostSummonEntity ghost, Player player) {
@@ -237,6 +239,19 @@ public final class RedNailsItem extends Item implements ICurioItem {
     public static void message(Player player, String key, Object... args) { player.displayClientMessage(Component.translatable(MESSAGE + key, args), true); }
     @Override public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> lines, TooltipFlag flag) {
         if (!com.zeropointsix.eraser.item.ItemGuideTooltips.showDetails()) return;
+        lines.add(Component.translatable(TIP + "flavor").withStyle(ChatFormatting.GRAY));
+        lines.add(Component.translatable(TIP + "usage", keyName.get()).withStyle(ChatFormatting.GRAY));
+        lines.add(Component.translatable(TIP + "recall", keyName.get()).withStyle(ChatFormatting.GRAY));
+        lines.add(Component.translatable(TIP + "stay").withStyle(ChatFormatting.GRAY));
+        lines.add(Component.translatable(TIP + "cost").withStyle(ChatFormatting.GRAY));
+        for (String key : List.of("stay_end", "backlash", "backlash_effects", "profile")) {
+            lines.add(Component.translatable(TIP + key).withStyle(ChatFormatting.GRAY));
+        }
+        lines.add(Component.translatable("tooltip.sound_isolating_eraser.summon_guard.range",
+                com.zeropointsix.eraser.memory.SummonCombatConfig.guardRadius()).withStyle(ChatFormatting.GRAY));
+        for (String key : List.of("priority", "protected", "pvp")) {
+            lines.add(Component.translatable("tooltip.sound_isolating_eraser.summon_guard." + key).withStyle(ChatFormatting.GRAY));
+        }
         var tag = stack.getTag();
         int[] left = tag == null ? new int[0] : tag.getIntArray("NailLeft");
         var out = tag == null ? new net.minecraft.nbt.ListTag() : tag.getList("NailOut", Tag.TAG_COMPOUND);

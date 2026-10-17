@@ -14,6 +14,7 @@ CONFIGS = {c["name"]: c for c in json.loads((ROOT / ".vscode/launch.json").read_
 CLASSPATH = (ROOT / "build/red-nails-test-classpath.txt").read_text().strip()
 PORT = int(os.environ.get("RED_NAILS_QA_PORT", "25587"))
 TIMEOUT = int(os.environ.get("RED_NAILS_QA_TIMEOUT", "900"))
+GUARD = os.environ.get("SUMMON_GUARD_QA") == "1"
 processes, logs = [], []
 
 
@@ -56,6 +57,8 @@ def launch(role):
                  "--quickPlayMultiplayer", f"127.0.0.1:{PORT}"]
     command = ["java", "-XX:ActiveProcessorCount=2",
                "-Xmx1024M" if server else "-Xmx1536M", f"-Drednails.qa.results={RESULTS}"]
+    if GUARD:
+        command += ["-Drednails.qa.guard=true"]
     command += shlex.split(expand(config["vmArgs"]))
     if not server:
         natives = directory / "lwjgl-natives"
@@ -124,17 +127,28 @@ try:
     server = launch("server")
     ready(server)
     client = launch("client")
-    wait_for(["server-input", "client-guard", "server-backlash", "client-backlash", "server-recall",
-              "client-recalled", "server-water", "client-water"], [server, client])
-    stop(client)
-    save_stop(server)
-    server = launch("server")
-    ready(server)
-    client = launch("client-restored")
-    wait_for(["server-restart", "client-restored"], [server, client])
-    stop(client)
-    save_stop(server)
-    print("RED_NAILS_REAL_CLIENT_AND_RESTART_E2E_PASSED", flush=True)
+    if GUARD:
+        wait_for(["server-suxia-combat", "client-suxia-fight", "client-suxia-cleared",
+                  "server-water-combat", "client-water-fight", "client-water-cleared",
+                  "server-guard-complete"], [server, client])
+        stop(client)
+        save_stop(server)
+        subprocess.run(["ffmpeg", "-y", "-framerate", "4", "-i", str(RESULTS / "frames/%05d.png"),
+                        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-movflags", "+faststart",
+                        str(RESULTS / "summon-guard-combat.mp4")], check=True)
+        print("SUMMON_GUARD_REAL_CLIENT_COMBAT_PASSED", flush=True)
+    else:
+        wait_for(["server-input", "client-guard", "server-backlash", "client-backlash", "server-recall",
+                  "client-recalled", "server-water", "client-water"], [server, client])
+        stop(client)
+        save_stop(server)
+        server = launch("server")
+        ready(server)
+        client = launch("client-restored")
+        wait_for(["server-restart", "client-restored"], [server, client])
+        stop(client)
+        save_stop(server)
+        print("RED_NAILS_REAL_CLIENT_AND_RESTART_E2E_PASSED", flush=True)
 finally:
     for process in reversed(processes):
         stop(process)

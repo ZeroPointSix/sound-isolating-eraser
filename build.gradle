@@ -129,16 +129,17 @@ minecraft {
             property 'forge.enabledGameTestNamespaces', project.hasProperty('redNailsOnly') ? 'red_nails_tests,suxia_tests' :
                     project.hasProperty('suxiaOnly') ? 'suxia_tests' :
                     project.hasProperty('flareRestartPhase') ? 'flare_restart_tests' :
+                    project.hasProperty('flareGreenOnly') ? 'flare_green_tests' :
                     project.hasProperty('flareAcceptanceOnly') ? 'flare_acceptance_tests' :
                     project.hasProperty('flarePermissionsOnly') ? 'flare_permission_tests' :
                     project.hasProperty('flareEdgesOnly') ? 'flare_edge_tests' :
                     project.hasProperty('performanceOnly') ? 'qijie_performance' :
                     project.hasProperty('qijieOnly') ? 'qijie_tests' :
-                    project.hasProperty('yujiOnly') ? 'yuji_tests,flare_edge_tests,flare_permission_tests,flare_acceptance_tests' :
-                    project.hasProperty('coreOnly') ? "${mod_id},yuji_tests,flare_edge_tests,flare_permission_tests,flare_acceptance_tests,qijie_tests" :
+                    project.hasProperty('yujiOnly') ? 'yuji_tests,flare_edge_tests,flare_permission_tests,flare_acceptance_tests,flare_green_tests' :
+                    project.hasProperty('coreOnly') ? "${mod_id},yuji_tests,flare_edge_tests,flare_permission_tests,flare_acceptance_tests,flare_green_tests,qijie_tests" :
                     project.hasProperty('blinkOnly') ? 'wings_blink_tests' :
                     project.hasProperty('shadowMeleeOnly') ? 'shadow_melee_tests' :
-                    project.hasProperty('nightOnly') ? 'eternal_night_tests' : "${mod_id},eternal_night_tests,shadow_melee_tests,yuji_tests,flare_edge_tests,flare_permission_tests,flare_acceptance_tests,qijie_tests,suxia_tests,red_nails_tests"
+                    project.hasProperty('nightOnly') ? 'eternal_night_tests' : "${mod_id},eternal_night_tests,shadow_melee_tests,yuji_tests,flare_edge_tests,flare_permission_tests,flare_acceptance_tests,flare_green_tests,qijie_tests,suxia_tests,red_nails_tests"
         }
 
         data {
@@ -234,6 +235,9 @@ tasks.named('processResources', ProcessResources).configure {
     from('src/main/resources/data/sound_isolating_eraser/structures/empty.nbt') {
         into 'data/flare_acceptance_tests/structures'
     }
+    from('src/main/resources/data/sound_isolating_eraser/structures/empty.nbt') {
+        into 'data/flare_green_tests/structures'
+    }
     from(layout.buildDirectory.file('generated/brickrot-test-resources/data/sound_isolating_eraser/structures/brickrot_empty.nbt')) {
         into 'data/wings_blink_tests/structures'
     }
@@ -273,6 +277,7 @@ tasks.named('jar', Jar).configure {
     exclude 'data/flare_edge_tests/**'
     exclude 'data/flare_permission_tests/**'
     exclude 'data/flare_acceptance_tests/**'
+    exclude 'data/flare_green_tests/**'
     exclude 'data/wings_blink_tests/**'
     exclude 'data/shadow_melee_tests/**'
     exclude 'data/qijie_performance/**'
@@ -440,6 +445,14 @@ def verifyRedNailsAssets = tasks.register('verifyRedNailsAssets', Exec) {
     commandLine 'python3', 'tools/red-nails/verify_assets.py'
 }
 tasks.named('check').configure { dependsOn verifyRedNailsAssets }
+
+def verifyFlareGunAssets = tasks.register('verifyFlareGunAssets', Exec) {
+    commandLine 'python3', 'tools/flare/verify_gun_assets.py'
+}
+tasks.named('check').configure { dependsOn verifyFlareGunAssets }
+if (project.hasProperty('flareGunE2E')) {
+    apply from: 'gradle/flare-gun-e2e.gradle'
+}
 
 def verifyItemGuides = tasks.register('verifyItemGuides', Exec) {
     commandLine 'python3', 'tools/verify_item_guides.py'

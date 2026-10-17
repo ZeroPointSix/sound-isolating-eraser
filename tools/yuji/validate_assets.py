@@ -32,9 +32,14 @@ def main():
     sounds = read(ASSETS / "sounds.json")
     particles = {path.stem: read(path) for path in (ASSETS / "particles").glob("*.json")}
     city_particles = {"black_splash", "holy_light"}
+    flare_particles = {"flare_spark_red", "flare_spark_yellow", "flare_spark_green"}
     require(city_particles <= set(particles), "Missing city particles")
-    require(len(set(particles) - city_particles) == 19, "Expected nineteen monster particle definitions")
-    for particle in particles.values():
+    require(flare_particles <= set(particles), "Missing one of the three flare particles")
+    require(len(set(particles) - city_particles - flare_particles) == 19, "Expected nineteen monster particle definitions")
+    for name, particle in particles.items():
+        if name in flare_particles:
+            require(particle["textures"] == ["minecraft:generic_0"], f"Unexpected vanilla flare sprite: {name}")
+            continue
         for reference in particle["textures"]:
             namespace, sprite = reference.split(":", 1)
             texture(f"{namespace}:particle/{sprite}")
@@ -97,7 +102,7 @@ def main():
     require("loot" in {bone["name"] for bone in read(ASSETS / "geo/toudao.geo.json")["minecraft:geometry"][0]["bones"]}, "Missing loot attachment")
     layers = {bone["name"] for bone in read(ASSETS / "geo/tanyu.geo.json")["minecraft:geometry"][0]["bones"]}
     require({f"layer_{i}" for i in range(1, 7)} <= layers, "Missing six facial layers")
-    print(f"PASS: 12 models/animations, 11 eggs/loot tables, 3 effects, 19 particles, {len(sounds)} sounds/{len(audio_files)} Ogg files; all references resolved")
+    print(f"PASS: 12 models/animations, 11 eggs/loot tables, 3 effects, 19 monster + 2 city + 3 flare particles, {len(sounds)} sounds/{len(audio_files)} Ogg files; all references resolved")
 
 
 if __name__ == "__main__":

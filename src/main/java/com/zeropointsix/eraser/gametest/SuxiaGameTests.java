@@ -3,6 +3,7 @@ package com.zeropointsix.eraser.gametest;
 import com.mojang.authlib.GameProfile;
 import io.netty.channel.embedded.EmbeddedChannel;
 import com.zeropointsix.eraser.eraser.EraserAggro;
+import com.zeropointsix.eraser.memory.SummonCombatConfig;
 import com.zeropointsix.eraser.registry.ModBlocks;
 import com.zeropointsix.eraser.registry.ModEntities;
 import com.zeropointsix.eraser.registry.ModItems;
@@ -154,6 +155,7 @@ public final class SuxiaGameTests {
         Vec3 behind = owner.position().subtract(Vec3.directionFromRotation(0, owner.getYRot()).scale(2));
         BlockPos rear = BlockPos.containing(behind);
         double error = summon.position().subtract(behind).horizontalDistanceSqr();
+        h.assertTrue(summon.isAlive() && !summon.isRemoved(), "idle guardian is still present: " + idleDiagnostics(summon));
         h.assertTrue(summon.getTarget() == null && !summon.isAggressive(), "idle summon is not fighting");
         h.assertTrue(error <= 0.75 * 0.75 && Math.abs(summon.getY() - owner.getY()) < 0.5,
                 "idle summon stands within 0.75 blocks of owner's two-block rear position: " + Math.sqrt(error)
@@ -165,12 +167,44 @@ public final class SuxiaGameTests {
                         + " fluid=" + owner.level().getFluidState(rear)
                         + " onGround=" + summon.onGround() + " noGravity=" + summon.isNoGravity()
                         + " alive=" + summon.isAlive() + " removed=" + summon.isRemoved()
-                        + " motion=" + summon.getDeltaMovement());
+                        + " motion=" + summon.getDeltaMovement()
+                        + " diagnostics=" + idleDiagnostics(summon));
         h.assertTrue(summon.getNavigation().isDone(), "idle summon stops navigation after arrival");
         h.assertTrue(Math.abs(Mth.wrapDegrees(summon.getYHeadRot() - owner.getYRot())) < 5,
                 "idle head follows only owner's view yaw: " + summon.getYHeadRot() + " vs " + owner.getYRot());
         h.assertTrue(Math.abs(summon.getXRot() - owner.getXRot()) < 5,
                 "idle head follows owner's view pitch: " + summon.getXRot() + " vs " + owner.getXRot());
+    }
+
+    private static String idleDiagnostics(SuxiaSummonEntity summon) {
+        var nearbyBlocks = new ArrayList<String>();
+        BlockPos at = summon.blockPosition();
+        for (BlockPos pos : BlockPos.betweenClosed(at.offset(-1, -1, -1), at.offset(1, 3, 1))) {
+            var state = summon.level().getBlockState(pos);
+            if (!state.isAir()) nearbyBlocks.add(pos.toShortString() + "=" + state);
+        }
+        var neighbors = summon.level().getEntities(summon, summon.getBoundingBox().inflate(3)).stream()
+                .map(entity -> EntityType.getKey(entity.getType()) + "@" + entity.position()).toList();
+        return "alive=" + summon.isAlive() + ",removed=" + summon.isRemoved() + ",reason=" + summon.getRemovalReason()
+                + ",health=" + summon.getHealth() + ",crawl=" + summon.isCrawling() + ",onGround=" + summon.onGround()
+                + ",noGravity=" + summon.isNoGravity() + ",tick=" + summon.tickCount + ",box=" + summon.getBoundingBox()
+                + ",horizontalCollision=" + summon.horizontalCollision + ",verticalCollision=" + summon.verticalCollision
+                + ",canStand=" + SuxiaMotion.canStand(summon) + ",blocks=" + nearbyBlocks + ",neighbors=" + neighbors;
+    }
+
+    private static void traceIdlePose(GameTestHelper h, SuxiaSummonEntity summon, String label) {
+        boolean[] crawling = {summon.isCrawling()};
+        Vec3[] previous = {summon.position()};
+        int[] changes = {0};
+        System.out.println("SUXIA_IDLE_SPAWN " + label + " position=" + summon.position() + " " + idleDiagnostics(summon));
+        h.onEachTick(() -> {
+            if (crawling[0] != summon.isCrawling() && changes[0]++ < 8) {
+                System.out.println("SUXIA_IDLE_POSE " + label + " from=" + previous[0] + " to=" + summon.position()
+                        + " " + idleDiagnostics(summon));
+            }
+            crawling[0] = summon.isCrawling();
+            previous[0] = summon.position();
+        });
     }
 
     private static void look(ServerPlayer player, float yaw, float pitch) {
@@ -193,7 +227,8 @@ public final class SuxiaGameTests {
             var summon = ModEntities.SUXIA_SUMMON.get().create(f.level);
             for (Mob mob : List.of(hostile, summon)) {
                 near(h, mob.getMaxHealth(), 100, "health");
-                near(h, mob.getAttributeValue(Attributes.ATTACK_DAMAGE), 15, "base attack");
+                near(h, mob.getAttributeValue(Attributes.ATTACK_DAMAGE), mob == summon
+                        ? SummonCombatConfig.value(SummonCombatConfig.SUXIA_DAMAGE) : 15, "base attack");
                 near(h, mob.getAttributeValue(Attributes.KNOCKBACK_RESISTANCE), 1, "knockback resistance");
                 near(h, mob.getAttributeValue(Attributes.FOLLOW_RANGE), 32, "follow range");
                 h.assertTrue(mob.canBreatheUnderwater() && !mob.causeFallDamage(100, 1, mob.damageSources().fall()), "fall and water immunity");
@@ -208,6 +243,8 @@ public final class SuxiaGameTests {
             near(h, hostile.getBbHeight(), .6, "dead height");
             near(h, hostile.getAttributeValue(Attributes.MOVEMENT_SPEED), .25, "sleep resets speed");
             h.assertTrue(!summon.shouldDropExperience(), "summon has no XP");
+            near(h, summon.getAttribute(Attributes.MOVEMENT_SPEED).getBaseValue(),
+                    SummonCombatConfig.value(SummonCombatConfig.SUXIA_SPEED), "configured summon speed");
             h.succeed();
         });
     }
@@ -407,6 +444,8 @@ public final class SuxiaGameTests {
             var firstSummon = f.summon(first);
             var second = f.player(4, 0); look(second, -90, -35); f.watch(second);
             var secondSummon = f.summon(second);
+            traceIdlePose(h, firstSummon, "first");
+            traceIdlePose(h, secondSummon, "second");
             var bystander = f.player(0, 4); look(bystander, 180, 70);
             Runnable bothIdle = () -> {
                 idleBehind(h, firstSummon, first);
@@ -425,6 +464,36 @@ public final class SuxiaGameTests {
                     }).thenWaitUntil(bothIdle)
                     .thenExecute(() -> System.out.println("SUXIA_IDLE_MULTIPLAYER_PASSED"))
                     .thenSucceed();
+        });
+    }
+
+    @GameTest(template = "empty", batch = BATCH, timeoutTicks = 160)
+    public static void summon_runtime_crawl_transition_returns_to_idle(GameTestHelper h) {
+        ready(h, f -> {
+            var first = f.player(-4, 0); look(first, 90, 25); f.watch(first);
+            var firstSummon = f.summon(first);
+            var second = f.player(4, 0); look(second, -90, -35); f.watch(second);
+            var secondSummon = f.summon(second);
+            traceIdlePose(h, firstSummon, "runtime-crawl");
+            traceIdlePose(h, secondSummon, "standing-control");
+            h.startSequence().thenWaitUntil(() -> h.assertTrue(firstSummon.tickCount > 0,
+                            "pose probe starts after a real entity tick"))
+                    .thenExecute(() -> {
+                        Vec3 before = firstSummon.position();
+                        firstSummon.setCrawling(true);
+                        h.assertTrue(firstSummon.isCrawling(), "runtime pose change was applied");
+                        System.out.println("SUXIA_IDLE_RUNTIME_CRAWL from=" + before + " to=" + firstSummon.position()
+                                + " noCollision=" + f.level.noCollision(firstSummon, firstSummon.getBoundingBox())
+                                + " " + idleDiagnostics(firstSummon));
+                    });
+            // Leave AI, gravity and the next pose decision untouched; the second summon is the control.
+            h.runAfterDelay(100, () -> {
+                idleBehind(h, firstSummon, first);
+                idleBehind(h, secondSummon, second);
+                h.assertTrue(!firstSummon.isCrawling(), "guardian naturally returns to standing in open space");
+                System.out.println("SUXIA_IDLE_RUNTIME_CRAWL_RECOVERY_PASSED");
+                h.succeed();
+            });
         });
     }
 
@@ -601,6 +670,144 @@ public final class SuxiaGameTests {
             var player = f.player(8, 0); player.setGameMode(GameType.SPECTATOR);
             h.assertTrue(!SuxiaEntity.prey(player), "spectator is never prey");
             h.succeed();
+        });
+    }
+
+    @GameTest(template = "empty", batch = BATCH)
+    public static void shared_guard_uses_owner_radius_and_ignores_passive_mobs(GameTestHelper h) {
+        ready(h, f -> {
+            var p = f.player(10, 0); f.watch(p); var summon = f.summon(p);
+            summon.setNoAi(true);
+            summon.setPos(Vec3.atBottomCenterOf(f.center.offset(-2, 0, 0)));
+            var outside = f.add(EntityType.ZOMBIE.create(f.level), -12, 0); outside.setNoAi(true);
+            var inside = f.add(EntityType.ZOMBIE.create(f.level), 14, 0); inside.setNoAi(true);
+            var cow = f.add(EntityType.COW.create(f.level), 11, 0); cow.setNoAi(true);
+            var wolf = f.add(EntityType.WOLF.create(f.level), 12, 0);
+            wolf.setTame(true); wolf.setOwnerUUID(p.getUUID()); wolf.setNoAi(true);
+            var goal = new com.zeropointsix.eraser.memory.SummonGuardGoal(summon);
+            goal.chooseTarget();
+            h.assertTrue(summon.getTarget() == inside && inside.getTarget() == null,
+                    "Acquire an idle hostile around the owner, not around the summon");
+            inside.discard(); goal.chooseTarget();
+            h.assertTrue(summon.getTarget() == null, "Do not acquire out-of-radius hostiles, cows or own pets");
+            h.succeed();
+        });
+    }
+
+    @GameTest(template = "empty", batch = BATCH)
+    public static void shared_guard_owner_combat_preempts_ambient_target(GameTestHelper h) {
+        ready(h, f -> {
+            var p = f.player(0, 0); f.watch(p); var summon = f.summon(p); summon.setNoAi(true);
+            var ambient = f.add(EntityType.ZOMBIE.create(f.level), 4, 0); ambient.setNoAi(true);
+            var commanded = f.add(EntityType.HUSK.create(f.level), 8, 0); commanded.setNoAi(true);
+            var attacker = f.add(EntityType.SKELETON.create(f.level), 10, 0); attacker.setNoAi(true);
+            var goal = new com.zeropointsix.eraser.memory.SummonGuardGoal(summon);
+            summon.setTarget(ambient);
+            p.setLastHurtMob(commanded); goal.chooseTarget();
+            h.assertTrue(summon.getTarget() == commanded, "Owner attack preempts an existing ambient target");
+            p.setLastHurtByMob(attacker); goal.chooseTarget();
+            h.assertTrue(summon.getTarget() == attacker, "Owner defence has highest priority");
+            var villager = f.add(EntityType.VILLAGER.create(f.level), 2, 0);
+            p.setLastHurtByMob(villager); p.setLastHurtMob(villager); goal.chooseTarget();
+            h.assertTrue(summon.getTarget() != villager && !summon.doHurtTarget(villager),
+                    "Owner combat never bypasses the protected-entity policy");
+            h.succeed();
+        });
+    }
+
+    @GameTest(template = "empty", batch = BATCH)
+    public static void shared_guard_respects_target_capacity(GameTestHelper h) {
+        ready(h, f -> {
+            var p = f.player(0, 0); f.watch(p); var summon = f.summon(p); summon.setNoAi(true);
+            var crowded = f.add(EntityType.ZOMBIE.create(f.level), 4, 0); crowded.setNoAi(true);
+            var free = f.add(EntityType.HUSK.create(f.level), 7, 0); free.setNoAi(true);
+            p.setLastHurtByMob(crowded);
+            new com.zeropointsix.eraser.memory.SummonGuardGoal(summon, target -> target == crowded ? 2 : 0, 2)
+                    .chooseTarget();
+            h.assertTrue(summon.getTarget() == free, "A full target does not stop other guardians finding work");
+            h.succeed();
+        });
+    }
+
+    @GameTest(template = "empty", batch = BATCH, timeoutTicks = 160)
+    public static void shared_melee_uses_real_configured_attack_ticks(GameTestHelper h) {
+        ready(h, f -> {
+            var p = f.player(0, 0); f.watch(p); var summon = f.summon(p); summon.setNoAi(true);
+            var prey = f.add(EntityType.HUSK.create(f.level), 2, 0); prey.setNoAi(true);
+            prey.getAttribute(Attributes.MAX_HEALTH).setBaseValue(200); prey.setHealth(200);
+            prey.setNoGravity(true);
+            var ticks = new java.util.concurrent.atomic.AtomicInteger(12);
+            class Attack extends com.zeropointsix.eraser.memory.SummonMeleeAttackGoal {
+                Attack() { super(summon, 1, ticks::get); }
+                void attempt() { checkAndPerformAttack(prey, 0); }
+            }
+            var attack = new Attack();
+            var hits = new java.util.ArrayList<Long>();
+            final long start = f.now();
+            h.onEachTick(() -> {
+                prey.setDeltaMovement(Vec3.ZERO);
+                float before = prey.getHealth();
+                attack.attempt();
+                if (prey.getHealth() < before) {
+                    hits.add(f.now() - start);
+                    if (hits.size() == 1) ticks.set(18);
+                }
+                if (hits.size() == 3) {
+                    h.assertTrue(hits.get(1) - hits.get(0) == 12, "Second damage occurs after 12 server ticks");
+                    h.assertTrue(hits.get(2) - hits.get(1) == 18, "Next cooldown uses the reloaded 18 tick value");
+                    h.succeed();
+                }
+            });
+        });
+    }
+
+    @GameTest(template = "empty", batch = BATCH, timeoutTicks = 240)
+    public static void summon_ai_attacks_idle_zombie_within_100_ticks_without_friendly_fire(GameTestHelper h) {
+        ready(h, f -> {
+            var p = f.player(0, 0); f.watch(p);
+            var zombie = f.add(EntityType.ZOMBIE.create(f.level), 8, 0); zombie.setNoAi(true);
+            zombie.setItemSlot(net.minecraft.world.entity.EquipmentSlot.HEAD,
+                    new ItemStack(net.minecraft.world.item.Items.IRON_HELMET));
+            var villager = f.add(EntityType.VILLAGER.create(f.level), 3, 2); villager.setNoAi(true);
+            var pet = f.add(EntityType.WOLF.create(f.level), 4, -2);
+            pet.setTame(true); pet.setOwnerUUID(p.getUUID()); pet.setNoAi(true);
+            var golem = f.add(EntityType.IRON_GOLEM.create(f.level), 2, -3); golem.setNoAi(true);
+            var creative = f.player(-3, 0); creative.setGameMode(GameType.CREATIVE);
+            var protectedMobs = List.of(p, villager, pet, golem, creative);
+            var health = protectedMobs.stream().map(net.minecraft.world.entity.LivingEntity::getHealth).toList();
+            var summon = f.summon(p);
+            h.assertTrue(!summon.isNoAi() && zombie.getTarget() == null, "Real watch summon and idle hostile");
+            final long start = f.now();
+            final boolean[] hit = {false};
+            h.onEachTick(() -> {
+                if (zombie.getLastHurtByMob() == summon && zombie.getHealth() < zombie.getMaxHealth()) hit[0] = true;
+                for (int i = 0; i < protectedMobs.size(); i++) {
+                    h.assertTrue(summon.getTarget() != protectedMobs.get(i), "Never target protected entities");
+                    near(h, protectedMobs.get(i).getHealth(), health.get(i), "No friendly damage during live combat");
+                }
+                if (f.now() - start >= 100) {
+                    h.assertTrue(hit[0], "Enabled AI must navigate to and damage an idle zombie within 100 ticks");
+                    h.succeed();
+                }
+            });
+        });
+    }
+
+    @GameTest(template = "empty", batch = BATCH, timeoutTicks = 160)
+    public static void summon_ai_owner_priority_preempts_live_ambient_combat(GameTestHelper h) {
+        ready(h, f -> {
+            var p = f.player(0, 0); f.watch(p); var summon = f.summon(p);
+            summon.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(0);
+            var ambient = f.add(EntityType.HUSK.create(f.level), 8, 0); ambient.setNoAi(true);
+            var commanded = f.add(EntityType.HUSK.create(f.level), 12, 3); commanded.setNoAi(true);
+            var attacker = f.add(EntityType.HUSK.create(f.level), 12, -3); attacker.setNoAi(true);
+            h.startSequence().thenWaitUntil(() -> h.assertTrue(summon.getTarget() == ambient, "Ambient hostile acquired by ticking goal"))
+                    .thenExecute(() -> p.setLastHurtMob(commanded))
+                    .thenIdle(10).thenExecute(() -> {
+                        h.assertTrue(summon.getTarget() == commanded, "Owner attack preempts active target");
+                        p.setLastHurtByMob(attacker);
+                    }).thenIdle(10).thenExecute(() -> h.assertTrue(summon.getTarget() == attacker,
+                            "Owner defence preempts owner attack")).thenSucceed();
         });
     }
 

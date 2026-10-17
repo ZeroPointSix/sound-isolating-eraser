@@ -44,7 +44,7 @@ public final class FallingSupplyCrate extends Entity {
         if (Math.abs(getY() - destination.getY()) < 1.1 && FlarePlacement.safeGround(server, destination)) {
             placed = FlarePlacement.place(server, destination, FlareContent.CRATE.get().defaultBlockState(), FlarePlacement.owner(server, owner));
             if (placed && server.getBlockEntity(destination) instanceof SupplyCrateBlockEntity crate) {
-                crate.setLootTable(com.zeropointsix.eraser.yuji.YujiContent.id("chests/yuji_airdrop"), random.nextLong());
+                crate.setLootTable(FlareAirdropLoot.choose(server, random), random.nextLong());
                 crate.setChanged(); playSound(SoundEvents.WOOD_PLACE, 1, .75F);
             }
         }
