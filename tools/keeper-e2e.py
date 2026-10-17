@@ -115,7 +115,9 @@ def wait_ready(server):
 def wait_evidence(required, running):
     deadline = time.monotonic() + int(os.environ.get("KEEPER_QA_TIMEOUT_SECONDS", "1200"))
     while not all((RESULTS / (name + ".pass")).exists() for name in required):
-        failures = list(RESULTS.glob("*.failed"))
+        # Flash failure is terminal for acceptance, not for independent photo diagnostics.
+        failures = [p for p in RESULTS.glob("*.failed")
+                    if p.name not in ("flash-render.failed", "sampler.failed")]
         messages = [path.name + ": " + path.read_text() for path in failures if path.stat().st_size > 0]
         if messages:
             raise AssertionError("; ".join(messages))
@@ -196,6 +198,8 @@ try:
     processes.append(sampler)
     client = launch("client")
     wait_evidence(["sepia", "hud", "countdown", "exit", "server"], [server, client])
+    failures = list(RESULTS.glob("*.failed"))
+    assert not failures, "; ".join(p.name + ": " + p.read_text() for p in failures)
     assert sampler.wait(timeout=20) == 0, "X11 sampler failed"
     assert (RESULTS / "flash-observed.txt").exists(), "Missing rendered-frame timing evidence"
     verify_flash_timing()
@@ -211,7 +215,8 @@ finally:
     for log in logs:
         log.close()
     commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
-    passed = all((RESULTS / (n + ".pass")).exists() for n in ["flash", "sepia", "hud", "countdown", "exit", "server"])
+    passed = not list(RESULTS.glob("*.failed")) and all(
+        (RESULTS / (n + ".pass")).exists() for n in ["flash", "sepia", "hud", "countdown", "exit", "server"])
     (RESULTS / "results.md").write_text(
         "# Keeper camera client E2E\n\n"
         + "commit=" + commit + "\n"

@@ -101,8 +101,12 @@ public final class KeeperTestServer {
             if (phase.equals("baseline") && phaseTicks >= 200) {
                 phase("shoot");
             } else if (phase.equals("shoot") && hasPhoto(player) && phaseTicks >= 50) {
-                if (!(Files.exists(RESULTS.resolve("flash-observed.txt"))
-                        && Files.exists(RESULTS.resolve("flash-captured.txt")))) return;
+                // A failed flash remains failed; it does not prevent native photo entry diagnostics.
+                boolean renderFinished = Files.exists(RESULTS.resolve("flash-observed.txt"))
+                        || Files.exists(RESULTS.resolve("flash-render.failed"));
+                boolean captureFinished = Files.exists(RESULTS.resolve("flash-captured.txt"))
+                        || Files.exists(RESULTS.resolve("sampler.failed"));
+                if (!(renderFinished && captureFinished)) return;
                 player.getInventory().selected = 1;
                 player.inventoryMenu.broadcastChanges();
                 phase("enter");
