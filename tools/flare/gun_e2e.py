@@ -31,9 +31,13 @@ def launch(role, display):
     directory.mkdir()
     if server:
         (directory / "eula.txt").write_text("eula=true\n")
+        # Vanilla ignores spawn protection while ops.json is empty; a placeholder op (never joins) enables it.
+        (directory / "ops.json").write_text('[{"uuid":"00000000-0000-4000-8000-0000000000aa","name":"FlareQaOp","level":4,"bypassesPlayerLimit":false}]\n')
+        # spawn-protection keeps the merged T5 flight-light blocks (a separately tested feature) out of this
+        # gun-render scenario: each light update re-meshes chunks and stalls software-GL frames across the recoil.
         (directory / "server.properties").write_text(
             f"online-mode=false\nserver-ip=127.0.0.1\nserver-port={PORT}\n"
-            "enforce-secure-profile=false\nspawn-protection=0\nview-distance=3\n"
+            "enforce-secure-profile=false\nspawn-protection=64\nview-distance=3\n"
             "simulation-distance=3\nlevel-type=minecraft:flat\nmax-tick-time=0\n"
             "generate-structures=false\nspawn-monsters=false\ngamemode=survival\n")
     else:
