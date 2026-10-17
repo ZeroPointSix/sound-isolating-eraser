@@ -18,7 +18,7 @@ TIMEOUT = int(os.environ.get("RED_NAILS_QA_TIMEOUT", "900"))
 PURSUIT = os.environ.get("RED_NAILS_QA_PURSUIT") == "1"
 ACCEPTANCE = os.environ.get("RED_NAILS_QA_ACCEPTANCE") == "1"
 CASE = os.environ.get("RED_NAILS_QA_CASE", "all")
-if CASE not in {"all", "boat", "bottom", "damage", "items"}:
+if CASE not in {"all", "boat", "bottom", "front", "front-bottom", "damage", "items"}:
     raise ValueError(f"Unknown native acceptance case: {CASE}")
 processes, logs = [], []
 
@@ -140,9 +140,10 @@ try:
     ready(server)
     client = launch("client")
     if ACCEPTANCE:
-        capture = ["boat", "bottom", "damage"] if CASE == "all" else ([CASE] if CASE != "items" else [])
+        capture = ["boat", "bottom", "front", "front-bottom", "damage"] if CASE == "all" else ([CASE] if CASE != "items" else [])
         items = ["coexist", "recall", "recall-watch", "unequip"] if CASE in {"all", "items"} else []
         required = [f"acceptance-{name}" for name in [*capture, *items, "client"]]
+        required += [f"acceptance-{name}-released" for name in capture]
         print(f"RED_NAILS_QA_CASE={CASE} REQUIRED={required}", flush=True)
         wait_for(required, [server, client])
         stop(client)

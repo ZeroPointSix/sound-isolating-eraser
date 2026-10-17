@@ -57,7 +57,7 @@ public final class RedNailsAcceptanceClient {
         }
     }
     private static String captureCase(String value) {
-        for (String name : new String[] {"boat", "bottom", "damage"}) {
+        for (String name : new String[] {"boat", "bottom", "damage", "front-bottom", "front"}) {
             if (value.startsWith(name + "-")) return name;
         }
         return "";
@@ -147,6 +147,18 @@ public final class RedNailsAcceptanceClient {
                     screenshot(name);
                     signal(name, "real client completed " + name + " position=" + mc.player.position());
                 }
+                return;
+            }
+            if (phase.endsWith("-released")) {
+                if (ticks == 1) { mc.player.setYRot(90); mc.player.setXRot(-20); }
+                mc.options.keyUp.setDown(true); mc.options.keyJump.setDown(true); mc.options.keySprint.setDown(true);
+                JsonObject input = new JsonObject();
+                input.addProperty("clientTick", clientTicks);
+                input.addProperty("phaseTicks", ticks);
+                input.addProperty("forwardImpulse", mc.player.input.forwardImpulse);
+                input.addProperty("jumping", mc.player.input.jumping);
+                signal(phase + "-input", input.toString());
+                if (ticks == 30) screenshot(phase);
                 return;
             }
             if (phase.equals("coexist")) {
