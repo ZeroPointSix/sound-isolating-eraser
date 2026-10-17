@@ -202,7 +202,10 @@ try:
     subprocess.run(["javac", "-d", str(sampler_classes), str(ROOT / "tools/KeeperX11Sampler.java")], check=True)
     sampler_log = (RESULTS / "sampler.log").open("w")
     logs.append(sampler_log)
-    sampler = subprocess.Popen(["java", "-Xmx128m", "-XX:ActiveProcessorCount=1",
+    # Keep the real X11 capture ring away from small-heap collection pressure.
+    sampler = subprocess.Popen(["java", "-Xms512m", "-Xmx512m", "-XX:+UseG1GC",
+                                "-XX:MaxGCPauseMillis=10", "-XX:ActiveProcessorCount=1",
+                                f"-Xlog:gc*,safepoint:file={RESULTS / 'sampler-gc.log'}:time,uptime,level,tags",
                                 "-Djava.awt.headless=false", "-cp", str(sampler_classes),
                                 "KeeperX11Sampler", str(RESULTS)],
                                env={**os.environ, "DISPLAY": displays[0]},
