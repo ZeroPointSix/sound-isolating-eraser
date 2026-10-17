@@ -39,6 +39,7 @@ public final class RedNailsTestServer {
     private static boolean shoreGrabbed, wildGrabbed;
     private static long waterAt = -1, wildGrabAt = -1;
     private static double waterY, minWaterY, wildStartX, wildStartZ;
+    private static double wildPlayerMoveBeforeGrab, wildGhostMoveBeforeGrab;
     private static int airTicks, extraAirTicks, previousAir = -1;
     private static net.minecraft.world.phys.Vec3 wildPlayerStart;
     private static void require(boolean condition, String message) { if (!condition) throw new AssertionError(message); }
@@ -233,7 +234,10 @@ public final class RedNailsTestServer {
                 var entry = RedNailsState.get(player.getServer()).read(stack);
                 require(entry != null && itemId.equals(entry.item) && entry.owner.equals(player.getUUID()), "Curios item and owner survive real restart");
                 require(entry.ready[1] == deadline && entry.active() == 0, "Cooldown deadline and recall survive restart");
-                pass("restart", "Actual server restart/reconnect retains ItemId, owner, exact deadline and zero active summons.");
+                if (PURSUIT) require(entry.ready[0] == 0 && entry.ready[2] == deadline && entry.ready[3] == deadline,
+                        "All three exact cooldown deadlines and the recalled nail survive restart");
+                pass("restart", "Actual server restart/reconnect retains ItemId, owner, exact deadlines and zero active summons; ready="
+                        + java.util.Arrays.toString(entry.ready));
                 stage = 11; signal("restored");
             } else if (stage == 11) ticks = 0;
         } catch (Throwable error) { fail(error); }
@@ -317,6 +321,7 @@ public final class RedNailsTestServer {
             swimmer.moveTo(-4.5, 70, 0.5, -90, 0);
             level.addFreshEntity(swimmer);
             wildStartX = swimmer.getX(); wildStartZ = swimmer.getZ(); wildPlayerStart = player.position();
+            wildPlayerMoveBeforeGrab = 0; wildGhostMoveBeforeGrab = 0;
             require(!player.isInWater() && !swimmer.isInWater() && swimmer.nearWater(player, 2)
                             && swimmer.distanceToSqr(player) <= 36 && swimmer.hasLineOfSight(player),
                     "wild fixture begins on dry bank, within six blocks and two blocks of water, with line of sight");
@@ -343,22 +348,30 @@ public final class RedNailsTestServer {
         if (stage == 32) {
             require(swimmer.isAlive() && player.isAlive() && !swimmer.isNoAi(), "normal-AI wild pursuit participants remain alive");
             boolean held = swimmer.ghostBody().grab.held() == player;
+            if (!wildGrabbed && !held) {
+                // Sample before grab physics can contribute to either displacement.
+                wildPlayerMoveBeforeGrab = Math.max(wildPlayerMoveBeforeGrab,
+                        player.position().subtract(wildPlayerStart).horizontalDistance());
+                wildGhostMoveBeforeGrab = Math.max(wildGhostMoveBeforeGrab,
+                        Math.hypot(swimmer.getX() - wildStartX, swimmer.getZ() - wildStartZ));
+            }
             if (ticks % 10 == 0) System.out.println("NATIVE_WILD_TRACE t=" + level.getGameTime()
                     + " selected=" + (swimmer.getTarget() == player) + " held=" + held
                     + " ghost=" + swimmer.position() + " player=" + player.position()
                     + " nearWater=" + swimmer.nearWater(player, 2));
             if (!wildGrabbed && held) {
                 require(swimmer.getTarget() == player && !swimmer.ghostBody().swimming(), "wild ghost naturally pursues and grabs real land player");
-                double movement = Math.hypot(swimmer.getX() - wildStartX, swimmer.getZ() - wildStartZ);
-                require(movement > 1 && player.position().subtract(wildPlayerStart).horizontalDistance() >= 1,
+                require(wildGhostMoveBeforeGrab > 1 && wildPlayerMoveBeforeGrab >= 1,
                         "both normal AI and real keyboard-driven player moved before grab");
                 wildGrabbed = true; wildGrabAt = level.getGameTime();
-                System.out.println("NATIVE_WILD_GRAB t=" + wildGrabAt + " ghost=" + swimmer.position() + " player=" + player.position());
+                System.out.println("NATIVE_WILD_GRAB t=" + wildGrabAt + " ghost=" + swimmer.position() + " player=" + player.position()
+                        + " ghostMoveBeforeGrab=" + wildGhostMoveBeforeGrab + " playerMoveBeforeGrab=" + wildPlayerMoveBeforeGrab);
             }
             if (wildGrabbed && !held) {
                 long dt = level.getGameTime() - wildGrabAt;
                 require(dt >= 59 && dt <= 61, "wild dry grab retains 60-tick duration: " + dt);
-                pass("wild", "Normal wild AI pursued a real keyboard-moving player and naturally released; dt=" + dt + " health=" + player.getHealth());
+                pass("wild", "Normal wild AI pursued a real keyboard-moving player and naturally released; dt=" + dt + " health=" + player.getHealth()
+                        + " ghostMoveBeforeGrab=" + wildGhostMoveBeforeGrab + " playerMoveBeforeGrab=" + wildPlayerMoveBeforeGrab);
                 swimmer.discard();
                 Files.writeString(RESULTS.resolve("expected-state"), itemId + "\n" + deadline + "\n");
                 signal("wild-complete"); stage = 7;

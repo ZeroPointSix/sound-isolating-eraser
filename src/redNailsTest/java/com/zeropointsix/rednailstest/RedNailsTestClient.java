@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
+import net.minecraft.client.gui.screens.DisconnectedScreen;
 import net.minecraft.client.renderer.item.ItemProperties;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ServerboundPlayerCommandPacket;
@@ -69,7 +70,12 @@ public final class RedNailsTestClient {
     @SubscribeEvent(priority = EventPriority.HIGH) public static void tick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END || failed) return;
         var mc = Minecraft.getInstance();
-        if (mc.level == null || mc.player == null) return;
+        if (mc.level == null || mc.player == null) {
+            if (mc.screen instanceof DisconnectedScreen) {
+                fail(new AssertionError("Native client disconnected during phase=" + phase));
+            }
+            return;
+        }
         try {
             var dispatcher = mc.getEntityRenderDispatcher();
             for (var entity : mc.level.entitiesForRendering()) {

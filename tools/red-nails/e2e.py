@@ -60,6 +60,10 @@ def launch(role):
     if PURSUIT:
         command += ["-Drednails.qa.pursuit=true"]
     command += shlex.split(expand(config["vmArgs"]))
+    if server:
+        # Allow registry synchronization during a software-rendered client join.
+        command += ["-Dforge.readTimeout=120"]
+        print("RED_NAILS_QA_TRANSPORT_READ_TIMEOUT_SECONDS=120", flush=True)
     if not server:
         natives = directory / "lwjgl-natives"
         natives.mkdir(exist_ok=True)
