@@ -157,9 +157,16 @@ public final class RedNailsAcceptanceServer {
                 if (boatDistance >= 2 && ghost == null) {
                     ghost = ModEntities.WATER_GHOST.get().create(player.serverLevel());
                     check(ghost != null, "registered ghost creates");
-                    ghost.moveTo(player.getX(), 73.5, player.getZ() + 4.5, 180, 0);
+                    // A head-on fixture stops the boat on the ghost's box before the grab can start.
+                    // Approach alongside it; normal AI may still move, and client motion remains mandatory.
+                    ghost.moveTo(player.getX() + 1.4, 73.5, player.getZ() + 4.5, 180, 0);
                     player.serverLevel().addFreshEntity(ghost);
                     check(!ghost.isNoAi() && ghost.getTarget() == null, "normal ghost AI starts without forced target");
+                    check(ghost.getBoundingBox().minX > boat.getBoundingBox().maxX,
+                            "fixture starts with lateral clearance from the real boat");
+                    System.out.println("RED_NAILS_ACCEPTANCE_APPROACH ghostBox=" + ghost.getBoundingBox()
+                            + " boatBox=" + boat.getBoundingBox() + " lateralClearance="
+                            + (ghost.getBoundingBox().minX - boat.getBoundingBox().maxX));
                     System.out.println("RED_NAILS_ACCEPTANCE_MOVING_BOAT distance=" + boatDistance + " speed=" + boat.getDeltaMovement().horizontalDistance());
                     stage = 2; phase(scenario + "-moving");
                 }

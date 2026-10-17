@@ -207,7 +207,8 @@ public final class SuxiaTestClient {
             }
             return;
         }
-        if (failed || !(phase.equals("gallery") || phase.startsWith("hostile-") || phase.startsWith("restored"))
+        // After its evidence is captured, the server may already be preparing the next pose.
+        if (failed || captured || !(phase.equals("gallery") || phase.startsWith("hostile-") || phase.startsWith("restored"))
                 || !(event.getEntity() instanceof SuxiaEntity mob)
                 || !(event.getRenderer().getModel() instanceof SuxiaModel<?> model)) return;
         try {
