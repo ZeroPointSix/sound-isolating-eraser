@@ -37,11 +37,12 @@ import org.lwjgl.glfw.GLFW;
 public final class RedNailsAcceptanceClient {
     private static final boolean ENABLED = Boolean.getBoolean("rednails.qa.acceptance");
     private static final Path RESULTS = Path.of(System.getProperty("rednails.qa.results"));
-    private static String phase = "";
+    private static volatile String phase = "";
     private static int ticks, attacks, clientTicks, vHeldTicks;
     private static boolean failed;
     private static AcceptanceObservations.BoatHistory boatHistory = new AcceptanceObservations.BoatHistory();
-    private static String captureCase = "";
+    private static volatile String captureCase = "";
+    private static long captureTraceTick, captureTraceSequence;
     private static boolean motionRecorded;
     private static final InputConstants.Key LIFECYCLE_KEY = InputConstants.Type.KEYSYM.getOrCreate(GLFW.GLFW_KEY_O);
     private static InputConstants.Key originalKey;
@@ -91,6 +92,10 @@ public final class RedNailsAcceptanceClient {
                 motionRecorded = false;
             }
             phase = next; ticks = 0; attacks = 0; vHeldTicks = 0;
+            if (!nextCase.isEmpty()) {
+                try { captureDiagnostic("PHASE_RECEIVED", next); }
+                catch (Exception error) { throw new IllegalStateException("Cannot record capture phase receipt", error); }
+            }
             event.setCanceled(true);
         }
     }
@@ -137,6 +142,101 @@ public final class RedNailsAcceptanceClient {
         Files.writeString(pending, body + "\n");
         Files.move(pending, target, java.nio.file.StandardCopyOption.ATOMIC_MOVE,
                 java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+    }
+    private static JsonObject diagnosticVector(Vec3 value) {
+        var json = new JsonObject();
+        json.addProperty("x", value.x); json.addProperty("y", value.y); json.addProperty("z", value.z);
+        return json;
+    }
+    private static JsonObject captureClientState(Minecraft mc) {
+        var json = new JsonObject();
+        json.addProperty("traceTick", captureTraceTick); json.addProperty("clientTick", clientTicks);
+        json.addProperty("phase", phase); json.addProperty("phaseTicks", ticks);
+        json.addProperty("levelTick", mc.level.getGameTime());
+        json.addProperty("activeWindow", mc.isWindowActive());
+        json.addProperty("screen", mc.screen == null ? "" : mc.screen.getClass().getSimpleName());
+        json.add("position", diagnosticVector(mc.player.position()));
+        json.add("velocity", diagnosticVector(mc.player.getDeltaMovement()));
+        json.addProperty("forwardKey", mc.options.keyUp.isDown());
+        json.addProperty("jumpKey", mc.options.keyJump.isDown());
+        json.addProperty("sprintKey", mc.options.keySprint.isDown());
+        json.addProperty("forwardImpulse", mc.player.input.forwardImpulse);
+        json.addProperty("leftImpulse", mc.player.input.leftImpulse);
+        json.addProperty("jumping", mc.player.input.jumping);
+        json.addProperty("sprinting", mc.player.isSprinting()); json.addProperty("swimming", mc.player.isSwimming());
+        json.addProperty("pose", mc.player.getPose().toString()); json.addProperty("onGround", mc.player.onGround());
+        json.addProperty("bodyWet", mc.player.isInWater()); json.addProperty("eyesWet", mc.player.isEyeInFluid(FluidTags.WATER));
+        json.addProperty("passenger", mc.player.isPassenger());
+        json.addProperty("horizontalCollision", mc.player.horizontalCollision);
+        json.addProperty("verticalCollision", mc.player.verticalCollision);
+        json.addProperty("air", mc.player.getAirSupply());
+        Boat fixtureBoat = mc.player.getVehicle() instanceof Boat mounted ? mounted : null;
+        for (var entity : mc.level.entitiesForRendering()) {
+            if (entity instanceof Boat candidate && candidate.getUUID().toString().equals(boatHistory.uuid)) fixtureBoat = candidate;
+            if (entity instanceof WaterGhostEntity observedGhost) {
+                json.addProperty("ghostId", observedGhost.getId());
+                json.add("ghostPosition", diagnosticVector(observedGhost.position()));
+                json.add("ghostVelocity", diagnosticVector(observedGhost.getDeltaMovement()));
+            }
+        }
+        json.addProperty("fixtureBoatVisible", fixtureBoat != null);
+        json.addProperty("boatUuid", fixtureBoat == null ? boatHistory.uuid : fixtureBoat.getUUID().toString());
+        if (fixtureBoat != null) {
+            json.addProperty("boatId", fixtureBoat.getId());
+            json.add("boatPosition", diagnosticVector(fixtureBoat.position()));
+            json.add("boatVelocity", diagnosticVector(fixtureBoat.getDeltaMovement()));
+        }
+        return json;
+    }
+    private static synchronized void appendCaptureTrace(String stream, JsonObject json) throws Exception {
+        json.addProperty("sequence", ++captureTraceSequence);
+        json.addProperty("clockScope", "client-process");
+        json.addProperty("monotonicNanos", System.nanoTime());
+        Files.writeString(RESULTS.resolve("acceptance-" + captureCase + "-" + stream + ".jsonl"), json + "\n",
+                StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+    }
+    private static void captureDiagnostic(String edge, String receivedPhase) throws Exception {
+        var mc = Minecraft.getInstance();
+        if (captureCase.isEmpty() || mc.level == null || mc.player == null) return;
+        var json = captureClientState(mc); json.addProperty("edge", edge);
+        if (!receivedPhase.isEmpty()) json.addProperty("receivedPhase", receivedPhase);
+        appendCaptureTrace("client-state", json);
+        if (edge.equals("END")) signal(captureCase + "-diagnostic", json.toString());
+    }
+    @SubscribeEvent(priority = net.minecraftforge.eventbus.api.EventPriority.LOWEST)
+    public static void captureDiagnosticTick(TickEvent.ClientTickEvent event) {
+        if (!ENABLED || failed || captureCase.isEmpty() || !captureCase(phase).equals(captureCase)) return;
+        if (event.phase == TickEvent.Phase.START) captureTraceTick++;
+        try { captureDiagnostic(event.phase.name(), ""); }
+        catch (Exception error) { throw new IllegalStateException("Cannot record continuous capture diagnostics", error); }
+    }
+    public static void traceCapturePacket(String edge, Object packet) {
+        if (!ENABLED || captureCase.isEmpty() || !captureCase(phase).equals(captureCase)) return;
+        var mc = Minecraft.getInstance();
+        boolean mainThread = mc.isSameThread();
+        var json = new JsonObject();
+        json.addProperty("edge", mainThread ? "APPLY_" + edge : "RECEIVE_" + edge);
+        json.addProperty("mainThread", mainThread); json.addProperty("phase", phase);
+        json.addProperty("packetIdentity", System.identityHashCode(packet));
+        json.addProperty("packet", packet.getClass().getSimpleName());
+        if (packet instanceof net.minecraft.network.protocol.game.ClientboundSetEntityMotionPacket motion) {
+            json.addProperty("entityId", motion.getId());
+            json.addProperty("wireXa", motion.getXa()); json.addProperty("wireYa", motion.getYa()); json.addProperty("wireZa", motion.getZa());
+            json.addProperty("wireVelocityScale", 8000);
+        } else if (packet instanceof net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket position) {
+            json.addProperty("wireX", position.getX()); json.addProperty("wireY", position.getY()); json.addProperty("wireZ", position.getZ());
+            json.addProperty("relative", position.getRelativeArguments().toString());
+        } else if (packet instanceof net.minecraft.network.protocol.game.ClientboundSetPassengersPacket passengers) {
+            json.addProperty("vehicleId", passengers.getVehicle());
+            var ids = new JsonArray(); for (int id : passengers.getPassengers()) ids.add(id);
+            json.add("passengers", ids);
+        }
+        if (mainThread && mc.level != null && mc.player != null) {
+            json.addProperty("playerId", mc.player.getId());
+            json.add("state", captureClientState(mc));
+        }
+        try { appendCaptureTrace("client-packets", json); }
+        catch (Exception error) { throw new IllegalStateException("Cannot record native capture packet", error); }
     }
     @SubscribeEvent public static void tick(TickEvent.ClientTickEvent event) {
         if (!ENABLED || failed || event.phase != TickEvent.Phase.END) return;

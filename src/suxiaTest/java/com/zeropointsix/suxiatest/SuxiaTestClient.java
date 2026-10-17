@@ -8,12 +8,14 @@ import com.zeropointsix.eraser.suxia.SuxiaEntity;
 import com.zeropointsix.eraser.suxia.SuxiaSummonEntity;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
 import java.util.HashSet;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
@@ -34,12 +36,22 @@ public final class SuxiaTestClient {
     private static boolean failed, captured;
     private static final HashMap<Integer, float[]> poses = new HashMap<>();
     private static final HashMap<Integer, Integer> renderedFrames = new HashMap<>();
+    private static final HashMap<Integer, Integer> verifiedPoseFrames = new HashMap<>();
+    private static final HashMap<Integer, Integer> tracedPoseTicks = new HashMap<>();
+    private static final HashMap<Integer, String> latestPoseEvidence = new HashMap<>();
+    private static int poseTraceRows, attackPoseChecks;
     private static int renderFrame;
     private static void require(boolean condition, String message) { if (!condition) throw new AssertionError(message); }
     private static void fail(Throwable error) {
         failed = true; error.printStackTrace();
         var mc = Minecraft.getInstance();
         mc.options.keyUp.setDown(false);
+        try {
+            Files.writeString(RESULTS.resolve("client-failure-poses.txt"),
+                    "phase=" + phase + " renderFrame=" + renderFrame + " poses=" + latestPoseEvidence + "\n");
+        } catch (Exception evidenceError) {
+            error.addSuppressed(evidenceError);
+        }
         try (var screenshot = Screenshot.takeScreenshot(mc.getMainRenderTarget())) {
             screenshot.writeToFile(RESULTS.resolve("client-failure.png"));
             if (mc.player != null) Files.writeString(RESULTS.resolve("client-failure-camera.txt"),
@@ -56,6 +68,19 @@ public final class SuxiaTestClient {
         return pose != null && pose[2] > 5 && mob.tickCount - pose[3] > 40
                 && renderedFrames.getOrDefault(mob.getId(), -1) == renderFrame;
     }
+    private static boolean hasVerifiedPose(SuxiaEntity mob) {
+        return hasRenderedPose(mob) && verifiedPoseFrames.getOrDefault(mob.getId(), -1) == renderFrame;
+    }
+    private static void tracePose(SuxiaEntity mob, String evidence) throws Exception {
+        latestPoseEvidence.put(mob.getId(), evidence);
+        // Bound normal traces; failure evidence above still retains the exact failing frame.
+        if (poseTraceRows >= 2048 || tracedPoseTicks.getOrDefault(mob.getId(), -1) == mob.tickCount) return;
+        var path = RESULTS.resolve(phase + "-pose-trace.csv");
+        String header = Files.exists(path) ? "" : "phase,frame,phaseTick,entityId,uuid,entityTick,partial,crawling,playingDead,crawlBlend,deadBlend,attackTime,bodyXRot,rootXRot,expectedBodyXRot,expectedRootXRot,settled\n";
+        Files.writeString(path, header + evidence + "\n", StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+        tracedPoseTicks.put(mob.getId(), mob.tickCount);
+        poseTraceRows++;
+    }
     @SubscribeEvent public static void message(ClientChatReceivedEvent event) {
         String text = event.getMessage().getString();
         if (text.startsWith("SUXIA_QA:")) {
@@ -63,6 +88,10 @@ public final class SuxiaTestClient {
             Minecraft.getInstance().options.keyUp.setDown(false);
             poses.clear();
             renderedFrames.clear();
+            verifiedPoseFrames.clear();
+            tracedPoseTicks.clear();
+            latestPoseEvidence.clear();
+            poseTraceRows = 0; attackPoseChecks = 0;
             event.setCanceled(true);
         }
     }
@@ -217,10 +246,40 @@ public final class SuxiaTestClient {
             float[] range = poses.computeIfAbsent(mob.getId(), id -> new float[]{body.zRot, body.zRot, 0, mob.tickCount});
             range[0] = Math.min(range[0], body.zRot); range[1] = Math.max(range[1], body.zRot); range[2]++;
             renderedFrames.put(mob.getId(), renderFrame);
+            verifiedPoseFrames.remove(mob.getId());
+            float partial = event.getPartialTick();
+            float crawl = Mth.clamp(mob.suxiaCrawlAmount(partial), 0F, 1F);
+            float dead = Mth.clamp(mob.suxiaPlayDeadAmount(partial), 0F, 1F);
+            float attack = model.attackTime;
+            boolean settled = crawl == (mob.isCrawling() ? 1F : 0F)
+                    && dead == (mob.isPlayingDead() ? 1F : 0F);
+            float lunge = attack > 0F ? Mth.sin(attack * Mth.PI) : 0F;
+            float slash = attack > 0F ? Mth.sin((1F - (1F - attack) * (1F - attack)) * Mth.PI) : 0F;
+            float expectedBody = Mth.lerp(dead,
+                    Mth.lerp(crawl, 0.314159F + slash * 0.2F, (85F - 15F * lunge) * Mth.DEG_TO_RAD), 0F);
+            float expectedRoot = dead * (90F * Mth.DEG_TO_RAD);
+            String evidence = phase + "," + renderFrame + "," + ticks + "," + mob.getId() + "," + mob.getUUID()
+                    + "," + mob.tickCount + "," + partial + "," + mob.isCrawling() + "," + mob.isPlayingDead()
+                    + "," + crawl + "," + dead + "," + attack + "," + body.xRot + "," + model.root().xRot
+                    + "," + expectedBody + "," + expectedRoot + "," + settled;
+            tracePose(mob, evidence);
             if (!hasRenderedPose(mob)) return;
-            if (mob.isCrawling()) require(body.xRot > 1.3F, "rendered crawl body leans forward");
-            if (mob.isPlayingDead()) require(model.root().xRot > 1.5F, "rendered play-dead body lies flat");
-            if (phase.endsWith("awake")) require(model.root().xRot < .1F, "rendered wake pose rises from the ground");
+            require(Float.isFinite(body.xRot) && Float.isFinite(model.root().xRot)
+                    && Float.isFinite(crawl) && Float.isFinite(dead) && Float.isFinite(attack),
+                    "rendered pose values are finite: " + evidence);
+            if (attack > 0F) {
+                // Crawl attacks intentionally lift the torso; verify their blend instead of the resting angle.
+                require(Math.abs(body.xRot - expectedBody) < 0.001F
+                                && Math.abs(model.root().xRot - expectedRoot) < 0.001F,
+                        "rendered attack pose follows the crawl/dead blend: " + evidence);
+                attackPoseChecks++;
+                return;
+            }
+            if (!settled) return;
+            if (mob.isCrawling()) require(body.xRot > 1.3F, "rendered crawl body leans forward: " + evidence);
+            if (mob.isPlayingDead()) require(model.root().xRot > 1.5F, "rendered play-dead body lies flat: " + evidence);
+            if (phase.endsWith("awake")) require(model.root().xRot < .1F, "rendered wake pose rises from the ground: " + evidence);
+            verifiedPoseFrames.put(mob.getId(), renderFrame);
         } catch (Throwable error) { fail(error); }
     }
     @SubscribeEvent public static void render(TickEvent.RenderTickEvent event) {
@@ -264,13 +323,13 @@ public final class SuxiaTestClient {
                 boolean allRendered = true;
                 for (var entity : mc.level.entitiesForRendering()) if (entity instanceof SuxiaEntity mob) {
                     count++;
-                    allRendered &= hasRenderedPose(mob);
+                    allRendered &= hasVerifiedPose(mob);
                     require(mc.getEntityRenderDispatcher().getRenderer(mob) instanceof SuxiaRenderer<?>, "shared renderer registered");
                 }
                 boolean idleAnimated = poses.values().stream().anyMatch(v -> v[2] > 5 && v[1] - v[0] > .01);
                 boolean ready = count == 3 && poses.size() == 3 && allRendered;
                 if (ticks < 600 && (!ready || !idleAnimated)) return;
-                require(ready, "all three poses actually rendered");
+                require(ready, "all three poses actually rendered and checked in a settled non-attack frame: " + latestPoseEvidence);
                 require(idleAnimated, "standing idle animation changes rendered transforms");
                 for (String name : new String[]{"suxia", "suxia_angry", "suxia_eyes"}) {
                     mc.getResourceManager().getResourceOrThrow(new ResourceLocation("sound_isolating_eraser", "textures/entity/suxia/" + name + ".png"));
@@ -297,10 +356,10 @@ public final class SuxiaTestClient {
                     boolean found = false;
                     for (var entity : mc.level.entitiesForRendering()) if (entity instanceof SuxiaEntity mob) {
                         found = true;
-                        if (ticks < 600 && !hasRenderedPose(mob)) return;
-                        require(hasRenderedPose(mob),
-                                "hostile actually rendered in " + phase + ": id=" + mob.getId()
-                                        + " position=" + mob.position() + " rendered=" + poses.keySet());
+                        if (ticks < 600 && !hasVerifiedPose(mob)) return;
+                        require(hasVerifiedPose(mob),
+                                "hostile rendered and checked in a settled non-attack frame in " + phase + ": id=" + mob.getId()
+                                        + " position=" + mob.position() + " pose=" + latestPoseEvidence.get(mob.getId()));
                         require(mob.isPlayingDead() != phase.endsWith("awake"), "live sleep/wake pose synchronized in " + phase);
                     }
                     if (ticks < 600 && !found) return;
@@ -315,7 +374,8 @@ public final class SuxiaTestClient {
             }
             Files.writeString(RESULTS.resolve(phase + "-camera.txt"), "phase=" + phase + " player=" + mc.player.position()
                     + " yaw=" + mc.player.getYRot() + " pitch=" + mc.player.getXRot() + " renderFrame=" + renderFrame
-                    + " entityFrames=" + renderedFrames + "\n");
+                    + " entityFrames=" + renderedFrames + " verifiedPoseFrames=" + verifiedPoseFrames
+                    + " attackPoseChecks=" + attackPoseChecks + " poses=" + latestPoseEvidence + "\n");
             Files.writeString(RESULTS.resolve("client-" + phase + ".pass"), "Live Forge client rendering, synchronized item state and localization verified: " + phase + "\n");
             captured = true;
         } catch (Throwable error) { fail(error); }

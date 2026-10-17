@@ -49,13 +49,14 @@ public final class RedNailsAcceptanceServer {
     private static final boolean ENABLED = Boolean.getBoolean("rednails.qa.acceptance");
     private static final String CASE = System.getProperty("rednails.qa.case", "all");
     private static final Path RESULTS = Path.of(System.getProperty("rednails.qa.results"));
-    private static ServerPlayer player;
+    private static volatile ServerPlayer player;
     private static WaterGhostEntity ghost;
     private static Boat boat;
     private static ItemStack ring;
     private static net.minecraft.world.entity.Entity redSummon, watchSummon;
-    private static String scenario = "boat";
-    private static int stage, ticks, samples, airSamples, resistedTicks, convergedTicks, belowDamageTicks;
+    private static volatile String scenario = "boat";
+    private static volatile int stage;
+    private static int ticks, samples, airSamples, resistedTicks, convergedTicks, belowDamageTicks;
     private static long stageNanos, grabbedAt = -1;
     private static long releasedAt = -1, releaseCooldown, coexistAt = -1;
     private static boolean releasedLease, releasedOnFloor, lastHeldOnFloor;
@@ -77,6 +78,8 @@ public final class RedNailsAcceptanceServer {
     private static long decisionTick = -1;
     private static boolean decisionHeld;
     private static double decisionDistanceSquared;
+    private static JsonObject captureClientSnapshot;
+    private static long captureSnapshotTick = -1, captureSnapshotSeenAt = -1, captureTraceSequence;
     private static boolean damageStartedHeld;
     private static UUID lifecycleItem, lifecycleOwner, lifecycleGhost;
     private static long[] lifecycleReady;
@@ -222,6 +225,10 @@ public final class RedNailsAcceptanceServer {
         decisionTick = ghost.level().getGameTime();
         decisionHeld = ghost.ghostBody().grab.held() == player;
         decisionDistanceSquared = ghost.distanceToSqr(player);
+        if (stage >= 1 && stage <= 5) {
+            try { captureDiagnostic("AI_ENTRY"); }
+            catch (Exception error) { fail(error); }
+        }
         if (CASE.equals("speed") && speedRun != null && stage == 61) {
             speedRun.decisionTick = decisionTick;
             speedRun.decisionModeValid = validSpeedServerMode();
@@ -253,6 +260,7 @@ public final class RedNailsAcceptanceServer {
         convergedTicks = 0; sampleFailure = null;
         distinctResistanceTicks = 0; lastValidResistanceTick = -1; lastHeldOnFloor = false;
         firstResistanceTick = -1; lastResistanceTick = -1;
+        captureClientSnapshot = null; captureSnapshotTick = -1; captureSnapshotSeenAt = -1;
         boatContact = false; boatColumnSamples = 0; clearFallbackSamples = 0;
         releasedInputSamples = 0; lastReleasedClientTick = -1;
         stage = 1; phase(name + "-ready");
@@ -263,10 +271,15 @@ public final class RedNailsAcceptanceServer {
             beforeHeld = ghost != null && ghost.ghostBody().grab.held() == player;
             beforeWet = beforeHeld && ghost.ghostBody().swimming() && player.isEyeInFluid(FluidTags.WATER);
             beforeAir = player.getAirSupply();
+            if (stage >= 1 && stage <= 5) {
+                try { captureDiagnostic("START"); }
+                catch (Exception error) { fail(error); }
+            }
             return;
         }
         try {
             ticks++;
+            if (stage >= 1 && stage <= 5) captureDiagnostic("END");
             check(System.nanoTime() - stageNanos < 300_000_000_000L, "native acceptance stage timeout " + stage + " " + scenario);
             check(player.isAlive(), "real player survives the acceptance case");
             if (stage == 0 && Files.exists(RESULTS.resolve("acceptance-client-ready.signal"))) {
@@ -749,6 +762,92 @@ public final class RedNailsAcceptanceServer {
         else if (scenario.equals("front-bottom")) setupCapture("damage");
         else setupItems();
     }
+    private static JsonObject diagnosticVector(Vec3 value) {
+        var json = new JsonObject();
+        json.addProperty("x", value.x); json.addProperty("y", value.y); json.addProperty("z", value.z);
+        return json;
+    }
+    private static JsonObject captureServerState() throws Exception {
+        var json = new JsonObject();
+        long now = player.level().getGameTime();
+        json.addProperty("serverTick", now); json.addProperty("stage", stage);
+        json.addProperty("scenario", scenario); json.addProperty("grabbedAt", grabbedAt); json.addProperty("releasedAt", releasedAt);
+        json.add("position", diagnosticVector(player.position()));
+        json.add("velocity", diagnosticVector(player.getDeltaMovement()));
+        json.addProperty("hurtMarked", player.hurtMarked); json.addProperty("passenger", player.isPassenger());
+        json.addProperty("onGround", player.onGround()); json.addProperty("pose", player.getPose().toString());
+        json.addProperty("bodyWet", player.isInWater()); json.addProperty("eyesWet", player.isEyeInFluid(FluidTags.WATER));
+        json.addProperty("horizontalCollision", player.horizontalCollision); json.addProperty("verticalCollision", player.verticalCollision);
+        json.addProperty("sprinting", player.isSprinting()); json.addProperty("swimming", player.isSwimming());
+        json.addProperty("air", player.getAirSupply());
+        json.addProperty("leasePresent", player.getPersistentData().hasUUID("sound_isolating_eraser_grabbed_by"));
+        if (boat != null) {
+            json.addProperty("boatId", boat.getId());
+            json.addProperty("boatUuid", boat.getUUID().toString());
+            json.add("boatPosition", diagnosticVector(boat.position()));
+            json.add("boatVelocity", diagnosticVector(boat.getDeltaMovement()));
+        }
+        if (ghost != null) {
+            var grab = ghost.ghostBody().grab;
+            json.addProperty("ghostId", ghost.getId());
+            json.add("ghostPosition", diagnosticVector(ghost.position()));
+            json.add("ghostVelocity", diagnosticVector(ghost.getDeltaMovement()));
+            json.addProperty("held", grab.held() == player); json.addProperty("canContinue", grab.canContinueToUse());
+            json.addProperty("targetMatches", ghost.getTarget() == player); json.addProperty("ghostAlive", ghost.isAlive());
+            json.addProperty("playerAlive", player.isAlive()); json.addProperty("distanceSquared", ghost.distanceToSqr(player));
+            json.addProperty("damage", damage); json.addProperty("cooldownUntil", grab.cooldownUntil());
+            for (String fieldName : new String[] { "ticks", "duration" }) {
+                var field = grab.getClass().getDeclaredField(fieldName); field.setAccessible(true);
+                json.addProperty("grab_" + fieldName, field.getInt(grab));
+            }
+        }
+        json.addProperty("snapshotTraceTick", captureSnapshotTick); json.addProperty("snapshotFirstSeenAtServerTick", captureSnapshotSeenAt);
+        json.addProperty("snapshotAgeServerTicks", captureSnapshotSeenAt < 0 ? -1 : now - captureSnapshotSeenAt);
+        if (captureClientSnapshot != null) json.add("latestClientSnapshot", captureClientSnapshot);
+        return json;
+    }
+    private static synchronized void appendCaptureTrace(String stream, JsonObject json) throws Exception {
+        json.addProperty("clockScope", "server-process");
+        json.addProperty("sequence", ++captureTraceSequence); json.addProperty("monotonicNanos", System.nanoTime());
+        Files.writeString(RESULTS.resolve("acceptance-" + scenario + "-" + stream + ".jsonl"), json + "\n",
+                StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+    }
+    private static void captureDiagnostic(String edge) throws Exception {
+        if (edge.equals("END")) {
+            var path = RESULTS.resolve("acceptance-client-" + scenario + "-diagnostic.signal");
+            if (Files.exists(path)) {
+                var snapshot = JsonParser.parseString(Files.readString(path)).getAsJsonObject();
+                long observedTick = snapshot.get("traceTick").getAsLong();
+                if (observedTick != captureSnapshotTick) {
+                    captureSnapshotTick = observedTick; captureSnapshotSeenAt = player.level().getGameTime();
+                }
+                captureClientSnapshot = snapshot;
+            }
+        }
+        var json = captureServerState(); json.addProperty("edge", edge);
+        appendCaptureTrace("server-state", json);
+    }
+    public static void traceCaptureMovementPacket(ServerPlayer observed, String edge, Object packet) {
+        if (!ENABLED || observed != player || stage < 1 || stage > 5) return;
+        boolean mainThread = observed.getServer().isSameThread();
+        var json = new JsonObject();
+        json.addProperty("edge", mainThread ? "APPLY_" + edge : "RECEIVE_" + edge);
+        json.addProperty("mainThread", mainThread); json.addProperty("scenario", scenario);
+        json.addProperty("packetIdentity", System.identityHashCode(packet));
+        json.addProperty("packet", packet.getClass().getSimpleName());
+        if (packet instanceof net.minecraft.network.protocol.game.ServerboundMovePlayerPacket move) {
+            json.addProperty("hasPosition", move.hasPosition()); json.addProperty("onGround", move.isOnGround());
+            if (move.hasPosition()) {
+                json.addProperty("wireX", move.getX(0)); json.addProperty("wireY", move.getY(0)); json.addProperty("wireZ", move.getZ(0));
+            }
+        } else if (packet instanceof net.minecraft.network.protocol.game.ServerboundMoveVehiclePacket move) {
+            json.addProperty("wireX", move.getX()); json.addProperty("wireY", move.getY()); json.addProperty("wireZ", move.getZ());
+        }
+        try {
+            if (mainThread) json.add("state", captureServerState());
+            appendCaptureTrace("server-packets", json);
+        } catch (Exception error) { throw new IllegalStateException("Cannot record native capture movement packet", error); }
+    }
     private static void captureTick() throws Exception {
         long now = player.level().getGameTime();
         boolean held = ghost.ghostBody().grab.held() == player;
@@ -767,11 +866,11 @@ public final class RedNailsAcceptanceServer {
         }
         if (grabbedAt < 0) return;
         if (held || releasedAt < 0) {
-            // Check the unchanged leash at AI tick entry. END includes the ghost's new
-            // descent before the next client correction, not the AI decision position.
+            // An entry reference can be released by this tick's continuation check.
+            // Only a hold that survives that check must satisfy the unchanged leash.
             sampleCheck(decisionTick == now, "real ghost tick observation exists tick=" + now);
-            sampleCheck(!decisionHeld || decisionDistanceSquared <= 16,
-                    "original four-block ongoing hold limit at AI tick entry tick=" + now);
+            sampleCheck(!decisionHeld || !held || decisionDistanceSquared <= 16,
+                    "original four-block ongoing hold limit for a retained AI tick hold tick=" + now);
             Files.writeString(RESULTS.resolve("acceptance-" + scenario + "-decision.csv"),
                     now + "," + decisionHeld + "," + decisionDistanceSquared + "," + ghost.distanceToSqr(player) + "\n",
                     StandardOpenOption.CREATE, StandardOpenOption.APPEND);

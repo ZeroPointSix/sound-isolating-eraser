@@ -135,37 +135,69 @@ public final class RedNailsGameTests {
         FIXTURES.forEach(Fixture::close); FIXTURES.clear(); RedNailsInput.clear();
     }
     private static void check(GameTestHelper h, boolean value, String message) { h.assertTrue(value, message); }
-    @GameTest(template = "empty", batch = BATCH)
+    @GameTest(template = "empty", batch = BATCH, timeoutTicks = 100)
     public static void descent_distinguishes_boat_tangency_from_overlap(GameTestHelper h) throws Exception {
         var f = new Fixture(h);
         var ghost = f.hostile(6, 6);
         var boat = f.add(EntityType.BOAT.create(f.level), 0, 0);
-        boat.setPos(f.center.getX() + 0.5, f.center.getY() + 2, f.center.getZ() + 0.5);
-        var hull = boat.getBoundingBox();
-        double x = boat.getX(), y = boat.getY() - 0.6, z = boat.getZ();
-        var boxes = new net.minecraft.world.phys.AABB[] {
-                new net.minecraft.world.phys.AABB(hull.minX - 1.2, y, z - 0.6, hull.minX, y + 1.2, z + 0.6),
-                new net.minecraft.world.phys.AABB(hull.maxX, y, z - 0.6, hull.maxX + 1.2, y + 1.2, z + 0.6),
-                new net.minecraft.world.phys.AABB(x - 0.6, y, hull.minZ - 1.2, x + 0.6, y + 1.2, hull.minZ),
-                new net.minecraft.world.phys.AABB(x - 0.6, y, hull.maxZ, x + 0.6, y + 1.2, hull.maxZ + 1.2)
-        };
-        var inward = new Vec3[] { new Vec3(0.05, 0, 0), new Vec3(-0.05, 0, 0),
-                new Vec3(0, 0, 0.05), new Vec3(0, 0, -0.05) };
         var predicate = WaterGhostGrab.class.getDeclaredMethod("clearForDescent", net.minecraft.world.phys.AABB.class);
         predicate.setAccessible(true);
-        for (int i = 0; i < boxes.length; i++) {
-            check(h, !f.level.noCollision(ghost, boxes[i]), "Vanilla broad phase includes tangent boat face " + i);
-            check(h, (boolean) predicate.invoke(ghost.ghostBody().grab, boxes[i]), "Tangent boat face permits descent " + i);
-            check(h, !(boolean) predicate.invoke(ghost.ghostBody().grab, boxes[i].move(inward[i])),
-                    "Positive boat overlap still blocks descent " + i);
-        }
-        var throughHull = new net.minecraft.world.phys.AABB(x - 0.3, hull.maxY - 0.08, z - 0.3,
-                x + 0.3, hull.maxY + 1.12, z + 0.3);
-        check(h, !(boolean) predicate.invoke(ghost.ghostBody().grab, throughHull), "Boat support still blocks downward penetration");
-        var floor = new net.minecraft.world.phys.AABB(x - 0.3, f.center.getY() - 0.08, z - 0.3,
-                x + 0.3, f.center.getY() + 1.12, z + 0.3);
-        check(h, !(boolean) predicate.invoke(ghost.ghostBody().grab, floor), "Actual stone floor still blocks descent");
-        h.succeed();
+        h.startSequence().thenWaitUntil(() -> {
+            check(h, f.level.isPositionEntityTicking(f.center), "Collision fixture chunk is entity-ticking");
+            check(h, f.level.getEntity(boat.getUUID()) == boat && f.level.getEntity(ghost.getUUID()) == ghost,
+                    "Both collision fixtures are visible by UUID");
+            check(h, f.level.getEntities(ghost, boat.getBoundingBox().inflate(1), entity -> entity == boat).contains(boat),
+                    "The actual boat is visible in the level's spatial entity index");
+        }).thenExecute(() -> {
+            try {
+                // Chunk loading and entity visibility settle independently. Establish geometry only after both are ready.
+                boat.setPos(f.center.getX() + 0.5, f.center.getY() + 2, f.center.getZ() + 0.5);
+                var hull = boat.getBoundingBox();
+                double x = boat.getX(), y = boat.getY() - 0.6, z = boat.getZ();
+                var boxes = new net.minecraft.world.phys.AABB[] {
+                        new net.minecraft.world.phys.AABB(hull.minX - 1.2, y, z - 0.6, hull.minX, y + 1.2, z + 0.6),
+                        new net.minecraft.world.phys.AABB(hull.maxX, y, z - 0.6, hull.maxX + 1.2, y + 1.2, z + 0.6),
+                        new net.minecraft.world.phys.AABB(x - 0.6, y, hull.minZ - 1.2, x + 0.6, y + 1.2, hull.minZ),
+                        new net.minecraft.world.phys.AABB(x - 0.6, y, hull.maxZ, x + 0.6, y + 1.2, hull.maxZ + 1.2)
+                };
+                var inward = new Vec3[] { new Vec3(0.05, 0, 0), new Vec3(-0.05, 0, 0),
+                        new Vec3(0, 0, 0.05), new Vec3(0, 0, -0.05) };
+                boolean[] exactFaces = { boxes[0].maxX == hull.minX, boxes[1].minX == hull.maxX,
+                        boxes[2].maxZ == hull.minZ, boxes[3].minZ == hull.maxZ };
+                System.out.println("RED_NAILS_COLLISION_FIXTURE_READY tick=" + f.level.getGameTime()
+                        + " boat=" + boat.getUUID() + " hull=" + hull + " ghost=" + ghost.getUUID());
+                for (int i = 0; i < boxes.length; i++) {
+                    check(h, exactFaces[i] && !boxes[i].intersects(hull) && boxes[i].inflate(1.0E-7).intersects(hull),
+                            "Boat face is exactly tangent, with no positive overlap " + i);
+                    check(h, f.level.getEntities(ghost, boxes[i].inflate(1.0E-7), entity -> entity == boat).contains(boat),
+                            "Inflated broad-phase query includes the same indexed boat " + i);
+                    check(h, !f.level.getBlockCollisions(ghost, boxes[i]).iterator().hasNext(),
+                            "Tangent candidate is clear of all block collision shapes " + i);
+                    check(h, f.level.getEntityCollisions(ghost, boxes[i]).stream()
+                                    .anyMatch(shape -> shape.toAabbs().contains(hull)),
+                            "Vanilla collision candidates include the actual boat hull " + i);
+                    check(h, !f.level.noCollision(ghost, boxes[i]), "Vanilla broad phase includes tangent boat face " + i);
+                    check(h, (boolean) predicate.invoke(ghost.ghostBody().grab, boxes[i]), "Tangent boat face permits descent " + i);
+                    check(h, boxes[i].move(inward[i]).intersects(hull), "Inward step has positive boat overlap " + i);
+                    check(h, !(boolean) predicate.invoke(ghost.ghostBody().grab, boxes[i].move(inward[i])),
+                            "Positive boat overlap still blocks descent " + i);
+                }
+                var throughHull = new net.minecraft.world.phys.AABB(x - 0.3, hull.maxY - 0.08, z - 0.3,
+                        x + 0.3, hull.maxY + 1.12, z + 0.3);
+                check(h, throughHull.intersects(hull)
+                                && !f.level.getBlockCollisions(ghost, throughHull).iterator().hasNext(),
+                        "Boat-top penetration intersects the boat rather than a block");
+                check(h, !(boolean) predicate.invoke(ghost.ghostBody().grab, throughHull), "Boat support still blocks downward penetration");
+                var floor = new net.minecraft.world.phys.AABB(x - 0.3, f.center.getY() - 0.08, z - 0.3,
+                        x + 0.3, f.center.getY() + 1.12, z + 0.3);
+                check(h, !floor.intersects(hull) && f.level.getBlockState(f.center.below()).is(Blocks.STONE)
+                                && f.level.getBlockCollisions(ghost, floor).iterator().hasNext(),
+                        "Floor candidate intersects the real stone floor without touching the boat");
+                check(h, !(boolean) predicate.invoke(ghost.ghostBody().grab, floor), "Actual stone floor still blocks descent");
+            } catch (ReflectiveOperationException error) {
+                throw new IllegalStateException("Cannot invoke the production descent predicate", error);
+            } finally { f.close(); }
+        }).thenSucceed();
     }
     private static void sealShorePit(Fixture f, int floorY) {
         for (int x = -4; x <= 1; x++) for (int z = -4; z <= 4; z++) {
@@ -624,6 +656,49 @@ public final class RedNailsGameTests {
         });
     }
     @GameTest(template = "empty", batch = BATCH, timeoutTicks = 100)
+    public static void extra_oxygen_drain_requires_submerged_eyes(GameTestHelper h) {
+        var f = new Fixture(h);
+        for (int x = -5; x <= 5; x++) for (int z = -5; z <= 5; z++) for (int y = 0; y < 2; y++) {
+            f.set(f.center.offset(x, y, z), Blocks.WATER.defaultBlockState());
+        }
+        f.set(f.center.offset(0, 0, 1), Blocks.STONE.defaultBlockState());
+        var ghost = f.hostile(0, 0); var controlGhost = f.hostile(4, 0);
+        var victim = f.player(0, 1);
+        victim.setPos(Vec3.atBottomCenterOf(f.center.offset(0, 1, 1)));
+        var control = f.add(EntityType.VILLAGER.create(f.level), 4, 1);
+        h.startSequence().thenWaitUntil(() -> {
+            check(h, ghost.ghostBody().swimming() && controlGhost.ghostBody().swimming()
+                            && victim.isInWater() && !victim.isEyeInFluid(FluidTags.WATER)
+                            && control.isInWater() && control.isEyeInFluid(FluidTags.WATER),
+                    "Real shallow-water geometry leaves only the raised victim's eyes in air");
+        }).thenExecute(() -> {
+            try {
+                check(h, f.level.getFluidState(victim.blockPosition()).is(FluidTags.WATER)
+                                && !f.level.getFluidState(BlockPos.containing(victim.getX(), victim.getEyeY(), victim.getZ())).is(FluidTags.WATER)
+                                && f.level.getFluidState(BlockPos.containing(control.getX(), control.getEyeY(), control.getZ())).is(FluidTags.WATER),
+                        "Actual fluid blocks agree with body-wet, eyes-dry and fully submerged control states");
+                check(h, !victim.canBreatheUnderwater() && !control.canBreatheUnderwater()
+                                && !victim.hasEffect(MobEffects.WATER_BREATHING) && !victim.hasEffect(MobEffects.CONDUIT_POWER)
+                                && !control.hasEffect(MobEffects.WATER_BREATHING) && !control.hasEffect(MobEffects.CONDUIT_POWER),
+                        "Neither oxygen fixture has an aquatic or effect-based breathing exemption");
+                ghost.setTarget(victim); controlGhost.setTarget(control);
+                var grab = ghost.ghostBody().grab; var controlGrab = controlGhost.ghostBody().grab;
+                check(h, grab.canUse() && controlGrab.canUse(), "Both real fluid fixtures satisfy unchanged grab eligibility");
+                grab.start(); controlGrab.start();
+                check(h, grab.held() == victim && controlGrab.held() == control, "Both oxygen rule fixtures are actively held");
+                victim.setAirSupply(30); control.setAirSupply(30);
+                float health = victim.getHealth();
+                // Rule-level comparison, not a network-native test: isolate the extra drain from vanilla air recovery.
+                grab.tick(); controlGrab.tick();
+                check(h, victim.isInWater() && !victim.isEyeInFluid(FluidTags.WATER)
+                                && victim.getAirSupply() == 30 && victim.getHealth() == health && grab.held() == victim,
+                        "Low-air body-wet victim with eyes in air has no extra oxygen loss or canceled hold");
+                check(h, control.getAirSupply() == 27 && controlGrab.held() == control,
+                        "Fully submerged unprotected control still loses exactly three air in the same callback");
+            } finally { f.close(); }
+        }).thenSucceed();
+    }
+    @GameTest(template = "empty", batch = BATCH, timeoutTicks = 100)
     public static void extra_oxygen_drain_exempts_aquatic_breathing(GameTestHelper h) {
         extraOxygenExemption(h, EntityType.COD, null, "aquatic breathing");
     }
@@ -740,6 +815,36 @@ public final class RedNailsGameTests {
             check(h, !g.ghostBody().grab.canContinueToUse(), "Water stage ends after one hundred water ticks");
             h.succeed();
         });
+    }
+    @GameTest(template = "empty", batch = BATCH, timeoutTicks = 100)
+    public static void hostile_ai_selects_near_water_prey_on_first_natural_tick(GameTestHelper h) {
+        var f = new Fixture(h); f.water(-8, 8);
+        var victim = f.add(EntityType.VILLAGER.create(f.level), 0, 0);
+        victim.setPos(Vec3.atBottomCenterOf(f.center.offset(0, 2, 0)));
+        WaterGhostEntity[] spawned = { null };
+        h.startSequence().thenWaitUntil(() -> {
+            check(h, f.level.isPositionEntityTicking(f.center) && victim.isInWater()
+                            && f.level.getEntities(null, victim.getBoundingBox().inflate(1), entity -> entity == victim).contains(victim),
+                    "The real water prey is ticking and visible before the hostile ghost is born");
+        }).thenExecute(() -> {
+            var ghost = ModEntities.WATER_GHOST.get().create(f.level);
+            check(h, ghost != null, "Registered hostile entity creates normally");
+            ghost.setPos(victim.position().add(0, 0, -5));
+            check(h, !ghost.isNoAi() && ghost.getTarget() == null && ghost.tickCount == 0,
+                    "Fresh hostile starts with default AI, no target and no advanced lifetime");
+            f.entities.add(ghost); spawned[0] = ghost;
+            check(h, f.level.addFreshEntity(ghost), "Fresh hostile enters the real server level");
+            check(h, ghost.distanceToSqr(victim) == 25 && ghost.nearWater(victim, 2) && ghost.hasLineOfSight(victim),
+                    "Visible water prey starts five blocks away, strictly inside unchanged six-block pursuit range");
+        }).thenWaitUntil(() -> check(h, spawned[0].tickCount > 0, "Observe the first naturally scheduled hostile tick"))
+        .thenExecute(() -> {
+            try {
+                var ghost = spawned[0];
+                check(h, ghost.tickCount == 1, "First-tick regression cannot wait for the later ten-tick scan");
+                check(h, !ghost.isNoAi() && ghost.getTarget() == victim && ghost.mayPursue(),
+                        "Normal first-tick AI selects the existing near-water prey without forced target or goal calls");
+            } finally { f.close(); }
+        }).thenSucceed();
     }
     @GameTest(template = "empty", batch = BATCH, timeoutTicks = 280) public static void hostile_ai_grabs_and_drags_in_water(GameTestHelper h) {
         var f = new Fixture(h);

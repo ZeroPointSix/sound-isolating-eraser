@@ -456,8 +456,22 @@ public final class RedNailsTestServer {
             require(swimmer.isAlive() && player.isAlive() && !swimmer.isNoAi(), "natural return participants remain alive");
             require(swimmer.getTarget() == null && swimmer.ghostBody().grab.held() == null,
                     "dry distant player is not reacquired during natural return");
-            if (ticks % 20 == 0) System.out.println("NATIVE_WILD_RETURN t=" + level.getGameTime()
-                    + " water=" + swimmer.isInWater() + " ghost=" + swimmer.position());
+            if (ticks % 20 == 0) {
+                var navigation = swimmer.getNavigation();
+                var path = navigation.getPath();
+                var end = path == null ? null : path.getEndNode();
+                System.out.println("NATIVE_WILD_RETURN t=" + level.getGameTime()
+                        + " water=" + swimmer.isInWater() + " ghost=" + swimmer.position()
+                        + " velocity=" + swimmer.getDeltaMovement() + " box=" + swimmer.getBoundingBox()
+                        + " onGround=" + swimmer.onGround() + " navDone=" + navigation.isDone()
+                        + " pathTarget=" + (path == null ? null : path.getTarget())
+                        + " pathCanReach=" + (path != null && path.canReach())
+                        + " pathNode=" + (path == null ? -1 : path.getNextNodeIndex())
+                        + " pathNodes=" + (path == null ? 0 : path.getNodeCount())
+                        + " pathEnd=" + (end == null ? null : end.asBlockPos())
+                        + " waterAtFeet=" + WaterGhostBody.waterAt(swimmer, swimmer.blockPosition())
+                        + " waterBelow=" + WaterGhostBody.waterAt(swimmer, swimmer.blockPosition().below()));
+            }
             if (swimmer.isInWater()) {
                 double returned = swimmer.position().subtract(returnStart).horizontalDistance();
                 require(returned >= 4 && returned <= 24, "normal navigation returned to existing water within24: " + returned);

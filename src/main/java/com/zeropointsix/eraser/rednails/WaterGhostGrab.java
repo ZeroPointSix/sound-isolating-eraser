@@ -187,7 +187,7 @@ public final class WaterGhostGrab extends Goal {
                 swim = shoreStep;
             }
             mob.setDeltaMovement(swim);
-            if ((target.isEyeInFluid(FluidTags.WATER) || target.isInWater())
+            if (target.isEyeInFluid(FluidTags.WATER)
                     && !target.canBreatheUnderwater()
                     && !target.hasEffect(MobEffects.WATER_BREATHING) && !target.hasEffect(MobEffects.CONDUIT_POWER)) {
                 int air = target.getAirSupply() - 3;

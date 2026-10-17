@@ -90,32 +90,35 @@ public final class WaterGhostEntity extends Monster implements WaterGhostPoseSou
         super.tick(); body.tick();
         if (level().isClientSide || !isAlive()) return;
         dryTicks = isInWater() ? 0 : dryTicks + 1;
-        if (tickCount % 10 == 0) {
-            var target = getTarget();
-            if (target != null && (!prey(target) || target.level() != level()
-                    || pursuit && level().getGameTime() - lastContact >= 200 && !nearWater(target, 8))) {
-                setTarget(null); pursuit = false; body.stopMoving(); body.grab.stop();
-            }
-            if (getTarget() == null || !pursuit) {
-                var attacker = getLastHurtByMob();
-                if (attacker != null && prey(attacker) && tickCount - getLastHurtByMobTimestamp() < 200) {
-                    setTarget(attacker); pursuit = true; contact();
-                } else {
-                    var nearest = level().getEntitiesOfClass(LivingEntity.class, getBoundingBox().inflate(16),
-                            e -> prey(e) && distanceToSqr(e) <= 256 && hasLineOfSight(e)
-                                    && (nearWater(e, 2) || isInWater())).stream()
-                            .min(java.util.Comparator.comparingInt((LivingEntity e) ->
-                                    distanceToSqr(e) <= 36 && nearWater(e, 2) ? 0 : 1)
-                                    .thenComparingDouble(this::distanceToSqr)).orElse(null);
-                    // A dry passer-by is watched, but never initiates a chase.
-                    setTarget(nearest);
-                }
-            }
-        }
+        // Initialize water posture before the first scan, without waiting ten
+        // ticks for a moving target to leave the six-block pursuit start range.
+        if (tickCount == 1 || tickCount % 10 == 0) updateTarget();
         if (getTarget() != null && !pursuit) getLookControl().setLookAt(getTarget(), 30, 30);
         if (isInWater() && getTarget() == null && tickCount % (40 + getId() % 41) == 0
                 && level() instanceof ServerLevel server) {
             server.sendParticles(ParticleTypes.BUBBLE, getX(), getY() + 0.5, getZ(), 1, 0.1, 0.1, 0.1, 0);
+        }
+    }
+    private void updateTarget() {
+        var target = getTarget();
+        if (target != null && (!prey(target) || target.level() != level()
+                || pursuit && level().getGameTime() - lastContact >= 200 && !nearWater(target, 8))) {
+            setTarget(null); pursuit = false; body.stopMoving(); body.grab.stop();
+        }
+        if (getTarget() == null || !pursuit) {
+            var attacker = getLastHurtByMob();
+            if (attacker != null && prey(attacker) && tickCount - getLastHurtByMobTimestamp() < 200) {
+                setTarget(attacker); pursuit = true; contact();
+            } else {
+                var nearest = level().getEntitiesOfClass(LivingEntity.class, getBoundingBox().inflate(16),
+                        e -> prey(e) && distanceToSqr(e) <= 256 && hasLineOfSight(e)
+                                && (nearWater(e, 2) || isInWater())).stream()
+                        .min(java.util.Comparator.comparingInt((LivingEntity e) ->
+                                distanceToSqr(e) <= 36 && nearWater(e, 2) ? 0 : 1)
+                                .thenComparingDouble(this::distanceToSqr)).orElse(null);
+                // A dry passer-by is watched, but never initiates a chase.
+                setTarget(nearest);
+            }
         }
     }
     @Override public boolean doHurtTarget(Entity target) {

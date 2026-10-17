@@ -70,6 +70,7 @@ jobs:
             build/red-nails-e2e-*/*.signal
             build/red-nails-e2e-*/*.csv
             build/red-nails-e2e-*/*.json
+            build/red-nails-e2e-*/*.jsonl
             build/red-nails-e2e-*/client/logs/*.log
             build/red-nails-e2e-*/server/logs/*.log
   suxia:
@@ -105,6 +106,7 @@ jobs:
             build/suxia-e2e-*/*.pass
             build/suxia-e2e-*/*.failed
             build/suxia-e2e-*/*.txt
+            build/suxia-e2e-*/*.csv
             build/suxia-e2e-*/client*/logs/*.log
             build/suxia-e2e-*/server/logs/*.log
   srg-package:
