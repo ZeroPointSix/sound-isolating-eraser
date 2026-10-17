@@ -1,6 +1,7 @@
 import java.awt.Rectangle;
 import java.awt.Robot;
 import java.awt.image.BufferedImage;
+import java.awt.image.DataBufferInt;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -9,7 +10,29 @@ import javax.imageio.ImageIO;
 
 /** Independent X11 observer: Minecraft intentionally makes its own JVM headless. */
 public final class KeeperX11Sampler {
-    private record Capture(long before, long after, BufferedImage image) { }
+    static final class Capture {
+        private long before, after;
+        private final BufferedImage image;
+        private final int[] pixels;
+
+        Capture(int width, int height) {
+            image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+            pixels = ((DataBufferInt) image.getRaster().getDataBuffer()).getData();
+        }
+
+        void copyFrom(BufferedImage source, long started, long finished) {
+            if (source.getWidth() != image.getWidth() || source.getHeight() != image.getHeight()) {
+                throw new IllegalArgumentException("Capture dimensions changed");
+            }
+            source.getRGB(0, 0, image.getWidth(), image.getHeight(), pixels, 0, image.getWidth());
+            before = started;
+            after = finished;
+        }
+
+        long before() { return before; }
+        long after() { return after; }
+        BufferedImage image() { return image; }
+    }
 
     private static long readLong(Path path) throws Exception {
         if (!Files.exists(path)) return 0;
@@ -26,10 +49,11 @@ public final class KeeperX11Sampler {
 
     private static double[] centerRgb(BufferedImage image) {
         double[] rgb = new double[3];
+        int[] pixels = ((DataBufferInt) image.getRaster().getDataBuffer()).getData();
         int count = 0;
         for (int y = 45; y < 135; y += 3) {
             for (int x = 80; x < 240; x += 3) {
-                int pixel = image.getRGB(x, y);
+                int pixel = pixels[y * image.getWidth() + x];
                 rgb[0] += (pixel >> 16) & 255;
                 rgb[1] += (pixel >> 8) & 255;
                 rgb[2] += pixel & 255;
@@ -56,6 +80,9 @@ public final class KeeperX11Sampler {
             Robot robot = new Robot();
             Rectangle roi = new Rectangle(480, 270, 320, 180);
             robot.createScreenCapture(roi);
+            // Retained frames reuse old storage; transient Robot images can die young.
+            ArrayDeque<Capture> recycled = new ArrayDeque<>();
+            for (int i = 0; i < 257; i++) recycled.add(new Capture(roi.width, roi.height));
             Files.writeString(results.resolve("sampler.ready"), "real X11 Robot; headless=false\n");
             long startupSeconds = Long.parseLong(System.getenv().getOrDefault("KEEPER_QA_TIMEOUT_SECONDS", "1200"));
             long timeout = System.nanoTime() + startupSeconds * 1_000_000_000L;
@@ -88,9 +115,15 @@ public final class KeeperX11Sampler {
             StringBuilder warmup = new StringBuilder("epoch_ms,start_ns,end_ns,gap_ms,stable_captures\n");
             while (System.nanoTime() < timeout) {
                 long before = System.nanoTime();
-                BufferedImage image = robot.createScreenCapture(roi);
+                BufferedImage screen = robot.createScreenCapture(roi);
                 long after = System.nanoTime();
-                captures.add(new Capture(before, after, image));
+                Capture capture = recycled.pollFirst();
+                // Do not evict evidence if a late deadline needs more than the rolling buffer.
+                if (capture == null) capture = new Capture(roi.width, roi.height);
+                capture.copyFrom(screen, before, after);
+                screen.flush();
+                captures.add(capture);
+                BufferedImage image = capture.image();
                 double[] rgb = centerRgb(image);
                 if (baseline == null) baseline = rgb;
                 double alpha = whiteAlpha(rgb, baseline);
@@ -138,7 +171,7 @@ public final class KeeperX11Sampler {
                 // Bound memory while preserving the original 200ms window for later analysis.
                 while (deadline == 0 && (captures.size() > 256
                         || captures.getFirst().after() < after - 3_000_000_000L)) {
-                    captures.removeFirst();
+                    recycled.addLast(captures.removeFirst());
                     droppedCaptures++;
                 }
                 if (deadline != 0 && after > deadline + 600_000_000L) break;
