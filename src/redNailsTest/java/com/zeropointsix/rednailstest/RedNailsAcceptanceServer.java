@@ -296,11 +296,11 @@ public final class RedNailsAcceptanceServer {
                     ghost = ModEntities.WATER_GHOST.get().create(player.serverLevel());
                     check(ghost != null, "registered ghost creates");
                     // Approach the real hull diagonally with positive clearance on both axes.
-                    // Unlike an axial near-start, this begins outside the unchanged grab radius.
+                    // The lower start stays outside grab reach until the first native boat step reaches the hull.
                     double halfWidth = Math.max(ghost.getBbWidth(), WaterGhostBody.SWIMMING.width) * 0.5;
-                    double spawnX = frontal() ? boat.getBoundingBox().minX - halfWidth - 0.25 : player.getX() + 1.4;
-                    double spawnZ = frontal() ? boat.getBoundingBox().maxZ + halfWidth + 0.25 : player.getZ() + 4.5;
-                    ghost.moveTo(spawnX, 73.5, spawnZ, frontal() ? 225 : 180, 0);
+                    double spawnX = frontal() ? boat.getBoundingBox().minX - halfWidth - 0.20 : player.getX() + 1.4;
+                    double spawnZ = frontal() ? boat.getBoundingBox().maxZ + halfWidth + 0.20 : player.getZ() + 4.5;
+                    ghost.moveTo(spawnX, frontal() ? 73.35 : 73.5, spawnZ, frontal() ? 225 : 180, 0);
                     player.serverLevel().addFreshEntity(ghost);
                     check(!ghost.isNoAi() && ghost.getTarget() == null, "normal ghost AI starts without forced target");
                     check(frontal() || ghost.getBoundingBox().minX > boat.getBoundingBox().maxX,
