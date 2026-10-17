@@ -143,6 +143,8 @@ def main():
             for label, source_label, dimension in SCENES:
                 snapshot = restore(archive, label, source_label)
                 suite.boot()
+                # Retain console evidence without rendering per-entity command feedback in chat.
+                suite.server.send("gamerule sendCommandFeedback false")
                 measured = measure(label, dimension)
                 suite.shutdown(label)
                 measured["snapshot"] = snapshot
