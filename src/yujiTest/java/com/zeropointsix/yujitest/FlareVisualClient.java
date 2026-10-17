@@ -176,8 +176,12 @@ public final class FlareVisualClient {
                 mc.options.fov().set(70); mc.options.fovEffectScale().set(0.); mc.options.bobView().set(false);
                 mc.options.particles().set(ParticleStatus.MINIMAL);
                 mc.player.setYRot(0); mc.player.setXRot(90);
+                // The T4 3D flare gun and offhand ammo models are drawn over the lower screen; hide the hands/HUD
+                // (F1) for the top-down ring capture so the world-rendered ring itself is classified.
+                mc.options.hideGui = true;
                 if (ticks > 240 && !captured.contains(phase)) throw new AssertionError("complete red ring never became visible");
             } else {
+                mc.options.hideGui = false;
                 mc.options.particles().set(ParticleStatus.ALL);
                 if (subject != null) target = subject.position().add(0, .4, 0);
                 look(target);
