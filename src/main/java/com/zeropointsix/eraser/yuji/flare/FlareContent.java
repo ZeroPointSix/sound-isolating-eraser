@@ -3,6 +3,8 @@ package com.zeropointsix.eraser.yuji.flare;
 import com.mojang.serialization.Codec;
 import com.zeropointsix.eraser.yuji.YujiContent;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.core.particles.ParticleType;
+import net.minecraft.core.particles.SimpleParticleType;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
@@ -23,6 +25,10 @@ public final class FlareContent {
     private static final DeferredRegister<Item> ITEMS = DeferredRegister.create(ForgeRegistries.ITEMS, "qihai");
     private static final DeferredRegister<Block> BLOCKS = DeferredRegister.create(ForgeRegistries.BLOCKS, "qihai");
     private static final DeferredRegister<EntityType<?>> ENTITIES = DeferredRegister.create(ForgeRegistries.ENTITY_TYPES, "qihai");
+    private static final DeferredRegister<ParticleType<?>> PARTICLES = DeferredRegister.create(ForgeRegistries.PARTICLE_TYPES, "qihai");
+    public static final RegistryObject<SimpleParticleType> RED_SPARK = PARTICLES.register("flare_spark_red", () -> new SimpleParticleType(true));
+    public static final RegistryObject<SimpleParticleType> YELLOW_SPARK = PARTICLES.register("flare_spark_yellow", () -> new SimpleParticleType(true));
+    public static final RegistryObject<SimpleParticleType> GREEN_SPARK = PARTICLES.register("flare_spark_green", () -> new SimpleParticleType(true));
     private static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITIES = DeferredRegister.create(ForgeRegistries.BLOCK_ENTITY_TYPES, "qihai");
     private static final DeferredRegister<Codec<? extends IGlobalLootModifier>> LOOT = DeferredRegister.create(ForgeRegistries.Keys.GLOBAL_LOOT_MODIFIER_SERIALIZERS, "qihai");
     public static final RegistryObject<Item> GUN = ITEMS.register("flare_gun", FlareGunItem::new);
@@ -54,7 +60,7 @@ public final class FlareContent {
     }
 
     public static void register(IEventBus bus) {
-        ITEMS.register(bus); BLOCKS.register(bus); ENTITIES.register(bus); BLOCK_ENTITIES.register(bus); LOOT.register(bus);
+        ITEMS.register(bus); BLOCKS.register(bus); ENTITIES.register(bus); BLOCK_ENTITIES.register(bus); LOOT.register(bus); PARTICLES.register(bus);
         bus.addListener((net.minecraftforge.event.entity.EntityAttributeCreationEvent e) -> e.put(DECOY.get(), FlareDecoy.attributes().build()));
         MinecraftForge.EVENT_BUS.register(FlareEvents.class);
     }

@@ -73,6 +73,7 @@ public final class YujiTestClient {
         try { Files.writeString(RESULTS.resolve("client.failed"), failure.toString()); } catch (Exception ignored) { }
     }
     @SubscribeEvent public static void message(ClientChatReceivedEvent event) {
+        if (Boolean.getBoolean("flare.qa.visuals")) return;
         String text = event.getMessage().getString();
         if (!text.startsWith("YUJI_QA:")) return;
         phase = text.substring(8); ticks = 0; frames = 0; captured = false; audioDone = false; poses.clear();
