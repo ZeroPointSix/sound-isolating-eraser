@@ -34,6 +34,7 @@ import net.minecraftforge.fml.common.Mod;
 public final class SuxiaTestServer {
     private static final boolean IDLE_ONLY = Boolean.getBoolean("suxia.qa.idleOnly");
     private static int idleStableTicks;
+    private static net.minecraft.world.phys.Vec3 idleWalkStart;
     private static final Path RESULTS = Path.of(System.getProperty("suxia.qa.results"));
     private static ServerPlayer player;
     private static int stage, ticks;
@@ -70,6 +71,13 @@ public final class SuxiaTestServer {
         for (BlockPos pos : BlockPos.betweenClosed(-16, 64, -20, 48, 64, 16)) {
             level.setBlockAndUpdate(pos, Blocks.SMOOTH_QUARTZ.defaultBlockState());
         }
+        if (IDLE_ONLY) {
+            for (BlockPos pos : BlockPos.betweenClosed(-16, 65, -20, 48, 70, 16)) {
+                level.setBlockAndUpdate(pos, Blocks.AIR.defaultBlockState());
+            }
+            level.setDefaultSpawnPos(new BlockPos(0, 65, -12), 0);
+            level.getGameRules().getRule(GameRules.RULE_SPAWN_RADIUS).set(0, level.getServer());
+        }
         if (Files.exists(RESULTS.resolve("restart-state"))) {
             try {
                 var saved = Files.readAllLines(RESULTS.resolve("restart-state"));
@@ -105,10 +113,10 @@ public final class SuxiaTestServer {
                 return;
             }
             require(stage == 0, "unexpected login");
-            p.setGameMode(GameType.CREATIVE);
+            p.setGameMode(IDLE_ONLY ? GameType.SURVIVAL : GameType.CREATIVE);
             p.getInventory().selected = 0;
             p.connection.send(new ClientboundSetCarriedItemPacket(0));
-            p.teleportTo(p.serverLevel(), 0, 65, -12, 0, 5);
+            if (!IDLE_ONLY) p.teleportTo(p.serverLevel(), 0, 65, -12, 0, 5);
             p.getInventory().setItem(0, new ItemStack(ModItems.SUXIA_POCKET_WATCH.get()));
             p.getInventory().setItem(1, new ItemStack(ModItems.SUXIA_POCKET_WATCH.get()));
             p.getInventory().setItem(2, new ItemStack(ModItems.SUXIA_SPAWN_EGG.get()));
@@ -134,7 +142,7 @@ public final class SuxiaTestServer {
 
     private static void idleTick() throws Exception {
         if (stage == 0 && ticks == 60) { signal("idle-ready"); stage = 1; }
-        if (stage == 1 || stage == 3) {
+        if (stage == 1 || stage == 3 || stage == 5) {
             var active = SuxiaSummons.get(player.getServer()).active(player.getUUID());
             var entity = active == null ? null : player.serverLevel().getEntity(active.summon);
             boolean ready = false;
@@ -148,12 +156,17 @@ public final class SuxiaTestServer {
                         && Math.abs(player.getXRot() - pitch) < 1
                         && Math.abs(net.minecraft.util.Mth.wrapDegrees(summon.getYHeadRot() - yaw)) < 5
                         && Math.abs(summon.getXRot() - pitch) < 5;
+                if (stage == 5) ready &= idleWalkStart != null
+                        && player.position().subtract(idleWalkStart).horizontalDistance() >= 4
+                        && Files.exists(RESULTS.resolve("client-idle-walk-stopped.signal"));
                 if (ready && ++idleStableTicks >= 20) {
-                    String name = stage == 1 ? "idle-stationary" : "idle-turned";
+                    String name = stage == 1 ? "idle-stationary" : stage == 3 ? "idle-turned" : "idle-followed";
                     pass(name, "Actual item-use/look packets; owner=" + player.position() + " yaw=" + player.getYRot()
                             + " pitch=" + player.getXRot() + " summon=" + summon.position()
                             + " headYaw=" + summon.getYHeadRot() + " pitch=" + summon.getXRot()
-                            + "; rear error <=0.75, view error <5 degrees, navigation stopped for 20 ticks.");
+                            + " horizontal=" + summon.position().subtract(behind).horizontalDistance()
+                            + " vertical=" + Math.abs(summon.getY() - player.getY())
+                            + "; rear error <=0.75, vertical <0.5, view error <5 degrees, navigation stopped for 20 ticks.");
                     signal(name); stage++;
                 }
             }
@@ -162,10 +175,31 @@ public final class SuxiaTestServer {
             idleStableTicks = 0;
             signal("idle-turning"); stage = 3;
         } else if (stage == 4 && Files.exists(RESULTS.resolve("client-idle-turned.pass"))) {
-            pass("idle-complete", "Real client summon, stationary rear positioning and owner look-packet turn verified.");
-            stage = 5;
+            idleWalkStart = player.position();
+            idleStableTicks = 0;
+            signal("idle-walking"); stage = 5;
+        } else if (stage == 6 && Files.exists(RESULTS.resolve("client-idle-followed.pass"))) {
+            var active = SuxiaSummons.get(player.getServer()).active(player.getUUID());
+            require(active != null, "followed summon remains active before real recall input");
+            summoned = active.summon;
+            firstWatch = active.watch;
+            summonUntil = active.until;
+            signal("idle-recalling"); stage = 7;
+        } else if (stage == 7 && SuxiaSummons.get(player.getServer()).active(player.getUUID()) == null) {
+            require(Files.exists(RESULTS.resolve("client-idle-recall-input.signal")), "real client sent recall input");
+            require(SuxiaMotion.clock(player.level()) + 200 < summonUntil, "recall precedes natural expiry");
+            require(player.serverLevel().getEntity(summoned) == null, "recall removed the same summon");
+            var watch = player.getMainHandItem();
+            require(watch.getTag().getUUID("WatchUUID").equals(firstWatch)
+                    && !watch.getTag().getBoolean("Open") && watch.getTag().getInt("CooldownRemaining") > 3500,
+                    "same watch closes and enters its original cooldown");
+            pass("idle-recalled", "Actual client item-use recalled the followed summon, before expiry, with the same WatchUUID and cooldown >3500.");
+            signal("idle-recalled"); stage = 8;
+        } else if (stage == 8 && Files.exists(RESULTS.resolve("client-idle-recalled.pass"))) {
+            pass("idle-complete", "Real client summon, stationary/turn/walking follow and same-watch recall; no QA teleport or NoAI.");
+            stage = 9;
         }
-        if (ticks > 300 && stage != 5) throw new AssertionError("Idle QA stage stalled: " + stage);
+        if (ticks > 300 && stage != 9) throw new AssertionError("Idle QA stage stalled: " + stage);
     }
 
     @SubscribeEvent public static void tick(TickEvent.ServerTickEvent event) {

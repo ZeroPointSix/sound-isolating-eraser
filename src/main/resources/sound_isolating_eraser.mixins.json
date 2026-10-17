@@ -14,7 +14,8 @@
     "WingsFlightConnectionMixin"
   ],
   "client": [
-    "WingsTravelMixin"
+    "WingsTravelMixin",
+    "SuxiaPitchPacketMixin"
   ],
   "injectors": {
     "defaultRequire": 1
