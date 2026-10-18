@@ -23,6 +23,7 @@ CLASSPATH = (ROOT / "build/suxia-test-classpath.txt").read_text().strip()
 PORT = int(os.environ.get("SUXIA_QA_PORT", "25589"))
 TIMEOUT = int(os.environ.get("SUXIA_QA_TIMEOUT_SECONDS", "600"))
 IDLE_ONLY = os.environ.get("SUXIA_QA_IDLE_ONLY") == "1"
+PITCH_QA = os.environ.get("SUXIA_QA_PITCH") == "1"
 processes, logs = [], []
 
 
@@ -64,15 +65,21 @@ def launch(role):
         env["DISPLAY"] = display
     args = shlex.split(expand(config["args"]))
     if not server:
+        if PITCH_QA:
+            args += ["--mixin.config", "suxia_qa.mixins.json"]
         for option in ("--username", "--width", "--height", "--quickPlayMultiplayer"):
             while option in args:
                 i = args.index(option)
                 del args[i:i + 2]
         args += ["--username", "SuxiaTester", "--width", "960", "--height", "540",
                  "--quickPlayMultiplayer", f"127.0.0.1:{PORT}"]
-    command = ["java", "-Xmx1024M" if server else "-Xmx1536M", f"-Dsuxia.qa.results={RESULTS}"]
+    command = ["java", "-XX:ActiveProcessorCount=2", "-Xmx1024M" if server else "-Xmx1536M", f"-Dsuxia.qa.results={RESULTS}"]
     if IDLE_ONLY:
         command += ["-Dsuxia.qa.idleOnly=true"]
+    if PITCH_QA:
+        command += ["-Dsuxia.qa.pitch=true"]
+        if os.environ.get("SUXIA_QA_PITCH_DIAGNOSE_ONLY") == "1":
+            command += ["-Dsuxia.qa.pitchDiagnoseOnly=true"]
     command += shlex.split(expand(config["vmArgs"]))
     if not server:
         natives = directory / "lwjgl-natives"
@@ -85,6 +92,7 @@ def launch(role):
     process = subprocess.Popen(command, cwd=directory, env=env, stdin=subprocess.PIPE,
                                stdout=log, stderr=subprocess.STDOUT, text=True)
     processes.append(process)
+    print(f"SUXIA_QA_PROCESS role={role} pid={process.pid} cwd={directory}", flush=True)
     return process
 
 
@@ -131,9 +139,12 @@ try:
         except OSError:
             time.sleep(1)
     client = launch("client")
+    if PITCH_QA and os.environ.get("SUXIA_QA_PITCH_DIAGNOSE_ONLY") != "1":
+        wait_for(["pitch-regression"], [server, client])
     if IDLE_ONLY:
         wait_for(["server-idle-stationary", "client-idle-stationary",
-                  "server-idle-turned", "client-idle-turned", "server-idle-complete"], [server, client])
+                  "server-idle-turned", "client-idle-turned", "server-idle-followed", "client-idle-followed",
+                  "server-idle-recalled", "client-idle-recalled", "server-idle-complete"], [server, client])
         stop(client)
         server.stdin.write("stop\n")
         server.stdin.flush()

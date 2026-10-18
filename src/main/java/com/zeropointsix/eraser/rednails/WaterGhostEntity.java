@@ -90,32 +90,39 @@ public final class WaterGhostEntity extends Monster implements WaterGhostPoseSou
         super.tick(); body.tick();
         if (level().isClientSide || !isAlive()) return;
         dryTicks = isInWater() ? 0 : dryTicks + 1;
-        if (tickCount % 10 == 0) {
-            var target = getTarget();
-            if (target != null && (!prey(target) || target.level() != level()
-                    || pursuit && level().getGameTime() - lastContact >= 200 && !nearWater(target, 8))) {
-                setTarget(null); pursuit = false; body.stopMoving(); body.grab.stop();
-            }
-            if (getTarget() == null || !pursuit) {
-                var attacker = getLastHurtByMob();
-                if (attacker != null && prey(attacker) && tickCount - getLastHurtByMobTimestamp() < 200) {
-                    setTarget(attacker); pursuit = true; contact();
-                } else {
-                    var nearest = level().getEntitiesOfClass(LivingEntity.class, getBoundingBox().inflate(16),
-                            e -> prey(e) && distanceToSqr(e) <= 256 && hasLineOfSight(e)
-                                    && (nearWater(e, 2) || isInWater())).stream()
-                            .min(java.util.Comparator.comparingInt((LivingEntity e) ->
-                                    distanceToSqr(e) <= 36 && nearWater(e, 2) ? 0 : 1)
-                                    .thenComparingDouble(this::distanceToSqr)).orElse(null);
-                    // A dry passer-by is watched, but never initiates a chase.
-                    setTarget(nearest);
-                }
-            }
-        }
+        // Initialize water posture before the first scan, without waiting ten
+        // ticks for a moving target to leave the six-block pursuit start range.
+        if (tickCount == 1 || tickCount % 10 == 0) updateTarget();
         if (getTarget() != null && !pursuit) getLookControl().setLookAt(getTarget(), 30, 30);
         if (isInWater() && getTarget() == null && tickCount % (40 + getId() % 41) == 0
                 && level() instanceof ServerLevel server) {
             server.sendParticles(ParticleTypes.BUBBLE, getX(), getY() + 0.5, getZ(), 1, 0.1, 0.1, 0.1, 0);
+        }
+    }
+    private void updateTarget() {
+        var target = getTarget();
+        if (target != null && (!prey(target) || target.level() != level()
+                || pursuit && level().getGameTime() - lastContact >= 200 && !nearWater(target, 8))) {
+            setTarget(null); pursuit = false; body.stopMoving(); body.grab.stop();
+        }
+        if (getTarget() == null || !pursuit) {
+            var attacker = getLastHurtByMob();
+            if (attacker != null && prey(attacker) && tickCount - getLastHurtByMobTimestamp() < 200) {
+                setTarget(attacker); pursuit = true; contact();
+            } else {
+                var nearest = level().getEntitiesOfClass(LivingEntity.class, getBoundingBox().inflate(16),
+                        e -> prey(e) && distanceToSqr(e) <= 256 && hasLineOfSight(e)
+                                && (nearWater(e, 2) || isInWater())).stream()
+                        .min(java.util.Comparator.comparingInt((LivingEntity e) ->
+                                distanceToSqr(e) <= 36 && nearWater(e, 2) ? 0 : 1)
+                                .thenComparingDouble(this::distanceToSqr)).orElse(null);
+                // A dry passer-by is watched, but never initiates a chase.
+                setTarget(nearest);
+                if (nearest != null && distanceToSqr(nearest) <= 36 && nearWater(nearest, 2)) {
+                    // The melee goal may not poll again before a moving boat leaves range.
+                    pursuit = true; contact();
+                }
+            }
         }
     }
     @Override public boolean doHurtTarget(Entity target) {
@@ -127,25 +134,70 @@ public final class WaterGhostEntity extends Monster implements WaterGhostPoseSou
     private final class WaterGoal extends Goal {
         private BlockPos destination;
         WaterGoal() { setFlags(EnumSet.of(Flag.MOVE)); }
+        private boolean clearWaterEntry(BlockPos pos) {
+            var box = getDimensions(getPose()).makeBoundingBox(Vec3.atBottomCenterOf(pos));
+            return WaterGhostBody.waterAt(WaterGhostEntity.this, pos)
+                    && level().noCollision(WaterGhostEntity.this, box);
+        }
+        private boolean canWalkIntoWater(Vec3 from, BlockPos water) {
+            Vec3 entry = Vec3.atBottomCenterOf(water);
+            if (entry.y > from.y || !clearWaterEntry(water)) return false;
+            var size = getDimensions(getPose());
+            var across = size.makeBoundingBox(from)
+                    .expandTowards(entry.x - from.x, 0, entry.z - from.z);
+            var down = size.makeBoundingBox(entry).expandTowards(0, from.y - entry.y, 0);
+            return level().getWorldBorder().isWithinBounds(across)
+                    && level().getWorldBorder().isWithinBounds(down)
+                    && level().noCollision(WaterGhostEntity.this, across)
+                    && level().noCollision(WaterGhostEntity.this, down);
+        }
         @Override public boolean canUse() { return !pursuit && (isInWater() || dryTicks >= 200); }
         @Override public boolean requiresUpdateEveryTick() { return true; }
-        @Override public void start() { destination = null; }
+        @Override public void start() { destination = null; body.stopMoving(); }
         @Override public void tick() {
             if (isInWater()) {
+                if (destination != null) { destination = null; body.stopMoving(); }
                 var surface = blockPosition().mutable();
                 for (int i = 0; i < 32 && WaterGhostBody.waterAt(WaterGhostEntity.this, surface.above()); i++) surface.move(0, 1, 0);
                 double y = surface.getY() - 0.5;
                 if (Math.abs(getY() - y) > 0.15) moveControl.setWantedPosition(getX(), y, getZ(), 0.2);
                 else body.stopMoving();
             } else {
+                var navigation = getNavigation();
+                if (destination != null && !clearWaterEntry(destination)) {
+                    destination = null; body.stopMoving();
+                }
+                if (destination != null && navigation.isDone()) {
+                    Vec3 entry = Vec3.atBottomCenterOf(destination);
+                    // A completed path can leave a wide body supported by the bank.
+                    // Finish the collision-free horizontal entry; gravity supplies the drop.
+                    if (canWalkIntoWater(position(), destination)) {
+                        moveControl.setWantedPosition(entry.x, getY(), entry.z, 1);
+                    } else { destination = null; body.stopMoving(); }
+                }
                 if (destination == null && tickCount % 40 == 0) {
+                    var water = new java.util.HashSet<BlockPos>();
                     for (var pos : BlockPos.withinManhattan(blockPosition(), 24, 8, 24)) {
-                        if (pos.distSqr(blockPosition()) <= 24 * 24 && WaterGhostBody.waterAt(WaterGhostEntity.this, pos)) {
-                            destination = pos.immutable(); break;
+                        if (pos.distSqr(blockPosition()) <= 24 * 24 && clearWaterEntry(pos)) {
+                            water.add(pos.immutable());
+                        }
+                    }
+                    // Retain vanilla's original approach accuracy, then verify the
+                    // remaining entry against the actual body instead of assuming it is wet.
+                    var path = navigation.createPath(water, 1);
+                    if (path != null && path.getEndNode() != null) {
+                        Vec3 end = path.getEntityPosAtNode(WaterGhostEntity.this, path.getNodeCount() - 1);
+                        // Amphibious nodes can stop above WATER_BORDER. A partial path is
+                        // usable only when the full body can physically walk and drop in.
+                        boolean entryClear = canWalkIntoWater(end, path.getTarget());
+                        com.mojang.logging.LogUtils.getLogger().debug(
+                                "Water ghost return: canReach={} end={} water={} entryClear={}",
+                                path.canReach(), end, path.getTarget(), entryClear);
+                        if ((path.canReach() || entryClear) && navigation.moveTo(path, 1)) {
+                            destination = path.getTarget();
                         }
                     }
                 }
-                if (destination != null) getNavigation().moveTo(destination.getX() + 0.5, destination.getY(), destination.getZ() + 0.5, 1);
             }
         }
         @Override public void stop() { body.stopMoving(); }
@@ -167,8 +219,12 @@ public final class WaterGhostEntity extends Monster implements WaterGhostPoseSou
     @Override protected boolean canAddPassenger(Entity entity) { return false; }
     @Override protected boolean shouldDropLoot() { return false; }
     @Override protected SoundEvent getAmbientSound() { return isInWater() ? getTarget() == null ? null : SoundEvents.DROWNED_AMBIENT_WATER : SoundEvents.DROWNED_AMBIENT; }
+    @Override public void playAmbientSound() {
+        SoundEvent sound = getAmbientSound();
+        if (sound != null) playSound(sound, getSoundVolume(), WaterGhostBody.AMBIENT_PITCH);
+    }
     @Override protected SoundEvent getHurtSound(DamageSource source) { return SoundEvents.DROWNED_HURT; }
     @Override protected SoundEvent getDeathSound() { return SoundEvents.DROWNED_DEATH; }
-    @Override public float getVoicePitch() { return 0.6F; }
+    @Override public float getVoicePitch() { return WaterGhostBody.HURT_DEATH_PITCH; }
     @Override protected void playStepSound(BlockPos pos, BlockState state) { playSound(SoundEvents.GENERIC_SPLASH, 0.3F, 0.7F); }
 }

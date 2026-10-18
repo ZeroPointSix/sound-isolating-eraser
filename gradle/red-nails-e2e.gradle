@@ -7,6 +7,7 @@ sourceSets {
 }
 minecraft.runs.matching { it.name == 'client' || it.name == 'server' }.configureEach {
     mods { red_nails_qa { source sourceSets.redNailsTest } }
+    args '--mixin.config', 'red-nails-qa.mixins.json'
 }
 tasks.register('writeRedNailsTestClasspath') {
     dependsOn 'classes', 'redNailsTestClasses', 'genVSCodeRuns'

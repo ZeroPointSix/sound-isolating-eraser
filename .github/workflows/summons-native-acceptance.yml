@@ -1,0 +1,145 @@
+name: Summons native acceptance
+
+on:
+  pull_request:
+    paths:
+      - 'src/main/**'
+      - 'src/redNailsTest/**'
+      - 'src/suxiaTest/**'
+      - 'tools/red-nails/**'
+      - 'tools/suxia/**'
+      - 'gradle/red-nails-e2e.gradle'
+      - 'gradle/suxia-e2e.gradle'
+      - 'build.gradle'
+      - '.github/workflows/summons-native-acceptance.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: summons-native-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  red-nails:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        case: [front, front-bottom, boat, bottom, damage, items, pursuit, lifecycle, speed]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check QA observations without game substitutes
+        run: |
+          javac -d build/qa-observation-checks src/redNailsTest/java/com/zeropointsix/rednailstest/AcceptanceObservations.java tools/red-nails/AcceptanceObservationsTest.java
+          java -cp build/qa-observation-checks com.zeropointsix.rednailstest.AcceptanceObservationsTest
+          python -m py_compile tools/red-nails/e2e.py
+      - name: Prepare real Forge client and server
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon --max-workers=2 -Dorg.gradle.jvmargs=-Xmx2g -PredNailsE2E writeRedNailsTestClasspath
+      - name: Run isolated native case
+        env:
+          LP_NUM_THREADS: '2'
+          RED_NAILS_QA_ACCEPTANCE: "${{ matrix.case == 'pursuit' && '0' || '1' }}"
+          RED_NAILS_QA_PURSUIT: "${{ matrix.case == 'pursuit' && '1' || '0' }}"
+          RED_NAILS_QA_CASE: "${{ matrix.case == 'pursuit' && 'all' || matrix.case }}"
+          RED_NAILS_QA_PORT: '25640'
+          RED_NAILS_QA_TIMEOUT: '900'
+        run: python -u tools/red-nails/e2e.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-red-nails-${{ matrix.case }}
+          path: |
+            build/red-nails-e2e-*/*.log
+            build/red-nails-e2e-*/*.png
+            build/red-nails-e2e-*/*.pass
+            build/red-nails-e2e-*/*.failed
+            build/red-nails-e2e-*/*.signal
+            build/red-nails-e2e-*/*.csv
+            build/red-nails-e2e-*/*.json
+            build/red-nails-e2e-*/*.jsonl
+            build/red-nails-e2e-*/client/logs/*.log
+            build/red-nails-e2e-*/server/logs/*.log
+  suxia:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install Pillow
+      - name: Prepare complete Suxia native lifecycle
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon --max-workers=2 -Dorg.gradle.jvmargs=-Xmx2g -PsuxiaE2E writeSuxiaTestClasspath
+      - name: Run complete lifecycle including rejoin and restart
+        env:
+          LP_NUM_THREADS: '2'
+          SUXIA_QA_PORT: '25640'
+        run: python -u tools/suxia/e2e.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-suxia-lifecycle
+          path: |
+            build/suxia-e2e-*/*.log
+            build/suxia-e2e-*/*.png
+            build/suxia-e2e-*/*.pass
+            build/suxia-e2e-*/*.failed
+            build/suxia-e2e-*/*.txt
+            build/suxia-e2e-*/*.csv
+            build/suxia-e2e-*/client*/logs/*.log
+            build/suxia-e2e-*/server/logs/*.log
+  srg-package:
+    name: SRG package and installed-server smoke (no release)
+    needs: [red-nails, suxia]
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build reobfuscated player package with normal checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build
+          chmod +x gradlew
+          ./gradlew --no-daemon --max-workers=2 -Dorg.gradle.jvmargs=-Xmx2g build | tee build/srg-build.log
+      - name: Load actual package in a clean installed Forge server
+        run: python -u tools/red-nails/srg_smoke.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pr38-srg-package-and-installation-evidence
+          retention-days: 90
+          path: |
+            build/libs/sound_isolating_eraser-*.jar
+            build/srg-build.log
+            build/red-nails-srg-*/*.log
+            build/red-nails-srg-*/srg-installation.json

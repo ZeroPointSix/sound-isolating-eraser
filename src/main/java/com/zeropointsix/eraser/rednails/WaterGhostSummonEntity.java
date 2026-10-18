@@ -133,9 +133,12 @@ public final class WaterGhostSummonEntity extends TamableAnimal implements Water
                 || distanceToSqr(owner) > 1024)) setTarget(null);
     }
     private final class TargetsGoal extends Goal {
-        @Override public boolean canUse() { return tickCount % 10 == 0 && getOwner() != null; }
+        private int nextScanTick;
+        // Mob runs the full selector on alternating ticks; an exact modulo gate
+        // can permanently miss one spawn/ID phase. Keep an overdue scan eligible.
+        @Override public boolean canUse() { return tickCount >= nextScanTick && getOwner() != null; }
         @Override public boolean canContinueToUse() { return false; }
-        @Override public void start() { chooseTarget(); }
+        @Override public void start() { nextScanTick = tickCount + 10; chooseTarget(); }
     }
     private final class GuardGoal extends Goal {
         GuardGoal() { setFlags(EnumSet.of(Flag.MOVE, Flag.LOOK)); }
@@ -183,8 +186,12 @@ public final class WaterGhostSummonEntity extends TamableAnimal implements Water
     @Override protected boolean shouldDropLoot() { return false; }
     @Override public boolean shouldDropExperience() { return false; }
     @Override protected SoundEvent getAmbientSound() { return isInWater() ? SoundEvents.DROWNED_AMBIENT_WATER : SoundEvents.DROWNED_AMBIENT; }
+    @Override public void playAmbientSound() {
+        SoundEvent sound = getAmbientSound();
+        if (sound != null) playSound(sound, getSoundVolume(), WaterGhostBody.AMBIENT_PITCH);
+    }
     @Override protected SoundEvent getHurtSound(DamageSource source) { return SoundEvents.DROWNED_HURT; }
     @Override protected SoundEvent getDeathSound() { return SoundEvents.DROWNED_DEATH; }
-    @Override public float getVoicePitch() { return 0.7F; }
+    @Override public float getVoicePitch() { return WaterGhostBody.HURT_DEATH_PITCH; }
     @Override protected void playStepSound(BlockPos pos, BlockState state) { playSound(SoundEvents.GENERIC_SPLASH, 0.3F, 0.7F); }
 }
