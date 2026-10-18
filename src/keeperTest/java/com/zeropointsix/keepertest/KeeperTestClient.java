@@ -31,6 +31,7 @@ public final class KeeperTestClient {
     private static final Path RESULTS = Path.of(System.getProperty("keeper.qa.results"));
     private static final CaptureReadyGate CAPTURE_GATE = new CaptureReadyGate(RESULTS);
     private static final AtomicBoolean shutterPending = new AtomicBoolean();
+    private static final WarmupTrace warmupTrace = new WarmupTrace();
     private static volatile String phase = "";
     private static int ticks;
     private static volatile boolean failed;
@@ -86,8 +87,25 @@ public final class KeeperTestClient {
                 .append(baselineSaved).append('\n');
         if (now - warmupBegan > 90_000_000_000L) {
             Files.writeString(RESULTS.resolve("render-warmup.csv"), warmupFrames);
+            saveWarmupTrace();
             throw new AssertionError("Render readiness unavailable within 90s: need 2s of real frames"
                     + " with gaps <=250ms before native shutter; stable_frames=" + stableFrames);
+        }
+    }
+
+    private static void observeWarmupStage(WarmupTrace.Stage stage) {
+        if (!shutterSent && !failed && (phase.equals("baseline") || phase.equals("shoot"))) {
+            warmupTrace.record(stage, phase, baselineSaved);
+        }
+    }
+
+    private static void saveWarmupTrace() {
+        try {
+            warmupTrace.write(RESULTS);
+        } catch (Exception error) {
+            // Diagnostic output must not replace the original visual/readiness failure.
+            try { Files.writeString(RESULTS.resolve("warmup-stages-error.txt"), error.toString()); }
+            catch (Exception ignored) { }
         }
     }
 
@@ -124,6 +142,8 @@ public final class KeeperTestClient {
     public static void rendered(TickEvent.RenderTickEvent event) {
         if (failed || flashDeadline == null) return;
         try {
+            observeWarmupStage(event.phase == TickEvent.Phase.START
+                    ? WarmupTrace.Stage.RENDER_START : WarmupTrace.Stage.RENDER_END);
             observeShutterStage("render_" + event.phase.name().toLowerCase(java.util.Locale.ROOT));
             if (event.phase != TickEvent.Phase.END) return;
             observeWarmupFrame(System.nanoTime());
@@ -139,12 +159,14 @@ public final class KeeperTestClient {
         } catch (Throwable error) {
             try { Files.writeString(RESULTS.resolve("client.failed"), error.toString()); } catch (Exception ignored) { }
             failed = true;
+            saveWarmupTrace();
         }
     }
 
     public static void presented() {
         if (failed || flashDeadline == null) return;
         try {
+            observeWarmupStage(WarmupTrace.Stage.PRESENTED);
             observeShutterStage("presented");
             if (timingSaved) return;
             long deadline = flashDeadline.getLong(null);
@@ -175,6 +197,7 @@ public final class KeeperTestClient {
                                 + "\nmode=async_native_xdotool_after_render_end\n");
                 Files.writeString(RESULTS.resolve("shutter-stages.csv"), shutterStages);
                 Files.writeString(RESULTS.resolve("render-warmup.csv"), warmupFrames);
+                saveWarmupTrace();
                 Files.writeString(RESULTS.resolve("render-ready.txt"), "stable_frames=" + shutterStableFrames
                         + " stable_ms=" + shutterStableNanos / 1_000_000.0
                         + " warmup_max_gap_ms=250 required_stable_ms=2000\n");
@@ -193,6 +216,7 @@ public final class KeeperTestClient {
         } catch (Throwable error) {
             try { Files.writeString(RESULTS.resolve("client.failed"), error.toString()); } catch (Exception ignored) { }
             failed = true;
+            saveWarmupTrace();
         }
     }
 
@@ -418,6 +442,8 @@ public final class KeeperTestClient {
     public static void tick(TickEvent.ClientTickEvent event) {
         if (failed) return;
         try {
+            observeWarmupStage(event.phase == TickEvent.Phase.START
+                    ? WarmupTrace.Stage.TICK_START : WarmupTrace.Stage.TICK_END);
             observeShutterStage("tick_" + event.phase.name().toLowerCase(java.util.Locale.ROOT));
         } catch (Exception error) {
             shutterInputError = error;
@@ -578,6 +604,7 @@ public final class KeeperTestClient {
             failure.printStackTrace();
             try { Files.writeString(RESULTS.resolve("client.failed"), failure.toString()); } catch (Exception ignored) { }
             failed = true;
+            saveWarmupTrace();
         }
     }
 }

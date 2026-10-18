@@ -442,3 +442,17 @@ def checkKeeperReadiness = tasks.register('checkKeeperReadiness', JavaExec) {
     mainClass = 'KeeperReadinessCheck'
 }
 tasks.named('check').configure { dependsOn checkKeeperReadiness }
+
+def compileKeeperWarmupTraceCheck = tasks.register('compileKeeperWarmupTraceCheck', JavaCompile) {
+    source = files('src/keeperTest/java/com/zeropointsix/keepertest/WarmupTrace.java',
+            'tools/KeeperWarmupTraceCheck.java')
+    classpath = files()
+    destinationDirectory = layout.buildDirectory.dir('keeper-warmup-trace-check')
+}
+def checkKeeperWarmupTrace = tasks.register('checkKeeperWarmupTrace', JavaExec) {
+    dependsOn compileKeeperWarmupTraceCheck
+    classpath = files(compileKeeperWarmupTraceCheck.flatMap { it.destinationDirectory })
+    mainClass = 'com.zeropointsix.keepertest.KeeperWarmupTraceCheck'
+}
+tasks.named('check').configure { dependsOn checkKeeperWarmupTrace }
+tasks.named('checkKeeperReadiness').configure { dependsOn checkKeeperWarmupTrace }
