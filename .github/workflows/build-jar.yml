@@ -36,6 +36,9 @@ jobs:
       - name: Unit tests
         run: ./gradlew test --no-daemon --stacktrace
 
+      - name: Keeper readiness regression and QA client compilation (no client launch)
+        run: ./gradlew -PkeeperE2E compileKeeperTestJava checkKeeperReadiness --no-daemon --stacktrace
+
       - name: Forge GameTests
         run: ./gradlew runGameTestServer --no-daemon --stacktrace
 

@@ -429,3 +429,16 @@ def verifyKeeperAssets = tasks.register('verifyKeeperAssets', Exec) {
     commandLine 'python3', 'tools/verify_keeper_assets.py'
 }
 tasks.named('check').configure { dependsOn verifyKeeperAssets }
+
+def compileKeeperReadinessCheck = tasks.register('compileKeeperReadinessCheck', JavaCompile) {
+    source = files('src/keeperTest/java/com/zeropointsix/keepertest/CaptureReadyGate.java',
+            'tools/KeeperX11Sampler.java', 'tools/KeeperReadinessCheck.java')
+    classpath = files()
+    destinationDirectory = layout.buildDirectory.dir('keeper-readiness-check')
+}
+def checkKeeperReadiness = tasks.register('checkKeeperReadiness', JavaExec) {
+    dependsOn compileKeeperReadinessCheck
+    classpath = files(compileKeeperReadinessCheck.flatMap { it.destinationDirectory })
+    mainClass = 'KeeperReadinessCheck'
+}
+tasks.named('check').configure { dependsOn checkKeeperReadiness }

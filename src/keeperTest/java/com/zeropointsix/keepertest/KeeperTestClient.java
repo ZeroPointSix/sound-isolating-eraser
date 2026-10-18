@@ -6,6 +6,7 @@ import com.zeropointsix.eraser.keeper.client.KeeperVisuals;
 import java.lang.reflect.Field;
 import java.security.MessageDigest;
 import java.util.HexFormat;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.awt.image.BufferedImage;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -28,6 +29,8 @@ import org.lwjgl.glfw.GLFW;
 @Mod.EventBusSubscriber(modid = "keeper_qa", value = Dist.CLIENT)
 public final class KeeperTestClient {
     private static final Path RESULTS = Path.of(System.getProperty("keeper.qa.results"));
+    private static final CaptureReadyGate CAPTURE_GATE = new CaptureReadyGate(RESULTS);
+    private static final AtomicBoolean shutterPending = new AtomicBoolean();
     private static volatile String phase = "";
     private static int ticks;
     private static volatile boolean failed;
@@ -38,7 +41,7 @@ public final class KeeperTestClient {
     private static int baselineWhite;
     private static boolean photoSaved;
     private static boolean grabberStarted;
-    private static boolean shutterSent;
+    private static volatile boolean shutterSent;
     private static final StringBuilder frameTimes = new StringBuilder("epoch_ms,elapsed_ms,left_ms,phase,in_photo\n");
     private static Field flashDeadline;
     private static volatile long observedDeadline;
@@ -125,13 +128,13 @@ public final class KeeperTestClient {
             if (event.phase != TickEvent.Phase.END) return;
             observeWarmupFrame(System.nanoTime());
             if (phase.equals("shoot") && ticks >= 20 && !shutterSent && baselineSaved
-                    && renderReady() && samplerReady && Files.exists(RESULTS.resolve("capture.ready"))) {
+                    && renderReady() && samplerReady && Files.exists(RESULTS.resolve("capture.ready"))
+                    && shutterPending.compareAndSet(false, true)) {
                 // Schedule native input only after a real world frame has finished rendering.
                 shutterScheduledNs = System.nanoTime();
                 shutterStableNanos = shutterScheduledNs - stableSince;
                 shutterStableFrames = stableFrames;
-                shutterSent = true;
-                clickShutter();
+                clickShutter(lastWarmupFrame);
             }
         } catch (Throwable error) {
             try { Files.writeString(RESULTS.resolve("client.failed"), error.toString()); } catch (Exception ignored) { }
@@ -212,16 +215,25 @@ public final class KeeperTestClient {
         }
     }
 
-    private static void clickShutter() {
+    private static void clickShutter(long renderedAt) {
         // Native input must not block the game's tick/render thread during measurement.
         Thread thread = new Thread(() -> {
             try {
-                shutterClickNs = System.nanoTime();
-                input("click", "3");
+                if (failed || !phase.equals("shoot") || System.nanoTime() - renderedAt > 250_000_000L) return;
+                Process[] input = new Process[1];
+                boolean dispatched = CAPTURE_GATE.tryShutter(() -> {
+                    require(!failed && phase.equals("shoot") && System.nanoTime() - renderedAt <= 250_000_000L,
+                            "render readiness expired before shutter dispatch");
+                    shutterClickNs = System.nanoTime();
+                    shutterSent = true;
+                    input[0] = new ProcessBuilder("xdotool", "click", "3").start();
+                });
+                if (dispatched) require(input[0].waitFor() == 0, "native shutter input failed");
             } catch (Throwable error) {
                 shutterInputError = error;
             } finally {
-                shutterInputFinishedNs = System.nanoTime();
+                if (shutterSent) shutterInputFinishedNs = System.nanoTime();
+                shutterPending.set(false);
             }
         }, "keeper-qa-native-shutter");
         thread.setDaemon(true);

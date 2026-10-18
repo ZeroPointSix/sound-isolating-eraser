@@ -1,3 +1,4 @@
+import com.zeropointsix.keepertest.CaptureReadyGate;
 import java.awt.Rectangle;
 import java.awt.Robot;
 import java.awt.image.BufferedImage;
@@ -11,6 +12,28 @@ import javax.imageio.ImageIO;
 
 /** Independent X11 observer: Minecraft intentionally makes its own JVM headless. */
 public final class KeeperX11Sampler {
+    @FunctionalInterface
+    interface ScreenCapture { BufferedImage capture() throws Exception; }
+
+    record Sample(CaptureReadyGate.Capture permission, BufferedImage screen,
+                  long before, long after) implements AutoCloseable {
+        @Override
+        public void close() throws Exception { permission.close(); }
+    }
+
+    static Sample capture(CaptureReadyGate gate, ScreenCapture source) throws Exception {
+        CaptureReadyGate.Capture permission = gate.beginCapture();
+        try {
+            long before = System.nanoTime();
+            BufferedImage screen = source.capture();
+            return new Sample(permission, screen, before, System.nanoTime());
+        } catch (Throwable failure) {
+            try { permission.close(); }
+            catch (Exception cleanup) { failure.addSuppressed(cleanup); }
+            throw failure;
+        }
+    }
+
     static final class Readiness {
         private long lastStart, stableSince;
         private int count;
@@ -120,7 +143,9 @@ public final class KeeperX11Sampler {
         Path results = Path.of(args[0]);
         ArrayDeque<Capture> captures = new ArrayDeque<>();
         StringBuilder warmup = new StringBuilder("epoch_ms,start_ns,end_ns,gap_ms,stable_captures\n");
+        CaptureReadyGate gate = new CaptureReadyGate(results);
         try {
+            gate.invalidate();
             Robot robot = new Robot();
             Rectangle roi = new Rectangle(480, 270, 320, 180);
             robot.createScreenCapture(roi);
@@ -155,61 +180,59 @@ public final class KeeperX11Sampler {
             boolean captureReady = false;
             Readiness readiness = new Readiness();
             while (System.nanoTime() < timeout) {
-                long before = System.nanoTime();
-                BufferedImage screen = robot.createScreenCapture(roi);
-                long after = System.nanoTime();
-                Capture capture = recycled.pollFirst();
-                // Do not evict evidence if a late deadline needs more than the rolling buffer.
-                if (capture == null) capture = new Capture(roi.width, roi.height);
-                capture.copyFrom(screen, before, after);
-                screen.flush();
-                captures.add(capture);
-                BufferedImage image = capture.image();
-                double[] rgb = centerRgb(image);
-                if (baseline == null) baseline = rgb;
-                double alpha = whiteAlpha(rgb, baseline);
-                if (firstBright == 0 && alpha >= .25) firstBright = before;
-                // This guard reads real screen pixels, not the tautology elapsed=200-left.
-                if (firstBright != 0 && before - firstBright > 250_000_000L && alpha >= .08) {
-                    AssertionError overrun = new AssertionError("Real X11 shutter pixels still bright beyond 250ms");
-                    // Publish failure before optional evidence I/O can stall the harness.
-                    Files.writeString(results.resolve("sampler.failed"), overrun.toString());
-                    try {
-                        ImageIO.write(image, "png", results.resolve("flash-overrun.png").toFile());
-                        Files.writeString(results.resolve("flash-overrun.txt"),
-                                "first_bright_ns=" + firstBright + " capture_before_ns=" + before
-                                        + " capture_after_ns=" + after + " elapsed_ms="
-                                        + (before - firstBright) / 1_000_000.0 + " alpha=" + alpha + "\n");
-                    } catch (Exception evidenceError) {
-                        overrun.addSuppressed(evidenceError);
+                try (Sample sample = capture(gate, () -> robot.createScreenCapture(roi))) {
+                    long before = sample.before();
+                    BufferedImage screen = sample.screen();
+                    long after = sample.after();
+                    Capture capture = recycled.pollFirst();
+                    // Do not evict evidence if a late deadline needs more than the rolling buffer.
+                    if (capture == null) capture = new Capture(roi.width, roi.height);
+                    capture.copyFrom(screen, before, after);
+                    screen.flush();
+                    captures.add(capture);
+                    BufferedImage image = capture.image();
+                    double[] rgb = centerRgb(image);
+                    if (baseline == null) baseline = rgb;
+                    double alpha = whiteAlpha(rgb, baseline);
+                    if (firstBright == 0 && alpha >= .25) firstBright = before;
+                    // This guard reads real screen pixels, not the tautology elapsed=200-left.
+                    if (firstBright != 0 && before - firstBright > 250_000_000L && alpha >= .08) {
+                        AssertionError overrun = new AssertionError("Real X11 shutter pixels still bright beyond 250ms");
+                        // Publish failure before optional evidence I/O can stall the harness.
+                        Files.writeString(results.resolve("sampler.failed"), overrun.toString());
+                        try {
+                            ImageIO.write(image, "png", results.resolve("flash-overrun.png").toFile());
+                            Files.writeString(results.resolve("flash-overrun.txt"),
+                                    "first_bright_ns=" + firstBright + " capture_before_ns=" + before
+                                            + " capture_after_ns=" + after + " elapsed_ms="
+                                            + (before - firstBright) / 1_000_000.0 + " alpha=" + alpha + "\n");
+                        } catch (Exception evidenceError) {
+                            overrun.addSuppressed(evidenceError);
+                        }
+                        throw overrun;
                     }
-                    throw overrun;
-                }
-                if (firstBright == 0) {
-                    long gap = readiness.lastStart == 0 ? 0 : before - readiness.lastStart;
-                    boolean wasReady = captureReady;
-                    captureReady = readiness.observe(before, after);
-                    warmup.append(System.currentTimeMillis()).append(',').append(before).append(',')
-                            .append(after).append(',').append(gap / 1_000_000.0).append(',')
-                            .append(readiness.count).append('\n');
-                    if (wasReady && !captureReady) Files.deleteIfExists(results.resolve("capture.ready"));
-                    // Warm the real X11 capture path before permitting the native shutter.
-                    if (!wasReady && captureReady) {
-                        atomicSignal(results, "capture.ready", Long.toString(after));
+                    if (firstBright == 0) {
+                        long gap = readiness.lastStart == 0 ? 0 : before - readiness.lastStart;
+                        captureReady = readiness.observe(before, after);
+                        warmup.append(System.currentTimeMillis()).append(',').append(before).append(',')
+                                .append(after).append(',').append(gap / 1_000_000.0).append(',')
+                                .append(readiness.count).append('\n');
                     }
+                    if (deadline == 0) {
+                        deadline = readLong(results.resolve("flash-deadline.txt"));
+                        if (deadline != 0) deadlineReadAt = System.nanoTime();
+                    }
+                    // Deferred client I/O can announce the deadline after a slow render frame.
+                    // Bound memory while preserving the original 200ms window for later analysis.
+                    while (deadline == 0 && (captures.size() > 256
+                            || captures.getFirst().after() < after - 3_000_000_000L)) {
+                        recycled.addLast(captures.removeFirst());
+                        droppedCaptures++;
+                    }
+                    if (deadline != 0 && after > deadline + 600_000_000L) break;
+                    // A fresh lease is available only between completed, stable captures.
+                    if (firstBright == 0 && captureReady) sample.permission().publish(after);
                 }
-                if (deadline == 0) {
-                    deadline = readLong(results.resolve("flash-deadline.txt"));
-                    if (deadline != 0) deadlineReadAt = System.nanoTime();
-                }
-                // Deferred client I/O can announce the deadline after a slow render frame.
-                // Bound memory while preserving the original 200ms window for later analysis.
-                while (deadline == 0 && (captures.size() > 256
-                        || captures.getFirst().after() < after - 3_000_000_000L)) {
-                    recycled.addLast(captures.removeFirst());
-                    droppedCaptures++;
-                }
-                if (deadline != 0 && after > deadline + 600_000_000L) break;
                 Thread.sleep(10);
             }
             Files.writeString(results.resolve("sampler-warmup.csv"), warmup);
@@ -269,6 +292,8 @@ public final class KeeperX11Sampler {
                 failure.addSuppressed(evidenceError);
             }
             throw failure;
+        } finally {
+            gate.invalidate();
         }
     }
 }

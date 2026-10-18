@@ -200,7 +200,8 @@ try:
     wait_ready(server)
     sampler_classes = ROOT / "build/keeper-sampler"
     sampler_classes.mkdir(parents=True, exist_ok=True)
-    subprocess.run(["javac", "-d", str(sampler_classes), str(ROOT / "tools/KeeperX11Sampler.java")], check=True)
+    subprocess.run(["javac", "-d", str(sampler_classes), str(ROOT / "tools/KeeperX11Sampler.java"),
+                    str(ROOT / "src/keeperTest/java/com/zeropointsix/keepertest/CaptureReadyGate.java")], check=True)
     sampler_log = (RESULTS / "sampler.log").open("w")
     logs.append(sampler_log)
     # Keep the real X11 capture ring away from small-heap collection pressure.
