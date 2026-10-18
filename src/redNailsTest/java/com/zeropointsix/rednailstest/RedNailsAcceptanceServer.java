@@ -92,8 +92,9 @@ public final class RedNailsAcceptanceServer {
     private static final int SPEED_MATURITY_TICKS = 30;
     private static final double SPEED_LIMIT = 0.35;
     private static final double SPEED_APPROX_MIN_PER_SECOND = 6.5, SPEED_APPROX_MAX_PER_SECOND = 7.1;
-    private static final int SPEED_MIN_NATIVE_SAMPLES = 20, SPEED_BOUNDARY_TICKS = 2;
-    private static final double SPEED_CADENCE_DRIFT = 0.10;
+    private static final int SPEED_MIN_NATIVE_SAMPLES = 20;
+    private static final int SPEED_BOUNDARY_TICKS = AcceptanceObservations.SPEED_BOUNDARY_TICKS;
+    private static final double SPEED_CADENCE_DRIFT = AcceptanceObservations.SPEED_CADENCE_DRIFT;
     private static final JsonArray speedResults = new JsonArray();
     private static final List<String> speedFailures = new ArrayList<>();
     private static SpeedRun speedRun;
@@ -115,6 +116,7 @@ public final class RedNailsAcceptanceServer {
         final long warmupAt;
         final List<String> issues = new ArrayList<>();
         final JsonArray findings = new JsonArray();
+        final JsonArray targetDamageEvents = new JsonArray();
         final SpeedStats ghostTravel = new SpeedStats(), ghostHorizontal = new SpeedStats();
         final SpeedStats matureTravel = new SpeedStats(), matureHorizontal = new SpeedStats();
         final SpeedStats targetTravel = new SpeedStats();
@@ -214,6 +216,15 @@ public final class RedNailsAcceptanceServer {
         }
     }
     @SubscribeEvent(priority = EventPriority.LOWEST) public static void damaged(LivingDamageEvent event) {
+        if (ENABLED && CASE.equals("speed") && speedRun != null && stage == 61 && event.getEntity() == player) {
+            var observed = new JsonObject();
+            observed.addProperty("serverTick", player.level().getGameTime());
+            observed.addProperty("amount", event.getAmount());
+            observed.addProperty("source", event.getSource().getMsgId());
+            observed.addProperty("attackerIsGhost", event.getSource().getEntity() == ghost);
+            observed.addProperty("held", ghost != null && ghost.ghostBody().grab.held() == player);
+            speedRun.targetDamageEvents.add(observed);
+        }
         if (ENABLED && event.getEntity() == ghost && grabbedAt >= 0 && event.getSource().getEntity() == player) {
             damage += event.getAmount();
             damageAt = player.level().getGameTime();
@@ -329,7 +340,9 @@ public final class RedNailsAcceptanceServer {
     }
     private static JsonObject speedPolicy() {
         var policy = new JsonObject();
-        policy.addProperty("scope", "Predeclared QA interpretation of approximately 7 blocks/s; production speed is unchanged.");
+        policy.addProperty("scope", "Adjudicated 0.35 blocks/tick cap; boat capture acceptance is head-on or lateral interception, not mature rear catch-up.");
+        policy.addProperty("boatCaptureGates", "Required native boat, front and front-bottom matrix cases retain natural capture and moving-dismount assertions.");
+        policy.addProperty("rearBoatRole", "Diagnostic natural pursuit only; never reported as boat capture acceptance.");
         policy.addProperty("productionReferenceBlocksPerTick", SPEED_LIMIT);
         policy.addProperty("nominalTicksPerSecond", 20);
         policy.addProperty("maturePeakMinBlocksPerNominalSecond", SPEED_APPROX_MIN_PER_SECOND);
@@ -341,6 +354,7 @@ public final class RedNailsAcceptanceServer {
         policy.addProperty("cadenceRule", "Both clocks normally tick at 20 Hz: abs(clientTicks-serverTicks) <= 0.10*serverTicks+2; also check pre-catch forward displacement against native client speed with the same allowance.");
         policy.addProperty("modeRule", "Every pre-catch native sample must retain sprint-swim or the same moving boat. Only calibration's initial stationary-to-W transition allows two client ticks.");
         policy.addProperty("calibrationReference", "Calibration begins stationary: compare its aligned pre-catch client displacement, and require a later stable native boat window; never treat stationary warmup as a speed reference.");
+        policy.addProperty("swimmerAndBoatReference", "Compare server and native client displacement over the same pre-catch window; warmup is a separate minimum-speed check. Natural acceleration is not client slowdown.");
         return policy;
     }
     private static void speedFinding(String classification, String detail) {
@@ -357,11 +371,11 @@ public final class RedNailsAcceptanceServer {
                 : boat != null && player.getVehicle() == boat && boat.isInWater();
     }
     private static boolean speedRateMatches(double measured, double expected, int serverTicks) {
-        return serverTicks > 0 && expected > 0 && Double.isFinite(measured)
-                && Math.abs(measured - expected) <= expected * (SPEED_CADENCE_DRIFT + (double) SPEED_BOUNDARY_TICKS / serverTicks);
+        return AcceptanceObservations.speedRateMatches(measured, expected, serverTicks);
     }
     private static void setupSpeed(String name) throws Exception {
         if (name.equals("swimmer")) {
+            check(WaterGhostBody.SWIM_SPEED == SPEED_LIMIT, "production speed retains the adjudicated 0.35 blocks/tick cap");
             Files.writeString(RESULTS.resolve("acceptance-speed-policy.json"), speedPolicy() + "\n");
             System.out.println("RED_NAILS_SPEED_PREDECLARED_POLICY " + speedPolicy());
         }
@@ -564,8 +578,8 @@ public final class RedNailsAcceptanceServer {
                     player.stopRiding();
                     if (boat != null) boat.discard();
                     boat = null;
-                    check(speedFailures.isEmpty(), "speed/catch-up failed after ALL three observations: " + String.join("; ", speedFailures));
-                    mark("speed", "Two mature-target chases and independent natural-pursuit speed calibration; actual 100-tick windows, no wall-clock conversion.");
+                    check(speedFailures.isEmpty(), "speed/pursuit failed after ALL three observations: " + String.join("; ", speedFailures));
+                    mark("speed", "Natural swimmer catch, diagnostic rear boat pursuit and independent capped-speed calibration; boat interception remains mandatory in boat/front/front-bottom native cases.");
                     stage = 99; phase("complete");
                 }
             }
@@ -618,16 +632,16 @@ public final class RedNailsAcceptanceServer {
             speedFinding("measurement_inconclusive", "pre-catch native input/mode validity: valid=" + valid + " invalid=" + invalid
                     + " calibrationStartupTransitions=" + transitions);
         double nativeMean = preSamples == 0 ? 0 : clientForwardDistance / preSamples;
-        double reference = run.calibration() ? nativeMean : run.startInput == null ? 0
+        double warmupReference = run.startInput == null ? 0
                 : run.startInput.get("stableWindowMeanBlocksPerTick").getAsDouble();
         if (run.calibration() && stableWindows == 0)
             speedFinding("measurement_inconclusive", "stationary-start calibration never established a later 20-tick stable native boat window");
         double serverMean = preServerTicks == 0 ? 0 : run.targetForwardDistance / preServerTicks;
-        if (!speedRateMatches(serverMean, reference, preServerTicks))
+        if (!speedRateMatches(serverMean, nativeMean, preServerTicks))
             speedFinding("measurement_inconclusive", "target actually advanced at " + serverMean + " blocks/server-tick versus native reference "
-                    + reference + "; a slowed client cannot establish catch-up acceptance");
-        if (!run.calibration() && !speedRateMatches(nativeMean, reference, preServerTicks))
-            speedFinding("measurement_inconclusive", "pre-catch native client advance did not maintain its warmup speed: " + nativeMean + " versus " + reference);
+                    + nativeMean + "; aligned client/server displacement differs beyond the unchanged cadence allowance");
+        if (!run.calibration() && !AcceptanceObservations.maintainsWarmupSpeed(nativeMean, warmupReference, preServerTicks))
+            speedFinding("measurement_inconclusive", "pre-catch native client slowed below its stable warmup reference: " + nativeMean + " versus " + warmupReference);
         var evidence = new JsonObject();
         evidence.addProperty("preCatchServerTicks", preServerTicks);
         evidence.addProperty("preCatchClientTicks", preClientTicks);
@@ -642,19 +656,25 @@ public final class RedNailsAcceptanceServer {
         evidence.addProperty("clientForwardDistance", clientForwardDistance);
         evidence.addProperty("clientForwardMeanBlocksPerClientTick", nativeMean);
         evidence.addProperty("serverForwardMeanBlocksPerServerTick", serverMean);
-        evidence.addProperty("referenceBlocksPerClientTick", reference);
-        evidence.addProperty("referenceSource", run.calibration() ? "aligned pre-catch native calibration motion" : "stable native warmup before ghost creation");
-        evidence.addProperty("serverToNativeSpeedRatio", reference == 0 ? 0 : serverMean / reference);
+        evidence.addProperty("referenceBlocksPerClientTick", nativeMean);
+        evidence.addProperty("referenceSource", "aligned pre-catch native client motion");
+        evidence.addProperty("warmupReferenceBlocksPerClientTick", warmupReference);
+        evidence.addProperty("nativeToWarmupSpeedRatio", warmupReference == 0 ? 0 : nativeMean / warmupReference);
+        evidence.addProperty("serverToNativeSpeedRatio", nativeMean == 0 ? 0 : serverMean / nativeMean);
         run.report.add("nativeMeasurementValidation", evidence);
     }
     private static void classifySpeedResult() {
         var run = speedRun;
+        boolean catchRequired = AcceptanceObservations.requiresRearCatch(run.name);
         String pursuit = run.pursuitAt < 0 ? "pursuit_not_started" : run.caughtAt < 0
-                ? run.calibration() ? "pursuit_observed_calibration_only" : "not_caught_within_100_server_ticks" : "naturally_caught";
+                ? run.calibration() ? "pursuit_observed_calibration_only" : catchRequired
+                    ? "not_caught_within_100_server_ticks" : "rear_pursuit_observed_no_catch_required" : "naturally_caught";
         if (run.pursuitAt < 0) speedFinding("pursuit_not_started", "Natural pursuit never started in THIS scenario; idle displacement is not swimming-speed evidence.");
-        else if (!run.calibration() && run.caughtAt < 0)
+        else if (catchRequired && run.caughtAt < 0)
             speedFinding("not_caught_within_100_server_ticks", "No natural catch in THIS rear-pursuit scenario; this is not a general speed conclusion.");
         String speedOutcome = "measured_by_separate_calibration";
+        if (run.ghostTravel.max * 20 > SPEED_APPROX_MAX_PER_SECOND)
+            speedFinding("outside_predeclared_speed_cap", "Observed unheld ghost motion exceeded the unchanged approximate 0.35 blocks/tick upper band.");
         if (run.calibration()) {
             if (run.matureTravel.count < SPEED_MIN_NATIVE_SAMPLES)
                 speedFinding("measurement_inconclusive", "Calibration needs 20 mature position samples after 30 consecutive pursuit ticks; missing samples do not establish a production-speed failure.");
@@ -668,7 +688,8 @@ public final class RedNailsAcceptanceServer {
         run.report.addProperty("measurementStatus", run.inconclusive ? "measurement_inconclusive" : "valid");
         run.report.addProperty("pursuitOutcome", pursuit);
         run.report.addProperty("speedOutcome", speedOutcome);
-        run.report.addProperty("catchUpPassed", !run.calibration() && !run.inconclusive && run.pursuitAt >= 0 && run.caughtAt >= 0);
+        run.report.addProperty("rearCatchRequired", catchRequired);
+        run.report.addProperty("catchUpPassed", catchRequired && !run.inconclusive && run.pursuitAt >= 0 && run.caughtAt >= 0);
         run.report.addProperty("passed", run.issues.isEmpty());
         run.report.addProperty("maturePeakBlocksPerNominal20TickSecond", run.matureTravel.max * 20);
         run.report.add("predeclaredQaPolicy", speedPolicy());
@@ -678,7 +699,9 @@ public final class RedNailsAcceptanceServer {
         if (run.observationSamples != SPEED_WINDOW) speedFinding("measurement_inconclusive", "observation is not exactly 100 consecutive server END ticks");
         var report = new JsonObject();
         report.addProperty("scenario", run.name);
-        report.addProperty("role", run.calibration() ? "stationary-start mature-speed calibration, NOT mature-boat catch-up" : "mature-target rear pursuit");
+        report.addProperty("role", run.calibration() ? "stationary-start mature-speed calibration, NOT mature-boat catch-up"
+                : run.swimmer() ? "mature swimmer rear-catch acceptance" : "mature boat rear-pursuit diagnostic, NOT interception acceptance");
+        report.add("targetDamageEvents", run.targetDamageEvents.deepCopy());
         report.addProperty("matureNativeTargetAtSpawn", run.matureStart);
         report.add("startClientInput", run.startInput);
         report.addProperty("spawnServerTick", run.spawnedAt);
