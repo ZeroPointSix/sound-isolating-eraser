@@ -995,6 +995,14 @@ public final class RedNailsAcceptanceServer {
                         "real attacks cross eight damage while still held after a retained subthreshold hold");
             } else {
                 check(duration >= 99 && duration <= 101, "unchanged 100-tick water hold despite movement/jump: " + duration);
+                check(captureClientSnapshot != null && captureSnapshotSeenAt >= now - 10
+                                && captureClientSnapshot.get("fixtureBoatVisible").getAsBoolean()
+                                && captureClientSnapshot.get("boatUuid").getAsString().equals(boat.getUUID().toString()),
+                        "fresh native observation of the same former boat at release");
+                var clientBoat = captureClientSnapshot.getAsJsonObject("boatPosition");
+                double hullError = boat.position().distanceTo(new Vec3(clientBoat.get("x").getAsDouble(),
+                        clientBoat.get("y").getAsDouble(), clientBoat.get("z").getAsDouble()));
+                check(hullError <= 0.10, "former boat converges on both sides after the full hold: error=" + hullError);
                 check(resistedTicks >= 40, "native movement/jump resistance sampled for >=40 server ticks: " + resistedTicks);
                 check(convergedTicks >= 40, "resisting player converges inside capture reach in >=40 real samples: " + convergedTicks);
                 check(lastResistanceTick - firstResistanceTick >= 20, "native resistance input continues across real client ticks");

@@ -6,7 +6,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.protocol.game.ClientboundSetEntityMotionPacket;
 import net.minecraft.network.protocol.game.ClientboundSetPassengersPacket;
-import net.minecraft.network.protocol.game.ClientboundTeleportEntityPacket;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
@@ -79,11 +78,10 @@ public final class WaterGhostGrab extends Goal {
         var vehicle = target.getVehicle();
         target.stopRiding();
         if (vehicle != null && target instanceof ServerPlayer player && player.connection != null) {
-            // The former driver may have predicted several boat ticks beyond the server.
-            // stopRiding's tracker update is deferred; detach first so the former driver
-            // does not process a hull correction while it still controls the boat.
+            // Detach before the tracker sends the hull's next position update. Let that
+            // tracker own position synchronization: an extra teleport would reset only
+            // this client's delta base, so the next relative move could be applied twice.
             player.connection.send(new ClientboundSetPassengersPacket(vehicle));
-            player.connection.send(new ClientboundTeleportEntityPacket(vehicle));
             player.connection.send(new ClientboundSetEntityMotionPacket(vehicle));
         }
         body.stopMoving();

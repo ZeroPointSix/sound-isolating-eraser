@@ -225,6 +225,16 @@ public final class RedNailsAcceptanceClient {
             json.addProperty("entityId", motion.getId());
             json.addProperty("wireXa", motion.getXa()); json.addProperty("wireYa", motion.getYa()); json.addProperty("wireZa", motion.getZa());
             json.addProperty("wireVelocityScale", 8000);
+        } else if (packet instanceof net.minecraft.network.protocol.game.ClientboundTeleportEntityPacket teleport) {
+            json.addProperty("entityId", teleport.getId());
+            json.addProperty("wireX", teleport.getX()); json.addProperty("wireY", teleport.getY()); json.addProperty("wireZ", teleport.getZ());
+        } else if (packet instanceof net.minecraft.network.protocol.game.ClientboundMoveEntityPacket move) {
+            json.addProperty("wireXa", move.getXa()); json.addProperty("wireYa", move.getYa()); json.addProperty("wireZa", move.getZa());
+            json.addProperty("wirePositionScale", 4096);
+            json.addProperty("hasPosition", move.hasPosition());
+            if (mainThread && mc.level != null && move.getEntity(mc.level) != null) {
+                json.addProperty("entityId", move.getEntity(mc.level).getId());
+            }
         } else if (packet instanceof net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket position) {
             json.addProperty("wireX", position.getX()); json.addProperty("wireY", position.getY()); json.addProperty("wireZ", position.getZ());
             json.addProperty("relative", position.getRelativeArguments().toString());
