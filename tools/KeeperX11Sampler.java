@@ -2,6 +2,7 @@ import java.awt.Rectangle;
 import java.awt.Robot;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -10,6 +11,26 @@ import javax.imageio.ImageIO;
 
 /** Independent X11 observer: Minecraft intentionally makes its own JVM headless. */
 public final class KeeperX11Sampler {
+    static final class Readiness {
+        private long lastStart, stableSince;
+        private int count;
+        private boolean ready;
+
+        boolean observe(long before, long after) {
+            long gap = lastStart == 0 ? 0 : before - lastStart;
+            if (gap > 50_000_000L || after - before > 50_000_000L) {
+                stableSince = 0;
+                count = 0;
+            } else {
+                if (stableSince == 0) stableSince = before;
+                count++;
+            }
+            lastStart = before;
+            ready = count >= 20 && after - stableSince >= 2_000_000_000L;
+            return ready;
+        }
+    }
+
     static final class Capture {
         private long before, after;
         private final BufferedImage image;
@@ -79,13 +100,18 @@ public final class KeeperX11Sampler {
         Files.writeString(results.resolve("sampler-warmup.csv"), warmup);
         Path frames = results.resolve("sampler-failure-frames");
         Files.createDirectory(frames);
-        StringBuilder csv = new StringBuilder("frame,start_ns,end_ns\n");
+        StringBuilder csv = new StringBuilder("frame,start_ns,end_ns,width,height\n");
+        ByteBuffer pixels = null;
         int index = 0;
         for (Capture capture : captures) {
-            String name = String.format("%03d.png", index++);
-            ImageIO.write(capture.image(), "png", frames.resolve(name).toFile());
+            String name = String.format("%03d.argb", index++);
+            if (pixels == null) pixels = ByteBuffer.allocate(capture.pixels.length * Integer.BYTES);
+            pixels.asIntBuffer().put(capture.pixels);
+            // Preserve pixels without PNG compression competing with the remaining visual tests.
+            Files.write(frames.resolve(name), pixels.array());
             csv.append(name).append(',').append(capture.before()).append(',')
-                    .append(capture.after()).append('\n');
+                    .append(capture.after()).append(',').append(capture.image().getWidth())
+                    .append(',').append(capture.image().getHeight()).append('\n');
         }
         Files.writeString(results.resolve("sampler-failure-captures.csv"), csv);
     }
@@ -127,8 +153,7 @@ public final class KeeperX11Sampler {
             long firstBright = 0;
             double[] baseline = null;
             boolean captureReady = false;
-            long lastCaptureStart = 0, stableSince = 0;
-            int stableCaptures = 0;
+            Readiness readiness = new Readiness();
             while (System.nanoTime() < timeout) {
                 long before = System.nanoTime();
                 BufferedImage screen = robot.createScreenCapture(roi);
@@ -160,23 +185,17 @@ public final class KeeperX11Sampler {
                     }
                     throw overrun;
                 }
-                if (!captureReady) {
-                    long gap = lastCaptureStart == 0 ? 0 : before - lastCaptureStart;
-                    if (gap > 50_000_000L || after - before > 50_000_000L) {
-                        stableSince = 0;
-                        stableCaptures = 0;
-                    } else {
-                        if (stableSince == 0) stableSince = before;
-                        stableCaptures++;
-                    }
-                    lastCaptureStart = before;
+                if (firstBright == 0) {
+                    long gap = readiness.lastStart == 0 ? 0 : before - readiness.lastStart;
+                    boolean wasReady = captureReady;
+                    captureReady = readiness.observe(before, after);
                     warmup.append(System.currentTimeMillis()).append(',').append(before).append(',')
                             .append(after).append(',').append(gap / 1_000_000.0).append(',')
-                            .append(stableCaptures).append('\n');
+                            .append(readiness.count).append('\n');
+                    if (wasReady && !captureReady) Files.deleteIfExists(results.resolve("capture.ready"));
                     // Warm the real X11 capture path before permitting the native shutter.
-                    if (stableCaptures >= 20 && after - stableSince >= 2_000_000_000L) {
+                    if (!wasReady && captureReady) {
                         atomicSignal(results, "capture.ready", Long.toString(after));
-                        captureReady = true;
                     }
                 }
                 if (deadline == 0) {
