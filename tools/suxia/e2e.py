@@ -78,6 +78,8 @@ def launch(role):
         command += ["-Dsuxia.qa.idleOnly=true"]
     if COOLDOWN_ONLY:
         command += ["-Dsuxia.qa.cooldownOnly=true", f"-Dsuxia.qa.port={PORT}"]
+        if os.environ.get("SUXIA_QA_DEATH_COOLDOWN") == "1":
+            command += ["-Dsuxia.qa.deathCooldown=true"]
     command += shlex.split(expand(config["vmArgs"]))
     if not server:
         natives = directory / "lwjgl-natives"
@@ -159,6 +161,10 @@ try:
             time.sleep(1)
         (RESULTS / "restart-server-ready.signal").write_text(f"pid={server.pid}\n")
         wait_for(["server-cool-complete", "client-cool-restarted"], [server, client])
+        required = ["server-ledger-prelogin", "server-teleport-12-64"]
+        if os.environ.get("SUXIA_QA_DEATH_COOLDOWN") == "1":
+            required.append("server-death-stimulus")
+        wait_for(required, [server, client])
         stop(client)
         server.stdin.write("stop\n")
         server.stdin.flush()

@@ -31,8 +31,22 @@ class EvidenceSummaryTests(unittest.TestCase):
         result = summarize(self.root)
         self.assertEqual([], result["errors"])
         self.assertEqual(22, len(result["modes"]["full"]["checkpoints"]))
-        self.assertEqual(15, len(result["modes"]["cooldown"]["checkpoints"]))
-        self.assertNotIn("Parser fixture", json.dumps(result))
+        self.assertEqual(17, len(result["modes"]["cooldown"]["checkpoints"]))
+        self.assertEqual(18, len(result["modes"]["death-cooldown"]["checkpoints"]))
+        self.assertEqual("Parser fixture only\n", result["modes"]["cooldown"]["boundary_measurements"]["server-ledger-prelogin"])
+        self.assertNotIn("not a screenshot", json.dumps(result))
+
+    def test_missing_teleport_is_not_success(self):
+        (self.root / "build/cooldown/server-teleport-12-64.pass").unlink()
+        self.assertTrue(summarize(self.root)["errors"])
+
+    def test_missing_prelogin_ledger_is_not_success(self):
+        (self.root / "build/death-cooldown/server-ledger-prelogin.pass").unlink()
+        self.assertTrue(summarize(self.root)["errors"])
+
+    def test_normal_cooldown_cannot_substitute_for_death(self):
+        (self.root / "build/death-cooldown/server-death-stimulus.pass").unlink()
+        self.assertTrue(summarize(self.root)["errors"])
 
     def test_missing_checkpoint_is_not_success(self):
         (self.root / "build/full/server-sleep.pass").unlink()

@@ -84,6 +84,8 @@ public final class SuxiaGameTests {
             }
             for (int x = -17; x <= 17; x++) for (int z = -17; z <= 17; z++) {
                 set(center.offset(x, -1, z), Blocks.STONE.defaultBlockState());
+                // Natural sand/gravel above the cleared arena must not fall into live-AI cases.
+                set(center.offset(x, 5, z), Blocks.STONE.defaultBlockState());
                 for (int y = 0; y <= 4; y++) set(center.offset(x, y, z), Blocks.AIR.defaultBlockState());
             }
             // This is the disposable QA world; a prior crashed run may have left arena entities behind.
@@ -227,6 +229,26 @@ public final class SuxiaGameTests {
         h.startSequence().thenWaitUntil(() -> h.assertTrue(f.level.isPositionEntityTicking(f.center),
                 "fixture chunk is entity-ticking"))
                 .thenIdle(10).thenExecute(() -> action.accept(f));
+    }
+
+    @GameTest(template = "empty", batch = BATCH)
+    public static void fixture_roof_keeps_falling_gravel_out_of_arena(GameTestHelper h) {
+        ready(h, f -> {
+            h.assertTrue(f.blocks.containsKey(f.center.above(5))
+                            && f.level.getBlockState(f.center.above(5)).is(Blocks.STONE),
+                    "fixture installs and records its roof even when natural terrain already has support");
+            f.set(f.center.above(6), Blocks.AIR.defaultBlockState());
+            f.set(f.center.above(7), Blocks.AIR.defaultBlockState());
+            f.set(f.center.above(8), Blocks.GRAVEL.defaultBlockState());
+            h.runAfterDelay(40, () -> {
+                h.assertTrue(f.level.getBlockState(f.center.above(6)).is(Blocks.GRAVEL),
+                        "real falling gravel settles on the fixture roof");
+                for (int y = 0; y <= 4; y++) h.assertTrue(f.level.getBlockState(f.center.above(y)).isAir(),
+                        "fixture walkable volume stays clear after falling terrain");
+                System.out.println("SUXIA_FIXTURE_FALLING_TERRAIN_ISOLATED_PASS");
+                h.succeed();
+            });
+        });
     }
 
     @GameTest(template = "empty", batch = BATCH)
